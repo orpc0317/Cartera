@@ -1,0 +1,30 @@
+1. Plan de Trabajo Modular Definitivo
+Este es tu mapa de ruta. Te indica en qué orden debes inyectar los prompts.
+Fase / Sprint	Módulo a Desarrollar	Stack & Herramientas	Prompt a Utilizar
+Fase 0	Setup Base y Repositorio	Next.js, TS, Tailwind, GitHub	Prompt 1
+Fase 1	SupaBase Auth y Roles	SupaBase Auth, Next.js Middleware	Prompt 2
+Fase 2	Catálogos Core (CRUD)	SupaBase DB, Shadcn UI	Prompt 3
+Fase 3	Transaccional y Facturación	Next.js API Routes, API Externa	Prompt 4
+Fase 4	Estados de Cuenta y Reportes	Librerías PDF/Excel (ej. jsPDF, xlsx)	Prompt 5
+Fase 5	Mapa Interactivo	Mapbox/Leaflet + Framer Motion	Prompt 6
+
+2. Prompts Maestros Definitivos (Listos para copiar y pegar)
+
+Prompt 1: Fase 0 (Setup Base)
+"Actúa bajo las REGLAS GLOBALES DEL PROYECTO. Inicia la Fase 0. Inicializa un proyecto con Next.js (App Router), TypeScript y Tailwind CSS para la aplicación SaaS 'Cartera'. Configura el repositorio principal en GitHub. Crea la estructura de directorios inicial. Configura las librerías base para una UI premium (como Shadcn UI o Framer Motion). Genera una breve explicación de la estructura creada y espera mi aprobación antes de hacer el primer commit a la rama 'main'."
+
+Prompt 2: Fase 1 (SupaBase y Autenticación)
+"Actúa bajo las REGLAS GLOBALES DEL PROYECTO. Inicia la Fase 1. Crea una nueva rama llamada 'feat/auth'. Integra el proyecto con SupaBase. Desarrolla el login con autenticación robusta usando SupaBase Auth. Define la estructura inicial en la base de datos para manejar los roles: Administrador, Empresa (Lotificadora), Personal Administrativo y Cliente Final. Usa componentes de UI modernos para la pantalla de login. Explica tu plan y espera mi aprobación antes de codificar."
+
+Prompt 3: Fase 2 (Catálogos Core)
+"Actúa bajo las REGLAS GLOBALES DEL PROYECTO. Inicia la Fase 2. Crea una nueva rama llamada 'feat/catalogos'. Diseña las tablas en SupaBase usando TypeScript (generando los types) y desarrolla las interfaces CRUD para: Empresas, Proyectos, Lotes y Clientes. La interfaz debe ser espectacular, usando tablas de datos modernas con filtros avanzados y modales estéticos. Detalla tu diseño relacional y espera mi aprobación antes de escribir código."
+
+Prompt 4: Fase 3 (Transaccional Core)
+"Actúa bajo las REGLAS GLOBALES DEL PROYECTO. Inicia la Fase 3. Crea una nueva rama llamada 'feat/transacciones'. Desarrolla el módulo transaccional: 1) Crear Promesas de Compra-Venta. 2) Registrar Pagos de Clientes. 3) Preparar la ruta API para la facturación (integración a servicios externos de Factura Electrónica). Explica tu enfoque para garantizar la integridad transaccional y mantener la experiencia visual fluida, y espera mi aprobación."
+
+Prompt 5: Fase 4 (Finanzas y Reportería)
+"Actúa bajo las REGLAS GLOBALES DEL PROYECTO. Inicia la Fase 4. Crea una rama llamada 'feat/finanzas'. Desarrolla la lógica para actualizar Estados de Cuenta y Planes de Pago. Implementa un Tablero de Métricas (Dashboard) de alto impacto visual con gráficos interactivos. Añade la funcionalidad para exportar a Excel y generar reportes/formularios en PDF. Haz un listado de las librerías que utilizarás y espera mi aprobación."
+
+Prompt 6: Fase 5 (Mapa Interactivo)
+"Actúa bajo las REGLAS GLOBALES DEL PROYECTO. Inicia la Fase 5. Crea una rama llamada 'feat/mapa'. Integra una librería de mapas (como Mapbox) para renderizar el plano del proyecto. Implementa interactividad premium: al hacer clic en un lote, despliega un panel lateral animado (offcanvas) con su información. Añade controles flotantes para filtrar lotes por condiciones y resaltarlos visualmente. Explica tu estrategia de implementación visual y espera mi aprobación."
+

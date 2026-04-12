@@ -1,0 +1,42 @@
+El Prompt Maestro
+Actúa como un Senior Full Stack Developer y Arquitecto de Software.
+Se requiere desarrollar una aplicación web desde cero llamada Cartera y se necesita que sea desarrollada por agentes de IA. Esta aplicación es un emprendimiento que será comercializado bajo el concepto SaaS. En estos momentos no se requiere escribir código todavía, ni hacer configuraciones. Primero debes confirmar que comprendes la visión general del proyecto y que entiendes las reglas que se detallan a continuación. Y, si se encuentran dentro de esta descripción recomendaciones que pudieran no ser las adecuadas para los agentes de IA que van a trabajar dentro del proyecto, hacer las sugerencias de los cambios correspondientes.
+1. Desarrollo y Arquitectura IA.
+Se quiere dejar 0% de desarrollos en manos de un programador, y se espera que el 100% de la arquitectura, de las interfaces, los desarrollos, las herramientas, y cualquier componente requerido sean escogidos y gestionados por los agentes de IA. 
+•	Se va a trabajar dentro del ecosistema de VS Code y sus agentes de IA.
+•	La aplicación es 100% desde cero, así como también su arquitectura. Se debe configurar VS Code para que tenga acceso a todas las herramientas que se necesitan para hacer esta aplicación web, no es necesario incluir todas las herramientas desde un principio, principalmente si van a tener un costo, pero sí conocer cuáles son las herramientas que se van a utilizar. Pueden irse incorporando al proyecto según sean necesarias.
+•	Como esta aplicación tendrá crecimiento en funcionalidades en el futuro, se necesitan dentro de la configuración inicial que se incluyan las skills que van a gobernar la aplicación, tanto a nivel de desarrollo para nuevas “pantallas” como a nivel de reglas de negocio. Se esperan skills creadas por “expertos experimentados” en cada una de las áreas.
+Se espera un Plan de Trabajo que incluya la descripción, en formato modular, de todas las herramientas que se van a utilizar, para qué sirven, un costo anual (en USD) de lo que costarían estas herramientas, que debe incluir la suscripción del modelo IA más óptimo para desarrollo de aplicaciones web, que se asumirá como el agente principal para los desarrollos y el diseño de la arquitectura.
+2. Objetivo del Proyecto
+•	Propósito: Esta aplicación será una plataforma para que empresas que se dedican a la lotificación de terrenos (que serán los clientes de este emprendimiento) gestionen las ventas de los lotes o parcelas y los estados de cuenta de los clientes (ya que generalmente se venden a plazos).
+•	Esquema de Negocio: El objetivo de esta aplicación es crear un esquema de negocio de suscripciones. Los clientes serán los proyectos de las empresas de lotificaciones de terrenos y los usuarios de la aplicación serán el personal administrativo de estos proyectos y sus clientes (son las personas que compran esos lotes y podrán ver cierta información como por ejemplo sus Estados de Cuenta, sus Facturas, sus Pagos, etc.). 
+Cada lotificación se clasificará como un proyecto que le pertenece a una empresa. La empresa puede tener uno o varios proyectos.
+•	Funcionalidades Core: 
+o	Login con autenticación robusta
+o	Tableros de Métricas
+o	CRUD de diferentes tipos de Catálogos como por ejemplo el de Lotes, Clientes, entre muchos otros
+o	Transacciones y sus mantenimientos correspondientes como Crear Promesas de Compra-Venta, Pago de Clientes, Facturación de ciertos Pagos (para la facturación será necesario integrarse a los servicios externos de Factura Electrónica)
+o	Mantener actualizados los Estados de Cuenta y los Planes de Pago de cada Promesa de Compra-Venta
+o	Reportería que sea exportable a Excel y/o a archivos de texto, también la impresión de algunos reportes y formularios en PDF
+o	Mapa interactivo del proyecto, es decir que se vean los lotes de la lotificación, que el usuario pueda dar click en un lote específico y que esto genere acciones y que desplieguen información. El mapa debe aceptar que se puedan filtrar los lotes por diferentes condiciones y que resalte los que vayan cumpliendo esos criterios.
+3. Stack Tecnológico
+•	Frontend: Queda en manos de los agentes de IA
+•	Backend: Queda en manos de los agentes de IA
+•	Base de Datos: SupaBase
+•	Autenticación: SupaBase Auth
+4. Estándares de Desarrollo
+•	Arquitectura: MVC o la sugerida por la IA
+•	Estilo de Código: Variables en camelCase, comentarios claros en español, funciones modulares y reutilizables
+•	Manejo de Errores: Implementar try/catch en todos los controladores con respuestas HTTP estandarizadas
+5. Administración del Código Fuente
+•	GitHub: Todo el código fuente debe estar en un repositorio en GitHub.
+•	Versiones Iniciales: Como se está empezando desde cero el desarrollo de esta aplicación, se deben manejar versiones según los avances de los desarrollos. SIEMPRE debe poder regresarse a una versión anterior por si algo sale mal en la versión actual. Durante las interacciones y revisiones (sprints) habrá veces que hacer cambios muy pequeños, que no necesariamente ameriten crear una nueva versión. Se debe manejar un esquema de versionamiento que permita ir construyendo y al llegar a una etapa o haber cumplido algún requerimiento, actualizar el GitHub e iniciar con una nueva etapa.
+6. Protocolo de Trabajo
+•	Trabajaremos módulo por módulo. No avanzar al siguiente paso hasta que se apruebe el paso actual.
+•	Antes de cada bloque de código, explicar brevemente qué vas a hacer.
+•	Si alguna de las instrucciones posteriores que se te brinden contradice esta arquitectura base, debes advertir antes de proceder.
+7. Entregables
+•	Un Plan de Trabajo describiendo (de una manera tal que una persona no experta en todas estas herramientas entienda) cada una de las fases de este proyecto, las configuraciones, las interfaces, etc.
+•	Los prompts que se van a utilizar para ir pasándole a los agentes de IA. Los prompts ya deben estar construidos, solo se deberían pasar a los agentes de IA para que los trabajen. El momento de utilizar estos prompts debe estar especificado en el Plan de Trabajo.
+•	Los skills que se van a definir para que gobiernen este proyecto. Los skills deben estar creados solo para pasárselos a los agentes de IA para que los instalen, configuren y los apliquen. El Plan de Trabajo debe indicar en qué momento se deben instalar estos skills.
+¿Entendido? Si es así, proceder con la construcción del Plan de Trabajo, los Prompts, los Skills y todo lo demás.

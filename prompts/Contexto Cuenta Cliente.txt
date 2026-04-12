@@ -1,0 +1,25 @@
+Contexto General de la Cuenta de un Cliente
+
+a) Quién es el cliente.
+
+Los clientes de este proyecto serán los que van a pagar por el servicio. Serán empresas que se dedican a las bienes raíces, usualmente compran una gran extensión de tierra, la dividen en manzanas y estas las dividen en lotes. Estas empresas venderán esos lotes a sus clientes.
+Qué debe suceder cuando se crea un cliente nuevo.
+
+Cuando se cree un cliente nuevo, dentro de la aplicación hay que abrirle una cuenta de “Administrador” que únicamente tendrá acceso a la información que esté bajo esta cuenta.
+
+b) Estructura administrativa de cada cuneta.
+1)	Se deben obtener toda la información de contacto de la persona que está creando la cuenta. Información como el nombre de la persona, su correo, teléfono. Solo debe haber un usuario Administrador por cuenta.
+2)	La cuenta debe permitir crear Empresas, todas las que él usuario quiera manejar dentro de la aplicación.
+3)	Dentro de la Empresa se debe definir un Proyecto. 
+a.	El proyecto es el equivalente a la lotificación que se va a desmembrar y que se van a vender sus lotes.
+b.	El cliente deberá pagar por el uso del sistema por cada Proyecto que defina dentro del sistema. Es decir que el usuario podrá definir varias empresas, y dentro de cada una podrá definir varios Proyectos. El pagará por cada Proyecto definido dentro del sistema.
+c.	Por cada Proyecto se deberá obtener los datos de facturación del servicio, y los datos de la forma de pago. Cómo es un servicio SaaS se espera hacer cobros mensuales por el uso del sistema. Si un Proyecto no paga, el sistema debe bloquear el uso de la información de ese Proyecto específicamente.
+4)	Dentro de los Proyectos se deben definir Fases. El sistema solo deberá permitir crear hasta 2 Fases por Proyecto. Aunque a nivel de infraestructura (base de datos) debe dejar todo listo para que se puedan definir todas las Fases que se quieran, el sistema SOLO DEBE PERMITIR CREAR 2 FASES POR PROYECTO. Si el usuario desea crear una tercera Fase, deberá crear un Proyecto nuevo.
+5)	Dentro de las Fases se deben definir las Manzanas. Se deben poder crear todas las Manzanas que el usuario necesite.
+6)	Dentro de las Manzanas se deben definir los Lotes. Se deben poder crear todos los Lotes que el usuario necesite.
+
+c) Cuentas de usuarios.
+El Administrador de la cuenta debe crear los usuarios que utilizaran el sistema. 
+El Administrador debe dar los accesos a estos usuarios: a qué Proyectos va a tener accesos el usuario, y qué funcionalidades va a poder trabajar. 
+El Administrador es el responsable dar las altas y bajas de los usuarios, de los permisos de cada usuario.
+
