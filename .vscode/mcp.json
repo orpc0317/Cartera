@@ -2,7 +2,7 @@
   "servers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=uoexylfbepkrjjpbxvez&read_only=true"
+      "url": "https://mcp.supabase.com/mcp?project_ref=uoexylfbepkrjjpbxvez&read_only=false"
     }
   }
 }

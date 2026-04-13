@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { logout } from '@/app/actions/auth'
-import { Button } from '@/components/ui/button'
+import { AppSidebar } from '@/components/layout/app-sidebar'
+import { getPermisosUsuario } from '@/app/actions/permisos'
 
 export default async function DashboardLayout({
   children,
@@ -17,27 +17,23 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const cuentaActiva = (user.app_metadata as Record<string, string>)?.cuenta_activa
+  const meta = user.app_metadata as Record<string, string>
+  const cuentaActiva = meta?.cuenta_activa
+  const userEmail = user.email
+
+  const permisos = await getPermisosUsuario()
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-screen-xl items-center justify-between px-4">
-          <span className="font-semibold tracking-tight">Cartera</span>
-          <div className="flex items-center gap-4">
-            {cuentaActiva && (
-              <span className="text-sm text-muted-foreground">{cuentaActiva}</span>
-            )}
-            <form action={logout}>
-              <Button variant="outline" size="sm" type="submit">
-                Cerrar sesión
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Sidebar fijo */}
+      <AppSidebar
+        cuentaActiva={cuentaActiva}
+        userEmail={userEmail}
+        permisos={permisos}
+      />
 
-      <main className="mx-auto w-full max-w-screen-xl flex-1 px-4 py-6">
+      {/* Contenido principal */}
+      <main className="flex flex-1 flex-col overflow-y-auto">
         {children}
       </main>
     </div>
