@@ -11,8 +11,8 @@ function FlagImg({ code }: { code: string }) {
       src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
       alt={code}
       width={20}
-      height={15}
-      className="inline-block align-middle shrink-0"
+      height={14}
+      className="object-cover rounded-sm shrink-0"
     />
   )
 }

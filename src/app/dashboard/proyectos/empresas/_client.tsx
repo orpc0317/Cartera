@@ -577,7 +577,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                               const p = paises.find((x) => x.nombre === empresa.pais)
                               return p ? (
                                 <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={15} className="shrink-0" />
+                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                                   {empresa.pais}
                                 </span>
                               ) : empresa.pais
@@ -679,7 +679,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                       const p = paises.find((x) => x.nombre === viewTarget.pais)
                       return (
                         <span className="flex items-center gap-1.5 text-sm font-medium">
-                          {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={15} className="shrink-0" />}
+                          {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
                           {viewTarget.pais}
                         </span>
                       )
@@ -812,7 +812,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                     id="codigo_postal"
                     value={form.codigo_postal}
                     onChange={(e) => handleField('codigo_postal', e.target.value)}
-                    placeholder="Código postal"
+                    placeholder="Ej: 01001"
                   />
                 </div>
 

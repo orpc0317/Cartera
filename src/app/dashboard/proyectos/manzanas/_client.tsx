@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Trash2, Plus, Grid3x3, Search } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Plus, Grid3x3, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,8 +29,95 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Checkbox } from '@/components/ui/checkbox'
+import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { createManzana, updateManzana, deleteManzana } from '@/app/actions/manzanas'
 import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm } from '@/lib/types/proyectos'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+type ColFilters = Record<string, Set<string>>
+
+function ColumnFilter({ label, values, active, onChange }: {
+  label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void
+}) {
+  const isFiltered = active.size > 0
+  return (
+    <Popover>
+      <PopoverTrigger render={
+        <button type="button" className={`inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium transition-colors hover:bg-accent ${isFiltered ? 'text-primary' : 'text-muted-foreground'}`}>
+          {label}
+          <ChevronDown className="h-3 w-3" />
+          {isFiltered && <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">{active.size}</span>}
+        </button>
+      } />
+      <PopoverContent className="w-52 p-2" align="start">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-semibold text-foreground">{label}</span>
+          {isFiltered && <button type="button" onClick={() => onChange(new Set())} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /> Limpiar</button>}
+        </div>
+        <div className="max-h-48 overflow-y-auto space-y-1">
+          {values.map((v) => (
+            <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
+              <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => { const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next) }} />
+              <span className="truncate">{v || '(vacío)'}</span>
+            </label>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function ViewField({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="grid gap-0.5">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{value || '—'}</span>
+    </div>
+  )
+}
+
+type ColDef = { key: string; label: string; defaultVisible: boolean }
+type ColPref = { key: string; visible: boolean }
+
+const ALL_COLUMNS: ColDef[] = [
+  { key: 'empresa',  label: 'Empresa',  defaultVisible: true  },
+  { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
+  { key: 'fase',     label: 'Fase',     defaultVisible: true  },
+]
+
+const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
+
+function ColumnManager({ prefs, onToggle, onMove, onReset }: {
+  prefs: ColPref[]; onToggle: (key: string) => void; onMove: (key: string, dir: -1 | 1) => void; onReset: () => void
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger render={<Button variant="outline" size="sm" className="gap-1.5"><Settings2 className="h-3.5 w-3.5" />Columnas</Button>} />
+      <PopoverContent className="w-56 p-3" align="end">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-semibold">Columnas visibles</span>
+          <button type="button" onClick={onReset} className="text-xs text-muted-foreground hover:text-foreground">Restablecer</button>
+        </div>
+        <div className="space-y-0.5">
+          {prefs.map((pref, i) => {
+            const col = ALL_COLUMNS.find((c) => c.key === pref.key)!
+            return (
+              <div key={pref.key} className="flex items-center gap-1.5 rounded px-1 py-1 hover:bg-accent">
+                <Checkbox checked={pref.visible} onCheckedChange={() => onToggle(pref.key)} />
+                <span className="flex-1 text-sm">{col.label}</span>
+                <button type="button" disabled={i === 0} onClick={() => onMove(pref.key, -1)} title="Subir" className="text-muted-foreground hover:text-foreground disabled:opacity-25"><ChevronUp className="h-3.5 w-3.5" /></button>
+                <button type="button" disabled={i === prefs.length - 1} onClick={() => onMove(pref.key, 1)} title="Bajar" className="text-muted-foreground hover:text-foreground disabled:opacity-25"><ChevronDown className="h-3.5 w-3.5" /></button>
+              </div>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const EMPTY_FORM: ManzanaForm = {
   empresa: 0,
@@ -44,20 +131,26 @@ export function ManzanasClient({
   empresas,
   proyectos,
   fases,
+  userId,
 }: {
   initialData: Manzana[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   fases: Fase[]
+  userId: string
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [hadConflict, setHadConflict] = useState(false)
+  const [viewTarget, setViewTarget] = useState<Manzana | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Manzana | null>(null)
-  const [editTarget, setEditTarget] = useState<Manzana | null>(null)
+  const [auditTarget, setAuditTarget] = useState<Manzana | null>(null)
   const [form, setForm] = useState<ManzanaForm>(EMPTY_FORM)
+  const [colFilters, setColFilters] = useState<ColFilters>({})
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
@@ -72,14 +165,115 @@ export function ManzanasClient({
     [fases, form.empresa, form.proyecto]
   )
 
-  const filtered = initialData.filter(
-    (m) =>
-      m.codigo.toLowerCase().includes(search.toLowerCase()) ||
-      (empresaMap.get(m.empresa) ?? '').toLowerCase().includes(search.toLowerCase())
+  function setColFilter(col: string, next: Set<string>) {
+    setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
+  }
+
+  const uniqueEmpresaNames = useMemo(
+    () => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(),
+    [initialData, empresaMap]
+  )
+  const uniqueProyectoNames = useMemo(
+    () => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(),
+    [initialData, proyectoMap]
+  )
+  const uniqueFaseNames = useMemo(
+    () => [...new Set(initialData.map((r) => faseMap.get(r.fase) ?? ''))].sort(),
+    [initialData, faseMap]
   )
 
+  const afterSearch = initialData.filter((r) => {
+    const q = search.toLowerCase()
+    return !q || r.codigo.toLowerCase().includes(q) ||
+      (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q)
+  })
+
+  const filtered = afterSearch.filter((r) =>
+    Object.entries(colFilters).every(([col, vals]) => {
+      if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa) ?? '')
+      if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
+      if (col === 'fase')     return vals.has(faseMap.get(r.fase) ?? '')
+      return vals.has(String(r[col as keyof Manzana] ?? ''))
+    })
+  )
+
+  const hasActiveFilters = Object.keys(colFilters).length > 0
+
+  const STORAGE_KEY = `manzanas_cols_v1_${userId}`
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
+      const knownKeys = new Set(parsed.map((p) => p.key))
+      setColPrefs([
+        ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
+        ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
+      ])
+    } catch { /* ignorar */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function saveColPrefs(next: ColPref[]) {
+    setColPrefs(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
+  }
+  function toggleCol(key: string) {
+    saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p))
+  }
+  function moveCol(key: string, dir: -1 | 1) {
+    const idx = colPrefs.findIndex((p) => p.key === key)
+    if (idx < 0) return
+    const next = [...colPrefs]
+    const swap = idx + dir
+    if (swap < 0 || swap >= next.length) return
+    ;[next[idx], next[swap]] = [next[swap], next[idx]]
+    saveColPrefs(next)
+  }
+  const visibleCols = colPrefs.filter((p) => p.visible)
+
+  const tableRef = useRef<HTMLDivElement>(null)
+  const [cursorIdx, setCursorIdx] = useState<number | null>(null)
+
+  const handleTableKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (filtered.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setCursorIdx((prev) => prev === null ? 0 : Math.min(prev + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setCursorIdx((prev) => prev === null ? 0 : Math.max(prev - 1, 0))
+    } else if (e.key === 'Enter' && cursorIdx !== null) {
+      e.preventDefault()
+      openView(filtered[cursorIdx])
+    } else if (e.key === 'Escape') {
+      setCursorIdx(null)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, cursorIdx])
+
+  useEffect(() => { setCursorIdx(null) }, [search, colFilters])
+
+  function f(key: keyof ManzanaForm, value: string | number) {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value }
+      if (key === 'empresa') {
+        const fp = proyectos.find((p) => p.empresa === Number(value))
+        next.proyecto = fp?.codigo ?? 0
+        const ff = fases.find((f2) => f2.empresa === Number(value) && f2.proyecto === next.proyecto)
+        next.fase = ff?.codigo ?? 0
+      }
+      if (key === 'proyecto') {
+        const ff = fases.find((f2) => f2.empresa === prev.empresa && f2.proyecto === Number(value))
+        next.fase = ff?.codigo ?? 0
+      }
+      return next
+    })
+  }
+
   function openCreate() {
-    setEditTarget(null)
+    setViewTarget(null); setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
     const firstFase = fases.find((f) => f.empresa === firstEmpresa && f.proyecto === firstProyecto)?.codigo ?? 0
@@ -87,27 +281,17 @@ export function ManzanasClient({
     setDialogOpen(true)
   }
 
-  function openEdit(m: Manzana) {
-    setEditTarget(m)
+  function openView(m: Manzana) {
+    setViewTarget(m); setIsEditing(false)
     setForm({ empresa: m.empresa, proyecto: m.proyecto, fase: m.fase, codigo: m.codigo })
     setDialogOpen(true)
   }
 
-  function f(key: keyof ManzanaForm, value: string | number) {
-    setForm((prev) => {
-      const next = { ...prev, [key]: value }
-      if (key === 'empresa') {
-        const firstP = proyectos.find((p) => p.empresa === Number(value))
-        next.proyecto = firstP?.codigo ?? 0
-        const firstF = fases.find((f) => f.empresa === Number(value) && f.proyecto === next.proyecto)
-        next.fase = firstF?.codigo ?? 0
-      }
-      if (key === 'proyecto') {
-        const firstF = fases.find((f2) => f2.empresa === prev.empresa && f2.proyecto === Number(value))
-        next.fase = firstF?.codigo ?? 0
-      }
-      return next
-    })
+  function startEdit() { setIsEditing(true) }
+  function cancelEdit() {
+    if (!viewTarget) { setDialogOpen(false); return }
+    setIsEditing(false)
+    setForm({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, fase: viewTarget.fase, codigo: viewTarget.codigo })
   }
 
   function handleSave() {
@@ -115,13 +299,16 @@ export function ManzanasClient({
     if (!form.empresa) { toast.error('Selecciona empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona proyecto.'); return }
     if (!form.fase) { toast.error('Selecciona fase.'); return }
+    const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = editTarget
-        ? await updateManzana(editTarget.empresa, editTarget.proyecto, editTarget.fase, editTarget.codigo, form)
+      const result = viewTarget
+        ? await updateManzana(viewTarget.empresa, viewTarget.proyecto, viewTarget.fase, viewTarget.codigo, form, lastModified)
         : await createManzana(form)
-      if (result.error) toast.error(result.error)
-      else {
-        toast.success(editTarget ? 'Manzana actualizada.' : 'Manzana creada.')
+      if (result.error) {
+        if (result.error.includes('modificado')) { setHadConflict(true); toast.error(result.error) }
+        else toast.error(result.error)
+      } else {
+        toast.success(viewTarget ? 'Manzana actualizada.' : 'Manzana creada.')
         setDialogOpen(false)
         router.refresh()
       }
@@ -163,115 +350,177 @@ export function ManzanasClient({
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar manzanas..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      {/* Search + Filters */}
+      <div className="flex items-center gap-2">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar manzanas..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
+            <X className="h-3.5 w-3.5" /> Limpiar filtros
+          </Button>
+        )}
+        <div className="ml-auto">
+          <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
+        </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-border/60 bg-card shadow-sm">
+      <div
+        ref={tableRef}
+        className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+      >
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead>Código</TableHead>
-              <TableHead className="hidden md:table-cell">Empresa</TableHead>
-              <TableHead className="hidden md:table-cell">Proyecto</TableHead>
-              <TableHead className="hidden lg:table-cell">Fase</TableHead>
-              <TableHead className="w-12" />
+              <TableHead className="sticky left-0 z-20 bg-muted/30">Código</TableHead>
+              {visibleCols.map((col) => (
+                <TableHead key={col.key}>
+                  <ColumnFilter
+                    label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
+                    values={
+                      col.key === 'empresa'  ? uniqueEmpresaNames :
+                      col.key === 'proyecto' ? uniqueProyectoNames :
+                      col.key === 'fase'     ? uniqueFaseNames : []
+                    }
+                    active={colFilters[col.key] ?? new Set()}
+                    onChange={(v) => setColFilter(col.key, v)}
+                  />
+                </TableHead>
+              ))}
+              <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-16 text-center text-muted-foreground">
-                  {search ? 'Sin resultados.' : 'No hay manzanas registradas aún.'}
+                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters ? 'Sin resultados.' : 'No hay manzanas registradas aún.'}
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((m) => (
-                <TableRow key={`${m.empresa}-${m.proyecto}-${m.fase}-${m.codigo}`} className="group">
-                  <TableCell className="font-medium">{m.codigo}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {empresaMap.get(m.empresa) ?? `#${m.empresa}`}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {proyectoMap.get(m.proyecto) ?? `#${m.proyecto}`}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground">
-                    {faseMap.get(m.fase) ?? `#${m.fase}`}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium opacity-0 transition-opacity hover:bg-accent hover:text-accent-foreground group-hover:opacity-100 focus-visible:outline-none"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEdit(m)}>
-                          <Pencil className="mr-2 h-3.5 w-3.5" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(m)}>
-                          <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              filtered.map((m, rowIdx) => {
+                const isActive = cursorIdx === rowIdx
+                return (
+                  <TableRow
+                    key={`${m.empresa}-${m.proyecto}-${m.fase}-${m.codigo}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'hover:bg-muted/40'}`}
+                    onClick={() => setCursorIdx(rowIdx)}
+                    onDoubleClick={() => openView(m)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-medium transition-colors ${
+                      isActive ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'
+                    }`}>
+                      {m.codigo}
+                    </TableCell>
+                    {visibleCols.map((col) => {
+                      switch (col.key) {
+                        case 'empresa':  return <TableCell key="empresa"  className="text-muted-foreground">{empresaMap.get(m.empresa)  ?? `#${m.empresa}`}</TableCell>
+                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(m.proyecto) ?? `#${m.proyecto}`}</TableCell>
+                        case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(m.fase)         ?? `#${m.fase}`}</TableCell>
+                        default:         return <TableCell key={col.key}  className="text-muted-foreground">{String((m as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
+                      }
+                    })}
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openView(m)}>
+                            <Eye className="mr-2 h-3.5 w-3.5" /> Ver / Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAuditTarget(m)}>
+                            <History className="mr-2 h-3.5 w-3.5" /> Historial
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(m)}>
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
       </div>
 
-      {/* Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      {/* Ver / Crear / Editar Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
+        }}
+        modal={false}
+      >
         <DialogContent className="flex flex-col max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Editar Manzana' : 'Nueva Manzana'}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {isEditing && !viewTarget
+                ? <><Plus className="h-4 w-4 text-muted-foreground" /> Nueva Manzana</>
+                : isEditing
+                ? <><Pencil className="h-4 w-4 text-muted-foreground" /> Editar Manzana</>
+                : <><Eye className="h-4 w-4 text-muted-foreground" /> Manzana {viewTarget?.codigo}</>}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto grid gap-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 grid gap-1.5">
-                <Label>Empresa *</Label>
-                <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona empresa" /></SelectTrigger>
-                  <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
-                </Select>
+          <div className="flex-1 overflow-y-auto py-2">
+            {!isEditing && viewTarget ? (
+              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                <div className="col-span-2"><ViewField label="Código" value={viewTarget.codigo} /></div>
+                <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? `#${viewTarget.empresa}`} />
+                <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} />
+                <ViewField label="Fase"     value={faseMap.get(viewTarget.fase)         ?? `#${viewTarget.fase}`} />
               </div>
-
-              <div className="col-span-2 grid gap-1.5">
-                <Label>Proyecto *</Label>
-                <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona proyecto" /></SelectTrigger>
-                  <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
-                </Select>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 grid gap-1.5">
+                  <Label>Empresa *</Label>
+                  <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                    <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2 grid gap-1.5">
+                  <Label>Proyecto *</Label>
+                  <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                    <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2 grid gap-1.5">
+                  <Label>Fase *</Label>
+                  <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                    <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-2 grid gap-1.5">
+                  <Label>Código *</Label>
+                  <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: A, B, C, 1, 2..." disabled={!!viewTarget} />
+                </div>
               </div>
-
-              <div className="col-span-2 grid gap-1.5">
-                <Label>Fase *</Label>
-                <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona fase" /></SelectTrigger>
-                  <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-
-              <div className="col-span-2 grid gap-1.5">
-                <Label>Código *</Label>
-                <Input
-                  value={form.codigo}
-                  onChange={(e) => f('codigo', e.target.value)}
-                  placeholder="Ej: A, B, C, 1, 2..."
-                  disabled={!!editTarget}
-                />
-              </div>
-            </div>
+            )}
           </div>
           <DialogFooter className="shrink-0">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
+            {!isEditing && viewTarget ? (
+              <>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
+                <Button onClick={startEdit} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -291,6 +540,18 @@ export function ManzanasClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Audit Log */}
+      {auditTarget && (
+        <AuditLogDialog
+          open={!!auditTarget}
+          onOpenChange={(o) => !o && setAuditTarget(null)}
+          tabla="t_manzana"
+          cuenta={auditTarget.cuenta}
+          codigo={auditTarget.codigo}
+          titulo={`Manzana ${auditTarget.codigo}`}
+        />
+      )}
     </div>
   )
 }

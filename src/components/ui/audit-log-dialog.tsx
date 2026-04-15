@@ -15,19 +15,47 @@ const SKIP_FIELDS = new Set([
 
 // Etiquetas legibles por campo
 const FIELD_LABELS: Record<string, string> = {
-  nombre:                   'Nombre',
-  razon_social:             'Razón Social',
-  identificaion_tributaria: 'ID Tributaria',
-  regimen_isr:              'Régimen ISR',
-  direccion:                'Dirección',
-  pais:                     'País',
-  departamento:             'Departamento',
-  municipio:                'Municipio',
-  codigo_postal:            'Código Postal',
-  empresa:                  'Empresa',
-  telefono1:                'Teléfono 1',
-  telefono2:                'Teléfono 2',
-  mora_automatica:          'Mora automática',
+  nombre:                        'Nombre',
+  razon_social:                  'Razón Social',
+  identificaion_tributaria:      'ID Tributaria',
+  regimen_isr:                   'Régimen ISR',
+  direccion:                     'Dirección',
+  pais:                          'País',
+  departamento:                  'Departamento',
+  municipio:                     'Municipio',
+  codigo_postal:                 'Código Postal',
+  empresa:                       'Empresa',
+  proyecto:                      'Proyecto',
+  fase:                          'Fase',
+  manzana:                       'Manzana',
+  telefono1:                     'Teléfono 1',
+  telefono2:                     'Teléfono 2',
+  mora_automatica:               'Mora automática',
+  fijar_parametros_mora:         'Fijar parámetros mora',
+  forma_mora:                    'Forma de mora',
+  interes_mora:                  'Interés de mora',
+  fijo_mora:                     'Mora fija',
+  mora_enganche:                 'Mora sobre enganche',
+  dias_gracia:                   'Días de gracia',
+  dias_afectos:                  'Días afectos',
+  inicio_calculo_mora:           'Inicio cálculo mora',
+  calcular_mora_antes:           'Calcular mora antes',
+  minimo_mora:                   'Mora mínima',
+  minimo_abono_capital:          'Mínimo abono capital',
+  inicio_abono_capital_estricto: 'Inicio abono cap. estricto',
+  promesa_vencida:               'Promesa vencida',
+  medida:                        'Medida',
+  moneda:                        'Moneda',
+  valor:                         'Valor',
+  extension:                     'Extensión',
+  finca:                         'Finca',
+  folio:                         'Folio',
+  libro:                         'Libro',
+  norte:                         'Norte (colindancia)',
+  sur:                           'Sur (colindancia)',
+  este:                          'Este (colindancia)',
+  oeste:                         'Oeste (colindancia)',
+  otro:                          'Otras colindancias',
 }
 
 function fieldLabel(key: string) {
@@ -80,7 +108,7 @@ interface AuditLogDialogProps {
   onOpenChange: (open: boolean) => void
   tabla: string
   cuenta: string
-  codigo: number
+  codigo: number | string
   titulo: string
 }
 

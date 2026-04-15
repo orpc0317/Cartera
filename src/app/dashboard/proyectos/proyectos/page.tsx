@@ -1,9 +1,13 @@
 import { getProyectos } from '@/app/actions/proyectos'
 import { getEmpresas } from '@/app/actions/empresas'
 import { getPaises, getDepartamentos, getMunicipios } from '@/app/actions/geo'
+import { createClient } from '@/lib/supabase/server'
 import { ProyectosClient } from './_client'
 
 export default async function ProyectosPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   const [data, empresas, paises, departamentos, municipios] = await Promise.all([
     getProyectos().catch(() => []),
     getEmpresas().catch(() => []),
@@ -18,6 +22,7 @@ export default async function ProyectosPage() {
       paises={paises}
       departamentos={departamentos}
       municipios={municipios}
+      userId={user?.id ?? ''}
     />
   )
 }

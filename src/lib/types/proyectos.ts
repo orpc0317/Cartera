@@ -25,6 +25,7 @@ export type Proyecto = {
   empresa: number
   codigo: number
   nombre: string
+  moneda: string
   pais: string
   departamento: string
   municipio: string
@@ -46,6 +47,7 @@ export type Proyecto = {
   minimo_abono_capital: number
   inicio_abono_capital_estricto: string
   promesa_vencida: number
+  logo_url?: string
   agrego_usuario?: string
   agrego_fecha?: string
   modifico_usuario?: string

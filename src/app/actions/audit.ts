@@ -19,7 +19,7 @@ export type AuditEntry = {
 export async function getAuditLog(
   tabla: string,
   cuenta: string,
-  codigo: number,
+  codigo: number | string,
 ): Promise<AuditEntry[]> {
   const admin = createAdminClient()
   const { data, error } = await admin
