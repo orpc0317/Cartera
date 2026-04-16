@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle } from 'lucide-react'
+import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,7 +36,7 @@ import {
   createProyecto, updateProyecto, deleteProyecto, uploadProjectLogo,
 } from '@/app/actions/proyectos'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import type { Empresa, Proyecto, ProyectoForm } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, ProyectoForm, Fase } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { CountrySelect } from '@/components/ui/country-select'
 
@@ -103,9 +103,9 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || '—'}</span>
+    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
+      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -236,10 +236,10 @@ type ColPref = { key: string; visible: boolean }
 const ALL_COLUMNS: ColDef[] = [
   { key: 'nombre',       label: 'Nombre',      defaultVisible: true  },
   { key: 'empresa',      label: 'Empresa',     defaultVisible: true  },
-  { key: 'pais',         label: 'País',        defaultVisible: true  },
+  { key: 'pais',         label: 'Pais',        defaultVisible: true  },
   { key: 'departamento', label: 'Departamento', defaultVisible: false },
   { key: 'municipio',    label: 'Municipio',   defaultVisible: false },
-  { key: 'telefono1',    label: 'Teléfono',    defaultVisible: false },
+  { key: 'telefono1',    label: 'Telefono',    defaultVisible: false },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -423,16 +423,20 @@ function LogoUploadField({
 export function ProyectosClient({
   initialData,
   empresas,
+  fases,
   paises,
   departamentos,
   municipios,
+  puedeEliminar,
   userId,
 }: {
   initialData: Proyecto[]
   empresas: Empresa[]
+  fases: Fase[]
   paises: Pais[]
   departamentos: Departamento[]
   municipios: Municipio[]
+  puedeEliminar: boolean
   userId: string
 }) {
   const router = useRouter()
@@ -670,7 +674,10 @@ export function ProyectosClient({
   }
 
   function f(key: keyof ProyectoForm, value: string | number) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+    const v = typeof value === 'string' && key !== 'pais' && key !== 'departamento' && key !== 'municipio' && key !== 'moneda'
+      ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+      : value
+    setForm((prev) => ({ ...prev, [key]: v }))
   }
 
   const handleLogoSelect = useCallback(async (file: File) => {
@@ -755,7 +762,7 @@ export function ProyectosClient({
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Proyectos</h1>
             <p className="text-sm text-muted-foreground">
-              Administra los proyectos de lotificación
+              Administra los proyectos de lotificacion
             </p>
           </div>
         </div>
@@ -809,7 +816,7 @@ export function ProyectosClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Código</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key}>
                   <ColumnFilter
@@ -857,6 +864,23 @@ export function ProyectosClient({
                           return <TableCell key="nombre" className="font-medium">{proyecto.nombre}</TableCell>
                         case 'empresa':
                           return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(proyecto.empresa) ?? `#${proyecto.empresa}`}</TableCell>
+                        case 'pais': {
+                          const p = paises.find((x) => x.codigo === proyecto.pais)
+                          return (
+                            <TableCell key="pais" className="text-muted-foreground">
+                              {p ? (
+                                <span className="flex items-center gap-1.5">
+                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  {p.nombre}
+                                </span>
+                              ) : (proyecto.pais ?? '—')}
+                            </TableCell>
+                          )
+                        }
+                        case 'departamento':
+                          return <TableCell key="departamento" className="text-muted-foreground">{departamentos.find((d) => d.codigo === proyecto.departamento)?.nombre ?? proyecto.departamento ?? '—'}</TableCell>
+                        case 'municipio':
+                          return <TableCell key="municipio" className="text-muted-foreground">{municipios.find((m) => m.codigo === proyecto.municipio)?.nombre ?? proyecto.municipio ?? '—'}</TableCell>
                         default:
                           return <TableCell key={col.key} className="text-muted-foreground">{(proyecto[col.key as keyof Proyecto] as string) || '—'}</TableCell>
                       }
@@ -882,13 +906,15 @@ export function ProyectosClient({
                             Historial
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteTarget(proyecto)}
-                          >
-                            <Trash2 className="mr-2 h-3.5 w-3.5" />
-                            Eliminar
-                          </DropdownMenuItem>
+                          {puedeEliminar && !fases.some((f) => f.empresa === proyecto.empresa && f.proyecto === proyecto.codigo) && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteTarget(proyecto)}
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -912,34 +938,68 @@ export function ProyectosClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {isEditing && !viewTarget
-                ? <><Plus className="h-4 w-4 text-muted-foreground" /> Nuevo Proyecto</>
-                : isEditing
-                ? <><Pencil className="h-4 w-4 text-muted-foreground" /> Editar Proyecto</>
-                : <><Eye className="h-4 w-4 text-muted-foreground" /> {viewTarget?.nombre}</>}
-            </DialogTitle>
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${
+                isEditing && !viewTarget ? 'bg-sky-100' : isEditing ? 'bg-amber-100' : 'bg-sky-100'
+              }`}>
+                {isEditing && !viewTarget
+                  ? <Plus className="h-5 w-5 text-sky-600" />
+                  : isEditing
+                  ? <Pencil className="h-5 w-5 text-amber-600" />
+                  : <FolderKanban className="h-5 w-5 text-sky-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nuevo Proyecto' : isEditing ? 'Editar Proyecto' : viewTarget?.nombre}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {empresaMap.get(viewTarget.empresa) ?? ''}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
           </DialogHeader>
 
           <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="mora">Parámetros</TabsTrigger>
+              <TabsTrigger value="general" className="gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                General
+              </TabsTrigger>
+              <TabsTrigger value="mora" className="gap-1.5">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Parámetros
+              </TabsTrigger>
             </TabsList>
 
             {/* ── Tab General ── */}
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
                   <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
-                  <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
-                  <ViewField label="País" value={paises.find((p) => p.codigo === viewTarget.pais)?.nombre ?? viewTarget.pais} />
+                  <div className="col-span-2"><ViewField label="Dirección" value={viewTarget.direccion} /></div>
+                  {(() => {
+                    const p = paises.find((x) => x.codigo === viewTarget.pais)
+                    return (
+                      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
+                        <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">País</span>
+                        {p ? (
+                          <span className="flex items-center gap-1.5 text-sm font-medium">
+                            <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                            {p.nombre}
+                          </span>
+                        ) : <span className="text-sm font-medium">{viewTarget.pais ?? '—'}</span>}
+                      </div>
+                    )
+                  })()}
                   <ViewField label="Departamento" value={departamentos.find((d) => d.codigo === viewTarget.departamento)?.nombre ?? viewTarget.departamento} />
                   <ViewField label="Municipio" value={municipios.find((m) => m.codigo === viewTarget.municipio)?.nombre ?? viewTarget.municipio} />
-                  <div className="col-span-2"><ViewField label="Dirección" value={viewTarget.direccion} /></div>
-                  <ViewField label="Código Postal" value={viewTarget.codigo_postal} />
+                  <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
                   <ViewField label="Teléfono 1" value={viewTarget.telefono1} />
                   <ViewField label="Teléfono 2" value={viewTarget.telefono2} />
                 </div>
@@ -947,8 +1007,8 @@ export function ProyectosClient({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 grid gap-1.5">
                     <Label htmlFor="empresa">Empresa *</Label>
-                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                      <SelectTrigger id="empresa">
+                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger id="empresa" className="w-full">
                         <SelectValue placeholder="Selecciona una empresa">
                           {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -997,7 +1057,7 @@ export function ProyectosClient({
                     </select>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor="codigo_postal_p">Código Postal</Label>
+                    <Label htmlFor="codigo_postal_p">Cod. Postal</Label>
                     <Input id="codigo_postal_p" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Ej: 01001" />
                   </div>
                   <div className="col-span-2 grid gap-1.5">
@@ -1027,37 +1087,61 @@ export function ProyectosClient({
             {/* ── Tab Mora ── */}
             <TabsContent value="mora" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                  <div className="col-span-2 flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Mora Automática</span>
-                    <span className="text-sm font-medium">{viewTarget.mora_automatica ? 'Sí' : 'No'}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Mora Automática — checkbox deshabilitado */}
+                  <div className="col-span-2 flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                    <Checkbox checked={!!viewTarget.mora_automatica} disabled />
+                    <span className="text-sm font-medium">Mora Automática</span>
                   </div>
-                  {!!viewTarget.mora_automatica && (
+                  {/* Forma Cálculo + Tipo Cálculo + % Mora|Monto Mora + Días Gracia */}
+                  <div className="col-span-2 grid grid-cols-4 gap-3">
                     <ViewField label="Forma Cálculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
-                  )}
-                  {!!viewTarget.mora_automatica && (
                     <ViewField label="Tipo Cálculo" value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
-                  )}
-                  <ViewField label="Días de Gracia" value={String(viewTarget.dias_gracia ?? 0)} />
-                  <ViewField label="Días Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Días'} />
-                  {tipoCalculo === 0 && <ViewField label="% Mora" value={String(viewTarget.interes_mora ?? 0)} />}
-                  {tipoCalculo === 1 && <ViewField label="Monto Mora" value={String(viewTarget.fijo_mora ?? 0)} />}
-                  <ViewField label="Mora Mínima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
-                  <ViewField label="Mora Enganche" value={viewTarget.mora_enganche ? 'Sí' : 'No'} />
-                  <ViewField label="Mínimo Abono Capital" value={String(viewTarget.minimo_abono_capital ?? 0)} />
-                  <div className="col-span-2 flex items-center gap-3 pt-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Otros Parámetros</span>
-                    <div className="flex-1 border-t border-border" />
+                    {tipoCalculo === 0
+                      ? <ViewField label="% Mora" value={formatMora(viewTarget.interes_mora ?? 0)} />
+                      : <ViewField label="Monto Mora" value={formatMora(viewTarget.fijo_mora ?? 0)} />}
+                    <ViewField label="Días Gracia" value={String(viewTarget.dias_gracia ?? 0)} />
                   </div>
-                  <ViewField label="Moneda" value={(() => { const c = CURRENCY_MAP.get(viewTarget.moneda ?? ''); return c ? `${c.iso} — ${c.name}` : viewTarget.moneda })()} />
-                  <ViewField label="Promesa Vencida" value={viewTarget.promesa_vencida ? 'Sí' : 'No'} />
-                  {viewTarget.logo_url ? (
-                    <div className="col-span-2 space-y-1">
-                      <span className="text-xs text-muted-foreground">Logo</span>
-                      <div className="mt-0.5">
-                        <img src={viewTarget.logo_url} alt="Logo del proyecto"
-                          className="max-h-20 max-w-[200px] rounded border border-border object-contain bg-white p-1" />
+                  <ViewField label="Días Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Días'} />
+                  <ViewField label="Mora Mínima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
+                  <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                    <Checkbox checked={!!viewTarget.mora_enganche} disabled />
+                    <span className="text-sm font-medium">Mora Enganche</span>
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Abono Capital</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
+                  <ViewField label="Mínimo Abono Capital" value={formatMora(viewTarget.minimo_abono_capital ?? 0)} />
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
+                  {(() => {
+                    const c = CURRENCY_MAP.get(viewTarget.moneda ?? '')
+                    return (
+                      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
+                        <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
+                        {c ? (
+                          <span className="flex items-center gap-1.5 text-sm font-medium">
+                            <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                            {c.iso} — {c.name}
+                          </span>
+                        ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
                       </div>
+                    )
+                  })()}
+                  <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                    <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
+                    <span className="text-sm font-medium">Promesa Vencida</span>
+                  </div>
+                  {viewTarget.logo_url ? (
+                    <div className="col-span-2 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-2">
+                      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Logo</span>
+                      <img src={viewTarget.logo_url} alt="Logo del proyecto"
+                        className="max-h-20 max-w-[200px] rounded border border-border object-contain bg-white p-1" />
                     </div>
                   ) : (
                     <ViewField label="Logo" value="Sin logo" />
@@ -1170,14 +1254,16 @@ export function ProyectosClient({
                       <Label htmlFor="mora_enganche" className="cursor-pointer">Mora Enganche</Label>
                     </div>
                   </div>
-                  <div className="col-span-2 flex items-center gap-3 pt-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Abono Capital</span>
-                    <div className="flex-1 border-t border-border" />
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Abono Capital</span>
+                    <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="grid gap-1.5 w-3/4"><Label htmlFor="minimo_abono">Mínimo Abono Capital</Label><Input id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
-                  <div className="col-span-2 flex items-center gap-3 pt-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Otros Parámetros</span>
-                    <div className="flex-1 border-t border-border" />
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
+                    <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="col-span-2 flex items-end gap-4">
                     <div className="grid gap-1.5 w-72">

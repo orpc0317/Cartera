@@ -3,6 +3,8 @@ import { getManzanas } from '@/app/actions/manzanas'
 import { getFases } from '@/app/actions/fases'
 import { getProyectos } from '@/app/actions/proyectos'
 import { getEmpresas } from '@/app/actions/empresas'
+import { getPermisosDetalle } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
 import { LotesClient } from './_client'
 
@@ -15,9 +17,10 @@ export default async function LotesPage() {
   let fases: Awaited<ReturnType<typeof getFases>> = []
   let proyectos: Awaited<ReturnType<typeof getProyectos>> = []
   let empresas: Awaited<ReturnType<typeof getEmpresas>> = []
+  let permisos = { consultar: true, agregar: true, modificar: true, eliminar: true }
   try {
-    ;[data, manzanas, fases, proyectos, empresas] = await Promise.all([
-      getLotes(), getManzanas(), getFases(), getProyectos(), getEmpresas(),
+    ;[data, manzanas, fases, proyectos, empresas, permisos] = await Promise.all([
+      getLotes(), getManzanas(), getFases(), getProyectos(), getEmpresas(), getPermisosDetalle(PERMISOS.LOT_CAT),
     ])
   } catch {
     // schema not yet exposed
@@ -29,6 +32,7 @@ export default async function LotesPage() {
       fases={fases}
       proyectos={proyectos}
       empresas={empresas}
+      puedeEliminar={permisos.eliminar}
       userId={user?.id ?? ''}
     />
   )

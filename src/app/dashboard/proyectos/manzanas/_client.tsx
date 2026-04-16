@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Trash2, Plus, Grid3x3, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Plus, Grid3x3, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,8 +32,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createManzana, updateManzana, deleteManzana } from '@/app/actions/manzanas'
-import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm, Lote } from '@/lib/types/proyectos'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -72,9 +73,9 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || '—'}</span>
+    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
+      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -83,9 +84,10 @@ type ColDef = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'empresa',  label: 'Empresa',  defaultVisible: true  },
   { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
   { key: 'fase',     label: 'Fase',     defaultVisible: true  },
+  { key: 'codigo',   label: 'Codigo',   defaultVisible: true  },
+  { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -131,12 +133,16 @@ export function ManzanasClient({
   empresas,
   proyectos,
   fases,
+  lotes,
+  puedeEliminar,
   userId,
 }: {
   initialData: Manzana[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   fases: Fase[]
+  lotes: Lote[]
+  puedeEliminar: boolean
   userId: string
 }) {
   const router = useRouter()
@@ -199,7 +205,7 @@ export function ManzanasClient({
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
-  const STORAGE_KEY = `manzanas_cols_v1_${userId}`
+  const STORAGE_KEY = `manzanas_cols_v3_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
   useEffect(() => {
     try {
@@ -256,8 +262,11 @@ export function ManzanasClient({
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
   function f(key: keyof ManzanaForm, value: string | number) {
+    const v = typeof value === 'string'
+      ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+      : value
     setForm((prev) => {
-      const next = { ...prev, [key]: value }
+      const next = { ...prev, [key]: v }
       if (key === 'empresa') {
         const fp = proyectos.find((p) => p.empresa === Number(value))
         next.proyecto = fp?.codigo ?? 0
@@ -295,7 +304,7 @@ export function ManzanasClient({
   }
 
   function handleSave() {
-    if (!form.codigo.trim()) { toast.error('El código es requerido.'); return }
+    if (!form.codigo.trim()) { toast.error('El codigo es requerido.'); return }
     if (!form.empresa) { toast.error('Selecciona empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona proyecto.'); return }
     if (!form.fase) { toast.error('Selecciona fase.'); return }
@@ -330,8 +339,8 @@ export function ManzanasClient({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-orange-100 p-2.5">
-            <Grid3x3 className="h-5 w-5 text-orange-700" />
+          <div className="rounded-xl bg-amber-100 p-2.5">
+            <Grid3x3 className="h-5 w-5 text-amber-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Manzanas</h1>
@@ -377,7 +386,7 @@ export function ManzanasClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 bg-muted/30">Código</TableHead>
+              <TableHead className="sticky left-0 z-20 bg-muted/30">Codigo</TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key}>
                   <ColumnFilter
@@ -408,24 +417,25 @@ export function ManzanasClient({
                 return (
                   <TableRow
                     key={`${m.empresa}-${m.proyecto}-${m.fase}-${m.codigo}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'hover:bg-muted/40'}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-amber-50 dark:bg-amber-950/30' : 'hover:bg-muted/40'}`}
                     onClick={() => setCursorIdx(rowIdx)}
                     onDoubleClick={() => openView(m)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-medium transition-colors ${
-                      isActive ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'
+                      isActive ? 'bg-amber-50 dark:bg-amber-950/30 border-l-[3px] border-l-amber-600 text-amber-700 dark:text-amber-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'
                     }`}>
                       {m.codigo}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case 'codigo':   return <TableCell key="codigo"   className="font-mono text-xs text-muted-foreground">{m.codigo || '—'}</TableCell>
                         case 'empresa':  return <TableCell key="empresa"  className="text-muted-foreground">{empresaMap.get(m.empresa)  ?? `#${m.empresa}`}</TableCell>
                         case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(m.proyecto) ?? `#${m.proyecto}`}</TableCell>
                         case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(m.fase)         ?? `#${m.fase}`}</TableCell>
                         default:         return <TableCell key={col.key}  className="text-muted-foreground">{String((m as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <MoreHorizontal className="h-4 w-4" />
@@ -438,9 +448,11 @@ export function ManzanasClient({
                             <History className="mr-2 h-3.5 w-3.5" /> Historial
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(m)}>
-                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                          </DropdownMenuItem>
+                          {puedeEliminar && !lotes.some((l) => l.empresa === m.empresa && l.proyecto === m.proyecto && l.fase === m.fase && l.manzana === m.codigo) && (
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(m)}>
+                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -461,55 +473,81 @@ export function ManzanasClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {isEditing && !viewTarget
-                ? <><Plus className="h-4 w-4 text-muted-foreground" /> Nueva Manzana</>
-                : isEditing
-                ? <><Pencil className="h-4 w-4 text-muted-foreground" /> Editar Manzana</>
-                : <><Eye className="h-4 w-4 text-muted-foreground" /> Manzana {viewTarget?.codigo}</>}
-            </DialogTitle>
+        <DialogContent className="flex flex-col w-full max-w-lg max-h-[80vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-amber-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${
+                isEditing && !viewTarget ? 'bg-amber-100' : isEditing ? 'bg-amber-100' : 'bg-amber-100'
+              }`}>
+                {isEditing && !viewTarget
+                  ? <Plus className="h-5 w-5 text-amber-600" />
+                  : isEditing
+                  ? <Pencil className="h-5 w-5 text-amber-600" />
+                  : <Grid3x3 className="h-5 w-5 text-amber-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nueva Manzana' : isEditing ? 'Editar Manzana' : `Manzana ${viewTarget?.codigo}`}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {faseMap.get(viewTarget.fase) ?? `#${viewTarget.fase}`}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto py-2">
-            {!isEditing && viewTarget ? (
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                <div className="col-span-2"><ViewField label="Código" value={viewTarget.codigo} /></div>
-                <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? `#${viewTarget.empresa}`} />
-                <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} />
-                <ViewField label="Fase"     value={faseMap.get(viewTarget.fase)         ?? `#${viewTarget.fase}`} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 grid gap-1.5">
-                  <Label>Empresa *</Label>
-                  <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                    <SelectTrigger><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                    <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
-                  </Select>
+
+          <Tabs defaultValue="general" className="mt-1 flex flex-col flex-1 min-h-0">
+            <TabsList className="shrink-0">
+              <TabsTrigger value="general" className="gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                General
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
+              {!isEditing && viewTarget ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? `#${viewTarget.empresa}`} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2"><ViewField label="Fase"     value={faseMap.get(viewTarget.fase)         ?? `#${viewTarget.fase}`} /></div>
+                  <div className="col-span-2"><ViewField label="Codigo"   value={viewTarget.codigo} /></div>
                 </div>
-                <div className="col-span-2 grid gap-1.5">
-                  <Label>Proyecto *</Label>
-                  <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                    <SelectTrigger><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                    <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
-                  </Select>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 grid gap-1.5">
+                    <Label>Empresa *</Label>
+                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 grid gap-1.5">
+                    <Label>Proyecto *</Label>
+                    <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 grid gap-1.5">
+                    <Label>Fase *</Label>
+                    <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 grid gap-1.5">
+                    <Label>Codigo *</Label>
+                    <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: A, B, C, 1, 2..." disabled={!!viewTarget} />
+                  </div>
                 </div>
-                <div className="col-span-2 grid gap-1.5">
-                  <Label>Fase *</Label>
-                  <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                    <SelectTrigger><SelectValue placeholder="Selecciona fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                    <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2 grid gap-1.5">
-                  <Label>Código *</Label>
-                  <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: A, B, C, 1, 2..." disabled={!!viewTarget} />
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="shrink-0">
+              )}
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>

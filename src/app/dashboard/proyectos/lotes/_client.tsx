@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Trash2, Plus, MapPin, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Plus, MapPin, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -65,7 +65,7 @@ function ColumnFilter({ label, values, active, onChange }: {
           {values.map((v) => (
             <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => { const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next) }} />
-              <span className="truncate">{v || '(vacÃ­o)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -76,9 +76,9 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || 'â€”'}</span>
+    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
+      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -87,12 +87,11 @@ type ColDef = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'manzana',   label: 'Manzana',   defaultVisible: true  },
-  { key: 'empresa',   label: 'Empresa',   defaultVisible: true  },
-  { key: 'proyecto',  label: 'Proyecto',  defaultVisible: false },
-  { key: 'extension', label: 'ExtensiÃ³n', defaultVisible: true  },
-  { key: 'valor',     label: 'Valor',     defaultVisible: true  },
-  { key: '__estado',  label: 'Estado',    defaultVisible: true  },
+  { key: 'fase',     label: 'Fase',         defaultVisible: true },
+  { key: 'manzana',  label: 'Manzana',      defaultVisible: true },
+  { key: 'codigo',   label: 'Lote',         defaultVisible: true },
+  { key: 'valor',    label: 'Precio Venta', defaultVisible: true },
+  { key: '__estado', label: 'Estado',       defaultVisible: true },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -126,9 +125,29 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-const MONEDAS = [
-  { value: 'GTQ', label: 'Q â€” Quetzal' },
-  { value: 'USD', label: '$ â€” DÃ³lar USD' },
+const CURRENCIES: { iso: string; name: string; flagIso: string }[] = [
+  { iso: 'ARS', name: 'Peso Argentino',        flagIso: 'AR' },
+  { iso: 'BOB', name: 'Boliviano',              flagIso: 'BO' },
+  { iso: 'BRL', name: 'Real Brasileno',         flagIso: 'BR' },
+  { iso: 'CAD', name: 'Dolar Canadiense',       flagIso: 'CA' },
+  { iso: 'CLP', name: 'Peso Chileno',           flagIso: 'CL' },
+  { iso: 'COP', name: 'Peso Colombiano',        flagIso: 'CO' },
+  { iso: 'CRC', name: 'Colon Costarricense',    flagIso: 'CR' },
+  { iso: 'CUP', name: 'Peso Cubano',            flagIso: 'CU' },
+  { iso: 'DOP', name: 'Peso Dominicano',        flagIso: 'DO' },
+  { iso: 'EUR', name: 'Euro',                   flagIso: 'EU' },
+  { iso: 'GBP', name: 'Libra Esterlina',        flagIso: 'GB' },
+  { iso: 'GTQ', name: 'Quetzal Guatemalteco',   flagIso: 'GT' },
+  { iso: 'HNL', name: 'Lempira Hondureno',      flagIso: 'HN' },
+  { iso: 'MXN', name: 'Peso Mexicano',          flagIso: 'MX' },
+  { iso: 'NIO', name: 'Cordoba Nicaraguense',   flagIso: 'NI' },
+  { iso: 'PAB', name: 'Balboa Panameno',        flagIso: 'PA' },
+  { iso: 'PEN', name: 'Sol Peruano',            flagIso: 'PE' },
+  { iso: 'PYG', name: 'Guarani Paraguayo',      flagIso: 'PY' },
+  { iso: 'SVC', name: 'Colon Salvadoreno',      flagIso: 'SV' },
+  { iso: 'USD', name: 'Dolar Estadounidense',   flagIso: 'US' },
+  { iso: 'UYU', name: 'Peso Uruguayo',          flagIso: 'UY' },
+  { iso: 'VES', name: 'Bolivar Venezolano',     flagIso: 'VE' },
 ]
 
 const EMPTY_FORM: LoteForm = {
@@ -169,6 +188,7 @@ export function LotesClient({
   proyectos,
   fases,
   manzanas,
+  puedeEliminar,
   userId,
 }: {
   initialData: Lote[]
@@ -176,6 +196,7 @@ export function LotesClient({
   proyectos: Proyecto[]
   fases: Fase[]
   manzanas: Manzana[]
+  puedeEliminar: boolean
   userId: string
 }) {
   const router = useRouter()
@@ -190,6 +211,8 @@ export function LotesClient({
   const [deleteTarget, setDeleteTarget] = useState<Lote | null>(null)
   const [auditTarget, setAuditTarget] = useState<Lote | null>(null)
   const [form, setForm] = useState<LoteForm>(EMPTY_FORM)
+  const [valorStr, setValorStr] = useState('')
+  const [extensionStr, setExtensionStr] = useState('')
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
@@ -213,13 +236,9 @@ export function LotesClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames = useMemo(
-    () => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(),
-    [initialData, empresaMap]
-  )
-  const uniqueProyectoNames = useMemo(
-    () => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(),
-    [initialData, proyectoMap]
+  const uniqueFaseNames = useMemo(
+    () => [...new Set(initialData.map((r) => faseMap.get(r.fase) ?? ''))].sort(),
+    [initialData, faseMap]
   )
   const uniqueManzanaVals = useMemo(
     () => [...new Set(initialData.map((r) => r.manzana))].sort(),
@@ -230,8 +249,9 @@ export function LotesClient({
     const q = search.toLowerCase()
     return !q || l.codigo.toLowerCase().includes(q) ||
       l.manzana.toLowerCase().includes(q) ||
-      (empresaMap.get(l.empresa) ?? '').toLowerCase().includes(q)
-  }), [initialData, search, empresaMap])
+      (proyectoMap.get(l.proyecto) ?? '').toLowerCase().includes(q) ||
+      (faseMap.get(l.fase) ?? '').toLowerCase().includes(q)
+  }), [initialData, search, proyectoMap, faseMap])
 
   const afterEstado = useMemo(() => afterSearch.filter((l) => {
     if (filterEstado === 'todos') return true
@@ -240,17 +260,16 @@ export function LotesClient({
 
   const filtered = useMemo(() => afterEstado.filter((l) =>
     Object.entries(colFilters).every(([col, vals]) => {
-      if (col === 'empresa')  return vals.has(empresaMap.get(l.empresa)  ?? '')
-      if (col === 'proyecto') return vals.has(proyectoMap.get(l.proyecto) ?? '')
+      if (col === 'fase')     return vals.has(faseMap.get(l.fase) ?? '')
       if (col === 'manzana')  return vals.has(l.manzana)
       if (col === '__estado') return vals.has(getLoteEstado(l))
       return vals.has(String((l as Record<string, unknown>)[col] ?? ''))
     })
-  ), [afterEstado, colFilters, empresaMap, proyectoMap])
+  ), [afterEstado, colFilters, faseMap])
 
   const hasActiveFilters = filterEstado !== 'todos' || Object.keys(colFilters).length > 0
 
-  const STORAGE_KEY = `lotes_cols_v1_${userId}`
+  const STORAGE_KEY = `lotes_cols_v2_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
   useEffect(() => {
     try {
@@ -307,14 +326,20 @@ export function LotesClient({
   useEffect(() => { setCursorIdx(null) }, [search, filterEstado, colFilters])
 
   function f(key: keyof LoteForm, value: string | number) {
+    const v = typeof value === 'string' && key !== 'manzana' && key !== 'moneda'
+      ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+      : value
     setForm((prev) => {
-      const next = { ...prev, [key]: value }
+      const next = { ...prev, [key]: v }
       if (key === 'empresa') {
         const fp = proyectos.find((p) => p.empresa === Number(value)); next.proyecto = fp?.codigo ?? 0
+        next.moneda = fp?.moneda ?? 'GTQ'
         const ff = fases.find((f2) => f2.empresa === Number(value) && f2.proyecto === next.proyecto); next.fase = ff?.codigo ?? 0
         const fm = manzanas.find((m) => m.empresa === Number(value) && m.proyecto === next.proyecto && m.fase === next.fase); next.manzana = fm?.codigo ?? ''
       }
       if (key === 'proyecto') {
+        const fp = proyectos.find((p) => p.empresa === prev.empresa && p.codigo === Number(value))
+        next.moneda = fp?.moneda ?? prev.moneda
         const ff = fases.find((f2) => f2.empresa === prev.empresa && f2.proyecto === Number(value)); next.fase = ff?.codigo ?? 0
         const fm = manzanas.find((m) => m.empresa === prev.empresa && m.proyecto === Number(value) && m.fase === next.fase); next.manzana = fm?.codigo ?? ''
       }
@@ -328,10 +353,14 @@ export function LotesClient({
   function openCreate() {
     setViewTarget(null); setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
-    const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
+    const firstProy = proyectos.find((p) => p.empresa === firstEmpresa)
+    const firstProyecto = firstProy?.codigo ?? 0
+    const firstMoneda = firstProy?.moneda ?? 'GTQ'
     const firstFase = fases.find((f) => f.empresa === firstEmpresa && f.proyecto === firstProyecto)?.codigo ?? 0
     const firstManzana = manzanas.find((m) => m.empresa === firstEmpresa && m.proyecto === firstProyecto && m.fase === firstFase)?.codigo ?? ''
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto, fase: firstFase, manzana: firstManzana })
+    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto, fase: firstFase, manzana: firstManzana, moneda: firstMoneda })
+    setValorStr('')
+    setExtensionStr('')
     setDialogOpen(true)
   }
 
@@ -343,6 +372,8 @@ export function LotesClient({
       finca: lote.finca ?? '', folio: lote.folio ?? '', libro: lote.libro ?? '',
       norte: lote.norte ?? '', sur: lote.sur ?? '', este: lote.este ?? '', oeste: lote.oeste ?? '', otro: lote.otro ?? '',
     })
+    setValorStr(lote.valor ? lote.valor.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+    setExtensionStr(lote.extension ? lote.extension.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
     setDialogOpen(true)
   }
 
@@ -356,11 +387,15 @@ export function LotesClient({
       finca: viewTarget.finca ?? '', folio: viewTarget.folio ?? '', libro: viewTarget.libro ?? '',
       norte: viewTarget.norte ?? '', sur: viewTarget.sur ?? '', este: viewTarget.este ?? '', oeste: viewTarget.oeste ?? '', otro: viewTarget.otro ?? '',
     })
+    setValorStr(viewTarget.valor ? viewTarget.valor.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+    setExtensionStr(viewTarget.extension ? viewTarget.extension.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
   }
 
   function handleSave() {
-    if (!form.codigo.trim()) { toast.error('El cÃ³digo del lote es requerido.'); return }
+    if (!form.codigo.trim()) { toast.error('El codigo del lote es requerido.'); return }
     if (!form.manzana.trim()) { toast.error('Selecciona la manzana.'); return }
+    if (!form.extension || form.extension <= 0) { toast.error('La extension es requerida.'); return }
+    if (!form.valor || form.valor <= 0) { toast.error('El valor es requerido.'); return }
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -397,12 +432,12 @@ export function LotesClient({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-amber-100 p-2.5">
-            <MapPin className="h-5 w-5 text-amber-700" />
+          <div className="rounded-xl bg-rose-100 p-2.5">
+            <MapPin className="h-5 w-5 text-rose-600" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Lotes</h1>
-            <p className="text-sm text-muted-foreground">CatÃ¡logo completo de lotes y su estado</p>
+            <p className="text-sm text-muted-foreground">Catalogo completo de lotes y su estado</p>
           </div>
         </div>
         <Button onClick={openCreate} className="gap-2" disabled={manzanas.length === 0}>
@@ -469,14 +504,13 @@ export function LotesClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 bg-muted/30">CÃ³digo</TableHead>
+              <TableHead className="sticky left-0 z-20 bg-muted/30">Proyecto</TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key}>
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={
-                      col.key === 'empresa'  ? uniqueEmpresaNames :
-                      col.key === 'proyecto' ? uniqueProyectoNames :
+                      col.key === 'fase'     ? uniqueFaseNames :
                       col.key === 'manzana'  ? uniqueManzanaVals :
                       col.key === '__estado' ? ['disponible', 'con-promesa'] : []
                     }
@@ -492,7 +526,7 @@ export function LotesClient({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters ? 'Sin resultados para ese filtro.' : 'No hay lotes registrados aÃºn.'}
+                  {search || hasActiveFilters ? 'Sin resultados para ese filtro.' : 'No hay lotes registrados aun.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -502,24 +536,28 @@ export function LotesClient({
                 return (
                   <TableRow
                     key={`${lote.empresa}-${lote.proyecto}-${lote.fase}-${lote.manzana}-${lote.codigo}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'hover:bg-muted/40'}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-rose-50 dark:bg-rose-950/30' : 'hover:bg-muted/40'}`}
                     onClick={() => setCursorIdx(rowIdx)}
                     onDoubleClick={() => openView(lote)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-medium transition-colors ${
-                      isActive ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'
+                      isActive ? 'bg-rose-50 dark:bg-rose-950/30 border-l-[3px] border-l-rose-600 text-rose-700 dark:text-rose-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'
                     }`}>
-                      {lote.codigo}
+                      {proyectoMap.get(lote.proyecto) ?? `#${lote.proyecto}`}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(lote.fase)  ?? `#${lote.fase}`}</TableCell>
                         case 'manzana':  return <TableCell key="manzana"  className="text-muted-foreground">{lote.manzana}</TableCell>
-                        case 'empresa':  return <TableCell key="empresa"  className="text-muted-foreground">{empresaMap.get(lote.empresa)   ?? `#${lote.empresa}`}</TableCell>
-                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(lote.proyecto) ?? `#${lote.proyecto}`}</TableCell>
-                        case 'extension': return <TableCell key="extension" className="text-muted-foreground">{lote.extension ? lote.extension.toLocaleString() : 'â€”'}</TableCell>
+                        case 'codigo':   return <TableCell key="codigo"   className="font-medium">{lote.codigo}</TableCell>
                         case 'valor':    return (
                           <TableCell key="valor" className="font-mono text-sm">
-                            {lote.valor ? new Intl.NumberFormat('es-GT', { style: 'currency', currency: lote.moneda ?? 'GTQ' }).format(lote.valor) : 'â€”'}
+                            {lote.valor ? (
+                              <span className="flex items-center gap-1.5">
+                                <span className="text-xs font-semibold text-muted-foreground">{lote.moneda ?? 'GTQ'}</span>
+                                {new Intl.NumberFormat('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(lote.valor)}
+                              </span>
+                            ) : '—'}
                           </TableCell>
                         )
                         case '__estado': return (
@@ -529,10 +567,10 @@ export function LotesClient({
                               : <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Con Promesa</Badge>}
                           </TableCell>
                         )
-                        default: return <TableCell key={col.key} className="text-muted-foreground">{String((lote as Record<string, unknown>)[col.key] ?? '') || 'â€”'}</TableCell>
+                        default: return <TableCell key={col.key} className="text-muted-foreground">{String((lote as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-rose-50 dark:bg-rose-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <MoreHorizontal className="h-4 w-4" />
@@ -545,9 +583,11 @@ export function LotesClient({
                             <History className="mr-2 h-3.5 w-3.5" /> Historial
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(lote)}>
-                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                          </DropdownMenuItem>
+                          {puedeEliminar && (
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(lote)}>
+                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -568,101 +608,196 @@ export function LotesClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-full max-w-2xl h-[90vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {isEditing && !viewTarget
-                ? <><Plus className="h-4 w-4 text-muted-foreground" /> Nuevo Lote</>
-                : isEditing
-                ? <><Pencil className="h-4 w-4 text-muted-foreground" /> Editar Lote {viewTarget?.codigo}</>
-                : <><Eye className="h-4 w-4 text-muted-foreground" /> Lote {viewTarget?.codigo}</>}
-            </DialogTitle>
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-rose-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${isEditing && viewTarget ? 'bg-amber-100' : 'bg-rose-100'}`}>
+                {isEditing && !viewTarget
+                  ? <Plus className="h-4 w-4 text-rose-600" />
+                  : isEditing
+                  ? <Pencil className="h-4 w-4 text-amber-600" />
+                  : <MapPin className="h-4 w-4 text-rose-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nuevo Lote' : isEditing ? 'Editar Lote' : `Lote ${viewTarget?.codigo}`}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    Manzana {viewTarget.manzana} — {proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
           </DialogHeader>
 
-          <Tabs defaultValue="ubicacion" className="mt-2 flex flex-col flex-1 min-h-0">
+          <Tabs defaultValue="general" className="mt-1 flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0">
-              <TabsTrigger value="ubicacion">UbicaciÃ³n</TabsTrigger>
-              <TabsTrigger value="datos">Datos Generales</TabsTrigger>
-              <TabsTrigger value="colindancias">Colindancias</TabsTrigger>
+              <TabsTrigger value="general" className="gap-1.5">
+                <MapPin className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+              <TabsTrigger value="colindancias" className="gap-1.5">
+                <SlidersHorizontal className="h-3.5 w-3.5" /> Colindancias
+              </TabsTrigger>
             </TabsList>
 
-            {/* UbicaciÃ³n */}
-            <TabsContent value="ubicacion" className="mt-4 flex-1 overflow-y-auto pr-1">
+            {/* General = Ubicacion + Datos Generales */}
+            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                  <div className="col-span-2"><ViewField label="CÃ³digo" value={viewTarget.codigo} /></div>
-                  <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? `#${viewTarget.empresa}`} />
-                  <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} />
-                  <ViewField label="Fase"     value={faseMap.get(viewTarget.fase)         ?? `#${viewTarget.fase}`} />
-                  <ViewField label="Manzana"  value={viewTarget.manzana} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? `#${viewTarget.empresa}`} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <ViewField label="Fase"    value={faseMap.get(viewTarget.fase) ?? `#${viewTarget.fase}`} />
+                    <ViewField label="Manzana" value={viewTarget.manzana} />
+                    <ViewField label="Codigo"  value={viewTarget.codigo} />
+                  </div>
+                  {(() => {
+                    const medida = fases.find((f) => f.empresa === viewTarget.empresa && f.proyecto === viewTarget.proyecto && f.codigo === viewTarget.fase)?.medida
+                    return (
+                      <div className="col-span-2 grid grid-cols-3 gap-3">
+                        <ViewField label={`Extension${medida ? ` (${medida})` : ''}`} value={viewTarget.extension ? viewTarget.extension.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : undefined} />
+                      </div>
+                    )
+                  })()}
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Precio Venta</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
+                  {(() => {
+                    const c = CURRENCIES.find((x) => x.iso === viewTarget.moneda)
+                    return (
+                      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+                        <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
+                        {c ? (
+                          <span className="flex items-center gap-1.5 text-sm font-medium">
+                            <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                            {c.iso} — {c.name}
+                          </span>
+                        ) : <span className="block text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
+                      </div>
+                    )
+                  })()}
+                  <ViewField label="Valor"  value={viewTarget.valor ? viewTarget.valor.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : undefined} />
+                  <ViewField label="Finca"  value={viewTarget.finca} />
+                  <ViewField label="Folio"  value={viewTarget.folio} />
+                  <ViewField label="Libro"  value={viewTarget.libro} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 grid gap-1.5">
                     <Label>Empresa *</Label>
-                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                      <SelectTrigger><SelectValue placeholder="Empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1.5">
                     <Label>Proyecto *</Label>
-                    <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                      <SelectTrigger><SelectValue placeholder="Proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                    <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label>Fase *</Label>
-                    <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                      <SelectTrigger><SelectValue placeholder="Fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                      <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
-                    </Select>
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="grid gap-1.5">
+                      <Label>Fase *</Label>
+                      <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label>Manzana *</Label>
+                      <Select value={form.manzana} onValueChange={(v) => f('manzana', v ?? '')} disabled={!!viewTarget}>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="Manzana" /></SelectTrigger>
+                        <SelectContent>{manzanasFiltradas.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label>Codigo *</Label>
+                      <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: 001" disabled={!!viewTarget} />
+                    </div>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label>Manzana *</Label>
-                    <Select value={form.manzana} onValueChange={(v) => f('manzana', v ?? '')}>
-                      <SelectTrigger><SelectValue placeholder="Manzana" /></SelectTrigger>
-                      <SelectContent>{manzanasFiltradas.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}</SelectContent>
-                    </Select>
+                  {(() => {
+                    const medida = fases.find((f2) => f2.empresa === form.empresa && f2.proyecto === form.proyecto && f2.codigo === form.fase)?.medida
+                    return (
+                      <div className="col-span-2 grid grid-cols-3 gap-3">
+                        <div className="grid gap-1.5">
+                          <Label>Extension{medida ? ` (${medida})` : ''} *</Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={extensionStr}
+                            placeholder="0.00"
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^0-9.]/g, '')
+                              setExtensionStr(raw)
+                              const n = parseFloat(raw)
+                              if (!isNaN(n)) f('extension', n)
+                              else if (raw === '' || raw === '.') f('extension', 0)
+                            }}
+                            onFocus={() => setExtensionStr(form.extension ? form.extension.toString() : '')}
+                            onBlur={() => {
+                              const n = parseFloat(extensionStr.replace(/,/g, ''))
+                              const clean = isNaN(n) ? 0 : n
+                              f('extension', clean)
+                              setExtensionStr(clean > 0 ? clean.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Precio Venta</span>
+                    <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>CÃ³digo del Lote *</Label>
-                    <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: 001, L-01, A1..." disabled={!!viewTarget} />
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Datos Generales */}
-            <TabsContent value="datos" className="mt-4 flex-1 overflow-y-auto pr-1">
-              {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                  <ViewField label="Moneda"    value={viewTarget.moneda} />
-                  <ViewField label="Valor"     value={viewTarget.valor ? String(viewTarget.valor) : undefined} />
-                  <ViewField label="ExtensiÃ³n" value={viewTarget.extension ? String(viewTarget.extension) : undefined} />
-                  <ViewField label="Finca"     value={viewTarget.finca} />
-                  <ViewField label="Folio"     value={viewTarget.folio} />
-                  <ViewField label="Libro"     value={viewTarget.libro} />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-1.5">
                     <Label>Moneda</Label>
-                    <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? 'GTQ')}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{MONEDAS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <div className="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+                      {(() => {
+                        const c = CURRENCIES.find((x) => x.iso === form.moneda)
+                        return c ? (
+                          <>
+                            <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                            {c.iso} — {c.name}
+                          </>
+                        ) : form.moneda
+                      })()}
+                    </div>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label>Valor</Label>
-                    <Input type="number" step="0.01" value={form.valor} onChange={(e) => f('valor', Number(e.target.value))} />
+                    <Label>Valor *</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={valorStr}
+                      placeholder="0.00"
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9.]/g, '')
+                        setValorStr(raw)
+                        const n = parseFloat(raw)
+                        if (!isNaN(n)) f('valor', n)
+                        else if (raw === '' || raw === '.') f('valor', 0)
+                      }}
+                      onFocus={() => setValorStr(form.valor ? form.valor.toString() : '')}
+                      onBlur={() => {
+                        const n = parseFloat(valorStr.replace(/,/g, ''))
+                        const clean = isNaN(n) ? 0 : n
+                        f('valor', clean)
+                        setValorStr(clean > 0 ? clean.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '')
+                      }}
+                    />
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label>ExtensiÃ³n</Label>
-                    <Input type="number" step="0.01" value={form.extension} onChange={(e) => f('extension', Number(e.target.value))} />
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Registro</span>
+                    <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <div className="col-span-2"><Separator /></div>
                   <div className="grid gap-1.5"><Label>Finca</Label><Input value={form.finca} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" /></div>
                   <div className="grid gap-1.5"><Label>Folio</Label><Input value={form.folio} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" /></div>
                   <div className="grid gap-1.5"><Label>Libro</Label><Input value={form.libro} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" /></div>
@@ -671,9 +806,9 @@ export function LotesClient({
             </TabsContent>
 
             {/* Colindancias */}
-            <TabsContent value="colindancias" className="mt-4 flex-1 overflow-y-auto pr-1">
+            <TabsContent value="colindancias" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                <div className="grid grid-cols-2 gap-3">
                   <ViewField label="Norte" value={viewTarget.norte} />
                   <ViewField label="Sur"   value={viewTarget.sur} />
                   <ViewField label="Este"  value={viewTarget.este} />
@@ -701,7 +836,7 @@ export function LotesClient({
             ) : (
               <>
                 <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
-                <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardandoâ€¦' : 'Guardar'}</Button>
+                <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
               </>
             )}
           </DialogFooter>
@@ -712,9 +847,9 @@ export function LotesClient({
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Â¿Eliminar lote?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar lote?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminarÃ¡ el lote <strong>{deleteTarget?.codigo}</strong> de la manzana <strong>{deleteTarget?.manzana}</strong>. AcciÃ³n irreversible.
+              Se eliminara el lote <strong>{deleteTarget?.codigo}</strong> de la manzana <strong>{deleteTarget?.manzana}</strong>. Accion irreversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

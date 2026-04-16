@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Eye, Plus, Building2, Search, History, ChevronDown, ChevronUp, X, Settings2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Eye, Plus, Building2, Search, History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,8 +16,13 @@ import {
   DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
@@ -26,9 +31,9 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import {
-  createEmpresa, updateEmpresa,
+  createEmpresa, updateEmpresa, deleteEmpresa,
 } from '@/app/actions/empresas'
-import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
+import type { Empresa, EmpresaForm, Proyecto } from '@/lib/types/proyectos'
 import { REGIMENES_ISR, validarNIT } from '@/lib/constants'
 import { CountrySelect } from '@/components/ui/country-select'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
@@ -105,9 +110,9 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value || '—'}</span>
+    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
+      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -119,14 +124,14 @@ type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
   { key: 'nombre',                   label: 'Nombre',         defaultVisible: true  },
-  { key: 'razon_social',             label: 'Razón Social',   defaultVisible: true  },
-  { key: 'pais',                     label: 'País',           defaultVisible: true  },
+  { key: 'razon_social',             label: 'Razon Social',   defaultVisible: true  },
+  { key: 'pais',                     label: 'Pais',           defaultVisible: true  },
   { key: 'identificaion_tributaria', label: 'ID Tributaria',  defaultVisible: true  },
-  { key: '__regimen',                label: 'Régimen',        defaultVisible: true  },
+  { key: '__regimen',                label: 'Regimen',        defaultVisible: true  },
   { key: 'departamento',             label: 'Departamento',   defaultVisible: false },
   { key: 'municipio',                label: 'Municipio',      defaultVisible: false },
-  { key: 'direccion',                label: 'Dirección',      defaultVisible: false },
-  { key: 'codigo_postal',            label: 'Cód. Postal',    defaultVisible: false },
+  { key: 'direccion',                label: 'Direccion',      defaultVisible: false },
+  { key: 'codigo_postal',            label: 'Cod. Postal',    defaultVisible: false },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -187,7 +192,7 @@ const EMPTY_FORM: EmpresaForm = {
   nombre: '',
   razon_social: '',
   identificaion_tributaria: '',
-  pais: 'Guatemala',
+  pais: '',
   departamento: '',
   municipio: '',
   direccion: '',
@@ -199,15 +204,17 @@ const EMPTY_FORM: EmpresaForm = {
 
 interface Props {
   initialData: Empresa[]
+  proyectos: Proyecto[]
   paises: Pais[]
   departamentos: Departamento[]
   municipios: Municipio[]
   puedeAgregar: boolean
   puedeModificar: boolean
+  puedeEliminar: boolean
   userId: string
 }
 
-export function EmpresasClient({ initialData, paises, departamentos, municipios, puedeAgregar, puedeModificar, userId }: Props) {
+export function EmpresasClient({ initialData, proyectos, paises, departamentos, municipios, puedeAgregar, puedeModificar, puedeEliminar, userId }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -217,6 +224,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
   const [hadConflict, setHadConflict] = useState(false)
   const [auditTarget, setAuditTarget] = useState<Empresa | null>(null)
   const [viewTarget, setViewTarget] = useState<Empresa | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Empresa | null>(null)
   const [form, setForm] = useState<EmpresaForm>(EMPTY_FORM)
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
@@ -330,12 +338,8 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
   function buildFormFromEmpresa(empresa: Empresa): { form: EmpresaForm; paisCodigo: string; deptoCodigo: string } {
-    const nombrePais = empresa.pais ?? ''
-    const nombreDepto = empresa.departamento ?? ''
-    const foundPais = paises.find((p) => p.nombre === nombrePais)
-    const pCode = foundPais?.codigo ?? ''
-    const foundDepto = departamentos.find((d) => d.pais === pCode && d.nombre === nombreDepto)
-    const dCode = foundDepto?.codigo ?? ''
+    const pCode = empresa.pais ?? ''
+    const dCode = empresa.departamento ?? ''
     return {
       paisCodigo: pCode,
       deptoCodigo: dCode,
@@ -344,8 +348,8 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
         nombre: empresa.nombre,
         razon_social: empresa.razon_social ?? '',
         identificaion_tributaria: empresa.identificaion_tributaria ?? '',
-        pais: nombrePais,
-        departamento: nombreDepto,
+        pais: pCode,
+        departamento: dCode,
         municipio: empresa.municipio ?? '',
         direccion: empresa.direccion ?? '',
         codigo_postal: empresa.codigo_postal ?? '',
@@ -392,7 +396,24 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
   }
 
   function handleField(key: keyof EmpresaForm, value: string | number) {
-    setForm((f) => ({ ...f, [key]: value }))
+    const v = typeof value === 'string' && key !== 'pais' && key !== 'departamento' && key !== 'municipio'
+      ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+      : value
+    setForm((f) => ({ ...f, [key]: v }))
+  }
+
+  function handleDelete() {
+    if (!deleteTarget) return
+    startTransition(async () => {
+      const result = await deleteEmpresa(deleteTarget.codigo)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success('Empresa eliminada.')
+        router.refresh()
+      }
+      setDeleteTarget(null)
+    })
   }
 
   function handleSave() {
@@ -408,7 +429,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
       toast.error('La identificación tributaria es requerida.')
       return
     }
-    if (form.pais === 'GUATEMALA' && !validarNIT(form.identificaion_tributaria)) {
+    if (form.pais === 'GT' && !validarNIT(form.identificaion_tributaria)) {
       toast.error('El NIT no tiene una estructura válida.')
       return
     }
@@ -504,7 +525,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Código</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
               {visibleCols.map((col) => {
                 if (col.key === '__regimen') {
                   return (
@@ -540,7 +561,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search
+                  {search || hasActiveFilters
                     ? 'No se encontraron empresas con ese criterio.'
                     : 'Todavía no hay empresas. Haz clic en "Nueva Empresa" para comenzar.'}
                 </TableCell>
@@ -574,13 +595,13 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                         return (
                           <TableCell key="pais" className="text-muted-foreground">
                             {empresa.pais ? (() => {
-                              const p = paises.find((x) => x.nombre === empresa.pais)
-                              return p ? (
+                              const p = paises.find((x) => x.codigo === empresa.pais)
+                              return (
                                 <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {empresa.pais}
+                                  <img src={`https://flagcdn.com/w20/${empresa.pais.toLowerCase()}.png`} alt={empresa.pais} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  {p?.nombre ?? empresa.pais}
                                 </span>
-                              ) : empresa.pais
+                              )
                             })() : '—'}
                           </TableCell>
                         )
@@ -618,6 +639,17 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                           <History className="mr-2 h-3.5 w-3.5" />
                           Historial
                         </DropdownMenuItem>
+                        {puedeEliminar && !proyectos.some((p) => p.empresa === empresa.codigo) && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteTarget(empresa)}
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -641,27 +673,44 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-full max-w-2xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {isEditing && !viewTarget
-                ? <><Plus className="h-4 w-4 text-muted-foreground" /> Nueva Empresa</>
-                : isEditing
-                ? <><Pencil className="h-4 w-4 text-muted-foreground" /> Editar Empresa</>
-                : <><Eye className="h-4 w-4 text-muted-foreground" /> {viewTarget?.nombre}</>
-              }
-            </DialogTitle>
+        <DialogContent className="flex flex-col w-full max-w-2xl max-h-[80vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${
+                isEditing && !viewTarget ? 'bg-emerald-100' : isEditing ? 'bg-amber-100' : 'bg-emerald-100'
+              }`}>
+                {isEditing && !viewTarget
+                  ? <Plus className="h-5 w-5 text-emerald-600" />
+                  : isEditing
+                  ? <Pencil className="h-5 w-5 text-amber-600" />
+                  : <Building2 className="h-5 w-5 text-emerald-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nueva Empresa' : isEditing ? 'Editar Empresa' : viewTarget?.nombre}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {viewTarget.razon_social || ''}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
           </DialogHeader>
 
           <Tabs defaultValue="general" className="mt-1 flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0">
-              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="general" className="gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                General
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
               {/* ── Modo Vista ── */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <ViewField label="Nombre" value={viewTarget.nombre} />
                   </div>
@@ -673,21 +722,21 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                   <div className="col-span-2">
                     <ViewField label="Dirección" value={viewTarget.direccion} />
                   </div>
-                  <div className="grid gap-0.5">
-                    <span className="text-xs text-muted-foreground">País</span>
+                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
+                    <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">País</span>
                     {viewTarget.pais ? (() => {
-                      const p = paises.find((x) => x.nombre === viewTarget.pais)
+                      const p = paises.find((x) => x.codigo === viewTarget.pais)
                       return (
                         <span className="flex items-center gap-1.5 text-sm font-medium">
                           {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                          {viewTarget.pais}
+                          {p?.nombre ?? viewTarget.pais}
                         </span>
                       )
                     })() : <span className="text-sm font-medium">—</span>}
                   </div>
-                  <ViewField label="Departamento" value={viewTarget.departamento} />
-                  <ViewField label="Municipio" value={viewTarget.municipio} />
-                  <ViewField label="Código Postal" value={viewTarget.codigo_postal} />
+                  <ViewField label="Departamento" value={departamentos.find((d) => d.pais === viewTarget.pais && d.codigo === viewTarget.departamento)?.nombre ?? viewTarget.departamento} />
+                  <ViewField label="Municipio" value={municipios.find((m) => m.pais === viewTarget.pais && m.departamento === viewTarget.departamento && m.codigo === viewTarget.municipio)?.nombre ?? viewTarget.municipio} />
+                  <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
                 </div>
               ) : (
               /* ── Modo Edición / Creación ── */
@@ -755,10 +804,10 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                   <CountrySelect
                     paises={paises}
                     value={paisCodigo}
-                    onChange={(codigo, nombre) => {
+                    onChange={(codigo) => {
                       setPaisCodigo(codigo)
                       setDeptoCodigo('')
-                      setForm((f) => ({ ...f, pais: nombre, departamento: '', municipio: '' }))
+                      setForm((f) => ({ ...f, pais: codigo, departamento: '', municipio: '' }))
                     }}
                   />
                 </div>
@@ -772,9 +821,8 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                     disabled={!paisCodigo}
                     onChange={(e) => {
                       const v = e.target.value
-                      const d = deptosFiltrados.find((x) => x.codigo === v)
                       setDeptoCodigo(v)
-                      setForm((f) => ({ ...f, departamento: d?.nombre ?? '', municipio: '' }))
+                      setForm((f) => ({ ...f, departamento: v, municipio: '' }))
                     }}
                     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -790,12 +838,11 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                   <select
                     id="municipio"
                     title="Municipio"
-                    value={municipiosFiltrados.find((m) => m.nombre === form.municipio)?.codigo ?? ''}
+                    value={form.municipio}
                     disabled={!deptoCodigo}
                     onChange={(e) => {
                       const v = e.target.value
-                      const m = municipiosFiltrados.find((x) => x.codigo === v)
-                      setForm((f) => ({ ...f, municipio: m?.nombre ?? '' }))
+                      setForm((f) => ({ ...f, municipio: v }))
                     }}
                     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -807,7 +854,7 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label htmlFor="codigo_postal">Código Postal</Label>
+                  <Label htmlFor="codigo_postal">Cod. Postal</Label>
                   <Input
                     id="codigo_postal"
                     value={form.codigo_postal}
@@ -861,6 +908,22 @@ export function EmpresasClient({ initialData, paises, departamentos, municipios,
           titulo={auditTarget.nombre}
         />
       )}
+
+      {/* Delete */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar empresa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará <strong>{deleteTarget?.nombre}</strong>. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
