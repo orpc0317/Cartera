@@ -77,8 +77,8 @@ function ColumnFilter({ label, values, active, onChange }: {
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
-      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -87,9 +87,9 @@ type ColDef = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
+  { key: '__proyecto', label: 'Proyecto',     defaultVisible: true },
   { key: 'fase',     label: 'Fase',         defaultVisible: true },
   { key: 'manzana',  label: 'Manzana',      defaultVisible: true },
-  { key: 'codigo',   label: 'Lote',         defaultVisible: true },
   { key: 'valor',    label: 'Precio Venta', defaultVisible: true },
   { key: '__estado', label: 'Estado',       defaultVisible: true },
 ]
@@ -263,6 +263,7 @@ export function LotesClient({
       if (col === 'fase')     return vals.has(faseMap.get(l.fase) ?? '')
       if (col === 'manzana')  return vals.has(l.manzana)
       if (col === '__estado') return vals.has(getLoteEstado(l))
+      if (col === '__proyecto') return vals.has(proyectoMap.get(l.proyecto) ?? '')
       return vals.has(String((l as Record<string, unknown>)[col] ?? ''))
     })
   ), [afterEstado, colFilters, faseMap])
@@ -301,7 +302,7 @@ export function LotesClient({
     ;[next[idx], next[swap]] = [next[swap], next[idx]]
     saveColPrefs(next)
   }
-  const visibleCols = colPrefs.filter((p) => p.visible)
+  const visibleCols = colPrefs.filter((p) => p.visible && ALL_COLUMNS.some((c) => c.key === p.key))
 
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
@@ -504,12 +505,13 @@ export function LotesClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 bg-muted/30">Proyecto</TableHead>
+              <TableHead className="sticky left-0 z-20 bg-muted/30">Lote</TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key}>
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={
+                      col.key === '__proyecto' ? [...new Set(filtered.map((l) => proyectoMap.get(l.proyecto) ?? ''))].sort() :
                       col.key === 'fase'     ? uniqueFaseNames :
                       col.key === 'manzana'  ? uniqueManzanaVals :
                       col.key === '__estado' ? ['disponible', 'con-promesa'] : []
@@ -543,15 +545,16 @@ export function LotesClient({
                     <TableCell className={`sticky left-0 z-10 font-medium transition-colors ${
                       isActive ? 'bg-rose-50 dark:bg-rose-950/30 border-l-[3px] border-l-rose-600 text-rose-700 dark:text-rose-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'
                     }`}>
-                      {proyectoMap.get(lote.proyecto) ?? `#${lote.proyecto}`}
+                      {lote.codigo}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case '__proyecto': return <TableCell key="__proyecto" className="text-muted-foreground">{proyectoMap.get(lote.proyecto) ?? `#${lote.proyecto}`}</TableCell>
                         case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(lote.fase)  ?? `#${lote.fase}`}</TableCell>
                         case 'manzana':  return <TableCell key="manzana"  className="text-muted-foreground">{lote.manzana}</TableCell>
                         case 'codigo':   return <TableCell key="codigo"   className="font-medium">{lote.codigo}</TableCell>
                         case 'valor':    return (
-                          <TableCell key="valor" className="font-mono text-sm">
+                          <TableCell key="valor" className="text-muted-foreground">
                             {lote.valor ? (
                               <span className="flex items-center gap-1.5">
                                 <span className="text-xs font-semibold text-muted-foreground">{lote.moneda ?? 'GTQ'}</span>
@@ -681,43 +684,48 @@ export function LotesClient({
                     )
                   })()}
                   <ViewField label="Valor"  value={viewTarget.valor ? viewTarget.valor.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : undefined} />
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Registro</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <ViewField label="Finca"  value={viewTarget.finca} />
                   <ViewField label="Folio"  value={viewTarget.folio} />
                   <ViewField label="Libro"  value={viewTarget.libro} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Empresa *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Proyecto *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid grid-cols-3 gap-3">
-                    <div className="grid gap-1.5">
-                      <Label>Fase *</Label>
+                    <div className="grid gap-1">
+                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fase *</Label>
                       <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger className="w-full"><SelectValue placeholder="Fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1.5">
-                      <Label>Manzana *</Label>
+                    <div className="grid gap-1">
+                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Manzana *</Label>
                       <Select value={form.manzana} onValueChange={(v) => f('manzana', v ?? '')} disabled={!!viewTarget}>
                         <SelectTrigger className="w-full"><SelectValue placeholder="Manzana" /></SelectTrigger>
                         <SelectContent>{manzanasFiltradas.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1.5">
-                      <Label>Codigo *</Label>
+                    <div className="grid gap-1">
+                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo *</Label>
                       <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: 001" disabled={!!viewTarget} />
                     </div>
                   </div>
@@ -725,8 +733,8 @@ export function LotesClient({
                     const medida = fases.find((f2) => f2.empresa === form.empresa && f2.proyecto === form.proyecto && f2.codigo === form.fase)?.medida
                     return (
                       <div className="col-span-2 grid grid-cols-3 gap-3">
-                        <div className="grid gap-1.5">
-                          <Label>Extension{medida ? ` (${medida})` : ''} *</Label>
+                        <div className="grid gap-1">
+                          <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Extension{medida ? ` (${medida})` : ''} *</Label>
                           <Input
                             type="text"
                             inputMode="decimal"
@@ -756,8 +764,8 @@ export function LotesClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Precio Venta</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label>Moneda</Label>
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</Label>
                     <div className="flex h-9 w-full items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
                       {(() => {
                         const c = CURRENCIES.find((x) => x.iso === form.moneda)
@@ -770,8 +778,8 @@ export function LotesClient({
                       })()}
                     </div>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label>Valor *</Label>
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Valor *</Label>
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -798,9 +806,9 @@ export function LotesClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Registro</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <div className="grid gap-1.5"><Label>Finca</Label><Input value={form.finca} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" /></div>
-                  <div className="grid gap-1.5"><Label>Folio</Label><Input value={form.folio} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" /></div>
-                  <div className="grid gap-1.5"><Label>Libro</Label><Input value={form.libro} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Finca</Label><Input value={form.finca} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Folio</Label><Input value={form.folio} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Libro</Label><Input value={form.libro} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" /></div>
                 </div>
               )}
             </TabsContent>
@@ -813,15 +821,15 @@ export function LotesClient({
                   <ViewField label="Sur"   value={viewTarget.sur} />
                   <ViewField label="Este"  value={viewTarget.este} />
                   <ViewField label="Oeste" value={viewTarget.oeste} />
-                  <div className="col-span-2"><ViewField label="Otras" value={viewTarget.otro} /></div>
+                  <div className="col-span-2"><ViewField label="Otras Colindancias" value={viewTarget.otro} /></div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-1.5"><Label>Norte</Label><Input value={form.norte} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia al norte" /></div>
-                  <div className="grid gap-1.5"><Label>Sur</Label><Input value={form.sur} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia al sur" /></div>
-                  <div className="grid gap-1.5"><Label>Este</Label><Input value={form.este} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia al este" /></div>
-                  <div className="grid gap-1.5"><Label>Oeste</Label><Input value={form.oeste} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia al oeste" /></div>
-                  <div className="col-span-2 grid gap-1.5"><Label>Otras colindancias</Label><Input value={form.otro} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias relevantes" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Norte</Label><Input value={form.norte} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia al norte" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Sur</Label><Input value={form.sur} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia al sur" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Este</Label><Input value={form.este} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia al este" /></div>
+                  <div className="grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Oeste</Label><Input value={form.oeste} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia al oeste" /></div>
+                  <div className="col-span-2 grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Otras Colindancias</Label><Input value={form.otro} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias relevantes" /></div>
                 </div>
               )}
             </TabsContent>

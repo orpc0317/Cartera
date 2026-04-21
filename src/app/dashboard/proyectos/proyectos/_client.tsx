@@ -104,8 +104,8 @@ function ColumnFilter({
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
-      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -234,8 +234,8 @@ type ColDef = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'nombre',       label: 'Nombre',      defaultVisible: true  },
   { key: 'empresa',      label: 'Empresa',     defaultVisible: true  },
+  { key: 'nombre',       label: 'Nombre',      defaultVisible: true  },
   { key: 'pais',         label: 'Pais',        defaultVisible: true  },
   { key: 'departamento', label: 'Departamento', defaultVisible: false },
   { key: 'municipio',    label: 'Municipio',   defaultVisible: false },
@@ -620,10 +620,10 @@ export function ProyectosClient({
   function openCreate() {
     setViewTarget(null)
     setIsEditing(true)
-    const defIso = paises.find((p) => p.nombre === (empresas[0]?.pais ?? ''))?.codigo ?? ''
+    const defIso = empresas[0]?.pais ?? ''
     const defMoneda = COUNTRY_TO_CURRENCY[defIso] ?? 'GTQ'
-    setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, moneda: defMoneda })
-    setPaisCodigo('')
+    setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, moneda: defMoneda, pais: defIso })
+    setPaisCodigo(defIso)
     setDeptoCodigo('')
     setTel1Iso(defIso); setTel1Local('')
     setTel2Iso(defIso); setTel2Local('')
@@ -677,7 +677,19 @@ export function ProyectosClient({
     const v = typeof value === 'string' && key !== 'pais' && key !== 'departamento' && key !== 'municipio' && key !== 'moneda'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
-    setForm((prev) => ({ ...prev, [key]: v }))
+    setForm((prev) => {
+      const next = { ...prev, [key]: v }
+      if (key === 'empresa') {
+        const emp = empresas.find((e) => e.codigo === Number(value))
+        const iso = emp?.pais ?? ''
+        next.pais = iso; next.departamento = ''; next.municipio = ''
+        next.moneda = COUNTRY_TO_CURRENCY[iso] ?? 'GTQ'
+        setPaisCodigo(iso); setDeptoCodigo('')
+        if (!next.telefono1) { setTel1Iso(iso); setTel1Local('') }
+        if (!next.telefono2) { setTel2Iso(iso); setTel2Local('') }
+      }
+      return next
+    })
   }
 
   const handleLogoSelect = useCallback(async (file: File) => {
@@ -727,7 +739,7 @@ export function ProyectosClient({
 
       if (result.error) {
         toast.error(result.error)
-        setHadConflict(true)
+        if (result.error.includes('modificado')) setHadConflict(true)
       } else {
         setHadConflict(false)
         toast.success(viewTarget ? 'Proyecto actualizado.' : 'Proyecto creado.')
@@ -981,13 +993,13 @@ export function ProyectosClient({
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
-                  <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
-                  <div className="col-span-2"><ViewField label="Dirección" value={viewTarget.direccion} /></div>
+                  <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
+                  <div className="col-span-2"><ViewField label="Direccion" value={viewTarget.direccion} /></div>
                   {(() => {
                     const p = paises.find((x) => x.codigo === viewTarget.pais)
                     return (
                       <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                        <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">País</span>
+                        <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
                         {p ? (
                           <span className="flex items-center gap-1.5 text-sm font-medium">
                             <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
@@ -999,14 +1011,14 @@ export function ProyectosClient({
                   })()}
                   <ViewField label="Departamento" value={departamentos.find((d) => d.codigo === viewTarget.departamento)?.nombre ?? viewTarget.departamento} />
                   <ViewField label="Municipio" value={municipios.find((m) => m.codigo === viewTarget.municipio)?.nombre ?? viewTarget.municipio} />
-                  <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
-                  <ViewField label="Teléfono 1" value={viewTarget.telefono1} />
-                  <ViewField label="Teléfono 2" value={viewTarget.telefono2} />
+                  <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
+                  <ViewField label="Telefono 1" value={viewTarget.telefono1} />
+                  <ViewField label="Telefono 2" value={viewTarget.telefono2} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label htmlFor="empresa">Empresa *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger id="empresa" className="w-full">
                         <SelectValue placeholder="Selecciona una empresa">
@@ -1018,16 +1030,16 @@ export function ProyectosClient({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label htmlFor="nombre">Nombre Proyecto *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Proyecto *</Label>
                     <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label htmlFor="direccion_p">Dirección *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="direccion_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
                     <Input id="direccion_p" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Dirección del proyecto" />
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label>País *</Label>
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
                     <CountrySelect paises={paises} value={paisCodigo}
                       onChange={(codigo, _nombre) => {
                         setPaisCodigo(codigo); setDeptoCodigo('')
@@ -1036,8 +1048,8 @@ export function ProyectosClient({
                       }}
                     />
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="departamento_p">Departamento *</Label>
+                  <div className="grid gap-1">
+                    <Label htmlFor="departamento_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento *</Label>
                     <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo}
                       onChange={(e) => { const v = e.target.value; setDeptoCodigo(v); setForm((prev) => ({ ...prev, departamento: v, municipio: '' })) }}
                       className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
@@ -1045,8 +1057,8 @@ export function ProyectosClient({
                       {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
                     </select>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="municipio_p">Municipio *</Label>
+                  <div className="grid gap-1">
+                    <Label htmlFor="municipio_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio *</Label>
                     <select id="municipio_p" title="Municipio"
                       value={form.municipio}
                       disabled={!deptoCodigo}
@@ -1056,12 +1068,12 @@ export function ProyectosClient({
                       {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
                     </select>
                   </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="codigo_postal_p">Cod. Postal</Label>
+                  <div className="grid gap-1">
+                    <Label htmlFor="codigo_postal_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo postal</Label>
                     <Input id="codigo_postal_p" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Ej: 01001" />
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Teléfono 1 *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Telefono 1 *</Label>
                     <PhoneField
                       iso={tel1Iso}
                       local={tel1Local}
@@ -1070,8 +1082,8 @@ export function ProyectosClient({
                       placeholder="Número local"
                     />
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Teléfono 2</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Telefono 2</Label>
                     <PhoneField
                       iso={tel2Iso}
                       local={tel2Local}
@@ -1095,15 +1107,15 @@ export function ProyectosClient({
                   </div>
                   {/* Forma Cálculo + Tipo Cálculo + % Mora|Monto Mora + Días Gracia */}
                   <div className="col-span-2 grid grid-cols-4 gap-3">
-                    <ViewField label="Forma Cálculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
-                    <ViewField label="Tipo Cálculo" value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
+                    <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
+                    <ViewField label="Tipo Calculo" value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
                     {tipoCalculo === 0
                       ? <ViewField label="% Mora" value={formatMora(viewTarget.interes_mora ?? 0)} />
                       : <ViewField label="Monto Mora" value={formatMora(viewTarget.fijo_mora ?? 0)} />}
-                    <ViewField label="Días Gracia" value={String(viewTarget.dias_gracia ?? 0)} />
+                    <ViewField label="Dias Gracia" value={String(viewTarget.dias_gracia ?? 0)} />
                   </div>
-                  <ViewField label="Días Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Días'} />
-                  <ViewField label="Mora Mínima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
+                  <ViewField label="Dias Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Dias'} />
+                  <ViewField label="Mora Minima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
                   <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
                     <Checkbox checked={!!viewTarget.mora_enganche} disabled />
                     <span className="text-sm font-medium">Mora Enganche</span>
@@ -1113,7 +1125,7 @@ export function ProyectosClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Abono Capital</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <ViewField label="Mínimo Abono Capital" value={formatMora(viewTarget.minimo_abono_capital ?? 0)} />
+                  <ViewField label="Minimo Abono Capital" value={formatMora(viewTarget.minimo_abono_capital ?? 0)} />
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
@@ -1155,11 +1167,11 @@ export function ProyectosClient({
                       checked={form.mora_automatica === 1}
                       onCheckedChange={(checked: boolean) => f('mora_automatica', checked ? 1 : 0)}
                     />
-                    <Label htmlFor="mora_automatica" className="cursor-pointer">Mora Automática</Label>
+                    <Label htmlFor="mora_automatica" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Mora Automatica</Label>
                   </div>
                   <div className="col-span-2 grid grid-cols-[1fr_minmax(10rem,1fr)_1fr_1fr] gap-6">
                     <div className="grid gap-1.5">
-                      <Label htmlFor="forma_mora" className={`whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>Forma Cálculo</Label>
+                      <Label htmlFor="forma_mora" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>Forma Calculo</Label>
                       <div className="w-full">
                         <Select
                           value={String(form.forma_mora)}
@@ -1179,7 +1191,7 @@ export function ProyectosClient({
                       </div>
                     </div>
                     <div className="grid gap-1.5">
-                      <Label htmlFor="tipo_calculo" className={`whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>Tipo Cálculo</Label>
+                      <Label htmlFor="tipo_calculo" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>Tipo Calculo</Label>
                       <div className="w-full">
                         <Select
                           value={String(tipoCalculo)}
@@ -1205,23 +1217,23 @@ export function ProyectosClient({
                     </div>
                     {tipoCalculo === 0 ? (
                       <div className="grid gap-1.5">
-                        <Label htmlFor="interes_mora" className={`whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? '% Mora *' : '% Mora'}</Label>
+                        <Label htmlFor="interes_mora" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? '% Mora *' : '% Mora'}</Label>
                         <Input id="interes_mora" type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                       </div>
                     ) : (
                       <div className="grid gap-1.5">
-                        <Label htmlFor="fijo_mora" className={`whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? 'Monto Mora *' : 'Monto Mora'}</Label>
+                        <Label htmlFor="fijo_mora" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? 'Monto Mora *' : 'Monto Mora'}</Label>
                         <Input id="fijo_mora" type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                       </div>
                     )}
                     <div className="grid gap-1.5">
-                      <Label htmlFor="dias_gracia" className={`whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? 'Días Gracia *' : 'Días Gracia'}</Label>
+                      <Label htmlFor="dias_gracia" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? 'Dias Gracia *' : 'Dias Gracia'}</Label>
                       <Input id="dias_gracia" type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                     </div>
                   </div>
                   <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="dias_afectos">Días Afectos</Label>
+                    <div className="grid gap-1">
+                      <Label htmlFor="dias_afectos" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Dias Afectos</Label>
                       <Select value={String(form.dias_afectos ?? 0)} onValueChange={(v) => f('dias_afectos', Number(v))}>
                         <SelectTrigger id="dias_afectos" className="w-full"><SelectValue>{(v: string) => v === '1' ? 'Un Mes' : 'Todos Los Días'}</SelectValue></SelectTrigger>
                         <SelectContent>
@@ -1230,8 +1242,8 @@ export function ProyectosClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="minimo_mora">Mora Mínima</Label>
+                    <div className="grid gap-1">
+                      <Label htmlFor="minimo_mora" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Minima</Label>
                       <Input
                         id="minimo_mora"
                         type="text"
@@ -1251,7 +1263,7 @@ export function ProyectosClient({
                         checked={form.mora_enganche === 1}
                         onCheckedChange={(checked: boolean) => f('mora_enganche', checked ? 1 : 0)}
                       />
-                      <Label htmlFor="mora_enganche" className="cursor-pointer">Mora Enganche</Label>
+                      <Label htmlFor="mora_enganche" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Mora Enganche</Label>
                     </div>
                   </div>
                   <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -1259,15 +1271,15 @@ export function ProyectosClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Abono Capital</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <div className="grid gap-1.5 w-3/4"><Label htmlFor="minimo_abono">Mínimo Abono Capital</Label><Input id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
+                  <div className="grid gap-1 w-3/4"><Label htmlFor="minimo_abono" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Minimo Abono Capital</Label><Input id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="col-span-2 flex items-end gap-4">
-                    <div className="grid gap-1.5 w-72">
-                      <Label>Moneda *</Label>
+                    <div className="grid gap-1 w-72">
+                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? 'GTQ')}>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar moneda">
@@ -1300,7 +1312,7 @@ export function ProyectosClient({
                         checked={form.promesa_vencida === 1}
                         onCheckedChange={(checked: boolean) => f('promesa_vencida', checked ? 1 : 0)}
                       />
-                      <Label htmlFor="promesa_vencida" className="cursor-pointer">Promesa Vencida</Label>
+                      <Label htmlFor="promesa_vencida" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Promesa Vencida</Label>
                     </div>
                   </div>
                   <div className="col-span-2">

@@ -85,6 +85,50 @@ export type Manzana = {
 
 export type ManzanaForm = Omit<Manzana, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
 
+export type Banco = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  codigo: number
+  nombre: string
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type BancoForm = {
+  empresa: number
+  proyecto: number
+  nombre: string
+}
+
+export type CuentaBancaria = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  codigo: number
+  numero: string
+  nombre: string
+  banco: number
+  moneda: string
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type CuentaBancariaForm = {
+  empresa: number
+  proyecto: number
+  banco: number
+  numero: string
+  nombre: string
+  moneda: string
+  activo: number
+}
+
 export type Lote = {
   cuenta: string
   empresa: number
@@ -118,3 +162,78 @@ export type LoteForm = Omit<Lote, 'cuenta' | 'promesa' | 'recibo_serie' | 'recib
 export function getLoteEstado(lote: Lote): 'disponible' | 'con-promesa' {
   return lote.promesa > 0 ? 'con-promesa' : 'disponible'
 }
+
+export type Cliente = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  codigo: number
+  nombre: string
+  direccion: string
+  direccion_pais?: string
+  direccion_departamento?: string
+  direccion_municipio?: string
+  codigo_postal?: string
+  telefono1: string
+  telefono2?: string
+  correo?: string
+  nombre_factura?: string
+  identificacion_tributaria?: string
+  tipo_identificacion?: number
+  regimen_iva: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type ClienteForm = Omit<Cliente, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+export type Supervisor = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  codigo: number
+  nombre: string
+  userid?: string
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type SupervisorForm = Omit<Supervisor, 'cuenta' | 'userid' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+export type Vendedor = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  codigo: number
+  nombre: string
+  supervisor?: number | null
+  userid?: string
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type VendedorForm = Omit<Vendedor, 'cuenta' | 'userid' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+export type Cobrador = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  codigo: number
+  nombre: string
+  userid?: string
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type CobradorForm = Omit<Cobrador, 'cuenta' | 'userid' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>

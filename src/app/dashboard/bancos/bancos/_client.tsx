@@ -3,7 +3,10 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Trash2, Plus, Layers, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin } from 'lucide-react'
+import {
+  MoreHorizontal, Pencil, Trash2, Plus, Landmark, Search,
+  History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,26 +28,16 @@ import {
   DropdownMenuItem, DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createFase, updateFase, deleteFase } from '@/app/actions/fases'
-import type { Empresa, Proyecto, Fase, FaseForm, Manzana } from '@/lib/types/proyectos'
-
-const MEDIDAS: { value: string; label: string }[] = [
-  { value: 'v²',  label: 'v² — Vara cuadrada' },
-  { value: 'm²',  label: 'm² — Metro cuadrado' },
-  { value: 'ha',  label: 'ha — Hectárea' },
-  { value: 'mz',  label: 'mz — Manzana' },
-  { value: 'cda', label: 'cda — Cuerda' },
-  { value: 'cab', label: 'cab — Caballería' },
-  { value: 'ft²', label: 'ft² — Pie cuadrado' },
-]
+import { createBanco, updateBanco, deleteBanco } from '@/app/actions/bancos'
+import type { Banco, BancoForm, Empresa, Proyecto } from '@/lib/types/proyectos'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -90,14 +83,15 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
   )
 }
 
-type ColDef = { key: string; label: string; defaultVisible: boolean }
+// ─── Column manager ────────────────────────────────────────────────────────
+
+type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'proyecto', label: 'Proyecto',       defaultVisible: true  },
-  { key: 'nombre',   label: 'Nombre',         defaultVisible: true  },
-  { key: 'medida',   label: 'Unidad Medida',  defaultVisible: true  },
-  { key: 'empresa',  label: 'Empresa',        defaultVisible: false },
+  { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
+  { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
+  { key: 'nombre',   label: 'Nombre',   defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -131,43 +125,43 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-const EMPTY_FORM: FaseForm = {
-  empresa: 0,
-  proyecto: 0,
-  codigo: 0,
-  nombre: '',
-  medida: 'v²',
-}
+// ─── Form default ──────────────────────────────────────────────────────────
 
-export function FasesClient({
+const EMPTY_FORM: BancoForm = { empresa: 0, proyecto: 0, nombre: '' }
+
+// ─── Client component ──────────────────────────────────────────────────────
+
+export function BancosClient({
   initialData,
   empresas,
   proyectos,
-  manzanas,
+  puedeAgregar,
+  puedeModificar,
   puedeEliminar,
   userId,
 }: {
-  initialData: Fase[]
+  initialData: Banco[]
   empresas: Empresa[]
   proyectos: Proyecto[]
-  manzanas: Manzana[]
+  puedeAgregar: boolean
+  puedeModificar: boolean
   puedeEliminar: boolean
   userId: string
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const [search, setSearch] = useState('')
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
+  const [search, setSearch]           = useState('')
+  const [dialogOpen, setDialogOpen]   = useState(false)
+  const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Fase | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Fase | null>(null)
-  const [auditTarget, setAuditTarget] = useState<Fase | null>(null)
-  const [form, setForm] = useState<FaseForm>(EMPTY_FORM)
-  const [colFilters, setColFilters] = useState<ColFilters>({})
+  const [viewTarget, setViewTarget]   = useState<Banco | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Banco | null>(null)
+  const [auditTarget, setAuditTarget]   = useState<Banco | null>(null)
+  const [form, setForm]               = useState<BancoForm>(EMPTY_FORM)
+  const [colFilters, setColFilters]   = useState<ColFilters>({})
 
-  const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
+  const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
@@ -178,35 +172,38 @@ export function FasesClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames = useMemo(
-    () => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(),
-    [initialData, empresaMap]
-  )
-  const uniqueProyectoNames = useMemo(
-    () => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(),
-    [initialData, proyectoMap]
-  )
-  const uniqueVals = (key: keyof Fase) => [...new Set(initialData.map((r) => String(r[key] ?? '')))].sort()
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
 
-  const afterSearch = initialData.filter((r) => {
+  // ─── Filtering pipeline ──────────────────────────────────────────────────
+
+  const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    return !q || r.nombre?.toLowerCase().includes(q) ||
+    return !q ? initialData : initialData.filter((r) =>
+      r.nombre?.toLowerCase().includes(q) ||
       (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
       String(r.codigo).includes(q)
-  })
+    )
+  }, [initialData, search, empresaMap])
 
-  const filtered = afterSearch.filter((r) =>
-    Object.entries(colFilters).every(([col, vals]) => {
-      if (col === 'empresa') return vals.has(empresaMap.get(r.empresa) ?? '')
-      if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
-      return vals.has(String(r[col as keyof Fase] ?? ''))
-    })
+  const filtered = useMemo(() =>
+    afterSearch.filter((r) =>
+      Object.entries(colFilters).every(([col, vals]) => {
+        if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa) ?? '')
+        if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
+        return vals.has(String(r[col as keyof Banco] ?? ''))
+      })
+    ),
+    [afterSearch, colFilters, empresaMap, proyectoMap]
   )
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
-  const STORAGE_KEY = `fases_cols_v3_${userId}`
+  // ─── Column prefs ────────────────────────────────────────────────────────
+
+  const STORAGE_KEY = `bancos_cols_v1_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -217,7 +214,7 @@ export function FasesClient({
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
       ])
-    } catch { /* ignorar */ }
+    } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -238,6 +235,8 @@ export function FasesClient({
     saveColPrefs(next)
   }
   const visibleCols = colPrefs.filter((p) => p.visible)
+
+  // ─── Keyboard navigation ─────────────────────────────────────────────────
 
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
@@ -261,8 +260,10 @@ export function FasesClient({
 
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
-  function f(key: keyof FaseForm, value: string | number) {
-    const v = typeof value === 'string' && key !== 'medida'
+  // ─── Form helpers ────────────────────────────────────────────────────────
+
+  function f(key: keyof BancoForm, value: string | number) {
+    const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
     setForm((prev) => {
@@ -274,39 +275,41 @@ export function FasesClient({
 
   function openCreate() {
     setViewTarget(null); setIsEditing(true)
-    const firstEmpresa = empresas[0]?.codigo ?? 0
+    const firstEmpresa  = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto })
+    setForm({ empresa: firstEmpresa, proyecto: firstProyecto, nombre: '' })
     setDialogOpen(true)
   }
 
-  function openView(fase: Fase) {
-    setViewTarget(fase); setIsEditing(false)
-    setForm({ empresa: fase.empresa, proyecto: fase.proyecto, codigo: fase.codigo, nombre: fase.nombre, medida: fase.medida ?? 'v²' })
+  function openView(banco: Banco) {
+    setViewTarget(banco); setIsEditing(false)
+    setForm({ empresa: banco.empresa, proyecto: banco.proyecto, nombre: banco.nombre })
     setDialogOpen(true)
   }
 
   function startEdit() { setIsEditing(true) }
+
   function cancelEdit() {
     if (!viewTarget) { setDialogOpen(false); return }
     setIsEditing(false)
-    setForm({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, codigo: viewTarget.codigo, nombre: viewTarget.nombre, medida: viewTarget.medida ?? 'v²' })
+    setForm({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, nombre: viewTarget.nombre })
   }
 
   function handleSave() {
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
-    if (!form.empresa) { toast.error('Selecciona la empresa.'); return }
+    if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
-        ? await updateFase(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createFase(form)
+        ? await updateBanco(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
+        : await createBanco(form)
       if (result.error) {
-        if (result.error.includes('modificado')) { setHadConflict(true); toast.error(result.error) }
-        else toast.error(result.error)
+        toast.error(result.error)
+        if (result.error.includes('modificado')) setHadConflict(true)
       } else {
-        toast.success(viewTarget ? 'Fase actualizada.' : 'Fase creada.')
+        setHadConflict(false)
+        toast.success(viewTarget ? 'Banco actualizado.' : 'Banco creado.')
         setDialogOpen(false)
         router.refresh()
       }
@@ -316,35 +319,40 @@ export function FasesClient({
   function handleDelete() {
     if (!deleteTarget) return
     startTransition(async () => {
-      const result = await deleteFase(deleteTarget.empresa, deleteTarget.proyecto, deleteTarget.codigo)
+      const result = await deleteBanco(deleteTarget.empresa, deleteTarget.proyecto, deleteTarget.codigo)
       if (result.error) toast.error(result.error)
-      else { toast.success('Fase eliminada.'); router.refresh() }
+      else { toast.success('Banco eliminado.'); router.refresh() }
       setDeleteTarget(null)
     })
   }
 
+  // ─── Render ──────────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-violet-100 p-2.5">
-            <Layers className="h-5 w-5 text-violet-700" />
+          <div className="rounded-xl bg-teal-100 p-2.5">
+            <Landmark className="h-5 w-5 text-teal-700" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Fases</h1>
-            <p className="text-sm text-muted-foreground">Administra las fases de los proyectos</p>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Bancos</h1>
+            <p className="text-sm text-muted-foreground">Catalogo de bancos por proyecto</p>
           </div>
         </div>
-        <Button onClick={openCreate} className="gap-2" disabled={proyectos.length === 0}>
-          <Plus className="h-4 w-4" />
-          Nueva Fase
-        </Button>
+        {puedeAgregar && (
+          <Button onClick={openCreate} className="gap-2" disabled={proyectos.length === 0}>
+            <Plus className="h-4 w-4" />
+            Nuevo Banco
+          </Button>
+        )}
       </div>
 
       {proyectos.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Primero crea proyectos antes de agregar fases.
+          Primero crea proyectos antes de agregar bancos.
         </div>
       )}
 
@@ -352,7 +360,12 @@ export function FasesClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar fases..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="Buscar bancos..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
@@ -381,9 +394,9 @@ export function FasesClient({
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={
-                      col.key === 'empresa' ? uniqueEmpresaNames :
+                      col.key === 'empresa'  ? uniqueEmpresaNames :
                       col.key === 'proyecto' ? uniqueProyectoNames :
-                      uniqueVals(col.key as keyof Fase)
+                      [...new Set(initialData.map((r) => String(r[col.key as keyof Banco] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
                     onChange={(v) => setColFilter(col.key, v)}
@@ -397,50 +410,53 @@ export function FasesClient({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters ? 'Sin resultados para esa búsqueda.' : 'No hay fases registradas aún.'}
+                  {search || hasActiveFilters ? 'Sin resultados para esa búsqueda.' : 'No hay bancos registrados aún.'}
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((fase, rowIdx) => {
+              filtered.map((banco, rowIdx) => {
                 const isActive = cursorIdx === rowIdx
                 return (
                   <TableRow
-                    key={`${fase.empresa}-${fase.proyecto}-${fase.codigo}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-violet-50 dark:bg-violet-950/30' : 'hover:bg-muted/40'}`}
+                    key={`${banco.empresa}-${banco.proyecto}-${banco.codigo}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'hover:bg-muted/40'}`}
                     onClick={() => setCursorIdx(rowIdx)}
-                    onDoubleClick={() => openView(fase)}
+                    onDoubleClick={() => openView(banco)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
-                      isActive ? 'bg-violet-50 dark:bg-violet-950/30 border-l-[3px] border-l-violet-600 text-violet-700 dark:text-violet-400 font-semibold' : 'bg-card text-muted-foreground group-hover:bg-muted/40'
+                      isActive
+                        ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold'
+                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{fase.codigo}
+                      #{banco.codigo}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
-                        case 'nombre':   return <TableCell key="nombre" className="font-medium">{fase.nombre}</TableCell>
-                        case 'empresa':  return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(fase.empresa) ?? `#${fase.empresa}`}</TableCell>
-                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(fase.proyecto) ?? `#${fase.proyecto}`}</TableCell>
-                        case 'medida':   return <TableCell key="medida" className="font-mono text-xs text-muted-foreground">{fase.medida ?? '—'}</TableCell>
-                        default:         return <TableCell key={col.key} className="text-muted-foreground">{(fase[col.key as keyof Fase] as string) || '—'}</TableCell>
+                        case 'nombre':   return <TableCell key="nombre" className="font-medium">{banco.nombre}</TableCell>
+                        case 'empresa':  return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(banco.empresa) ?? `#${banco.empresa}`}</TableCell>
+                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(banco.proyecto) ?? `#${banco.proyecto}`}</TableCell>
+                        default:         return <TableCell key={col.key} className="text-muted-foreground">{String((banco as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-violet-50 dark:bg-violet-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(fase)}>
+                          <DropdownMenuItem onClick={() => openView(banco)}>
                             <Eye className="mr-2 h-3.5 w-3.5" /> Ver / Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(fase)}>
+                          <DropdownMenuItem onClick={() => setAuditTarget(banco)}>
                             <History className="mr-2 h-3.5 w-3.5" /> Historial
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {puedeEliminar && !manzanas.some((m) => m.empresa === fase.empresa && m.proyecto === fase.proyecto && m.fase === fase.codigo) && (
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(fase)}>
-                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                            </DropdownMenuItem>
+                          {puedeEliminar && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(banco)}>
+                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
+                              </DropdownMenuItem>
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -458,29 +474,30 @@ export function FasesClient({
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open)
-          if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
+          if (!open) {
+            setIsEditing(false)
+            if (hadConflict) { setHadConflict(false); router.refresh() }
+          }
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-full max-w-lg max-h-[80vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-violet-50/70 to-transparent border-b border-border/50 shrink-0">
+        <DialogContent className="flex flex-col w-full max-w-md max-h-[80vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${
-                isEditing && !viewTarget ? 'bg-violet-100' : isEditing ? 'bg-amber-100' : 'bg-violet-100'
-              }`}>
+              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-teal-100' : isEditing ? 'bg-amber-100' : 'bg-teal-100'}`}>
                 {isEditing && !viewTarget
-                  ? <Plus className="h-5 w-5 text-violet-600" />
+                  ? <Plus className="h-5 w-5 text-teal-600" />
                   : isEditing
                   ? <Pencil className="h-5 w-5 text-amber-600" />
-                  : <Layers className="h-5 w-5 text-violet-600" />}
+                  : <Landmark className="h-5 w-5 text-teal-600" />}
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Fase' : isEditing ? 'Editar Fase' : viewTarget?.nombre}
+                  {isEditing && !viewTarget ? 'Nuevo Banco' : isEditing ? 'Editar Banco' : viewTarget?.nombre}
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`}
+                    {proyectoMap.get(viewTarget.proyecto) ?? ''}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
                   </p>
                 )}
@@ -498,13 +515,14 @@ export function FasesClient({
 
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
               {!isEditing && viewTarget ? (
+                /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
+                  <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
-                  <div className="col-span-2"><ViewField label="Nombre Fase" value={viewTarget.nombre} /></div>
-                  <ViewField label="Unidad Medida" value={MEDIDAS.find((m) => m.value === viewTarget.medida)?.label ?? viewTarget.medida} />
+                  <div className="col-span-2"><ViewField label="Nombre Banco"   value={viewTarget.nombre} /></div>
                 </div>
               ) : (
+                /* ── Edit / Create mode ── */
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
@@ -521,36 +539,14 @@ export function FasesClient({
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Fase *</Label>
-                    <Input value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Ej: Fase 1, Etapa A..." />
-                  </div>
-                  <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Unidad Medida</Label>
-                    <Select value={form.medida} onValueChange={(v) => f('medida', v ?? '')}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue>
-                          {(v: string) => {
-                            const m = MEDIDAS.find((x) => x.value === v)
-                            return m ? (
-                              <span className="flex items-center gap-2">
-                                <span className="w-8 shrink-0 font-mono text-xs font-semibold">{m.value}</span>
-                                <span className="text-muted-foreground">{m.label.split(' \u2014 ')[1]}</span>
-                              </span>
-                            ) : null
-                          }}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MEDIDAS.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>
-                            <span className="flex items-center gap-2">
-                              <span className="w-8 shrink-0 font-mono text-xs font-semibold text-foreground">{m.value}</span>
-                              <span className="text-muted-foreground">{m.label.split(' \u2014 ')[1]}</span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Banco *</Label>
+                    <Input
+                      id="nombre"
+                      value={form.nombre}
+                      onChange={(e) => f('nombre', e.target.value)}
+                      placeholder="Ej: BANCO INDUSTRIAL, BANCO G&T..."
+                      autoFocus
+                    />
                   </div>
                 </div>
               )}
@@ -561,7 +557,11 @@ export function FasesClient({
             {!isEditing && viewTarget ? (
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                <Button onClick={startEdit} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+                {puedeModificar && (
+                  <Button onClick={startEdit} className="gap-2">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -577,14 +577,16 @@ export function FasesClient({
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar fase?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar banco?</AlertDialogTitle>
             <AlertDialogDescription>
               Se eliminará <strong>{deleteTarget?.nombre}</strong>. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -594,7 +596,7 @@ export function FasesClient({
         <AuditLogDialog
           open={!!auditTarget}
           onOpenChange={(o) => !o && setAuditTarget(null)}
-          tabla="t_fase"
+          tabla="t_banco"
           cuenta={auditTarget.cuenta}
           codigo={auditTarget.codigo}
           titulo={auditTarget.nombre}

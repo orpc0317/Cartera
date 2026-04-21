@@ -11,6 +11,9 @@ import {
   Grid3x3,
   MapPin,
   Users,
+  UserCog,
+  UserCheck,
+  Banknote,
   FileText,
   BarChart3,
   ChevronDown,
@@ -18,6 +21,8 @@ import {
   LogOut,
   Map,
   Home,
+  Landmark,
+  CreditCard,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -61,12 +66,21 @@ const NAV: NavItem[] = [
     ],
   },
   {
-    label: 'Clientes',
-    icon: Users,
-    comingSoon: true,
+    label: 'Bancos',
+    icon: Landmark,
     children: [
-      { label: 'Clientes',   href: '#', icon: Users },
-      { label: 'Contactos',  href: '#', icon: FileText },
+      { label: 'Bancos',           href: '/dashboard/bancos/bancos',  icon: Landmark },
+      { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias', icon: CreditCard },
+    ],
+  },
+  {
+    label: 'Promesas',
+    icon: FileText,
+    children: [
+      { label: 'Clientes',     href: '/dashboard/promesas/clientes', icon: Users },
+      { label: 'Supervisores', href: '/dashboard/promesas/supervisores', icon: UserCog },
+      { label: 'Vendedores',   href: '/dashboard/promesas/vendedores', icon: UserCheck },
+      { label: 'Cobradores',   href: '/dashboard/promesas/cobradores', icon: Banknote },
     ],
   },
   {
@@ -164,7 +178,7 @@ function NavGroup({ item, cuentaActiva }: { item: NavItem; cuentaActiva?: string
               {item.children.map((child) => {
                 const childActive = pathname.startsWith(child.href) && child.href !== '#'
                 return (
-                  <Link key={child.href} href={child.href}>
+                  <Link key={child.label} href={child.href}>
                     <motion.div
                       whileHover={{ x: 2 }}
                       className={cn(

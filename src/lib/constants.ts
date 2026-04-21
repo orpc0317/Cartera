@@ -11,6 +11,13 @@ export const REGIMENES_ISR: Record<number, string> = {
   3: 'Exento',
 }
 
+export const REGIMENES_IVA: Record<number, string> = {
+  0: 'No aplica',
+  1: 'General (12%)',
+  2: 'Pequeño Contribuyente (5%)',
+  3: 'Exento',
+}
+
 /**
  * Valida la estructura de un NIT guatemalteco.
  * Acepta formato con guion (1234567-8) o sin guion (12345678).

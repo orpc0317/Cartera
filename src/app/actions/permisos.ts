@@ -88,6 +88,7 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
     .eq('indice', indice)
     .maybeSingle()
 
+  // Índice no registrado = sin permisos asignados
   if (!data) return { consultar: false, agregar: false, modificar: false, eliminar: false }
 
   return {

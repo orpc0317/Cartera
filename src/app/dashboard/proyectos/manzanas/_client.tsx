@@ -74,8 +74,8 @@ function ColumnFilter({ label, values, active, onChange }: {
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
-      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -86,7 +86,6 @@ type ColPref = { key: string; visible: boolean }
 const ALL_COLUMNS: ColDef[] = [
   { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
   { key: 'fase',     label: 'Fase',     defaultVisible: true  },
-  { key: 'codigo',   label: 'Codigo',   defaultVisible: true  },
   { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
 ]
 
@@ -237,7 +236,7 @@ export function ManzanasClient({
     ;[next[idx], next[swap]] = [next[swap], next[idx]]
     saveColPrefs(next)
   }
-  const visibleCols = colPrefs.filter((p) => p.visible)
+  const visibleCols = colPrefs.filter((p) => p.visible && ALL_COLUMNS.some((c) => c.key === p.key))
 
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
@@ -517,29 +516,29 @@ export function ManzanasClient({
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Empresa *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Proyecto *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Fase *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fase *</Label>
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona fase">{(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid gap-1.5">
-                    <Label>Codigo *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo *</Label>
                     <Input value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: A, B, C, 1, 2..." disabled={!!viewTarget} />
                   </div>
                 </div>

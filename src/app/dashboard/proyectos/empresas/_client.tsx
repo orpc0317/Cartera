@@ -111,8 +111,8 @@ function ColumnFilter({
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">{label}</span>
-      <span className="block text-sm font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
     </div>
   )
 }
@@ -123,7 +123,7 @@ type ColDef = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'nombre',                   label: 'Nombre',         defaultVisible: true  },
+  { key: 'nombre',                   label: 'Nombre Comercial', defaultVisible: true  },
   { key: 'razon_social',             label: 'Razon Social',   defaultVisible: true  },
   { key: 'pais',                     label: 'Pais',           defaultVisible: true  },
   { key: 'identificaion_tributaria', label: 'ID Tributaria',  defaultVisible: true  },
@@ -131,7 +131,7 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'departamento',             label: 'Departamento',   defaultVisible: false },
   { key: 'municipio',                label: 'Municipio',      defaultVisible: false },
   { key: 'direccion',                label: 'Direccion',      defaultVisible: false },
-  { key: 'codigo_postal',            label: 'Cod. Postal',    defaultVisible: false },
+  { key: 'codigo_postal',            label: 'Codigo postal',  defaultVisible: false },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -456,7 +456,7 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
 
       if (result.error) {
         toast.error(result.error)
-        setHadConflict(true)
+        if (result.error.includes('modificado')) setHadConflict(true)
       } else {
         setHadConflict(false)
         toast.success(viewTarget ? 'Empresa actualizada.' : 'Empresa creada.')
@@ -531,7 +531,7 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   return (
                     <TableHead key="__regimen">
                       <ColumnFilter
-                        label="Régimen"
+                        label="Regimen"
                         values={[...new Set(initialData.map(e => REGIMENES_ISR[e.regimen_isr] ?? `#${e.regimen_isr}`))].sort()}
                         active={new Set([...(colFilters['__regimen'] ?? new Set())].map(k => REGIMENES_ISR[Number(k)] ?? `#${k}`))}
                         onChange={(labels) => {
@@ -712,18 +712,18 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <ViewField label="Nombre" value={viewTarget.nombre} />
+                    <ViewField label="Nombre Comercial" value={viewTarget.nombre} />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Razón Social" value={viewTarget.razon_social} />
+                    <ViewField label="Razon Social" value={viewTarget.razon_social} />
                   </div>
-                  <ViewField label="Identificación Tributaria" value={viewTarget.identificaion_tributaria} />
-                  <ViewField label="Régimen ISR" value={REGIMENES_ISR[viewTarget.regimen_isr] ?? `#${viewTarget.regimen_isr}`} />
+                  <ViewField label="Identificacion Tributaria" value={viewTarget.identificaion_tributaria} />
+                  <ViewField label="Regimen ISR" value={REGIMENES_ISR[viewTarget.regimen_isr] ?? `#${viewTarget.regimen_isr}`} />
                   <div className="col-span-2">
-                    <ViewField label="Dirección" value={viewTarget.direccion} />
+                    <ViewField label="Direccion" value={viewTarget.direccion} />
                   </div>
                   <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                    <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">País</span>
+                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
                     {viewTarget.pais ? (() => {
                       const p = paises.find((x) => x.codigo === viewTarget.pais)
                       return (
@@ -736,14 +736,14 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   </div>
                   <ViewField label="Departamento" value={departamentos.find((d) => d.pais === viewTarget.pais && d.codigo === viewTarget.departamento)?.nombre ?? viewTarget.departamento} />
                   <ViewField label="Municipio" value={municipios.find((m) => m.pais === viewTarget.pais && m.departamento === viewTarget.departamento && m.codigo === viewTarget.municipio)?.nombre ?? viewTarget.municipio} />
-                  <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
+                  <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
                 </div>
               ) : (
               /* ── Modo Edición / Creación ── */
               <div className="grid grid-cols-2 gap-4">
 
-                <div className="col-span-2 grid gap-1.5">
-                  <Label htmlFor="nombre">Nombre *</Label>
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Comercial *</Label>
                   <Input
                     id="nombre"
                     value={form.nombre}
@@ -752,8 +752,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   />
                 </div>
 
-                <div className="col-span-2 grid gap-1.5">
-                  <Label htmlFor="razon_social">Razón Social *</Label>
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="razon_social" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Razon Social *</Label>
                   <Input
                     id="razon_social"
                     value={form.razon_social}
@@ -762,8 +762,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   />
                 </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="id_trib">Identificación Tributaria *</Label>
+                <div className="grid gap-1">
+                  <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Identificacion Tributaria *</Label>
                   <Input
                     id="id_trib"
                     value={form.identificaion_tributaria}
@@ -772,8 +772,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   />
                 </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="regimen">Régimen ISR *</Label>
+                <div className="grid gap-1">
+                  <Label htmlFor="regimen" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen ISR *</Label>
                   <Select
                     value={String(form.regimen_isr)}
                     onValueChange={(v) => handleField('regimen_isr', Number(v))}
@@ -789,8 +789,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   </Select>
                 </div>
 
-                <div className="col-span-2 grid gap-1.5">
-                  <Label htmlFor="direccion">Dirección *</Label>
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
                   <Input
                     id="direccion"
                     value={form.direccion}
@@ -799,8 +799,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   />
                 </div>
 
-                <div className="grid gap-1.5">
-                  <Label>País *</Label>
+                <div className="grid gap-1">
+                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
                   <CountrySelect
                     paises={paises}
                     value={paisCodigo}
@@ -812,8 +812,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   />
                 </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="departamento">Departamento *</Label>
+                <div className="grid gap-1">
+                  <Label htmlFor="departamento" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento *</Label>
                   <select
                     id="departamento"
                     title="Departamento"
@@ -833,8 +833,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   </select>
                 </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="municipio">Municipio *</Label>
+                <div className="grid gap-1">
+                  <Label htmlFor="municipio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio *</Label>
                   <select
                     id="municipio"
                     title="Municipio"
@@ -853,8 +853,8 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                   </select>
                 </div>
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="codigo_postal">Cod. Postal</Label>
+                <div className="grid gap-1">
+                  <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo postal</Label>
                   <Input
                     id="codigo_postal"
                     value={form.codigo_postal}
