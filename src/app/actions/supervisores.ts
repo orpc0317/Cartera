@@ -77,6 +77,18 @@ export async function createSupervisor(form: SupervisorForm): Promise<{ error?: 
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
+  // Validar nombre duplicado dentro del mismo proyecto
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_supervisor')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .ilike('nombre', form.nombre.trim())
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe un supervisor con ese nombre en este proyecto.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_supervisor')
@@ -128,6 +140,22 @@ export async function updateSupervisor(
     .single()
 
   const now = new Date().toISOString()
+
+  // Validar nombre duplicado dentro del mismo proyecto (excluyendo el registro actual)
+  if (form.nombre) {
+    const { data: existente } = await admin
+      .schema('cartera')
+      .from('t_supervisor')
+      .select('codigo')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .ilike('nombre', (form.nombre as string).trim())
+      .neq('codigo', codigo)
+      .maybeSingle()
+    if (existente) return { error: 'Ya existe un supervisor con ese nombre en este proyecto.' }
+  }
+
   let query = admin
     .schema('cartera')
     .from('t_supervisor')

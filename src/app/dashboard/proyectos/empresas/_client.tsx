@@ -35,6 +35,7 @@ import {
 } from '@/app/actions/empresas'
 import type { Empresa, EmpresaForm, Proyecto } from '@/lib/types/proyectos'
 import { REGIMENES_ISR, validarNIT } from '@/lib/constants'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 import { CountrySelect } from '@/components/ui/country-select'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -226,6 +227,7 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
   const [viewTarget, setViewTarget] = useState<Empresa | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Empresa | null>(null)
   const [form, setForm] = useState<EmpresaForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Empresa[] | null>(null)
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
   // Códigos seleccionados para cascada (no van al form, solo filtran)
@@ -449,6 +451,24 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
       toast.error('El municipio es requerido.')
       return
     }
+
+    // Verificar similitud de nombre (umbral 0.85) contra empresas ya registradas
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((e) =>
+      viewTarget ? e.codigo !== viewTarget.codigo : true
+    )
+    const similar = candidates.filter(
+      (e) => e.nombre && jaroWinkler(normalizedInput, e.nombre) >= 0.85
+    )
+    if (similar.length > 0) {
+      setSimilarWarning(similar)
+      return
+    }
+
+    doSave()
+  }
+
+  function doSave() {
     startTransition(async () => {
       const result = viewTarget
         ? await updateEmpresa(viewTarget.codigo, form, viewTarget.modifico_fecha ?? undefined)
@@ -908,6 +928,37 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
           titulo={auditTarget.nombre}
         />
       )}
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} empresa
+                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((e) => (
+                    <li key={e.codigo}>{e.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente una empresa diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setSimilarWarning(null); doSave() }}
+            >
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

@@ -94,6 +94,18 @@ export async function createBanco(form: BancoForm): Promise<{ error?: string }> 
   const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
+  // Validar nombre duplicado dentro del mismo proyecto
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_banco')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .eq('nombre', toDbString(form.nombre))
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe un banco con ese nombre en este proyecto.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_banco')
@@ -148,6 +160,21 @@ export async function updateBanco(
   const normalized = {
     ...form,
     nombre: form.nombre ? toDbString(form.nombre) : undefined,
+  }
+
+  // Validar nombre duplicado dentro del mismo proyecto (excluyendo el registro actual)
+  if (normalized.nombre) {
+    const { data: existente } = await admin
+      .schema('cartera')
+      .from('t_banco')
+      .select('codigo')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .eq('nombre', normalized.nombre)
+      .neq('codigo', codigo)
+      .maybeSingle()
+    if (existente) return { error: 'Ya existe un banco con ese nombre en este proyecto.' }
   }
 
   let query = admin

@@ -35,6 +35,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createFase, updateFase, deleteFase } from '@/app/actions/fases'
 import type { Empresa, Proyecto, Fase, FaseForm, Manzana } from '@/lib/types/proyectos'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 
 const MEDIDAS: { value: string; label: string }[] = [
   { value: 'v²',  label: 'v² — Vara cuadrada' },
@@ -165,6 +166,7 @@ export function FasesClient({
   const [deleteTarget, setDeleteTarget] = useState<Fase | null>(null)
   const [auditTarget, setAuditTarget] = useState<Fase | null>(null)
   const [form, setForm] = useState<FaseForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Fase[] | null>(null)
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
@@ -297,6 +299,25 @@ export function FasesClient({
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
     if (!form.empresa) { toast.error('Selecciona la empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
+
+    // Verificar similitud de nombre (umbral 0.85) contra fases del mismo proyecto
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((f) =>
+      f.empresa === form.empresa && f.proyecto === form.proyecto &&
+      (viewTarget ? f.codigo !== viewTarget.codigo : true)
+    )
+    const similar = candidates.filter(
+      (f) => f.nombre && jaroWinkler(normalizedInput, toDbString(f.nombre)) >= 0.85
+    )
+    if (similar.length > 0) {
+      setSimilarWarning(similar)
+      return
+    }
+
+    doSave()
+  }
+
+  function doSave() {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -572,6 +593,35 @@ export function FasesClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} fase
+                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((f) => (
+                    <li key={f.codigo}>{f.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente una fase diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

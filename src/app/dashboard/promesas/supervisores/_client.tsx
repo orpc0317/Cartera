@@ -37,6 +37,7 @@ import {
   createSupervisor, updateSupervisor, deleteSupervisor,
 } from '@/app/actions/supervisores'
 import type { Empresa, Proyecto, Supervisor, SupervisorForm } from '@/lib/types/proyectos'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ export function SupervisoresClient({
   const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [form, setForm]               = useState<SupervisorForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Supervisor[] | null>(null)
 
   // ── Mapas derivados ───────────────────────────────────────────────────
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
@@ -339,6 +341,21 @@ export function SupervisoresClient({
     if (!form.proyecto)       { toast.error('El proyecto es requerido.'); return }
     if (!form.nombre.trim())  { toast.error('El nombre es requerido.'); return }
 
+    // Verificar similitud de nombre (umbral 0.85) contra supervisores del mismo proyecto
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((s) =>
+      s.empresa === form.empresa && s.proyecto === form.proyecto &&
+      (viewTarget ? s.codigo !== viewTarget.codigo : true)
+    )
+    const similar = candidates.filter(
+      (s) => s.nombre && jaroWinkler(normalizedInput, toDbString(s.nombre)) >= 0.85
+    )
+    if (similar.length > 0) { setSimilarWarning(similar); return }
+
+    doSave()
+  }
+
+  function doSave() {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -740,6 +757,35 @@ export function SupervisoresClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} supervisor
+                  {similarWarning && similarWarning.length > 1 ? 'es' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((s) => (
+                    <li key={s.codigo}>{s.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente un supervisor diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Eliminar ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

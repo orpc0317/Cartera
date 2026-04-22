@@ -73,6 +73,24 @@ export async function getLotes(empresa?: number, proyecto?: number, fase?: numbe
   return data as Lote[]
 }
 
+export async function getLotesDisponibles(empresa?: number, proyecto?: number): Promise<Lote[]> {
+  const cuenta = await getCuentaActiva()
+  const admin = createAdminClient()
+  let query = admin
+    .schema('cartera')
+    .from('t_lote')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('promesa', 0)
+    .eq('recibo_numero', 0)
+    .order('empresa').order('proyecto').order('fase').order('manzana').order('codigo')
+  if (empresa !== undefined) query = query.eq('empresa', empresa)
+  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return data as Lote[]
+}
+
 export async function createLote(form: LoteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]

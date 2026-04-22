@@ -37,6 +37,7 @@ import {
   createVendedor, updateVendedor, deleteVendedor,
 } from '@/app/actions/vendedores'
 import type { Empresa, Proyecto, Supervisor, Vendedor, VendedorForm } from '@/lib/types/proyectos'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
 
@@ -184,6 +185,7 @@ export function VendedoresClient({
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
   const [form, setForm]                 = useState<VendedorForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Vendedor[] | null>(null)
 
   // ── Mapas derivados ───────────────────────────────────────────────────
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
@@ -349,6 +351,21 @@ export function VendedoresClient({
     if (!form.proyecto)       { toast.error('El proyecto es requerido.'); return }
     if (!form.nombre.trim())  { toast.error('El nombre es requerido.'); return }
 
+    // Verificar similitud de nombre (umbral 0.85) contra vendedores del mismo proyecto
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((v) =>
+      v.empresa === form.empresa && v.proyecto === form.proyecto &&
+      (viewTarget ? v.codigo !== viewTarget.codigo : true)
+    )
+    const similar = candidates.filter(
+      (v) => v.nombre && jaroWinkler(normalizedInput, toDbString(v.nombre)) >= 0.85
+    )
+    if (similar.length > 0) { setSimilarWarning(similar); return }
+
+    doSave()
+  }
+
+  function doSave() {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -778,6 +795,35 @@ export function VendedoresClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} vendedor
+                  {similarWarning && similarWarning.length > 1 ? 'es' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((v) => (
+                    <li key={v.codigo}>{v.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente un vendedor diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Eliminar ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

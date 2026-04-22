@@ -101,6 +101,19 @@ export async function createCuentaBancaria(
   const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
+  // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_cuenta_bancaria')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .eq('banco', form.banco)
+    .eq('numero', toDbString(form.numero))
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe una cuenta bancaria con ese banco y número en este proyecto.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
@@ -160,6 +173,26 @@ export async function updateCuentaBancaria(
     ...form,
     numero: form.numero ? toDbString(form.numero) : undefined,
     nombre: form.nombre ? toDbString(form.nombre) : undefined,
+  }
+
+  // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto (excluyendo el registro actual)
+  if (form.banco !== undefined || normalized.numero) {
+    const bancoVal = form.banco ?? oldRow?.banco
+    const numeroVal = normalized.numero ?? oldRow?.numero
+    if (bancoVal && numeroVal) {
+      const { data: existente } = await admin
+        .schema('cartera')
+        .from('t_cuenta_bancaria')
+        .select('codigo')
+        .eq('cuenta', cuenta)
+        .eq('empresa', empresa)
+        .eq('proyecto', proyecto)
+        .eq('banco', bancoVal)
+        .eq('numero', numeroVal)
+        .neq('codigo', codigo)
+        .maybeSingle()
+      if (existente) return { error: 'Ya existe una cuenta bancaria con ese banco y número en este proyecto.' }
+    }
   }
 
   let query = admin

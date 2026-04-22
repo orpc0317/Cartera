@@ -77,6 +77,18 @@ export async function createVendedor(form: VendedorForm): Promise<{ error?: stri
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
+  // Validar nombre duplicado dentro del mismo proyecto
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_vendedor')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .ilike('nombre', form.nombre.trim())
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe un vendedor con ese nombre en este proyecto.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_vendedor')
@@ -128,6 +140,22 @@ export async function updateVendedor(
     .single()
 
   const now = new Date().toISOString()
+
+  // Validar nombre duplicado dentro del mismo proyecto (excluyendo el registro actual)
+  if (form.nombre) {
+    const { data: existente } = await admin
+      .schema('cartera')
+      .from('t_vendedor')
+      .select('codigo')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .ilike('nombre', (form.nombre as string).trim())
+      .neq('codigo', codigo)
+      .maybeSingle()
+    if (existente) return { error: 'Ya existe un vendedor con ese nombre en este proyecto.' }
+  }
+
   let query = admin
     .schema('cartera')
     .from('t_vendedor')

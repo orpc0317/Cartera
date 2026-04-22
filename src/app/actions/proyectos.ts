@@ -96,6 +96,17 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
     }
   }
 
+  // Validar nombre duplicado dentro de la misma empresa
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_proyecto')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('nombre', normalized.nombre)
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe un proyecto con ese nombre en esta empresa.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_proyecto')
@@ -151,6 +162,20 @@ export async function updateProyecto(
     if (typeof normalized[key] === 'string') {
       (normalized as Record<string, unknown>)[key] = toDbString(normalized[key] as string)
     }
+  }
+
+  // Validar nombre duplicado dentro de la misma empresa (excluyendo el registro actual)
+  if (normalized.nombre) {
+    const { data: existente } = await admin
+      .schema('cartera')
+      .from('t_proyecto')
+      .select('codigo')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('nombre', normalized.nombre)
+      .neq('codigo', codigo)
+      .maybeSingle()
+    if (existente) return { error: 'Ya existe un proyecto con ese nombre en esta empresa.' }
   }
 
   let query = admin

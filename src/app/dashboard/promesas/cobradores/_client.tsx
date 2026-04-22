@@ -37,6 +37,7 @@ import {
   createCobrador, updateCobrador, deleteCobrador,
 } from '@/app/actions/cobradores'
 import type { Cobrador, CobradorForm, Empresa, Proyecto } from '@/lib/types/proyectos'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
 
@@ -182,6 +183,7 @@ export function CobradoresClient({
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
   const [form, setForm]                 = useState<CobradorForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Cobrador[] | null>(null)
 
   // ── Mapas derivados ───────────────────────────────────────────────────
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
@@ -336,6 +338,21 @@ export function CobradoresClient({
     if (!form.proyecto)      { toast.error('El proyecto es requerido.'); return }
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
 
+    // Verificar similitud de nombre (umbral 0.85) contra cobradores del mismo proyecto
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((c) =>
+      c.empresa === form.empresa && c.proyecto === form.proyecto &&
+      (viewTarget ? c.codigo !== viewTarget.codigo : true)
+    )
+    const similar = candidates.filter(
+      (c) => c.nombre && jaroWinkler(normalizedInput, toDbString(c.nombre)) >= 0.85
+    )
+    if (similar.length > 0) { setSimilarWarning(similar); return }
+
+    doSave()
+  }
+
+  function doSave() {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -737,6 +754,35 @@ export function CobradoresClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} cobrador
+                  {similarWarning && similarWarning.length > 1 ? 'es' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((c) => (
+                    <li key={c.codigo}>{c.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente un cobrador diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Eliminar ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

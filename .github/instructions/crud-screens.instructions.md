@@ -162,6 +162,15 @@ function SectionDivider({ label }: { label: string }) {
   <ViewField label="Tipo ID" value={TIPO_ID_LABELS[viewTarget.tipo_id] ?? `#${viewTarget.tipo_id}`} />
   ```
 
+- **DB-loaded Select fields**: When a `<Select>` stores a numeric FK code but must display a name (loaded from DB), always add the render-prop child to `<SelectValue>` so the selected item shows the name — not the raw code. Use the entity's `Map` (e.g. `bancoMap`, `empresaMap`):
+  ```tsx
+  // Always — without this, Base UI SelectValue renders the raw value string after selection
+  <SelectValue placeholder="Selecciona banco">
+    {(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}
+  </SelectValue>
+  ```
+  This applies to **every** FK `<Select>`: empresa, proyecto, fase, banco, cuenta bancaria, vendedor, cobrador, etc.
+
 ---
 
 ## Delete dialog

@@ -108,6 +108,16 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
     codigo_postal:            toDbString(form.codigo_postal),
   }
 
+  // Validar nombre duplicado dentro de la misma cuenta
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_empresa')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('nombre', normalized.nombre)
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe una empresa con ese nombre.' }
+
   const now = new Date().toISOString()
   const { data, error } = await admin
     .schema('cartera')
@@ -156,6 +166,19 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
     if (typeof normalized[key] === 'string') {
       (normalized as Record<string, unknown>)[key] = toDbString(normalized[key] as string)
     }
+  }
+
+  // Validar nombre duplicado dentro de la misma cuenta (excluyendo el registro actual)
+  if (normalized.nombre) {
+    const { data: existente } = await admin
+      .schema('cartera')
+      .from('t_empresa')
+      .select('codigo')
+      .eq('cuenta', cuenta)
+      .eq('nombre', normalized.nombre)
+      .neq('codigo', codigo)
+      .maybeSingle()
+    if (existente) return { error: 'Ya existe una empresa con ese nombre en esta cuenta.' }
   }
 
   const now = new Date().toISOString()

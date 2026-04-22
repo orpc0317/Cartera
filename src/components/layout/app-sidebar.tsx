@@ -23,6 +23,8 @@ import {
   Home,
   Landmark,
   CreditCard,
+  ClipboardList,
+  Scale,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -31,11 +33,19 @@ import { PERMISOS } from '@/lib/permisos'
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────
 
+type NavChild = {
+  label: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  separator?: string   // Encabezado de sección mostrado encima de este item
+  comingSoon?: boolean
+}
+
 type NavItem = {
   label: string
   href?: string
   icon: React.ComponentType<{ className?: string }>
-  children?: { label: string; href: string; icon: React.ComponentType<{ className?: string }> }[]
+  children?: NavChild[]
   comingSoon?: boolean
   permiso?: string  // Si está definido, solo se muestra si el usuario tiene este permiso
 }
@@ -77,29 +87,12 @@ const NAV: NavItem[] = [
     label: 'Promesas',
     icon: FileText,
     children: [
-      { label: 'Clientes',     href: '/dashboard/promesas/clientes', icon: Users },
+      { label: 'Clientes',     href: '/dashboard/promesas/clientes',     icon: Users,          separator: 'Catálogos' },
       { label: 'Supervisores', href: '/dashboard/promesas/supervisores', icon: UserCog },
-      { label: 'Vendedores',   href: '/dashboard/promesas/vendedores', icon: UserCheck },
-      { label: 'Cobradores',   href: '/dashboard/promesas/cobradores', icon: Banknote },
-    ],
-  },
-  {
-    label: 'Transacciones',
-    icon: FileText,
-    comingSoon: true,
-    children: [
-      { label: 'Promesas',    href: '#', icon: FileText },
-      { label: 'Pagos',       href: '#', icon: FileText },
-      { label: 'Facturación', href: '#', icon: FileText },
-    ],
-  },
-  {
-    label: 'Reportes',
-    icon: BarChart3,
-    comingSoon: true,
-    children: [
-      { label: 'Est. de Cuenta', href: '#', icon: BarChart3 },
-      { label: 'Exportar',       href: '#', icon: FileText },
+      { label: 'Vendedores',   href: '/dashboard/promesas/vendedores',   icon: UserCheck },
+      { label: 'Cobradores',   href: '/dashboard/promesas/cobradores',   icon: Banknote },
+      { label: 'Reservas',     href: '/dashboard/promesas/reservas',     icon: ClipboardList,  separator: 'Operaciones' },
+      { label: 'Balance',      href: '#',                                icon: Scale,          separator: 'Consultas', comingSoon: true },
     ],
   },
   {
@@ -174,24 +167,39 @@ function NavGroup({ item, cuentaActiva }: { item: NavItem; cuentaActiva?: string
             transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="mt-0.5 ml-3 space-y-0.5 border-l border-sidebar-border pl-3">
+            <div className="mt-0.5 ml-3 border-l border-sidebar-border pl-3">
               {item.children.map((child) => {
                 const childActive = pathname.startsWith(child.href) && child.href !== '#'
                 return (
-                  <Link key={child.label} href={child.href}>
-                    <motion.div
-                      whileHover={{ x: 2 }}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
-                        childActive
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm'
-                          : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                      )}
-                    >
-                      <child.icon className="h-3.5 w-3.5 shrink-0" />
-                      {child.label}
-                    </motion.div>
-                  </Link>
+                  <div key={child.label}>
+                    {child.separator && (
+                      <p className="mt-2 mb-0.5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/35">
+                        {child.separator}
+                      </p>
+                    )}
+                    {child.comingSoon ? (
+                      <div className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm opacity-40 cursor-default">
+                        <child.icon className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/60" />
+                        <span className="text-sidebar-foreground/60">{child.label}</span>
+                        <span className="ml-auto rounded-full bg-sidebar-border px-1.5 py-0.5 text-[10px] text-sidebar-foreground/40">pronto</span>
+                      </div>
+                    ) : (
+                      <Link href={child.href}>
+                        <motion.div
+                          whileHover={{ x: 2 }}
+                          className={cn(
+                            'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors',
+                            childActive
+                              ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium shadow-sm'
+                              : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          )}
+                        >
+                          <child.icon className="h-3.5 w-3.5 shrink-0" />
+                          {child.label}
+                        </motion.div>
+                      </Link>
+                    )}
+                  </div>
                 )
               })}
             </div>

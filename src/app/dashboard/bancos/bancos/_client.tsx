@@ -38,6 +38,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createBanco, updateBanco, deleteBanco } from '@/app/actions/bancos'
 import type { Banco, BancoForm, Empresa, Proyecto } from '@/lib/types/proyectos'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -159,6 +160,7 @@ export function BancosClient({
   const [deleteTarget, setDeleteTarget] = useState<Banco | null>(null)
   const [auditTarget, setAuditTarget]   = useState<Banco | null>(null)
   const [form, setForm]               = useState<BancoForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Banco[] | null>(null)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
@@ -299,6 +301,22 @@ export function BancosClient({
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
     if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
+
+    // Verificar similitud de nombre (umbral 0.85) contra bancos del mismo proyecto
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((b) =>
+      b.empresa === form.empresa && b.proyecto === form.proyecto &&
+      (viewTarget ? b.codigo !== viewTarget.codigo : true)
+    )
+    const similar = candidates.filter(
+      (b) => b.nombre && jaroWinkler(normalizedInput, toDbString(b.nombre)) >= 0.85
+    )
+    if (similar.length > 0) { setSimilarWarning(similar); return }
+
+    doSave()
+  }
+
+  function doSave() {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -572,6 +590,35 @@ export function BancosClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} banco
+                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((b) => (
+                    <li key={b.codigo}>{b.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente un banco diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>

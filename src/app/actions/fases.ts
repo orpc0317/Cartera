@@ -89,6 +89,18 @@ export async function createFase(form: FaseForm): Promise<{ error?: string }> {
   const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
+  // Validar nombre duplicado dentro del mismo proyecto
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_fase')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .ilike('nombre', form.nombre.trim())
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe una fase con ese nombre en este proyecto.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_fase')
@@ -139,6 +151,22 @@ export async function updateFase(
     .single()
 
   const now = new Date().toISOString()
+
+  // Validar nombre duplicado dentro del mismo proyecto (excluyendo el registro actual)
+  if (form.nombre) {
+    const { data: existente } = await admin
+      .schema('cartera')
+      .from('t_fase')
+      .select('codigo')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .ilike('nombre', (form.nombre as string).trim())
+      .neq('codigo', codigo)
+      .maybeSingle()
+    if (existente) return { error: 'Ya existe una fase con ese nombre en este proyecto.' }
+  }
+
   let query = admin
     .schema('cartera')
     .from('t_fase')

@@ -39,6 +39,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import type { Empresa, Proyecto, ProyectoForm, Fase } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { CountrySelect } from '@/components/ui/country-select'
+import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -450,6 +451,7 @@ export function ProyectosClient({
   const [deleteTarget, setDeleteTarget] = useState<Proyecto | null>(null)
   const [auditTarget, setAuditTarget] = useState<Proyecto | null>(null)
   const [form, setForm] = useState<ProyectoForm>(EMPTY_FORM)
+  const [similarWarning, setSimilarWarning] = useState<Proyecto[] | null>(null)
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
   // Códigos para cascada (no van al form, solo filtran)
@@ -724,6 +726,24 @@ export function ProyectosClient({
       if (!form.dias_gracia) { toast.error('Los días de gracia son requeridos.'); return }
     }
     if (logoError) { toast.error('Corrige el error en el logo antes de guardar.'); return }
+
+    // Verificar similitud de nombre (umbral 0.85) contra proyectos de la misma empresa
+    const normalizedInput = toDbString(form.nombre)
+    const candidates = initialData.filter((p) =>
+      p.empresa === form.empresa && (viewTarget ? p.codigo !== viewTarget.codigo : true)
+    )
+    const similar = candidates.filter(
+      (p) => p.nombre && jaroWinkler(normalizedInput, toDbString(p.nombre)) >= 0.85
+    )
+    if (similar.length > 0) {
+      setSimilarWarning(similar)
+      return
+    }
+
+    doSave()
+  }
+
+  function doSave() {
     startTransition(async () => {
       let payload = { ...form }
       if (logoFile) {
@@ -1346,6 +1366,37 @@ export function ProyectosClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Similar name warning */}
+      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-2">
+                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} proyecto
+                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
+                </p>
+                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                  {similarWarning?.map((p) => (
+                    <li key={p.codigo}>{p.nombre}</li>
+                  ))}
+                </ul>
+                <p>¿Es realmente un proyecto diferente y desea continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setSimilarWarning(null); doSave() }}
+            >
+              Sí, es diferente — Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
