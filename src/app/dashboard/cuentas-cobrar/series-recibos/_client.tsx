@@ -4,8 +4,8 @@ import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Trash2, Plus, Landmark, Search,
-  History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin, Download,
+  MoreHorizontal, Pencil, Trash2, Plus, Search,
+  History, Eye, Settings2, ChevronDown, ChevronUp, X, Receipt, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,9 +36,12 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createBanco, updateBanco, deleteBanco } from '@/app/actions/bancos'
-import type { Banco, BancoForm, Empresa, Proyecto } from '@/lib/types/proyectos'
-import { jaroWinkler, toDbString } from '@/lib/utils'
+import { createSerieRecibo, updateSerieRecibo, deleteSerieRecibo } from '@/app/actions/series-recibos'
+import type { SerieRecibo, SerieReciboForm, Empresa, Proyecto, SerieFactura } from '@/lib/types/proyectos'
+
+// ─── Constants ────────────────────────────────────────────────────────────
+
+const SKIP_KEYS = new Set(['serie_factura'])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -75,11 +78,11 @@ function ColumnFilter({ label, values, active, onChange }: {
   )
 }
 
-function ViewField({ label, value }: { label: string; value?: string | null }) {
+function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value ?? '—'}</span>
     </div>
   )
 }
@@ -100,9 +103,15 @@ type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
-  { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
-  { key: 'nombre',   label: 'Nombre',   defaultVisible: true  },
+  { key: 'empresa',          label: 'Empresa',        defaultVisible: false },
+  { key: 'proyecto',         label: 'Proyecto',       defaultVisible: true  },
+  { key: 'recibo_automatico',label: 'Recibo Auto',    defaultVisible: true  },
+  { key: 'correlativo',      label: 'Correlativo',    defaultVisible: false },
+  { key: 'predeterminado',   label: 'Predeterminado', defaultVisible: true  },
+  { key: 'formato',          label: 'Formato',        defaultVisible: true  },
+  { key: 'serie_factura',    label: 'Serie Factura',  defaultVisible: true  },
+  { key: 'dias_fecha',       label: 'Dias Fecha',     defaultVisible: false },
+  { key: 'activo',           label: 'Activo',         defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -110,7 +119,7 @@ const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: 
 const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
 
 const COL_LABELS: Record<string, string> = Object.fromEntries(
-  [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+  [{ key: 'serie', label: 'Serie' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
 )
 
 function formatCsvCell(value: unknown): string {
@@ -120,19 +129,19 @@ function formatCsvCell(value: unknown): string {
     : str
 }
 
-function exportCsv(rows: Banco[], colPrefs: ColPref[]) {
-  const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+function exportCsv(rows: SerieRecibo[], colPrefs: ColPref[]) {
+  const keys = ['serie', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
     .filter((k) => !NEVER_EXPORT.has(k))
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
   const lines = [
     headers.join(','),
-    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Banco])).join(',')),
+    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof SerieRecibo])).join(',')),
   ]
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `bancos-${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `series-recibos-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -168,22 +177,35 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 
 // ─── Form default ──────────────────────────────────────────────────────────
 
-const EMPTY_FORM: BancoForm = { empresa: 0, proyecto: 0, nombre: '' }
+const EMPTY_FORM: SerieReciboForm = {
+  empresa: 0,
+  proyecto: 0,
+  serie: '',
+  serie_factura: null,
+  dias_fecha: 0,
+  correlativo: 0,
+  formato: 0,
+  predeterminado: 0,
+  recibo_automatico: 0,
+  activo: 1,
+}
 
 // ─── Client component ──────────────────────────────────────────────────────
 
-export function BancosClient({
+export function SeriesRecibosClient({
   initialData,
   empresas,
   proyectos,
+  seriesFactura,
   puedeAgregar,
   puedeModificar,
   puedeEliminar,
   userId,
 }: {
-  initialData: Banco[]
+  initialData: SerieRecibo[]
   empresas: Empresa[]
   proyectos: Proyecto[]
+  seriesFactura: SerieFactura[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -192,16 +214,15 @@ export function BancosClient({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  const [search, setSearch]           = useState('')
-  const [dialogOpen, setDialogOpen]   = useState(false)
-  const [isEditing, setIsEditing]     = useState(false)
-  const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget]   = useState<Banco | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Banco | null>(null)
-  const [auditTarget, setAuditTarget]   = useState<Banco | null>(null)
-  const [form, setForm]               = useState<BancoForm>(EMPTY_FORM)
-  const [similarWarning, setSimilarWarning] = useState<Banco[] | null>(null)
-  const [colFilters, setColFilters]   = useState<ColFilters>({})
+  const [search, setSearch]             = useState('')
+  const [dialogOpen, setDialogOpen]     = useState(false)
+  const [isEditing, setIsEditing]       = useState(false)
+  const [hadConflict, setHadConflict]   = useState(false)
+  const [viewTarget, setViewTarget]     = useState<SerieRecibo | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<SerieRecibo | null>(null)
+  const [auditTarget, setAuditTarget]   = useState<SerieRecibo | null>(null)
+  const [form, setForm]                 = useState<SerieReciboForm>(EMPTY_FORM)
+  const [colFilters, setColFilters]     = useState<ColFilters>({})
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
@@ -209,31 +230,41 @@ export function BancosClient({
     () => proyectos.filter((p) => p.empresa === form.empresa),
     [proyectos, form.empresa]
   )
+  const seriesFacturaFiltradas = useMemo(
+    () => seriesFactura.filter((sf) => sf.empresa === form.empresa && sf.proyecto === form.proyecto),
+    [seriesFactura, form.empresa, form.proyecto]
+  )
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueEmpresaNames   = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
+  const uniqueProyectoNames  = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueFormatoNames   = useMemo(() => [...new Set(initialData.map((r) => String(r.formato)))].sort(), [initialData])
 
   // ─── Filtering pipeline ──────────────────────────────────────────────────
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
     return !q ? initialData : initialData.filter((r) =>
-      r.nombre?.toLowerCase().includes(q) ||
+      r.serie.toLowerCase().includes(q) ||
+      (r.serie_factura ?? '').toLowerCase().includes(q) ||
       (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
-      String(r.codigo).includes(q)
+      (proyectoMap.get(r.proyecto) ?? '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap])
+  }, [initialData, search, empresaMap, proyectoMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
-        return vals.has(String(r[col as keyof Banco] ?? ''))
+        if (col === 'empresa')        return vals.has(empresaMap.get(r.empresa) ?? '')
+        if (col === 'proyecto')       return vals.has(proyectoMap.get(r.proyecto) ?? '')
+        if (col === 'formato')        return vals.has(String(r.formato))
+        if (col === 'predeterminado')    return vals.has(r.predeterminado === 1 ? 'Sí' : 'No')
+        if (col === 'recibo_automatico') return vals.has(r.recibo_automatico === 1 ? 'Sí' : 'No')
+        if (col === 'activo')         return vals.has(r.activo === 1 ? 'Sí' : 'No')
+        return vals.has(String(r[col as keyof SerieRecibo] ?? ''))
       })
     ),
     [afterSearch, colFilters, empresaMap, proyectoMap]
@@ -243,7 +274,7 @@ export function BancosClient({
 
   // ─── Column prefs ────────────────────────────────────────────────────────
 
-  const STORAGE_KEY = `bancos_cols_v1_${userId}`
+  const STORAGE_KEY = `series_recibos_cols_v2_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
 
   useEffect(() => {
@@ -304,13 +335,20 @@ export function BancosClient({
 
   // ─── Form helpers ────────────────────────────────────────────────────────
 
-  function f(key: keyof BancoForm, value: string | number) {
-    const v = typeof value === 'string'
+  function f(key: keyof SerieReciboForm, value: string | number) {
+    const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
     setForm((prev) => {
       const next = { ...prev, [key]: v }
-      if (key === 'empresa') { const fp = proyectos.find((p) => p.empresa === Number(value)); next.proyecto = fp?.codigo ?? 0 }
+      if (key === 'empresa') {
+        const fp = proyectos.find((p) => p.empresa === Number(value))
+        next.proyecto = fp?.codigo ?? 0
+        next.serie_factura = null
+      }
+      if (key === 'proyecto') {
+        next.serie_factura = null
+      }
       return next
     })
   }
@@ -319,13 +357,24 @@ export function BancosClient({
     setViewTarget(null); setIsEditing(true)
     const firstEmpresa  = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
-    setForm({ empresa: firstEmpresa, proyecto: firstProyecto, nombre: '' })
+    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto })
     setDialogOpen(true)
   }
 
-  function openView(banco: Banco) {
-    setViewTarget(banco); setIsEditing(false)
-    setForm({ empresa: banco.empresa, proyecto: banco.proyecto, nombre: banco.nombre })
+  function openView(row: SerieRecibo) {
+    setViewTarget(row); setIsEditing(false)
+    setForm({
+      empresa: row.empresa,
+      proyecto: row.proyecto,
+      serie: row.serie,
+      serie_factura: row.serie_factura ?? null,
+      dias_fecha: row.dias_fecha,
+      correlativo: row.correlativo,
+      formato: row.formato,
+      predeterminado: row.predeterminado,
+      recibo_automatico: row.recibo_automatico,
+      activo: row.activo,
+    })
     setDialogOpen(true)
   }
 
@@ -334,40 +383,36 @@ export function BancosClient({
   function cancelEdit() {
     if (!viewTarget) { setDialogOpen(false); return }
     setIsEditing(false)
-    setForm({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, nombre: viewTarget.nombre })
+    setForm({
+      empresa: viewTarget.empresa,
+      proyecto: viewTarget.proyecto,
+      serie: viewTarget.serie,
+      serie_factura: viewTarget.serie_factura ?? null,
+      dias_fecha: viewTarget.dias_fecha,
+      correlativo: viewTarget.correlativo,
+      formato: viewTarget.formato,
+      predeterminado: viewTarget.predeterminado,
+      recibo_automatico: viewTarget.recibo_automatico,
+      activo: viewTarget.activo,
+    })
   }
 
   function handleSave() {
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
+    if (!form.serie.trim()) { toast.error('La serie es requerida.'); return }
     if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
 
-    // Verificar similitud de nombre (umbral 0.85) contra bancos del mismo proyecto
-    const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((b) =>
-      b.empresa === form.empresa && b.proyecto === form.proyecto &&
-      (viewTarget ? b.codigo !== viewTarget.codigo : true)
-    )
-    const similar = candidates.filter(
-      (b) => b.nombre && jaroWinkler(normalizedInput, toDbString(b.nombre)) >= 0.85
-    )
-    if (similar.length > 0) { setSimilarWarning(similar); return }
-
-    doSave()
-  }
-
-  function doSave() {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
-        ? await updateBanco(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createBanco(form)
+        ? await updateSerieRecibo(viewTarget.empresa, viewTarget.proyecto, viewTarget.serie, form, lastModified)
+        : await createSerieRecibo(form)
       if (result.error) {
         toast.error(result.error)
         if (result.error.includes('modificado')) setHadConflict(true)
       } else {
         setHadConflict(false)
-        toast.success(viewTarget ? 'Banco actualizado.' : 'Banco creado.')
+        toast.success(viewTarget ? 'Serie actualizada.' : 'Serie creada.')
         setDialogOpen(false)
         router.refresh()
       }
@@ -377,9 +422,9 @@ export function BancosClient({
   function handleDelete() {
     if (!deleteTarget) return
     startTransition(async () => {
-      const result = await deleteBanco(deleteTarget.empresa, deleteTarget.proyecto, deleteTarget.codigo)
+      const result = await deleteSerieRecibo(deleteTarget.empresa, deleteTarget.proyecto, deleteTarget.serie)
       if (result.error) toast.error(result.error)
-      else { toast.success('Banco eliminado.'); router.refresh() }
+      else { toast.success('Serie eliminada.'); router.refresh() }
       setDeleteTarget(null)
     })
   }
@@ -392,25 +437,25 @@ export function BancosClient({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-teal-100 p-2.5">
-            <Landmark className="h-5 w-5 text-teal-700" />
+          <div className="rounded-xl bg-cyan-100 p-2.5">
+            <Receipt className="h-5 w-5 text-cyan-700" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Bancos</h1>
-            <p className="text-sm text-muted-foreground">Catalogo de bancos por proyecto</p>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Series de Recibos</h1>
+            <p className="text-sm text-muted-foreground">Catalogo de series de recibos por proyecto</p>
           </div>
         </div>
         {puedeAgregar && (
           <Button onClick={openCreate} className="gap-2" disabled={proyectos.length === 0}>
             <Plus className="h-4 w-4" />
-            Nuevo Banco
+            Nueva Serie
           </Button>
         )}
       </div>
 
       {proyectos.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Primero crea proyectos antes de agregar bancos.
+          Primero crea proyectos antes de agregar series de recibos.
         </div>
       )}
 
@@ -419,7 +464,7 @@ export function BancosClient({
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar bancos..."
+            placeholder="Buscar series..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -449,15 +494,19 @@ export function BancosClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Serie</TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key}>
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={
-                      col.key === 'empresa'  ? uniqueEmpresaNames :
-                      col.key === 'proyecto' ? uniqueProyectoNames :
-                      [...new Set(initialData.map((r) => String(r[col.key as keyof Banco] ?? '')))].sort()
+                      col.key === 'empresa'        ? uniqueEmpresaNames :
+                      col.key === 'proyecto'       ? uniqueProyectoNames :
+                      col.key === 'formato'        ? uniqueFormatoNames :
+                      col.key === 'predeterminado'    ? ['Sí', 'No'] :
+                      col.key === 'recibo_automatico' ? ['Sí', 'No'] :
+                      col.key === 'activo'         ? ['Sí', 'No'] :
+                      [...new Set(initialData.map((r) => String(r[col.key as keyof SerieRecibo] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
                     onChange={(v) => setColFilter(col.key, v)}
@@ -471,50 +520,58 @@ export function BancosClient({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters ? 'Sin resultados para esa búsqueda.' : 'No hay bancos registrados aún.'}
+                  {search || hasActiveFilters
+                    ? 'No se encontraron series con ese criterio.'
+                    : 'Todavía no hay series de recibos. Haz clic en "Nueva Serie" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((banco, rowIdx) => {
+              filtered.map((row, rowIdx) => {
                 const isActive = cursorIdx === rowIdx
                 return (
                   <TableRow
-                    key={`${banco.empresa}-${banco.proyecto}-${banco.codigo}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'hover:bg-muted/40'}`}
+                    key={`${row.empresa}-${row.proyecto}-${row.serie}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-cyan-50 dark:bg-cyan-950/30' : 'hover:bg-muted/40'}`}
                     onClick={() => setCursorIdx(rowIdx)}
-                    onDoubleClick={() => openView(banco)}
+                    onDoubleClick={() => openView(row)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
                       isActive
-                        ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold'
+                        ? 'bg-cyan-50 dark:bg-cyan-950/30 border-l-[3px] border-l-cyan-600 text-cyan-700 dark:text-cyan-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      {banco.codigo}
+                      {row.serie}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
-                        case 'nombre':   return <TableCell key="nombre" className="font-medium">{banco.nombre}</TableCell>
-                        case 'empresa':  return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(banco.empresa) ?? `#${banco.empresa}`}</TableCell>
-                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(banco.proyecto) ?? `#${banco.proyecto}`}</TableCell>
-                        default:         return <TableCell key={col.key} className="text-muted-foreground">{String((banco as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
+                        case 'empresa':        return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(row.empresa) ?? `#${row.empresa}`}</TableCell>
+                        case 'proyecto':       return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(row.proyecto) ?? `#${row.proyecto}`}</TableCell>
+                        case 'serie_factura':  return <TableCell key="serie_factura" className="font-mono text-xs text-muted-foreground">{row.serie_factura || '—'}</TableCell>
+                        case 'dias_fecha':     return <TableCell key="dias_fecha" className="text-muted-foreground">{row.dias_fecha}</TableCell>
+                        case 'correlativo':    return <TableCell key="correlativo" className="text-muted-foreground">{row.correlativo || ''}</TableCell>
+                        case 'formato':        return <TableCell key="formato" className="text-muted-foreground">{String(row.formato)}</TableCell>
+                        case 'predeterminado':    return <TableCell key="predeterminado" className="text-muted-foreground">{row.predeterminado === 1 ? 'Sí' : 'No'}</TableCell>
+                        case 'recibo_automatico': return <TableCell key="recibo_automatico" className="text-muted-foreground">{row.recibo_automatico === 1 ? 'Sí' : 'No'}</TableCell>
+                        case 'activo':         return <TableCell key="activo" className="text-muted-foreground">{row.activo === 1 ? 'Sí' : 'No'}</TableCell>
+                        default:               return <TableCell key={col.key} className="text-muted-foreground">{String((row as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-cyan-50 dark:bg-cyan-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(banco)}>
+                          <DropdownMenuItem onClick={() => openView(row)}>
                             <Eye className="mr-2 h-3.5 w-3.5" /> {puedeModificar ? 'Ver / Editar' : 'Ver'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(banco)}>
+                          <DropdownMenuItem onClick={() => setAuditTarget(row)}>
                             <History className="mr-2 h-3.5 w-3.5" /> Historial
                           </DropdownMenuItem>
                           {puedeEliminar && (
                             <>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(banco)}>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(row)}>
                                 <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
                               </DropdownMenuItem>
                             </>
@@ -542,48 +599,65 @@ export function BancosClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-full max-w-md max-h-[80vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-cyan-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-teal-100' : isEditing ? 'bg-amber-100' : 'bg-teal-100'}`}>
+              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-cyan-100' : isEditing ? 'bg-amber-100' : 'bg-cyan-100'}`}>
                 {isEditing && !viewTarget
-                  ? <Plus className="h-5 w-5 text-teal-600" />
+                  ? <Plus className="h-5 w-5 text-cyan-600" />
                   : isEditing
                   ? <Pencil className="h-5 w-5 text-amber-600" />
-                  : <Landmark className="h-5 w-5 text-teal-600" />}
+                  : <Receipt className="h-5 w-5 text-cyan-600" />}
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Banco' : isEditing ? 'Editar Banco' : viewTarget?.nombre}
+                  {isEditing && !viewTarget ? 'Nueva Serie de Recibos' : isEditing ? 'Editar Serie de Recibos' : viewTarget?.serie}
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {proyectoMap.get(viewTarget.proyecto) ?? ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.serie}</span>
                   </p>
                 )}
               </div>
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-1 flex flex-col flex-1 min-h-0">
+          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0">
               <TabsTrigger value="general" className="gap-1.5">
-                <MapPin className="h-3.5 w-3.5" />
+                <Receipt className="h-3.5 w-3.5" />
                 General
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
+            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
-                  <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
-                  <SectionDivider label="GENERAL" />
-                  <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
+                  <div className="col-span-2"><ViewField label="Serie"    value={viewTarget.serie} /></div>
+                  <SectionDivider label="CONFIGURACION" />
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+                      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Recibo Automatico</span>
+                      <Checkbox checked={viewTarget.recibo_automatico === 1} disabled />
+                    </div>
+                    <ViewField label="Correlativo" value={viewTarget.correlativo ? String(viewTarget.correlativo) : ''} />
+                    <ViewField label="Formato" value={String(viewTarget.formato)} />
+                  </div>
+                  <ViewField label="Dias Fecha" value={String(viewTarget.dias_fecha)} />
+                  <ViewField label="Serie Factura" value={viewTarget.serie_factura || '—'} />
+                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Predeterminado</span>
+                    <Checkbox checked={viewTarget.predeterminado === 1} disabled />
+                  </div>
+                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
+                    <Checkbox checked={viewTarget.activo === 1} disabled />
+                  </div>
                 </div>
               ) : (
                 /* ── Edit / Create mode ── */
@@ -592,27 +666,115 @@ export function BancosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                      <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona empresa">
+                          {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
+                      </SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                      <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona proyecto">
+                          {(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
+                      </SelectContent>
                     </Select>
                   </div>
-                  <SectionDivider label="GENERAL" />
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
+                    <Label htmlFor="serie" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Serie *</Label>
                     <Input
-                      id="nombre"
-                      value={form.nombre}
-                      onChange={(e) => f('nombre', e.target.value)}
-                      placeholder="Ej: banco industrial, banco g&t..."
-                      autoFocus
+                      id="serie"
+                      value={form.serie}
+                      onChange={(e) => f('serie', e.target.value)}
+                      placeholder="Ej: A, B, REC1..."
+                      disabled={!!viewTarget}
+                      autoFocus={!viewTarget}
                     />
+                  </div>
+                  <SectionDivider label="CONFIGURACION" />
+                  <div className="col-span-2 grid grid-cols-3 gap-4">
+                    <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                      <Checkbox
+                        id="recibo_automatico"
+                        checked={form.recibo_automatico === 1}
+                        onCheckedChange={(checked) => f('recibo_automatico', checked ? 1 : 0)}
+                      />
+                      <Label htmlFor="recibo_automatico" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Recibo Automático</Label>
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor="correlativo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Correlativo</Label>
+                      <Input
+                        id="correlativo"
+                        type="number"
+                        min={0}
+                        value={form.recibo_automatico === 1 ? '' : (form.correlativo || '')}
+                        onChange={(e) => f('correlativo', Math.max(0, Number(e.target.value) || 0))}
+                        disabled={form.recibo_automatico === 1}
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor="formato" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Formato</Label>
+                      <Input
+                        id="formato"
+                        type="number"
+                        min={0}
+                        value={form.formato}
+                        onChange={(e) => f('formato', Math.max(0, Number(e.target.value) || 0))}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="dias_fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Dias Fecha</Label>
+                    <Input
+                      id="dias_fecha"
+                      type="number"
+                      min={0}
+                      value={form.dias_fecha}
+                      onChange={(e) => f('dias_fecha', Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Serie Factura</Label>
+                    <Select
+                      value={form.serie_factura ?? ''}
+                      onValueChange={(v) => setForm((p) => ({ ...p, serie_factura: v || null }))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=""> </SelectItem>
+                        {seriesFacturaFiltradas.map((sf) => (
+                          <SelectItem key={sf.serie} value={sf.serie}>{sf.serie}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                    <Checkbox
+                      id="predeterminado"
+                      checked={form.predeterminado === 1}
+                      onCheckedChange={(checked) => f('predeterminado', checked ? 1 : 0)}
+                    />
+                    <Label htmlFor="predeterminado" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Predeterminado</Label>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                    <Checkbox
+                      id="activo"
+                      checked={form.activo === 1}
+                      onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
+                    />
+                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
                   </div>
                 </div>
               )}
@@ -639,42 +801,13 @@ export function BancosClient({
         </DialogContent>
       </Dialog>
 
-      {/* Similar name warning */}
-      <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-2">
-                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} banco
-                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
-                </p>
-                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {similarWarning?.map((b) => (
-                    <li key={b.codigo}>{b.nombre}</li>
-                  ))}
-                </ul>
-                <p>¿Es realmente un banco diferente y desea continuar?</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar banco?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar serie de recibos?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará <strong>{deleteTarget?.nombre}</strong>. Esta acción no se puede deshacer.
+              Esta acción no se puede deshacer. Se eliminará permanentemente la serie <strong>{deleteTarget?.serie}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -691,10 +824,10 @@ export function BancosClient({
         <AuditLogDialog
           open={!!auditTarget}
           onOpenChange={(o) => !o && setAuditTarget(null)}
-          tabla="t_banco"
+          tabla="t_serie_recibo"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.codigo}
-          titulo={auditTarget.nombre}
+          codigo={auditTarget.serie}
+          titulo={`Serie ${auditTarget.serie}`}
         />
       )}
     </div>

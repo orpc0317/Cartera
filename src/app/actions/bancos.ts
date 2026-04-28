@@ -211,7 +211,7 @@ export async function deleteBanco(empresa: number, proyecto: number, codigo: num
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Guard: no se puede eliminar si tiene cuentas bancarias asociadas
-  const { count } = await admin
+  const { count: countCuentas } = await admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
     .select('*', { count: 'exact', head: true })
@@ -220,8 +220,22 @@ export async function deleteBanco(empresa: number, proyecto: number, codigo: num
     .eq('proyecto', proyecto)
     .eq('banco', codigo)
 
-  if ((count ?? 0) > 0) {
-    return { error: `No se puede eliminar: el banco tiene ${count} cuenta(s) bancaria(s) registrada(s).` }
+  if ((countCuentas ?? 0) > 0) {
+    return { error: 'No se puede eliminar este banco porque tiene cuentas bancarias asociadas.' }
+  }
+
+  // Guard: no se puede eliminar si tiene recibos de caja asociados
+  const { count: countRecibos } = await admin
+    .schema('cartera')
+    .from('t_recibo_caja')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('banco', codigo)
+
+  if ((countRecibos ?? 0) > 0) {
+    return { error: 'No se puede eliminar este banco porque tiene recibos de caja asociados.' }
   }
 
   const { data: oldRow } = await admin

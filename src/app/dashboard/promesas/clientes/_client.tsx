@@ -40,7 +40,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { CountrySelect } from '@/components/ui/country-select'
 import { PhoneField, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
 import { createCliente, updateCliente, deleteCliente } from '@/app/actions/clientes'
-import { REGIMENES_IVA, validarNIT } from '@/lib/constants'
+import { REGIMENES_IVA, validarNIT, validarDPI } from '@/lib/constants'
 import type { Empresa, Proyecto, Cliente, ClienteForm } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -478,6 +478,10 @@ export function ClientesClient({
       toast.error('El NIT no tiene una estructura válida.')
       return
     }
+    if (form.tipo_identificacion === 1 && form.identificacion_tributaria.trim() && !validarDPI(form.identificacion_tributaria)) {
+      toast.error('El DPI debe contener exactamente 13 dígitos numéricos y tener una estructura de CUI válida.')
+      return
+    }
     if (!form.direccion.trim()) { toast.error('La dirección es requerida.'); return }
     if (!form.empresa)          { toast.error('La empresa es requerida.'); return }
     if (!form.proyecto)         { toast.error('El proyecto es requerido.'); return }
@@ -658,7 +662,7 @@ export function ClientesClient({
                         ? 'bg-indigo-50 dark:bg-indigo-950/30 border-l-[3px] border-l-indigo-600 text-indigo-700 dark:text-indigo-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{cliente.codigo}
+                      {cliente.codigo}
                     </TableCell>
 
                     {visibleCols.map((col) => {
@@ -792,7 +796,7 @@ export function ClientesClient({
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {proyectoMap.get(viewTarget.proyecto) ?? ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>
@@ -922,7 +926,7 @@ export function ClientesClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="correo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Correo</Label>
-                  <Input id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="correo@ejemplo.com" />
+                  <Input id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="Correo@ejemplo.com" />
                 </div>
 
                 <div className="col-span-2 flex items-center gap-2 pt-1">

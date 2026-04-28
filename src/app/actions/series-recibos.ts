@@ -1,12 +1,9 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
-import type { CuentaBancaria, CuentaBancariaForm, Moneda } from '@/lib/types/proyectos'
-
-// ─── Helpers (mirrored from bancos.ts) ────────────────────────────────────
+import type { SerieRecibo, SerieReciboForm, SerieFactura } from '@/lib/types/proyectos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -60,83 +57,83 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getMonedas(): Promise<Moneda[]> {
+export async function getSeriesFactura(): Promise<SerieFactura[]> {
+  const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
   const { data, error } = await admin
     .schema('cartera')
-    .from('t_moneda')
-    .select('codigo')
-    .order('codigo')
+    .from('t_serie_factura')
+    .select('empresa, proyecto, serie')
+    .eq('cuenta', cuenta)
+    .order('empresa')
+    .order('proyecto')
+    .order('serie')
   if (error) throw new Error(error.message)
-  return (data ?? []) as Moneda[]
+  return data as SerieFactura[]
 }
 
-export async function getCuentasBancarias(
-  empresa?: number,
-  proyecto?: number,
-): Promise<CuentaBancaria[]> {
+export async function getSeriesRecibos(): Promise<SerieRecibo[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  let query = admin
+  const { data, error } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_serie_recibo')
     .select('*')
     .eq('cuenta', cuenta)
-    .order('nombre')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
-  const { data, error } = await query
+    .order('empresa')
+    .order('proyecto')
+    .order('serie')
   if (error) throw new Error(error.message)
-  return data as CuentaBancaria[]
+  return data as SerieRecibo[]
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────
 
-export async function createCuentaBancaria(
-  form: CuentaBancariaForm,
-): Promise<{ error?: string }> {
+export async function createSerieRecibo(form: SerieReciboForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
-  const { data: max } = await admin
-    .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('codigo')
-    .eq('cuenta', cuenta)
-    .eq('empresa', form.empresa)
-    .eq('proyecto', form.proyecto)
-    .order('codigo', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  const serie = toDbString(form.serie)
 
-  const codigo = (max?.codigo ?? 0) + 1
-  const now = new Date().toISOString()
-
-  // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto
+  // Validar duplicado
   const { data: existente } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('codigo')
+    .from('t_serie_recibo')
+    .select('serie')
     .eq('cuenta', cuenta)
     .eq('empresa', form.empresa)
     .eq('proyecto', form.proyecto)
-    .eq('banco', form.banco)
-    .eq('numero', toDbString(form.numero))
+    .eq('serie', serie)
     .maybeSingle()
-  if (existente) return { error: 'Ya existe una cuenta bancaria con ese banco y número en este proyecto.' }
+  if (existente) return { error: 'Ya existe una serie con ese código en este proyecto.' }
 
+  // Si se marca como predeterminado, quitar la bandera de las demás series del mismo proyecto
+  if (form.predeterminado === 1) {
+    await admin
+      .schema('cartera')
+      .from('t_serie_recibo')
+      .update({ predeterminado: 0 })
+      .eq('cuenta', cuenta)
+      .eq('empresa', form.empresa)
+      .eq('proyecto', form.proyecto)
+      .neq('serie', serie)
+  }
+
+  const now = new Date().toISOString()
   const { data, error } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_serie_recibo')
     .insert({
       cuenta,
       empresa: form.empresa,
       proyecto: form.proyecto,
-      codigo,
-      numero: toDbString(form.numero),
-      nombre: toDbString(form.nombre),
-      banco: form.banco,
-      moneda: form.moneda,
+      serie,
+      serie_factura: form.serie_factura || null,
+      dias_fecha: form.dias_fecha,
+      correlativo: form.correlativo,
+      formato: form.formato,
+      predeterminado: form.predeterminado,
+      recibo_automatico: form.recibo_automatico,
       activo: form.activo,
       agrego_usuario: auditUser.userId,
       agrego_fecha: now,
@@ -149,21 +146,20 @@ export async function createCuentaBancaria(
   if (error) return { error: error.message }
 
   await writeAudit(admin, {
-    tabla: 't_cuenta_bancaria', operacion: 'INSERT', cuenta,
-    registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo },
+    tabla: 't_serie_recibo', operacion: 'INSERT', cuenta,
+    registroId: { empresa: form.empresa, proyecto: form.proyecto, serie },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
     ...auditUser,
   })
 
-  revalidatePath('/dashboard/bancos/cuentas-bancarias')
   return {}
 }
 
-export async function updateCuentaBancaria(
+export async function updateSerieRecibo(
   empresa: number,
   proyecto: number,
-  codigo: number,
-  form: Partial<CuentaBancariaForm>,
+  serie: string,
+  form: Partial<SerieReciboForm>,
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
@@ -171,49 +167,47 @@ export async function updateCuentaBancaria(
 
   const { data: oldRow } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_serie_recibo')
     .select('*')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
-    .eq('codigo', codigo)
+    .eq('serie', serie)
     .single()
 
   const now = new Date().toISOString()
-  const normalized = {
-    ...form,
-    numero: form.numero ? toDbString(form.numero) : undefined,
-    nombre: form.nombre ? toDbString(form.nombre) : undefined,
+  const payload: Record<string, unknown> = {
+    serie_factura: form.serie_factura || null,
+    dias_fecha: form.dias_fecha,
+    correlativo: form.correlativo,
+    formato: form.formato,
+    predeterminado: form.predeterminado,
+    recibo_automatico: form.recibo_automatico,
+    activo: form.activo,
+    modifico_usuario: auditUser.userId,
+    modifico_fecha: now,
   }
 
-  // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto (excluyendo el registro actual)
-  if (form.banco !== undefined || normalized.numero) {
-    const bancoVal = form.banco ?? oldRow?.banco
-    const numeroVal = normalized.numero ?? oldRow?.numero
-    if (bancoVal && numeroVal) {
-      const { data: existente } = await admin
-        .schema('cartera')
-        .from('t_cuenta_bancaria')
-        .select('codigo')
-        .eq('cuenta', cuenta)
-        .eq('empresa', empresa)
-        .eq('proyecto', proyecto)
-        .eq('banco', bancoVal)
-        .eq('numero', numeroVal)
-        .neq('codigo', codigo)
-        .maybeSingle()
-      if (existente) return { error: 'Ya existe una cuenta bancaria con ese banco y número en este proyecto.' }
-    }
+  // Si se marca como predeterminado, quitar la bandera de las demás series del mismo proyecto
+  if (form.predeterminado === 1) {
+    await admin
+      .schema('cartera')
+      .from('t_serie_recibo')
+      .update({ predeterminado: 0 })
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .neq('serie', serie)
   }
 
   let query = admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .update({ ...normalized, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .from('t_serie_recibo')
+    .update(payload)
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
-    .eq('codigo', codigo)
+    .eq('serie', serie)
 
   if (lastModified) query = query.eq('modifico_fecha', lastModified)
 
@@ -224,65 +218,65 @@ export async function updateCuentaBancaria(
   }
 
   await writeAudit(admin, {
-    tabla: 't_cuenta_bancaria', operacion: 'UPDATE', cuenta,
-    registroId: { empresa, proyecto, codigo },
+    tabla: 't_serie_recibo', operacion: 'UPDATE', cuenta,
+    registroId: { empresa, proyecto, serie },
     datoAntes: oldRow as Record<string, unknown> | null,
-    datoDespues: data?.[0] as Record<string, unknown> | null,
+    datoDespues: (data as Record<string, unknown>[])[0] ?? null,
     ...auditUser,
   })
 
-  revalidatePath('/dashboard/bancos/cuentas-bancarias')
   return {}
 }
 
-export async function deleteCuentaBancaria(
+export async function deleteSerieRecibo(
   empresa: number,
   proyecto: number,
-  codigo: number,
+  serie: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
-  // Guard: no se puede eliminar si tiene transacciones bancarias asociadas
+  // Restriction: cannot delete if there are associated recibos de caja
   const { count } = await admin
     .schema('cartera')
-    .from('t_transaccion_bancaria')
-    .select('*', { count: 'exact', head: true })
+    .from('t_recibo_caja')
+    .select('cuenta', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
     .eq('empresa', empresa)
-    .eq('cuenta_bancaria', codigo)
+    .eq('proyecto', proyecto)
+    .eq('serie', serie)
 
-  if ((count ?? 0) > 0) {
-    return { error: `No se puede eliminar: la cuenta tiene ${count} transaccion(es) registrada(s).` }
-  }
+  if ((count ?? 0) > 0)
+    return { error: 'No se puede eliminar esta serie porque tiene recibos de caja asociados.' }
 
   const { data: oldRow } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_serie_recibo')
     .select('*')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
-    .eq('codigo', codigo)
+    .eq('serie', serie)
     .single()
 
   const { error } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_serie_recibo')
     .delete()
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
-    .eq('codigo', codigo)
+    .eq('serie', serie)
 
   if (error) return { error: error.message }
 
   await writeAudit(admin, {
-    tabla: 't_cuenta_bancaria', operacion: 'DELETE', cuenta,
-    registroId: { empresa, proyecto, codigo },
-    datoAntes: oldRow as Record<string, unknown> | null, datoDespues: null,
+    tabla: 't_serie_recibo', operacion: 'DELETE', cuenta,
+    registroId: { empresa, proyecto, serie },
+    datoAntes: oldRow as Record<string, unknown> | null,
+    datoDespues: null,
     ...auditUser,
   })
 
-  revalidatePath('/dashboard/bancos/cuentas-bancarias')
   return {}
 }

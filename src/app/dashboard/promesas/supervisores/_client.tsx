@@ -524,7 +524,7 @@ export function SupervisoresClient({
                         ? 'bg-purple-50 dark:bg-purple-950/30 border-l-[3px] border-l-purple-600 text-purple-700 dark:text-purple-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{supervisor.codigo}
+                      {supervisor.codigo}
                     </TableCell>
 
                     {visibleCols.map((col) => {
@@ -634,7 +634,7 @@ export function SupervisoresClient({
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {proyectoMap.get(viewTarget.proyecto) ?? ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>

@@ -534,7 +534,7 @@ export function VendedoresClient({
                         ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{vendedor.codigo}
+                      {vendedor.codigo}
                     </TableCell>
 
                     {visibleCols.map((col) => {
@@ -644,7 +644,7 @@ export function VendedoresClient({
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {proyectoMap.get(viewTarget.proyecto) ?? ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>

@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Trash2, Plus, MapPin, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X, SlidersHorizontal } from 'lucide-react'
+import { MoreHorizontal, Pencil, Trash2, Plus, MapPin, Search, History, Eye, Settings2, ChevronDown, ChevronUp, X, SlidersHorizontal, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,9 +35,9 @@ import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { createLote, updateLote, deleteLote } from '@/app/actions/lotes'
+import { createLote, updateLote, deleteLote, type ReservaRow } from '@/app/actions/lotes'
 import { getLoteEstado } from '@/lib/types/proyectos'
-import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm, Cliente, Vendedor, Cobrador } from '@/lib/types/proyectos'
 
 // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -79,6 +79,16 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
       <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+    </div>
+  )
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="col-span-2 flex items-center gap-2 pt-1">
+      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
+      <div className="flex-1 border-t border-primary/30" />
     </div>
   )
 }
@@ -171,14 +181,14 @@ const EMPTY_FORM: LoteForm = {
 
 function EstadoBadge({ lote }: { lote: Lote }) {
   const estado = getLoteEstado(lote)
-  return estado === 'disponible' ? (
-    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
-      Disponible
-    </Badge>
-  ) : (
-    <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">
-      Con Promesa
-    </Badge>
+  if (estado === 'disponible') return (
+    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Disponible</Badge>
+  )
+  if (estado === 'reservado') return (
+    <Badge className="bg-sky-100 text-sky-700 border-sky-200 hover:bg-sky-100">Reservado</Badge>
+  )
+  return (
+    <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Vendido</Badge>
   )
 }
 
@@ -188,6 +198,10 @@ export function LotesClient({
   proyectos,
   fases,
   manzanas,
+  reservas,
+  clientes,
+  vendedores,
+  cobradores,
   puedeEliminar,
   userId,
 }: {
@@ -196,6 +210,10 @@ export function LotesClient({
   proyectos: Proyecto[]
   fases: Fase[]
   manzanas: Manzana[]
+  reservas: ReservaRow[]
+  clientes: Cliente[]
+  vendedores: Vendedor[]
+  cobradores: Cobrador[]
   puedeEliminar: boolean
   userId: string
 }) {
@@ -203,7 +221,7 @@ export function LotesClient({
   const [isPending, startTransition] = useTransition()
 
   const [search, setSearch] = useState('')
-  const [filterEstado, setFilterEstado] = useState<'todos' | 'disponible' | 'con-promesa'>('todos')
+  const [filterEstado, setFilterEstado] = useState<'todos' | 'disponible' | 'reservado' | 'con-promesa'>('todos')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
@@ -217,7 +235,16 @@ export function LotesClient({
 
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
-  const faseMap = useMemo(() => new Map(fases.map((f) => [f.codigo, f.nombre])), [fases])
+  const faseMap     = useMemo(() => new Map(fases.map((f)     => [f.codigo, f.nombre])),    [fases])
+  const clienteMap  = useMemo(() => new Map(clientes.map((c)  => [c.codigo, c.nombre])),    [clientes])
+  const vendedorMap = useMemo(() => new Map(vendedores.map((v) => [v.codigo, v.nombre])),   [vendedores])
+  const cobradorMap = useMemo(() => new Map(cobradores.map((c) => [c.codigo, c.nombre])),   [cobradores])
+  // Reserva por (recibo_serie, recibo_numero) → permite lookup desde un lote
+  const reservaMap  = useMemo(() => {
+    const m = new Map<string, ReservaRow>()
+    for (const r of reservas) m.set(`${r.recibo_serie}-${r.recibo_numero}`, r)
+    return m
+  }, [reservas])
 
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
@@ -425,8 +452,9 @@ export function LotesClient({
     })
   }
 
-  const disponibles = initialData.filter((l) => getLoteEstado(l) === 'disponible').length
-  const conPromesa = initialData.length - disponibles
+  const disponibles  = initialData.filter((l) => getLoteEstado(l) === 'disponible').length
+  const reservados   = initialData.filter((l) => getLoteEstado(l) === 'reservado').length
+  const conPromesa   = initialData.filter((l) => getLoteEstado(l) === 'con-promesa').length
 
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
@@ -458,9 +486,13 @@ export function LotesClient({
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
             {disponibles} disponibles
           </Badge>
+          <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs border-sky-200 text-sky-700">
+            <span className="h-2 w-2 rounded-full bg-sky-500" />
+            {reservados} reservados
+          </Badge>
           <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs border-amber-200 text-amber-700">
             <span className="h-2 w-2 rounded-full bg-amber-500" />
-            {conPromesa} con promesa
+            {conPromesa} vendidos
           </Badge>
         </div>
       )}
@@ -478,9 +510,9 @@ export function LotesClient({
           <Input placeholder="Buscar lotes..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <div className="flex gap-2">
-          {(['todos', 'disponible', 'con-promesa'] as const).map((v) => (
+          {(['todos', 'disponible', 'reservado', 'con-promesa'] as const).map((v) => (
             <Button key={v} variant={filterEstado === v ? 'default' : 'outline'} size="sm" onClick={() => setFilterEstado(v)}>
-              {v === 'todos' ? 'Todos' : v === 'disponible' ? 'Disponibles' : 'Con Promesa'}
+              {v === 'todos' ? 'Todos' : v === 'disponible' ? 'Disponibles' : v === 'reservado' ? 'Reservados' : 'Vendidos'}
             </Button>
           ))}
         </div>
@@ -567,7 +599,9 @@ export function LotesClient({
                           <TableCell key="__estado">
                             {estado === 'disponible'
                               ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Disponible</Badge>
-                              : <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Con Promesa</Badge>}
+                              : estado === 'reservado'
+                                ? <Badge className="bg-sky-100 text-sky-700 border-sky-200 hover:bg-sky-100">Reservado</Badge>
+                                : <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">Vendido</Badge>}
                           </TableCell>
                         )
                         default: return <TableCell key={col.key} className="text-muted-foreground">{String((lote as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
@@ -642,6 +676,9 @@ export function LotesClient({
               </TabsTrigger>
               <TabsTrigger value="colindancias" className="gap-1.5">
                 <SlidersHorizontal className="h-3.5 w-3.5" /> Colindancias
+              </TabsTrigger>
+              <TabsTrigger value="promesa" className="gap-1.5">
+                <ClipboardList className="h-3.5 w-3.5" /> Promesa
               </TabsTrigger>
             </TabsList>
 
@@ -832,6 +869,59 @@ export function LotesClient({
                   <div className="col-span-2 grid gap-1"><Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Otras Colindancias</Label><Input value={form.otro} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias relevantes" /></div>
                 </div>
               )}
+            </TabsContent>
+
+            {/* Promesa = Datos de la Reserva y la Promesa vinculadas al lote */}
+            <TabsContent value="promesa" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {(() => {
+                const reserva = viewTarget
+                  ? reservaMap.get(`${viewTarget.recibo_serie}-${viewTarget.recibo_numero}`)
+                  : undefined
+                const FORMAS_PAGO: Record<number, string> = {
+                  1: 'Efectivo', 2: 'Cheque', 3: 'Deposito', 4: 'Transferencia',
+                }
+                const ESTADOS: Record<number, string> = {
+                  1: 'Abierta', 2: 'Promesa', 3: 'Devolucion', 99: 'Anulado',
+                }
+                return (
+                  <div className="grid grid-cols-2 gap-3">
+
+                    {/* ── Reserva ─────────────────────────────────── */}
+                    <SectionDivider label="Datos Reserva" />
+                    {reserva ? (
+                      <>
+                        <ViewField label="No. Recibo"    value={`${reserva.recibo_serie}-${reserva.recibo_numero}`} />
+                        <ViewField label="Estado"        value={ESTADOS[reserva.estado] ?? String(reserva.estado)} />
+                        <ViewField label="Fecha"         value={reserva.fecha} />
+                        <ViewField label="Monto"         value={`${reserva.moneda} ${reserva.monto.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                        <div className="col-span-2">
+                          <ViewField label="Cliente"     value={clienteMap.get(reserva.cliente) ?? `#${reserva.cliente}`} />
+                        </div>
+                        <ViewField label="Vendedor"      value={vendedorMap.get(reserva.vendedor) ?? `#${reserva.vendedor}`} />
+                        <ViewField label="Cobrador"      value={cobradorMap.get(reserva.cobrador) ?? `#${reserva.cobrador}`} />
+                        <div className="col-span-2">
+                          <ViewField label="Forma de Pago" value={FORMAS_PAGO[reserva.forma_pago] ?? `#${reserva.forma_pago}`} />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="col-span-2 rounded-lg border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
+                        Este lote no tiene reserva registrada.
+                      </div>
+                    )}
+
+                    {/* ── Promesa ──────────────────────────────────── */}
+                    <SectionDivider label="Datos Promesa" />
+                    {viewTarget && viewTarget.promesa > 0 ? (
+                      <ViewField label="No. Promesa" value={String(viewTarget.promesa)} />
+                    ) : (
+                      <div className="col-span-2 rounded-lg border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
+                        Este lote no tiene promesa registrada.
+                      </div>
+                    )}
+
+                  </div>
+                )
+              })()}
             </TabsContent>
           </Tabs>
 

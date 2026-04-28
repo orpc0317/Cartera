@@ -125,6 +125,48 @@ function SectionDivider({ label }: { label: string }) {
 - Boolean: `<Checkbox checked={!!record.field} disabled />` inside a `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5` card.
 - Logo: `<img>` inside a `col-span-2` muted card.
 
+### Field width annotations in TABS_MODAL
+
+Every field listed in a spec's `TABS_MODAL` section **must** carry a width annotation so the implementer knows the grid span without guessing:
+
+| Annotation | Grid behaviour | When to use |
+|---|---|---|
+| `(full)` | `col-span-2` — occupies the whole row | Long text, addresses, names, selects with long options, any field that needs room |
+| `(half)` | occupies one column; the next `(half)` field fills the other | Short codes, numbers, booleans paired side by side |
+| `(third)` | occupies one third of the row; **must appear in groups of 3** | Three short fields that logically belong together (e.g. day / month / year, or code / type / status) |
+
+**Rule:** the spec author decides width based on field semantics and expected content length. The implementer applies it literally.
+
+**Thirds implementation:** the outer grid stays `grid-cols-2`. Three consecutive `(third)` fields are wrapped in a single `col-span-2` container that creates an inner 3-column grid:
+
+```tsx
+{/* view mode */}
+<div className="col-span-2 grid grid-cols-3 gap-3">
+  <ViewField label="Dia"  value={...} />
+  <ViewField label="Mes"  value={...} />
+  <ViewField label="Anio" value={...} />
+</div>
+
+{/* edit mode */}
+<div className="col-span-2 grid grid-cols-3 gap-4">
+  <div className="grid gap-1"><Label ...>Dia</Label><Input ... /></div>
+  <div className="grid gap-1"><Label ...>Mes</Label><Input ... /></div>
+  <div className="grid gap-1"><Label ...>Anio</Label><Input ... /></div>
+</div>
+```
+
+Examples in spec syntax:
+```
+  - nombre            (view + edit; full)
+  - empresa           (view + edit; half)
+  - proyecto          (view + edit; half)
+  - dia               (view + edit; third)
+  - mes               (view + edit; third)
+  - anio              (view + edit; third)
+  - activo            (view + edit; half — Checkbox 0/1)
+  - predeterminado    (view + edit; half — Checkbox 0/1)
+```
+
 ---
 
 ## Edit mode grid
@@ -143,6 +185,11 @@ function SectionDivider({ label }: { label: string }) {
 - Geo cascade: use native `<select>` (not Shadcn `<Select>`) with class:
   `flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50`
 - Phone fields: `<PhoneField>` from `@/components/ui/phone-field`. Import `DIAL_CODES` and `splitPhone` from the same file. Sync `tel1Iso`/`tel1Local` with form via `useEffect` placed **after** the `form` useState declaration.
+- **Numeric input spin buttons**: By default, `type="number"` inputs show up/down spin buttons. Control this per field:
+  - **Con spin** (`sin-spin: false`): small bounded integers where stepping one-by-one is useful (e.g. `dias_fecha`, `formato`). No extra class needed — browser default.
+  - **Sin spin** (`sin-spin: true`): large free-entry numbers where the spinner is useless and confusing (e.g. `correlativo`, monetary amounts, phone numbers). Add `className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"` to the `<Input>`.
+  - The spec for each screen must mark each numeric field as `sin-spin: true/false` so the implementer knows which to apply.
+
 - **Hardcoded Select fields**: When a `<Select>` has fixed options (not loaded from DB), define a `const` map or array above the component, use the **numeric code** as `value` in `<SelectItem>`, store the code in the form/DB, and display the label/description everywhere (edit mode `<SelectValue>`, view mode `<ViewField>`). Example:
   ```tsx
   // definition (outside component)
@@ -170,6 +217,13 @@ function SectionDivider({ label }: { label: string }) {
   </SelectValue>
   ```
   This applies to **every** FK `<Select>`: empresa, proyecto, fase, banco, cuenta bancaria, vendedor, cobrador, etc.
+
+- **Auto-select first item on form open**: Every `<Select>` (hardcoded or DB-loaded) **must** pre-select its first available item when the create dialog opens (`openCreate`) and whenever a cascade resets a downstream field. This speeds up data entry.
+  - In `openCreate`: compute the first valid value for every dropdown and pass them to `setForm({...EMPTY_FORM, ...})` explicitly.
+  - In the cascade inside `f()`: after resetting downstream fields, compute and set the first valid value for each one.
+  - **Exception**: the `ClienteCombobox` is never auto-selected — it must always be chosen explicitly by the user.
+  - Hardcoded dropdowns: pre-select the first key of the map/array (e.g. `forma_pago = Number(Object.keys(FORMAS_PAGO)[0])`).
+  - DB-loaded dropdowns with cascades (fase → manzana → lote): follow the same cascade order, computing each first value from the filtered list.
 
 ---
 

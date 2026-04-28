@@ -25,6 +25,8 @@ import {
   CreditCard,
   ClipboardList,
   Scale,
+  Receipt,
+  BookOpen,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -93,6 +95,15 @@ const NAV: NavItem[] = [
       { label: 'Cobradores',   href: '/dashboard/promesas/cobradores',   icon: Banknote },
       { label: 'Reservas',     href: '/dashboard/promesas/reservas',     icon: ClipboardList,  separator: 'Operaciones' },
       { label: 'Balance',      href: '#',                                icon: Scale,          separator: 'Consultas', comingSoon: true },
+    ],
+  },
+  {
+    label: 'Cuentas Cobrar',
+    icon: BookOpen,
+    children: [
+      { label: 'Serie Recibos', href: '/dashboard/cuentas-cobrar/series-recibos', icon: Receipt, separator: 'Catalogo' },
+      { label: 'Operaciones',   href: '#', icon: ClipboardList, separator: 'Operaciones', comingSoon: true },
+      { label: 'Consultas',     href: '#', icon: BarChart3,     separator: 'Consultas',   comingSoon: true },
     ],
   },
   {

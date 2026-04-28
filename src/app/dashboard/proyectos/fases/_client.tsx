@@ -434,7 +434,7 @@ export function FasesClient({
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
                       isActive ? 'bg-violet-50 dark:bg-violet-950/30 border-l-[3px] border-l-violet-600 text-violet-700 dark:text-violet-400 font-semibold' : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{fase.codigo}
+                      {fase.codigo}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
@@ -502,7 +502,7 @@ export function FasesClient({
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>
@@ -543,7 +543,7 @@ export function FasesClient({
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Fase *</Label>
-                    <Input value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Ej: Fase 1, Etapa A..." />
+                    <Input value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Ej: fase 1, etapa A..." />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Unidad Medida</Label>

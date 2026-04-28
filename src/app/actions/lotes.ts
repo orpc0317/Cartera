@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Lote, LoteForm } from '@/lib/types/proyectos'
+import type { Lote, LoteForm, SerieRecibo } from '@/lib/types/proyectos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -71,6 +71,19 @@ export async function getLotes(empresa?: number, proyecto?: number, fase?: numbe
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Lote[]
+}
+
+export async function getSeriesRecibo(): Promise<SerieRecibo[]> {
+  const cuenta = await getCuentaActiva()
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_serie_recibo')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .order('serie')
+  if (error) throw new Error(error.message)
+  return data as SerieRecibo[]
 }
 
 export async function getLotesDisponibles(empresa?: number, proyecto?: number): Promise<Lote[]> {
@@ -216,4 +229,174 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   revalidatePath('/dashboard/proyectos/lotes')
   revalidatePath('/dashboard')
   return {}
+}
+
+// ─── Listar Reservas ──────────────────────────────────────────────────────────
+
+export type ReservaRow = {
+  numero:           number   // PK de t_reserva
+  empresa:          number
+  proyecto:         number
+  fase:             number
+  manzana:          string
+  lote:             string
+  cliente:          number
+  vendedor:         number
+  recibo_serie:     string
+  recibo_numero:    number
+  estado:           number   // 1=Abierta 2=Promesa 3=Devolucion 99=Anulado
+  // desde t_recibo_caja
+  fecha:            string
+  monto:            number
+  moneda:           string
+  forma_pago:       number
+  banco:            number
+  numero_cuenta:    string
+  numero_documento: string
+  cuenta_deposito:  number
+  cobrador:         number
+}
+
+export async function getReservas(): Promise<ReservaRow[]> {
+  const cuenta = await getCuentaActiva()
+  const admin  = createAdminClient()
+
+  const { data: reservas, error: err1 } = await admin
+    .schema('cartera')
+    .from('t_reserva')
+    .select('numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
+    .eq('cuenta', cuenta)
+    .eq('estado', 1)
+    .order('numero', { ascending: false })
+  if (err1) throw new Error(err1.message)
+  if (!reservas || reservas.length === 0) return []
+
+  const numerosRecibo = [...new Set(reservas.map((r) => r.recibo_numero).filter((n) => n > 0))]
+
+  const { data: recibos, error: err2 } = await admin
+    .schema('cartera')
+    .from('t_recibo_caja')
+    .select('empresa, proyecto, serie, numero, fecha, monto, moneda, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, cobrador')
+    .eq('cuenta', cuenta)
+    .in('numero', numerosRecibo)
+  if (err2) throw new Error(err2.message)
+
+  // Composite key: empresa-proyecto-serie-numero
+  const reciboMap = new Map<string, NonNullable<typeof recibos>[number]>()
+  for (const r of recibos ?? []) {
+    reciboMap.set(`${r.empresa}-${r.proyecto}-${r.serie}-${r.numero}`, r)
+  }
+
+  return reservas.map((r) => {
+    const rc = reciboMap.get(`${r.empresa}-${r.proyecto}-${r.recibo_serie}-${r.recibo_numero}`)
+    return {
+      numero:           r.numero,
+      empresa:          r.empresa,
+      proyecto:         r.proyecto,
+      fase:             r.fase,
+      manzana:          r.manzana,
+      lote:             r.lote,
+      cliente:          r.cliente,
+      vendedor:         r.vendedor,
+      recibo_serie:     r.recibo_serie ?? '',
+      recibo_numero:    r.recibo_numero,
+      estado:           r.estado,
+      fecha:            rc?.fecha ?? '',
+      monto:            rc?.monto ?? 0,
+      moneda:           rc?.moneda ?? 'GTQ',
+      forma_pago:       rc?.forma_pago ?? 0,
+      banco:            rc?.banco ?? 0,
+      numero_cuenta:    rc?.numero_cuenta ?? '',
+      numero_documento: rc?.numero_documento ?? '',
+      cuenta_deposito:  rc?.cuenta_deposito ?? 0,
+      cobrador:         rc?.cobrador ?? 0,
+    }
+  })
+}
+
+// ─── Crear Reserva ────────────────────────────────────────────────────────────
+// Llama a la función PL/pgSQL cartera.fn_crear_reserva que ejecuta todo en una
+// sola transacción: t_reserva + t_recibo_caja + t_detalle_recibo_caja + t_lote.
+
+export type CreateReservaInput = {
+  empresa:           number
+  proyecto:          number
+  fase:              number
+  manzana:           string
+  lote:              string
+  cliente:           number
+  cliente_nombre:    string   // nombre del cliente para t_transaccion_bancaria
+  fase_nombre:       string   // nombre de la fase para t_transaccion_bancaria
+  vendedor:          number
+  cobrador:          number
+  serie_recibo:      string
+  recibo:            string   // vacío cuando recibo_automatico = true
+  recibo_automatico: boolean
+  fecha:             string
+  monto:             string   // string del input; se convierte a número aquí
+  forma_pago:        number
+  banco:             number
+  num_cuenta:        string
+  num_documento:     string
+  cuenta_bancaria:   number
+  moneda:            string   // moneda del lote
+}
+
+export type CreateReservaResult =
+  | { ok: true;  numero: number; recibo: number }
+  | { ok: false; error: string }
+
+export async function createReserva(
+  form: CreateReservaInput,
+  loteLastModified: string | undefined,
+): Promise<CreateReservaResult> {
+  const cuenta    = await getCuentaActiva()
+  const auditUser = await getAuditUser()
+  if (!auditUser.userId) return { ok: false, error: 'Usuario no autenticado.' }
+
+  const montoNum = parseFloat(form.monto.replace(',', '.'))
+  if (isNaN(montoNum) || montoNum <= 0)
+    return { ok: false, error: 'Monto inválido.' }
+
+  const reciboManual = form.recibo_automatico ? 0 : parseInt(form.recibo, 10)
+  if (!form.recibo_automatico && isNaN(reciboManual))
+    return { ok: false, error: 'Número de recibo inválido.' }
+
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .schema('cartera')
+    .rpc('fn_crear_reserva', {
+      p_cuenta:              cuenta,
+      p_empresa:             form.empresa,
+      p_proyecto:            form.proyecto,
+      p_fase:                form.fase,
+      p_manzana:             form.manzana,
+      p_lote:                form.lote,
+      p_cliente:             form.cliente,
+      p_vendedor:            form.vendedor,
+      p_cobrador:            form.cobrador,
+      p_serie:               form.serie_recibo,
+      p_recibo_automatico:   form.recibo_automatico ? 1 : 0,
+      p_recibo_manual:       reciboManual,
+      p_fecha:               form.fecha,
+      p_monto:               montoNum,
+      p_forma_pago:          form.forma_pago,
+      p_banco:               form.banco,
+      p_numero_cuenta:       form.num_cuenta,
+      p_numero_documento:    form.num_documento,
+      p_cuenta_deposito:     form.cuenta_bancaria,
+      p_moneda:              form.moneda,
+      p_agrego_usuario:      auditUser.userId,
+      p_lote_modifico_fecha: loteLastModified ?? '1900-01-01T00:00:00',
+      p_cliente_nombre:      form.cliente_nombre,
+      p_fase_nombre:         form.fase_nombre,
+    })
+
+  if (error) return { ok: false, error: error.message }
+
+  const result = data as { ok: boolean; error?: string; numero?: number; recibo?: number }
+  if (!result.ok) return { ok: false, error: result.error ?? 'Error desconocido.' }
+
+  return { ok: true, numero: result.numero!, recibo: result.recibo! }
 }

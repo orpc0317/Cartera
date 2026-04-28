@@ -129,6 +129,10 @@ export type CuentaBancariaForm = {
   activo: number
 }
 
+export type Moneda = {
+  codigo: string
+}
+
 export type Lote = {
   cuenta: string
   empresa: number
@@ -158,9 +162,42 @@ export type Lote = {
 
 export type LoteForm = Omit<Lote, 'cuenta' | 'promesa' | 'recibo_serie' | 'recibo_numero' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
 
+export type SerieFactura = {
+  empresa: number
+  proyecto: number
+  serie: string
+}
+
+export type SerieRecibo = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  serie: string
+  serie_factura: string | null
+  dias_fecha: number
+  correlativo: number
+  formato: number
+  predeterminado: number
+  recibo_automatico: number
+  activo: number
+  agrego_usuario?: string = {
+  empresa: number
+  proyecto: number
+  serie: string
+  serie_factura: string | null
+  dias_fecha: number
+  correlativo: number
+  formato: number
+  predeterminado: number
+  recibo_automatico: number
+  activo: number
+}
+
 // Estado derivado del lote
-export function getLoteEstado(lote: Lote): 'disponible' | 'con-promesa' {
-  return lote.promesa > 0 ? 'con-promesa' : 'disponible'
+export function getLoteEstado(lote: Lote): 'disponible' | 'reservado' | 'con-promesa' {
+  if (lote.promesa > 0) return 'con-promesa'
+  if (lote.recibo_numero > 0) return 'reservado'
+  return 'disponible'
 }
 
 export type Cliente = {
@@ -237,3 +274,21 @@ export type Cobrador = {
 }
 
 export type CobradorForm = Omit<Cobrador, 'cuenta' | 'userid' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+export type SerieRecibo = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  serie: string
+  serie_factura?: string | null
+  dias_fecha: number
+  correlativo: number
+  formato: number
+  predeterminado: number
+  recibo_automatico: number   // 1 = correlativo automático, 0 = usuario ingresa número
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}

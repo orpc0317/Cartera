@@ -1,4 +1,4 @@
-import { getLotesDisponibles } from '@/app/actions/lotes'
+import { getLotesDisponibles, getSeriesRecibo, getReservas } from '@/app/actions/lotes'
 import { getManzanas } from '@/app/actions/manzanas'
 import { getFases } from '@/app/actions/fases'
 import { getProyectos } from '@/app/actions/proyectos'
@@ -17,7 +17,8 @@ export default async function ReservasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [lotesDisponibles, manzanas, fases, proyectos, empresas, clientes, bancos, cuentasBancarias, vendedores, cobradores, permisos] = await Promise.all([
+  const [reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes, bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, permisos] = await Promise.all([
+    getReservas().catch((e: Error)         => { console.error('getReservas:', e.message);         return [] as Awaited<ReturnType<typeof getReservas>>         }),
     getLotesDisponibles().catch((e: Error) => { console.error('getLotesDisponibles:', e.message); return [] as Awaited<ReturnType<typeof getLotesDisponibles>> }),
     getManzanas().catch((e: Error)         => { console.error('getManzanas:', e.message);         return [] as Awaited<ReturnType<typeof getManzanas>>         }),
     getFases().catch((e: Error)            => { console.error('getFases:', e.message);            return [] as Awaited<ReturnType<typeof getFases>>            }),
@@ -28,11 +29,13 @@ export default async function ReservasPage() {
     getCuentasBancarias().catch((e: Error) => { console.error('getCuentasBancarias:', e.message); return [] as Awaited<ReturnType<typeof getCuentasBancarias>> }),
     getVendedores().catch((e: Error)       => { console.error('getVendedores:', e.message);       return [] as Awaited<ReturnType<typeof getVendedores>>       }),
     getCobradores().catch((e: Error)       => { console.error('getCobradores:', e.message);       return [] as Awaited<ReturnType<typeof getCobradores>>       }),
+    getSeriesRecibo().catch((e: Error)     => { console.error('getSeriesRecibo:', e.message);     return [] as Awaited<ReturnType<typeof getSeriesRecibo>>     }),
     getPermisosDetalle(PERMISOS.RES_OPE),
   ])
 
   return (
     <ReservasClient
+      reservasIniciales={reservasIniciales}
       lotesDisponibles={lotesDisponibles}
       manzanas={manzanas}
       fases={fases}
@@ -43,6 +46,7 @@ export default async function ReservasPage() {
       cuentasBancarias={cuentasBancarias}
       vendedores={vendedores}
       cobradores={cobradores}
+      seriesRecibo={seriesRecibo}
       puedeAgregar={permisos.agregar}
       userId={user?.id ?? ''}
     />

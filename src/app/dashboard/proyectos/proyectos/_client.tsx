@@ -888,7 +888,7 @@ export function ProyectosClient({
                         ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{proyecto.codigo}
+                      {proyecto.codigo}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
@@ -989,7 +989,7 @@ export function ProyectosClient({
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {empresaMap.get(viewTarget.empresa) ?? ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>

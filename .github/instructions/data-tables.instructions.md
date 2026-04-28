@@ -118,3 +118,68 @@ useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 5. Cell `switch`: explicit cases for nombre, pais, FK lookups, enums; geo codes  resolve to name
 6. Empty state with `search || hasActiveFilters` ternary
 7. Dropdown: Eye/Historial always; Eliminar only when supported
+8. CSV export: `exportCsv` + `Exportar CSV` button (see **CSV Export** section below)
+
+---
+
+## CSV Export
+
+Every CRUD table must include a **"Exportar CSV"** button (icon `Download`) in the toolbar, to the left of `ColumnManager`. It exports the **currently filtered rows** with **currently visible columns**.
+
+### What to export
+
+- Always include the sticky-left identifier column (e.g. `serie`, `codigo`) even if not in `ALL_COLUMNS`.
+- Include all columns currently visible in `ColumnManager`.
+- **Never export** regardless of visibility:
+  - `cuenta` — tenant identifier (security risk if file is shared)
+  - `agrego_usuario`, `modifico_usuario` — internal UUIDs
+  - The actions column (UI only)
+- `agrego_fecha` and `modifico_fecha` are safe to export if visible.
+
+### File name
+
+`<entity-slug>-YYYY-MM-DD.csv` — defined per screen in its spec. Example: `series-recibos-2026-01-15.csv`.
+
+### Implementation (copy verbatim, replace `Entity` and sticky column name)
+
+```ts
+// ── Module-level constants (outside component) ───────────────────────────
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+
+// COL_LABELS = { [key]: label } — built from ALL_COLUMNS + sticky column
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: '<sticky-key>', label: '<Sticky Label>' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+)
+
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
+
+function exportCsv(rows: Entity[], colPrefs: ColPref[]) {
+  const keys = ['<sticky-key>', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+    .filter((k) => !NEVER_EXPORT.has(k))
+  const headers = keys.map((k) => COL_LABELS[k] ?? k)
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Entity])).join(',')),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `<entity-slug>-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── In the toolbar (JSX) ─────────────────────────────────────────────────
+// Place to the LEFT of <ColumnManager />, inside the same flex container:
+<Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
+  <Download className="h-3.5 w-3.5" /> Exportar CSV
+</Button>
+```
+
+> `formatCsvCell` wraps values in double-quotes when they contain commas, newlines, or quotes — no external CSV library needed.

@@ -1,4 +1,4 @@
-import { getCuentasBancarias } from '@/app/actions/cuentas-bancarias'
+import { getCuentasBancarias, getMonedas } from '@/app/actions/cuentas-bancarias'
 import { getEmpresas } from '@/app/actions/empresas'
 import { getProyectos } from '@/app/actions/proyectos'
 import { getBancos } from '@/app/actions/bancos'
@@ -15,14 +15,16 @@ export default async function CuentasBancariasPage() {
   let empresas: Awaited<ReturnType<typeof getEmpresas>> = []
   let proyectos: Awaited<ReturnType<typeof getProyectos>> = []
   let bancos: Awaited<ReturnType<typeof getBancos>> = []
+  let monedas: Awaited<ReturnType<typeof getMonedas>> = []
   let permisos = { consultar: true, agregar: true, modificar: true, eliminar: true }
 
   try {
-    ;[data, empresas, proyectos, bancos, permisos] = await Promise.all([
+    ;[data, empresas, proyectos, bancos, monedas, permisos] = await Promise.all([
       getCuentasBancarias(),
       getEmpresas(),
       getProyectos(),
       getBancos(),
+      getMonedas(),
       getPermisosDetalle(PERMISOS.CUE_BAN),
     ])
   } catch {
@@ -35,6 +37,7 @@ export default async function CuentasBancariasPage() {
       empresas={empresas}
       proyectos={proyectos}
       bancos={bancos}
+      monedas={monedas}
       puedeAgregar={permisos.agregar}
       puedeModificar={permisos.modificar}
       puedeEliminar={permisos.eliminar}

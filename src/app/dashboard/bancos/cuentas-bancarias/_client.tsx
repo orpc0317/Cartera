@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Trash2, Plus, CreditCard, Search,
-  History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin,
+  History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,35 +39,18 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   createCuentaBancaria, updateCuentaBancaria, deleteCuentaBancaria,
 } from '@/app/actions/cuentas-bancarias'
-import type { CuentaBancaria, CuentaBancariaForm, Empresa, Proyecto, Banco } from '@/lib/types/proyectos'
+import type { CuentaBancaria, CuentaBancariaForm, Empresa, Proyecto, Banco, Moneda } from '@/lib/types/proyectos'
 
-// ─── Monedas (shared list) ─────────────────────────────────────────────────
+// ─── Moneda display map ────────────────────────────────────────────────────
 
-const CURRENCIES: { iso: string; name: string; flagIso: string }[] = [
-  { iso: 'ARS', name: 'Peso Argentino',       flagIso: 'AR' },
-  { iso: 'BOB', name: 'Boliviano',             flagIso: 'BO' },
-  { iso: 'BRL', name: 'Real Brasileño',        flagIso: 'BR' },
-  { iso: 'CAD', name: 'Dolar Canadiense',      flagIso: 'CA' },
-  { iso: 'CLP', name: 'Peso Chileno',          flagIso: 'CL' },
-  { iso: 'COP', name: 'Peso Colombiano',       flagIso: 'CO' },
-  { iso: 'CRC', name: 'Colon Costarricense',   flagIso: 'CR' },
-  { iso: 'CUP', name: 'Peso Cubano',           flagIso: 'CU' },
-  { iso: 'DOP', name: 'Peso Dominicano',       flagIso: 'DO' },
-  { iso: 'EUR', name: 'Euro',                  flagIso: 'EU' },
-  { iso: 'GBP', name: 'Libra Esterlina',       flagIso: 'GB' },
-  { iso: 'GTQ', name: 'Quetzal Guatemalteco',  flagIso: 'GT' },
-  { iso: 'HNL', name: 'Lempira Hondureno',     flagIso: 'HN' },
-  { iso: 'MXN', name: 'Peso Mexicano',         flagIso: 'MX' },
-  { iso: 'NIO', name: 'Cordoba Nicaraguense',  flagIso: 'NI' },
-  { iso: 'PAB', name: 'Balboa Panameno',       flagIso: 'PA' },
-  { iso: 'PEN', name: 'Sol Peruano',           flagIso: 'PE' },
-  { iso: 'PYG', name: 'Guarani Paraguayo',     flagIso: 'PY' },
-  { iso: 'SVC', name: 'Colon Salvadoreno',     flagIso: 'SV' },
-  { iso: 'USD', name: 'Dolar Estadounidense',  flagIso: 'US' },
-  { iso: 'UYU', name: 'Peso Uruguayo',         flagIso: 'UY' },
-  { iso: 'VES', name: 'Bolivar Venezolano',    flagIso: 'VE' },
-]
-const CURRENCY_MAP = new Map(CURRENCIES.map((c) => [c.iso, c]))
+const CURRENCY_FLAG_MAP = new Map<string, string>([
+  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
+  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
+  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
+  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
+  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
+  ['UYU', 'uy'], ['VES', 've'],
+])
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -182,6 +165,7 @@ export function CuentasBancariasClient({
   empresas,
   proyectos,
   bancos,
+  monedas,
   puedeAgregar,
   puedeModificar,
   puedeEliminar,
@@ -191,6 +175,7 @@ export function CuentasBancariasClient({
   empresas: Empresa[]
   proyectos: Proyecto[]
   bancos: Banco[]
+  monedas: Moneda[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -232,7 +217,7 @@ export function CuentasBancariasClient({
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)  ?? ''))].sort(), [initialData, empresaMap])
   const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
   const uniqueBancoNames    = useMemo(() => [...new Set(initialData.map((r) => bancoMap.get(r.banco)  ?? ''))].sort(), [initialData, bancoMap])
-  const uniqueMonedaLabels  = useMemo(() => [...new Set(initialData.map((r) => { const c = CURRENCY_MAP.get(r.moneda); return c ? `${c.iso} — ${c.name}` : r.moneda }))].sort(), [initialData])
+  const uniqueMonedaLabels  = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(), [initialData])
 
   // ─── Filtering pipeline ───────────────────────────────────────────────────
 
@@ -252,10 +237,7 @@ export function CuentasBancariasClient({
         if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa)  ?? '')
         if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
         if (col === 'banco')    return vals.has(bancoMap.get(r.banco)    ?? '')
-        if (col === 'moneda') {
-          const c = CURRENCY_MAP.get(r.moneda)
-          return vals.has(c ? `${c.iso} — ${c.name}` : r.moneda)
-        }
+        if (col === 'moneda') return vals.has(r.moneda)
         if (col === 'activo') return vals.has(r.activo === 1 ? 'Activo' : 'Inactivo')
         return vals.has(String(r[col as keyof CuentaBancaria] ?? ''))
       })
@@ -455,7 +437,10 @@ export function CuentasBancariasClient({
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
           <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
         </div>
       </div>
@@ -504,7 +489,7 @@ export function CuentasBancariasClient({
             ) : (
               filtered.map((cb, rowIdx) => {
                 const isActive = cursorIdx === rowIdx
-                const currency = CURRENCY_MAP.get(cb.moneda)
+                const flagIso = CURRENCY_FLAG_MAP.get(cb.moneda)
                 return (
                   <TableRow
                     key={`${cb.empresa}-${cb.proyecto}-${cb.codigo}`}
@@ -517,7 +502,7 @@ export function CuentasBancariasClient({
                         ? 'bg-cyan-50 dark:bg-cyan-950/30 border-l-[3px] border-l-cyan-600 text-cyan-700 dark:text-cyan-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{cb.codigo}
+                      {cb.codigo}
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
@@ -534,10 +519,10 @@ export function CuentasBancariasClient({
                         case 'moneda':
                           return (
                             <TableCell key="moneda" className="text-muted-foreground">
-                              {currency ? (
+                              {flagIso ? (
                                 <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${currency.flagIso.toLowerCase()}.png`} alt={currency.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {currency.iso}
+                                  <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  {cb.moneda}
                                 </span>
                               ) : cb.moneda || '—'}
                             </TableCell>
@@ -614,7 +599,7 @@ export function CuentasBancariasClient({
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {bancoMap.get(viewTarget.banco) ?? ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>
@@ -633,8 +618,14 @@ export function CuentasBancariasClient({
               {!isEditing && viewTarget ? (
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
 
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
@@ -647,12 +638,15 @@ export function CuentasBancariasClient({
                   <ViewField label="Numero Cuenta" value={viewTarget.numero} />
                   <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
                     <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-                    {(() => { const c = CURRENCY_MAP.get(viewTarget.moneda); return c ? (
+                    {(() => {
+                    const flagIso = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                    return (
                       <span className="flex items-center gap-1.5 text-sm font-medium">
-                        <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                        {c.iso} — {c.name}
+                        {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                        {viewTarget.moneda || '—'}
                       </span>
-                    ) : <span className="text-sm font-medium">{viewTarget.moneda || '—'}</span> })()}
+                    )
+                  })()}
                   </div>
                   <div className="flex items-center gap-2.5">
                     <Checkbox checked={viewTarget.activo === 1} disabled />
@@ -662,6 +656,11 @@ export function CuentasBancariasClient({
               ) : (
                 /* ── Edit / Create mode ── */
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
@@ -685,7 +684,7 @@ export function CuentasBancariasClient({
 
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Banco *</Label>
-                    <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))} disabled={!!viewTarget}>
+                    <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
                       <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {bancosFiltrados.length === 0
@@ -701,7 +700,7 @@ export function CuentasBancariasClient({
                       id="nombre"
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}
-                      placeholder="Ej: CUENTA OPERATIVA PRINCIPAL..."
+                      placeholder="Ej: cuenta operativa principal..."
                     />
                   </div>
                   <div className="grid gap-1">
@@ -719,25 +718,28 @@ export function CuentasBancariasClient({
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona moneda">
                           {(v: string) => {
-                            const c = CURRENCY_MAP.get(v)
-                            return c ? (
+                            const flagIso = CURRENCY_FLAG_MAP.get(v)
+                            return v ? (
                               <span className="flex items-center gap-1.5">
-                                <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                {c.iso}
+                                {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                {v}
                               </span>
                             ) : null
                           }}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        {CURRENCIES.map((c) => (
-                          <SelectItem key={c.iso} value={c.iso}>
-                            <span className="flex items-center gap-2">
-                              <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                              {c.iso} — {c.name}
-                            </span>
-                          </SelectItem>
-                        ))}
+                        {monedas.map((m) => {
+                          const flagIso = CURRENCY_FLAG_MAP.get(m.codigo)
+                          return (
+                            <SelectItem key={m.codigo} value={m.codigo}>
+                              <span className="flex items-center gap-2">
+                                {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                {m.codigo}
+                              </span>
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -747,7 +749,7 @@ export function CuentasBancariasClient({
                       checked={form.activo === 1}
                       onCheckedChange={(v: boolean) => setForm((p) => ({ ...p, activo: v ? 1 : 0 }))}
                     />
-                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Cuenta activa</Label>
+                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
                   </div>
                 </div>
               )}

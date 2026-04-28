@@ -603,7 +603,7 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                       ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-[3px] border-l-emerald-600 text-emerald-700 dark:text-emerald-400 font-semibold'
                       : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                   }`}>
-                    #{empresa.codigo}
+                    {empresa.codigo}
                   </TableCell>
                   {visibleCols.map((col) => {
                     switch (col.key) {
@@ -712,7 +712,7 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {viewTarget.razon_social || ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· #{viewTarget.codigo}</span>
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>

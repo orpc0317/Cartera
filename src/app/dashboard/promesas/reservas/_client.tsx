@@ -29,7 +29,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador } from '@/lib/types/proyectos'
+import { Badge } from '@/components/ui/badge'
+import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador, SerieRecibo } from '@/lib/types/proyectos'
+import { createReserva, type ReservaRow } from '@/app/actions/lotes'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
 
@@ -55,6 +57,8 @@ type ReservaForm = {
   cliente:         number
   fecha:           string   // ISO date string YYYY-MM-DD
   monto:           string   // string para el input, se convertirá a número al guardar
+  serie_recibo:     string
+  recibo:           string   // número de recibo; vacío si la serie es automática
   forma_pago:      number   // 1=Efectivo 2=Cheque 3=Depósito 4=Transferencia
   banco:           number   // solo Cheque
   num_cuenta:      string   // solo Cheque
@@ -75,6 +79,8 @@ const EMPTY_FORM: ReservaForm = {
   cliente:         0,
   fecha:           today,
   monto:           '',
+  serie_recibo:     '',
+  recibo:           '',
   forma_pago:      0,
   banco:           0,
   num_cuenta:      '',
@@ -82,6 +88,26 @@ const EMPTY_FORM: ReservaForm = {
   num_documento:   '',
   vendedor:        0,
   cobrador:        0,
+}
+
+// ─── Catálogo de monedas (ISO → país para bandera) ─────────────────────────
+
+const CURRENCIES: { iso: string; flagIso: string }[] = [
+  { iso: 'ARS', flagIso: 'AR' }, { iso: 'BOB', flagIso: 'BO' }, { iso: 'BRL', flagIso: 'BR' },
+  { iso: 'CAD', flagIso: 'CA' }, { iso: 'CLP', flagIso: 'CL' }, { iso: 'COP', flagIso: 'CO' },
+  { iso: 'CRC', flagIso: 'CR' }, { iso: 'CUP', flagIso: 'CU' }, { iso: 'DOP', flagIso: 'DO' },
+  { iso: 'EUR', flagIso: 'EU' }, { iso: 'GBP', flagIso: 'GB' }, { iso: 'GTQ', flagIso: 'GT' },
+  { iso: 'HNL', flagIso: 'HN' }, { iso: 'MXN', flagIso: 'MX' }, { iso: 'NIO', flagIso: 'NI' },
+  { iso: 'PAB', flagIso: 'PA' }, { iso: 'PEN', flagIso: 'PE' }, { iso: 'PYG', flagIso: 'PY' },
+  { iso: 'SVC', flagIso: 'SV' }, { iso: 'USD', flagIso: 'US' }, { iso: 'UYU', flagIso: 'UY' },
+  { iso: 'VES', flagIso: 'VE' },
+]
+
+const RESERVA_ESTADOS: Record<number, { label: string; cls: string }> = {
+  1:  { label: 'Abierta',    cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100' },
+  2:  { label: 'Promesa',    cls: 'bg-sky-100     text-sky-700     border-sky-200     hover:bg-sky-100'     },
+  3:  { label: 'Devolucion', cls: 'bg-amber-100   text-amber-700   border-amber-200   hover:bg-amber-100'   },
+  99: { label: 'Anulado',    cls: 'bg-red-100     text-red-700     border-red-200     hover:bg-red-100'     },
 }
 
 // ─── Columnas ──────────────────────────────────────────────────────────────
@@ -92,8 +118,10 @@ const ALL_COLUMNS: ColDef[] = [
   { key: '__manzana',  label: 'Manzana',     defaultVisible: true  },
   { key: 'lote',       label: 'Lote',        defaultVisible: true  },
   { key: '__cliente',  label: 'Cliente',     defaultVisible: true  },
+  { key: '__vendedor', label: 'Vendedor',    defaultVisible: false },
   { key: 'fecha',      label: 'Fecha',       defaultVisible: true  },
   { key: 'monto',      label: 'Monto',       defaultVisible: true  },
+  { key: '__estado',   label: 'Estado',      defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -300,6 +328,8 @@ type Reserva = {
   cliente:         number
   fecha:           string
   monto:           number
+  moneda:          string
+  estado:          number
   forma_pago:      number
   banco:           number
   num_cuenta:      string
@@ -307,11 +337,14 @@ type Reserva = {
   num_documento:   string
   vendedor:        number
   cobrador:        number
+  serie_recibo:    string
+  recibo:          string
 }
 
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
+  reservasIniciales:  ReservaRow[]
   lotesDisponibles:  Lote[]
   manzanas:          Manzana[]
   fases:             Fase[]
@@ -322,25 +355,91 @@ interface Props {
   cuentasBancarias:  CuentaBancaria[]
   vendedores:        Vendedor[]
   cobradores:        Cobrador[]
+  seriesRecibo:      SerieRecibo[]
   puedeAgregar:      boolean
   userId:            string
 }
 
 // ─── Componente principal ──────────────────────────────────────────────────
 
+// Devuelve la serie predeterminada de una lista ya filtrada por empresa+proyecto
+function getDefaultSerie(series: SerieRecibo[]): string {
+  if (series.length === 0) return ''
+  // Comparación numérica explícita por si Supabase devuelve smallint como string
+  return (series.find((s) => Number(s.predeterminado) === 1) ?? series[0]).serie
+}
+
+function filterSeries(all: SerieRecibo[], empresa: number, proyecto: number): SerieRecibo[] {
+  return all.filter(
+    (s) => Number(s.activo) === 1
+        && ((s.empresa === empresa && s.proyecto === proyecto)
+         || (s.empresa === 0 && s.proyecto === 0)),
+  )
+}
+
+/** Calcula la primera fase disponible (que tenga lotes disponibles) para empresa+proyecto */
+function firstFaseId(lotes: Lote[], fasesList: Fase[], empresa: number, proyecto: number): number {
+  const ids = new Set(lotes.filter((l) => l.empresa === empresa && l.proyecto === proyecto).map((l) => l.fase))
+  return fasesList.find((f) => f.empresa === empresa && f.proyecto === proyecto && ids.has(f.codigo))?.codigo ?? 0
+}
+
+/** Calcula la primera manzana disponible para empresa+proyecto+fase */
+function firstManzanaCodigo(lotes: Lote[], manzanasList: Manzana[], empresa: number, proyecto: number, fase: number): string {
+  const ids = new Set(lotes.filter((l) => l.empresa === empresa && l.proyecto === proyecto && l.fase === fase).map((l) => l.manzana))
+  return manzanasList.find((m) => m.empresa === empresa && m.proyecto === proyecto && m.fase === fase && ids.has(m.codigo))?.codigo ?? ''
+}
+
+/** Calcula el primer lote disponible para empresa+proyecto+fase+manzana */
+function firstLoteCodigo(lotes: Lote[], empresa: number, proyecto: number, fase: number, manzana: string): string {
+  return lotes.find((l) => l.empresa === empresa && l.proyecto === proyecto && l.fase === fase && l.manzana === manzana)?.codigo ?? ''
+}
+
+/** Mapea ReservaRow (BD) al tipo local Reserva */
+function mapReservas(rows: ReservaRow[]): Reserva[] {
+  return rows.map((r) => ({
+    id:              String(r.numero),
+    empresa:         r.empresa,
+    proyecto:        r.proyecto,
+    fase:            r.fase,
+    manzana:         r.manzana,
+    lote:            r.lote,
+    cliente:         r.cliente,
+    fecha:           r.fecha,
+    monto:           r.monto,
+    moneda:          r.moneda,
+    estado:          r.estado,
+    forma_pago:      r.forma_pago,
+    banco:           r.banco,
+    num_cuenta:      r.numero_cuenta,
+    cuenta_bancaria: r.cuenta_deposito,
+    num_documento:   r.numero_documento,
+    vendedor:        r.vendedor,
+    cobrador:        r.cobrador,
+    serie_recibo:    r.recibo_serie,
+    recibo:          String(r.recibo_numero),
+  }))
+}
+
 export function ReservasClient({
-  lotesDisponibles, manzanas, fases, proyectos, empresas, clientes,
-  bancos, cuentasBancarias, vendedores, cobradores, puedeAgregar, userId,
+  reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes,
+  bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, puedeAgregar, userId,
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
 
-  // ── Estado de tabla (temporal, sin persistencia — reservas futuras vendrán de BD) ──
-  const [reservas, setReservas] = useState<Reserva[]>([])
+  // ── Estado de tabla ─────────────────────────────────────────────────────────────────
+  const [reservas, setReservas] = useState<Reserva[]>(() => mapReservas(reservasIniciales))
+
+  useEffect(() => {
+    setReservas(mapReservas(reservasIniciales))
+  }, [reservasIniciales])
 
   // ── Búsqueda y filtros ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
   const [colFilters, setColFilters] = useState<ColFilters>({})
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [vendedorFiltro, setVendedorFiltro] = useState(0)
 
   // ── Diálogo ───────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -349,6 +448,9 @@ export function ReservasClient({
 
   // ── Formulario ────────────────────────────────────────────────────────
   const [form, setForm] = useState<ReservaForm>(EMPTY_FORM)
+  // Control de concurrencia optimista: modifico_fecha del lote seleccionado
+  const [loteLastModified, setLoteLastModified] = useState<string | undefined>(undefined)
+  const [isSaving,         setIsSaving]         = useState(false)
 
   // ── Mapas FK ──────────────────────────────────────────────────────────
   const empresaMap          = useMemo(() => new Map(empresas.map((e)  => [e.codigo, e.nombre])), [empresas])
@@ -401,21 +503,33 @@ export function ReservasClient({
     [lotesEnManzana, form.lote],
   )
 
+  // Capturar modifico_fecha del lote elegido para control de concurrencia optimista.
+  // Se limpia automáticamente cuando lote se resetea por cascada (empresa/proyecto/fase/manzana).
+  useEffect(() => {
+    if (!form.lote) { setLoteLastModified(undefined); return }
+    const lote = lotesDisponibles.find(
+      (l) => l.empresa === form.empresa && l.proyecto === form.proyecto &&
+             l.fase === form.fase && l.manzana === form.manzana && l.codigo === form.lote,
+    )
+    setLoteLastModified(lote?.modifico_fecha ?? undefined)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.lote, form.empresa, form.proyecto, form.fase, form.manzana])
+
   // Clientes filtrados por proyecto
   const clientesPorProyecto = useMemo(
     () => clientes.filter((c) => c.proyecto === form.proyecto),
     [clientes, form.proyecto],
   )
 
-  // Vendedores filtrados por empresa + proyecto
+  // Vendedores activos filtrados por empresa + proyecto
   const vendedoresPorProyecto = useMemo(
-    () => vendedores.filter((v) => v.empresa === form.empresa && v.proyecto === form.proyecto),
+    () => vendedores.filter((v) => v.activo === 1 && v.empresa === form.empresa && v.proyecto === form.proyecto),
     [vendedores, form.empresa, form.proyecto],
   )
 
-  // Cobradores filtrados por empresa + proyecto
+  // Cobradores activos filtrados por empresa + proyecto
   const cobradoresPorProyecto = useMemo(
-    () => cobradores.filter((c) => c.empresa === form.empresa && c.proyecto === form.proyecto),
+    () => cobradores.filter((c) => c.activo === 1 && c.empresa === form.empresa && c.proyecto === form.proyecto),
     [cobradores, form.empresa, form.proyecto],
   )
 
@@ -431,6 +545,20 @@ export function ReservasClient({
     [cuentasBancarias, form.empresa, form.proyecto],
   )
 
+  // Series de recibo para el proyecto seleccionado (ordenadas alfabético, ya vienen así del servidor).
+  // Incluye series globales (empresa=0, proyecto=0) como fallback.
+  const seriesReciboPorProyecto = useMemo(
+    () => filterSeries(seriesRecibo, form.empresa, form.proyecto),
+    [seriesRecibo, form.empresa, form.proyecto],
+  )
+
+  // Serie de recibo actualmente seleccionada (para leer recibo_automatico)
+  const serieSeleccionada = useMemo(
+    () => seriesReciboPorProyecto.find((s) => s.serie === form.serie_recibo) ?? null,
+    [seriesReciboPorProyecto, form.serie_recibo],
+  )
+  const reciboAutomatico = serieSeleccionada?.recibo_automatico === 1
+
   // ── Función de actualización del formulario ───────────────────────────
 
   function f(key: keyof ReservaForm, value: string | number) {
@@ -438,37 +566,60 @@ export function ReservasClient({
       const next = { ...prev, [key]: value }
       // Cascada: al cambiar empresa, resetear desde proyecto hacia abajo
       if (key === 'empresa') {
-        const firstP = proyectos.find((p) => p.empresa === Number(value))
-        next.proyecto        = firstP?.codigo ?? 0
-        next.fase            = 0
-        next.manzana         = ''
-        next.lote            = ''
+        const emp  = Number(value)
+        const proy = proyectos.find((p) => p.empresa === emp)?.codigo ?? 0
+        const fase = firstFaseId(lotesDisponibles, fases, emp, proy)
+        const manz = firstManzanaCodigo(lotesDisponibles, manzanas, emp, proy, fase)
+        next.proyecto        = proy
+        next.fase            = fase
+        next.manzana         = manz
+        next.lote            = firstLoteCodigo(lotesDisponibles, emp, proy, fase, manz)
+        next.vendedor        = vendedores.find((v) => v.empresa === emp && v.proyecto === proy)?.codigo ?? 0
+        next.cobrador        = cobradores.find((c) => c.empresa === emp && c.proyecto === proy)?.codigo ?? 0
         next.banco           = 0
         next.cuenta_bancaria = 0
+        next.serie_recibo    = getDefaultSerie(filterSeries(seriesRecibo, emp, proy))
       }
       // Al cambiar proyecto, resetear fase → manzana → lote
       if (key === 'proyecto') {
-        next.fase            = 0
-        next.manzana         = ''
-        next.lote            = ''
+        const emp  = prev.empresa
+        const proy = Number(value)
+        const fase = firstFaseId(lotesDisponibles, fases, emp, proy)
+        const manz = firstManzanaCodigo(lotesDisponibles, manzanas, emp, proy, fase)
+        next.fase            = fase
+        next.manzana         = manz
+        next.lote            = firstLoteCodigo(lotesDisponibles, emp, proy, fase, manz)
+        next.vendedor        = vendedores.find((v) => v.empresa === emp && v.proyecto === proy)?.codigo ?? 0
+        next.cobrador        = cobradores.find((c) => c.empresa === emp && c.proyecto === proy)?.codigo ?? 0
         next.banco           = 0
         next.cuenta_bancaria = 0
+        next.serie_recibo    = getDefaultSerie(filterSeries(seriesRecibo, emp, proy))
       }
-      // Al cambiar fase, resetear manzana → lote
+      // Al cambiar fase, pre-seleccionar primera manzana y primer lote
       if (key === 'fase') {
-        next.manzana = ''
-        next.lote    = ''
+        const manz = firstManzanaCodigo(lotesDisponibles, manzanas, prev.empresa, prev.proyecto, Number(value))
+        next.manzana = manz
+        next.lote    = firstLoteCodigo(lotesDisponibles, prev.empresa, prev.proyecto, Number(value), manz)
       }
-      // Al cambiar manzana, resetear lote
+      // Al cambiar manzana, pre-seleccionar primer lote
       if (key === 'manzana') {
-        next.lote = ''
+        next.lote = firstLoteCodigo(lotesDisponibles, prev.empresa, prev.proyecto, prev.fase, String(value))
       }
-      // Al cambiar forma_pago, resetear campos relacionados
+      // Al cambiar forma_pago, pre-seleccionar primer banco / primera cuenta bancaria según aplique
       if (key === 'forma_pago') {
-        next.banco           = 0
+        const fp = Number(value)
         next.num_cuenta      = ''
-        next.cuenta_bancaria = 0
         next.num_documento   = ''
+        next.banco           = fp === 2
+          ? (bancos.find((b) => b.empresa === prev.empresa && b.proyecto === prev.proyecto)?.codigo ?? 0)
+          : 0
+        next.cuenta_bancaria = (fp === 3 || fp === 4)
+          ? (cuentasBancarias.find((cb) => cb.activo === 1 && cb.empresa === prev.empresa && cb.proyecto === prev.proyecto)?.codigo ?? 0)
+          : 0
+      }
+      // Al cambiar serie_recibo, limpiar el número de recibo manual
+      if (key === 'serie_recibo') {
+        next.recibo = ''
       }
       return next
     })
@@ -493,19 +644,23 @@ export function ReservasClient({
     return proyNombre.includes(q) || clienteNombre.includes(q) || r.lote.toLowerCase().includes(q) || r.fecha.includes(q)
   }), [reservas, search, proyectoMap, clienteMap])
 
-  const filtered = useMemo(() => afterSearch.filter((r) =>
-    Object.entries(colFilters).every(([col, vals]) => {
+  const filtered = useMemo(() => afterSearch.filter((r) => {
+    if (fechaDesde && r.fecha < fechaDesde) return false
+    if (fechaHasta && r.fecha > fechaHasta) return false
+    if (vendedorFiltro !== 0 && r.vendedor !== vendedorFiltro) return false
+    return Object.entries(colFilters).every(([col, vals]) => {
       if (col === '__proyecto') return vals.has(String(r.proyecto))
       if (col === '__fase')     return vals.has(String(r.fase))
       if (col === '__manzana')  return vals.has(r.manzana)
       if (col === '__cliente')  return vals.has(String(r.cliente))
+      if (col === '__vendedor') return vals.has(String(r.vendedor))
       if (col === 'lote')       return vals.has(r.lote)
       if (col === 'fecha')      return vals.has(r.fecha)
       return true
     })
-  ), [afterSearch, colFilters])
+  }), [afterSearch, colFilters, fechaDesde, fechaHasta, vendedorFiltro])
 
-  const hasActiveFilters = Object.keys(colFilters).length > 0
+  const hasActiveFilters = Object.keys(colFilters).length > 0 || !!fechaDesde || !!fechaHasta || vendedorFiltro !== 0
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `reservas_cols_v1_${userId}`
@@ -562,16 +717,32 @@ export function ReservasClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtered, cursorIdx])
 
-  useEffect(() => { setCursorIdx(null) }, [search, colFilters])
+  useEffect(() => { setCursorIdx(null) }, [search, colFilters, fechaDesde, fechaHasta, vendedorFiltro])
 
   // ── Acciones de diálogo ───────────────────────────────────────────────
 
   function openCreate() {
     setViewTarget(null)
     setIsEditing(true)
-    const firstEmpresa = empresas[0]?.codigo ?? 0
-    const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto })
+    const emp  = empresas[0]?.codigo ?? 0
+    const proy = proyectos.find((p) => p.empresa === emp)?.codigo ?? 0
+    const fase = firstFaseId(lotesDisponibles, fases, emp, proy)
+    const manz = firstManzanaCodigo(lotesDisponibles, manzanas, emp, proy, fase)
+    const lote = firstLoteCodigo(lotesDisponibles, emp, proy, fase, manz)
+    const vend = vendedores.find((v) => v.empresa === emp && v.proyecto === proy)?.codigo ?? 0
+    const cobr = cobradores.find((c) => c.empresa === emp && c.proyecto === proy)?.codigo ?? 0
+    const fpago = Number(Object.keys(FORMAS_PAGO)[0])
+    const banco1 = fpago === 2 ? (bancos.find((b) => b.empresa === emp && b.proyecto === proy)?.codigo ?? 0) : 0
+    const cb1   = (fpago === 3 || fpago === 4) ? (cuentasBancarias.find((cb) => cb.activo === 1 && cb.empresa === emp && cb.proyecto === proy)?.codigo ?? 0) : 0
+    const series = filterSeries(seriesRecibo, emp, proy)
+    setForm({
+      ...EMPTY_FORM,
+      empresa: emp, proyecto: proy,
+      fase, manzana: manz, lote,
+      vendedor: vend, cobrador: cobr,
+      forma_pago: fpago, banco: banco1, cuenta_bancaria: cb1,
+      serie_recibo: getDefaultSerie(series),
+    })
     setDialogOpen(true)
   }
 
@@ -591,9 +762,9 @@ export function ReservasClient({
     }
   }
 
-  // ── Guardar (UI solamente — sin llamada a BD aún) ──────────────────────
+  // ── Guardar ────────────────────────────────────────────────────────────────
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.empresa)  { toast.error('Selecciona una empresa.');  return }
     if (!form.proyecto) { toast.error('Selecciona un proyecto.');  return }
     if (!form.fase)     { toast.error('Selecciona una fase.');     return }
@@ -604,6 +775,12 @@ export function ReservasClient({
     if (!form.fecha)      { toast.error('La fecha es requerida.');                     return }
     const montoNum = parseFloat(form.monto.replace(',', '.'))
     if (isNaN(montoNum) || montoNum <= 0) { toast.error('El monto debe ser mayor a 0.'); return }
+    if (loteSeleccionado && montoNum > loteSeleccionado.valor) {
+      toast.error(`El monto no puede ser mayor al valor del lote (${loteSeleccionado.moneda} ${fmt(loteSeleccionado.valor)}).`)
+      return
+    }
+    if (!form.serie_recibo) { toast.error('Selecciona la serie de recibo.');           return }
+    if (!reciboAutomatico && !form.recibo.trim()) { toast.error('Ingresa el número de recibo.'); return }
     if (!form.forma_pago) { toast.error('Selecciona la forma de pago.');               return }
     if (form.forma_pago === 2 && !form.banco)           { toast.error('Selecciona el banco.');            return }
     if (form.forma_pago === 2 && !form.num_cuenta.trim()) { toast.error('Ingresa el número de cuenta.');  return }
@@ -613,22 +790,53 @@ export function ReservasClient({
     if (!form.cobrador) { toast.error('Selecciona un cobrador.'); return }
 
     if (viewTarget) {
-      // Edición (local)
+      // Edición — pendiente de implementar persistencia
       setReservas((prev) => prev.map((r) => r.id === viewTarget.id
         ? { ...r, ...form, monto: montoNum }
         : r,
       ))
       toast.success('Reserva actualizada.')
-    } else {
-      // Creación (local)
-      const nueva: Reserva = {
-        id: crypto.randomUUID(),
-        ...form,
-        monto: montoNum,
-      }
-      setReservas((prev) => [nueva, ...prev])
-      toast.success('Reserva creada.')
+      setDialogOpen(false)
+      return
     }
+
+    // ── Creación con persistencia en BD ────────────────────────────────────
+    setIsSaving(true)
+    const result = await createReserva(
+      {
+        empresa:          form.empresa,
+        proyecto:         form.proyecto,
+        fase:             form.fase,
+        manzana:          form.manzana,
+        lote:             form.lote,
+        cliente:          form.cliente,
+        cliente_nombre:   clienteMap.get(form.cliente) ?? '',
+        fase_nombre:      faseMap.get(form.fase) ?? '',
+        vendedor:         form.vendedor,
+        cobrador:         form.cobrador,
+        serie_recibo:     form.serie_recibo,
+        recibo:           form.recibo,
+        recibo_automatico: reciboAutomatico,
+        fecha:            form.fecha,
+        monto:            form.monto,
+        forma_pago:       form.forma_pago,
+        banco:            form.banco,
+        num_cuenta:       form.num_cuenta,
+        num_documento:    form.num_documento,
+        cuenta_bancaria:  form.cuenta_bancaria,
+        moneda:           loteSeleccionado?.moneda ?? '',
+      },
+      loteLastModified,
+    )
+    setIsSaving(false)
+
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+
+    toast.success('Reserva grabada correctamente.')
+    router.refresh()
     setDialogOpen(false)
   }
 
@@ -677,13 +885,47 @@ export function ReservasClient({
           />
         </div>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta(''); setVendedorFiltro(0) }} className="gap-1.5 text-muted-foreground">
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
         <div className="ml-auto">
           <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
         </div>
+      </div>
+
+      {/* ── Filtros rápidos: fecha + vendedor ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Desde</span>
+          <Input
+            type="date"
+            value={fechaDesde}
+            onChange={(e) => setFechaDesde(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Hasta</span>
+          <Input
+            type="date"
+            value={fechaHasta}
+            onChange={(e) => setFechaHasta(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+        </div>
+        <Select value={vendedorFiltro === 0 ? '' : String(vendedorFiltro)} onValueChange={(v) => setVendedorFiltro(v === '' ? 0 : Number(v))}>
+          <SelectTrigger className="h-8 w-52 text-xs">
+            <SelectValue placeholder="Todos los vendedores">
+              {(v: string) => v ? (vendedorMap.get(Number(v)) ?? v) : null}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {vendedores.map((v) => (
+              <SelectItem key={v.codigo} value={String(v.codigo)}>{v.nombre}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* ── Tabla ── */}
@@ -725,6 +967,21 @@ export function ReservasClient({
                         onChange={(labels) => {
                           const byLabel = new Map(clientes.map((c) => [c.nombre, String(c.codigo)]))
                           setColFilter('__cliente', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__vendedor') {
+                  return (
+                    <TableHead key="__vendedor">
+                      <ColumnFilter
+                        label="Vendedor"
+                        values={[...new Set(reservas.map((r) => vendedorMap.get(r.vendedor) ?? `#${r.vendedor}`))].sort()}
+                        active={new Set([...(colFilters['__vendedor'] ?? new Set())].map((k) => vendedorMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(vendedores.map((v) => [v.nombre, String(v.codigo)]))
+                          setColFilter('__vendedor', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
                     </TableHead>
@@ -783,10 +1040,38 @@ export function ReservasClient({
                           return <TableCell key="lote" className="font-mono text-xs text-muted-foreground">{r.lote}</TableCell>
                         case '__cliente':
                           return <TableCell key="__cliente" className="text-muted-foreground">{clienteMap.get(r.cliente) ?? `#${r.cliente}`}</TableCell>
+                        case '__vendedor':
+                          return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(r.vendedor) ?? `#${r.vendedor}`}</TableCell>
                         case 'fecha':
                           return <TableCell key="fecha" className="text-muted-foreground">{r.fecha}</TableCell>
-                        case 'monto':
-                          return <TableCell key="monto" className="text-right font-mono text-sm">{fmt(r.monto)}</TableCell>
+                        case 'monto': {
+                          const curr = CURRENCIES.find((c) => c.iso === r.moneda)
+                          return (
+                            <TableCell key="monto" className="w-32 text-right font-mono text-sm">
+                              <span className="inline-flex items-center justify-end gap-1.5">
+                                {curr && (
+                                  <img
+                                    src={`https://flagcdn.com/w20/${curr.flagIso.toLowerCase()}.png`}
+                                    width={20} height={14}
+                                    alt={r.moneda}
+                                    className="rounded-[2px] shrink-0"
+                                  />
+                                )}
+                                {fmt(r.monto)}
+                              </span>
+                            </TableCell>
+                          )
+                        }
+                        case '__estado': {
+                          const est = RESERVA_ESTADOS[r.estado]
+                          return (
+                            <TableCell key="__estado">
+                              {est
+                                ? <Badge className={est.cls}>{est.label}</Badge>
+                                : <Badge variant="outline">{r.estado}</Badge>}
+                            </TableCell>
+                          )
+                        }
                         default:
                           return <TableCell key={col.key} className="text-muted-foreground">{String(r[col.key as keyof Reserva] ?? '—')}</TableCell>
                       }
@@ -794,10 +1079,8 @@ export function ReservasClient({
 
                     <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button title="Acciones" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none opacity-0 group-hover:opacity-100">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
+                        <DropdownMenuTrigger title="Acciones" className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openView(r)}>
@@ -851,8 +1134,12 @@ export function ReservasClient({
               {/* ── Vista ─────────────────────────────────────────── */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)}  />
-                  <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto)} />
+                  <div className="col-span-2">
+                    <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)}  />
+                  </div>
+                  <div className="col-span-2">
+                    <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto)} />
+                  </div>
 
                   <SectionDivider label="Ubicacion del Lote" />
                   <ViewField label="Fase"    value={faseMap.get(viewTarget.fase)} />
@@ -1101,25 +1388,64 @@ export function ReservasClient({
                   {/* ── Forma Pago ───────────────────────────────── */}
                   <SectionDivider label="Forma Pago" />
 
-                  {/* Tipo de pago */}
-                  <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-forma-pago" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                      Forma de Pago *
-                    </Label>
-                    <Select
-                      value={form.forma_pago ? String(form.forma_pago) : ''}
-                      onValueChange={(v) => f('forma_pago', Number(v))}
-                    >
-                      <SelectTrigger id="res-forma-pago" className="w-full">
-                        <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(FORMAS_PAGO).map(([k, label]) => (
-                          <SelectItem key={k} value={k}>{label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Serie Recibo + Recibo + Forma Pago en la misma fila (3 columnas) */}
+                  <div className="col-span-2 grid grid-cols-3 gap-4">
+
+                    {/* Serie Recibo */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="res-serie-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        Serie Recibo *
+                      </Label>
+                      <Select
+                        value={form.serie_recibo}
+                        onValueChange={(v) => f('serie_recibo', v)}
+                      >
+                        <SelectTrigger id="res-serie-recibo" className="w-full">
+                          <SelectValue placeholder={seriesReciboPorProyecto.length === 0 ? 'Sin series' : 'Selecciona serie'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {seriesReciboPorProyecto.map((s) => (
+                            <SelectItem key={s.serie} value={s.serie}>{s.serie}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Recibo */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="res-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        Recibo{!reciboAutomatico && ' *'}
+                      </Label>
+                      <Input
+                        id="res-recibo"
+                        placeholder={reciboAutomatico ? 'Automático' : 'No. recibo'}
+                        disabled={reciboAutomatico}
+                        value={form.recibo}
+                        onChange={(e) => f('recibo', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Forma Pago */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="res-forma-pago" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        Forma Pago *
+                      </Label>
+                      <Select
+                        value={form.forma_pago ? String(form.forma_pago) : ''}
+                        onValueChange={(v) => f('forma_pago', Number(v))}
+                      >
+                        <SelectTrigger id="res-forma-pago" className="w-full">
+                          <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FORMAS_PAGO).map(([k, label]) => (
+                            <SelectItem key={k} value={k}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                  </div>{/* fin fila Serie/Recibo/FormaPago */}
 
                   {/* Cheque: Banco */}
                   {form.forma_pago === 2 && (
@@ -1243,8 +1569,10 @@ export function ReservasClient({
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
-                <Button onClick={handleSave}>Guardar</Button>
+                <Button variant="outline" onClick={cancelEdit} disabled={isSaving}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                <Button onClick={() => void handleSave()} disabled={isSaving}>
+                  {isSaving ? 'Guardando…' : 'Guardar'}
+                </Button>
               </>
             )}
           </DialogFooter>

@@ -33,6 +33,29 @@ const [data, empresas, permisos] = await Promise.all([
 
 One failing call must not zero out all data on the page.
 
+### Permission props pattern
+
+Every `page.tsx` must resolve `getPermisosDetalle(PERMISOS.<KEY>)` and pass the result as three boolean props to the Client Component:
+
+```ts
+// page.tsx
+<EntityClient
+  ...
+  puedeAgregar={permisos.agregar}
+  puedeModificar={permisos.modificar}
+  puedeEliminar={permisos.eliminar}
+/>
+```
+
+```ts
+// _client.tsx props interface
+puedeAgregar:  boolean  // controls "New" button visibility
+puedeModificar: boolean // controls Edit button in modal footer; changes dropdown label "Ver / Editar" vs "Ver"
+puedeEliminar:  boolean // controls Delete option in row actions dropdown
+```
+
+The spec for each screen **must** document this mapping in its `ACCIONES` section so it is clear which DB permission gates which UI element. Each spec's `ACCIONES` list must annotate each mutable operation with its required permission (e.g. `— requiere puedeModificar`).
+
 ---
 
 ## Optimistic concurrency control (modifico_fecha)
