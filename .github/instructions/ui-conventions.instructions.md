@@ -7,19 +7,56 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 
 ## Accent color per module
 
-| Module     | Token pair                  |
-|------------|-----------------------------|
-| Empresas   | `emerald-100 / emerald-600` |
-| Proyectos  | `sky-100 / sky-600`         |
-| Fases      | `violet-100 / violet-600`   |
-| Manzanas   | `amber-100 / amber-600`     |
-| Lotes      | `rose-100 / rose-600`       |
-| Clientes     | `indigo-100 / indigo-600`   |
-| Supervisores | `purple-100 / purple-600`   |
-| Supervisores | `purple-100 / purple-600` |
-| Serie Recibos | `cyan-100 / cyan-600` |
+> **IMPORTANTE — tabla maestra de colores:** esta es la unica fuente de verdad para colores de acento.
+> Al generar una pantalla nueva, la IA debe:
+> 1. Leer esta tabla para determinar que colores ya estan en uso.
+> 2. Elegir un tono de Tailwind que no figure en la columna "Token pair".
+> 3. Agregar la fila del nuevo modulo a esta tabla al final de los archivos generados.
+
+| Module           | Token pair                    |
+|------------------|-------------------------------|
+| Empresas         | `emerald-100 / emerald-600`   |
+| Proyectos        | `sky-100 / sky-600`           |
+| Fases            | `violet-100 / violet-600`     |
+| Manzanas         | `amber-100 / amber-600`       |
+| Lotes            | `rose-100 / rose-600`         |
+| Clientes         | `indigo-100 / indigo-600`     |
+| Supervisores     | `purple-100 / purple-600`     |
+| Cobradores       | `orange-100 / orange-600`     |
+| Bancos           | `teal-100 / teal-600`         |
+| Cuentas Bancarias | `cyan-100 / cyan-600`        |
+| Serie Recibos    | `cyan-100 / cyan-600`         |
+| Coordinadores    | `blue-100 / blue-600`         |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
+
+---
+
+## Module icon per screen
+
+> **IMPORTANTE — tabla maestra de iconos:** esta es la unica fuente de verdad para iconos de modulo.
+> Al generar una pantalla nueva, la IA debe:
+> 1. Leer esta tabla para verificar que el icono elegido no este ya en uso por otro modulo.
+> 2. Si el icono propuesto ya aparece en la tabla, elegir una alternativa semanticamente equivalente.
+> 3. Verificar que el icono exista en https://lucide.dev/icons/ antes de usarlo.
+> 4. Agregar la fila del nuevo modulo a esta tabla al final de los archivos generados.
+>
+> **Nota:** `MapPin` es el icono estandar de la pestana **General** en todos los modales — no es un icono de modulo.
+
+| Module            | Lucide icon      |
+|-------------------|------------------|
+| Empresas          | `Building2`      |
+| Proyectos         | `FolderKanban`   |
+| Fases             | `Layers`         |
+| Manzanas          | `Grid3x3`        |
+| Lotes             | `MapPin`         |
+| Clientes          | `Users`          |
+| Supervisores      | `UserCog`        |
+| Cobradores        | `Banknote`       |
+| Bancos            | `Landmark`       |
+| Cuentas Bancarias | `CreditCard`     |
+| Serie Recibos     | `Receipt`        |
+| Coordinadores     | `ClipboardList`  |
 
 ---
 

@@ -10,20 +10,14 @@
 | MODULO         | Bancos                                                       |
 | TABLA_BD       | `cartera.t_cuenta_bancaria`                                  |
 | RUTA           | `/dashboard/bancos/cuentas-bancarias`                        |
-| PERMISO        | `CUE_BAN` — agregar en `src/lib/permisos.ts` si no existe   |
-| COLOR_ACENTO   | `cyan`                                                       |
-| ICONO_LUCIDE   | `CreditCard`                                                 |
+| PERMISO        | `CUE_BAN` — agregar en `src/lib/permisos.ts` si no existe    |
+| COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
+| ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
-> - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", consultar
->   `ui-conventions.instructions.md` para ver los colores ya asignados por modulo y elegir un tono de Tailwind que no este en uso.
-> Colores ya ocupados al momento de escribir este prompt:
->   emerald (Empresas), sky (Proyectos), violet (Fases), amber (Manzanas), rose (Lotes), indigo (Clientes), purple (Supervisores), teal (Bancos), cyan (Cuentas Bancarias / Cuentas Cobrar).
->   Siempre agregar la fila del nuevo modulo en `ui-conventions.instructions.md` al terminar (validar si ya existe).
-> - `ICONO_LUCIDE`: si se omite o se indica "elegir segun contexto", la IA selecciona el icono
->   Lucide mas representativo basandose en el nombre y descripcion de la pantalla. Verificar en
->   https://lucide.dev/icons/ que el icono exista antes de aceptar la sugerencia.
+> - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", leer la tabla **"Accent color per module"** en `.github/instructions/ui-conventions.instructions.md` para ver los colores ya asignados y elegir un tono de Tailwind que no este en uso. Si este modulo esta en la lista utilizar ese color. Al terminar de generar los archivos, agregar la fila del nuevo modulo a esa tabla (validar que no exista ya).
+> - `ICONO_LUCIDE`: si se especifica, usarlo tal cual. Si se omite o indica "elegir segun contexto", leer la tabla **"Module icon per screen"** en `.github/instructions/ui-conventions.instructions.md`, elegir el icono Lucide mas representativo que no este ya en uso, verificar que exista en https://lucide.dev/icons/ y agregarlo a la tabla al terminar de generar los archivos. Si este modulo ya existe en la lista utilizar ese icono y no agregarlo a la tabla.
 
 ---
 
@@ -90,15 +84,15 @@ getEmpresas()   -> prop 'empresas'   -> alimenta el Select de empresa
 getProyectos()  -> prop 'proyectos'  -> alimenta el Select de proyecto (filtrado por empresa)
 getBancos()     -> prop 'bancos'     -> alimenta el Select de banco (filtrado por empresa+proyecto)
 getMonedas()    -> prop 'monedas'    -> alimenta el Select de moneda
-```
 
 Cascade triple: empresa → proyecto → banco.
-- Al cambiar empresa: resetear proyecto al primero disponible, resetear banco a 0.
-- Al cambiar proyecto: resetear banco a 0.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0, resetear banco al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Al cambiar proyecto: resetear banco al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
 
-> Nota: `getEmpresas`, `getProyectos` y `getBancos` aplican `.eq('cuenta', cuenta)` internamente.
-> `getMonedas` no filtra por cuenta — es un catalogo global.
-> El campo `cuenta` no aparece en ningún Select ni prop visible.
+```
+
+> `getEmpresas`, `getProyectos` y `getBancos` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
+> `getMonedas` **no** filtra por cuenta — es un catálogo global compartido entre todas las cuentas.
 
 **Enriquecimiento de display para moneda:** `t_moneda` solo tiene `codigo` (varchar PK).
 Ver regla global en `ui-conventions.instructions.md` → sección **Moneda display rules**.
@@ -117,19 +111,12 @@ Resumen: siempre bandera + codigo ISO (ej: 🇬🇹 GTQ). El mapa de banderas se
 
 ### Mapeo de permisos a UI
 
-| Permiso (`t_menu_usuario`) | Efecto en UI |
-|---|---|
-| `agregar`    | Muestra/oculta el boton "Nueva Cuenta" en la barra de herramientas |
-| `modificar`  | Muestra/oculta el boton "Editar" en el footer del modal; cambia el label del menu a "Ver / Editar" vs "Ver" |
-| `eliminar`   | Muestra/oculta la opcion "Eliminar" en el dropdown de acciones de cada fila |
+Ver regla general en `crud-screens.instructions.md` → sección **Permission mapping to UI**.
 
-Obtener permisos en `page.tsx`:
 ```ts
 const permisos = await getPermisosDetalle(PERMISOS.CUE_BAN)
 // pasar como props: puedeAgregar={permisos.agregar} puedeModificar={permisos.modificar} puedeEliminar={permisos.eliminar}
 ```
-
----
 
 ## EXPORTACION
 
@@ -183,14 +170,14 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 Pestana: General  (icono: MapPin)
   [SectionDivider "IDENTIFICACION"]
     VIEW MODE:
-      - empresa        (full — ViewField)
-      - proyecto       (full — ViewField)
+      - empresa        (full — ViewField; label: "Empresa")
+      - proyecto       (full — ViewField; label: "Proyecto")
       - codigo         (full — ViewField; label: "Codigo"; valor: N con font-mono)
     NUEVO / EDIT MODE:
       - empresa        (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
       - proyecto       (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
       -- codigo no aparece en nuevo ni en edit --
-  [SectionDivider "DATOS DE LA CUENTA"]
+  [SectionDivider "GENERAL"]
     - banco          (view + edit; full — ViewField en view; Select en edit; editable en edit; bancosFiltrados por empresa+proyecto del viewTarget)
     - nombre         (view + edit; full — requerido; label: "Nombre Cuenta")
     - numero         (view + edit; half — requerido; label: "Numero Cuenta")

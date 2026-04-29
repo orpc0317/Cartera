@@ -1,4 +1,4 @@
-# CRUD: Bancos
+# CRUD: Coordinadores
 
 ---
 
@@ -6,11 +6,11 @@
 
 | Campo          | Valor                                                        |
 |----------------|--------------------------------------------------------------|
-| NOMBRE         | Bancos                                                       |
-| MODULO         | Bancos                                                       |
-| TABLA_BD       | `cartera.t_banco`                                            |
-| RUTA           | `/dashboard/bancos/bancos`                                   |
-| PERMISO        | `BAN_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
+| NOMBRE         | Coordinadores                                                |
+| MODULO         | Promesas                                                     |
+| TABLA_BD       | `cartera.t_coordinador`                                      |
+| RUTA           | `/dashboard/promesas/coordinadores`                          |
+| PERMISO        | `COO_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
 
@@ -23,32 +23,37 @@
 
 ## DESCRIPCION
 
-Pantalla para dar mantenimiento al catalogo de Bancos.
-Cada proyecto puede trabajar con varios bancos.
+Pantalla para dar mantenimiento al catalogo de Coordinadores.
+Cada proyecto puede trabajar con varios coordinadores.
+Los coordinadores agrupan vendedores.
 
 ---
 
 ## ENTIDAD
 
-Mapeo exacto del schema `cartera.t_banco`. Los tipos deben coincidir con la BD.
+Mapeo exacto del schema `cartera.t_coordinador`. Los tipos deben coincidir con la BD.
 
 ```
-Banco {
+Coordinador {
   cuenta:           varchar       -- gestionado por sistema (cuenta activa del usuario)
   empresa:          number        -- FK -> cartera.t_empresa.codigo
   proyecto:         number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
+  supervisor:       number        -- FK -> cartera.t_supervisor.codigo, filtrado por empresa+proyecto
   codigo:           number        -- parte del PK, gestionado por la base de datos.
   nombre:           string        -- campo obligatorio
+  activo:           smallint      -- 1 = activo, 0 = inactivo
   agrego_usuario:   uuid          -- gestionado por sistema
   agrego_fecha:     timestamptz   -- gestionado por sistema
   modifico_usuario: uuid          -- gestionado por sistema
   modifico_fecha:   timestamptz   -- token de concurrencia optimista
 }
 
-BancoForm {              	-- campos editables por el usuario
-  empresa:        number	-- readonly tras creacion (disabled en edit mode)
-  proyecto:       number	-- readonly tras creacion (disabled en edit mode)
-  nombre:         string | not null
+CoordinadorForm {          	-- campos editables por el usuario
+  empresa:        number	  -- readonly tras creacion (disabled en edit mode)
+  proyecto:       number	  -- readonly tras creacion (disabled en edit mode)
+  nombre:         string   | not null
+  supervisor:     number    -- editable; obligatorio
+  activo:         smallint | 1 = activo, 0 = inactivo
 }
 
 ```
@@ -69,13 +74,14 @@ FK que deben cargarse en `page.tsx` y pasarse como props al client component:
 ```
 getEmpresas()       -> prop 'empresas'       -> alimenta el Select de empresa
 getProyectos()      -> prop 'proyectos'      -> alimenta el Select de proyecto (filtrado por empresa)
+getSupervisores()     -> prop 'supervisores' -> alimenta el Select de supervisores (filtrado por empresa+proyecto)
 
-Cascade doble: empresa → proyecto.
-- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+Cascade triple: empresa → proyecto → supervisor.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0, resetear supervisor al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Al cambiar proyecto: resetear supervisor al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
 
 ```
-
-> `getEmpresas` y `getProyectos` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
+> `getEmpresas`, `getProyectos` y `getSupervisores` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
 
 ---
 
@@ -83,7 +89,7 @@ Cascade doble: empresa → proyecto.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `nombre`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `nombre`, `supervisor`, `activo`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
@@ -93,7 +99,7 @@ Cascade doble: empresa → proyecto.
 Ver regla general en `crud-screens.instructions.md` → sección **Permission mapping to UI**.
 
 ```ts
-const permisos = await getPermisosDetalle(PERMISOS.BAN_CAT)
+const permisos = await getPermisosDetalle(PERMISOS.COO_CAT)
 // pasar como props: puedeAgregar={permisos.agregar} puedeModificar={permisos.modificar} puedeEliminar={permisos.eliminar}
 
 ```
@@ -102,7 +108,7 @@ const permisos = await getPermisosDetalle(PERMISOS.BAN_CAT)
 
 Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 
-**Nombre de archivo:** `bancos-YYYY-MM-DD.csv`
+**Nombre de archivo:** `coordinadores-YYYY-MM-DD.csv`
 
 **Columna sticky izquierda a incluir siempre:** `codigo` (label: `"Codigo"`).
 
@@ -124,13 +130,15 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 > Solo las columnas del selector pueden ocultarse.
 
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
-`STORAGE_KEY = 'bancos_cols_v1_${userId}'`
+`STORAGE_KEY = 'coordinadores_cols_v1_${userId}'`
 
 | key            | label           | defaultVisible |
 |----------------|-----------------|----------------|
 | empresa        | Empresa         | false          |
 | proyecto       | Proyecto        | true           |
 | nombre         | Nombre          | true           |
+| supervisor     | Supervisor      | false          |
+| activo         | Activo          | true           |
 
 ---
 
@@ -145,13 +153,21 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 ```
 Pestana: General  (icono: MapPin)
   [SectionDivider "IDENTIFICACION"]
-    - empresa        (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - proyecto       (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - codigo          (view only; full)
+    VIEW MODE:
+      - empresa        (full — ViewField; label: "Empresa")
+      - proyecto       (full — ViewField; label: "Proyecto")
+      - codigo         (full — ViewField; label: "Codigo"; valor: N con font-mono)
+    NUEVO / EDIT MODE:
+      - empresa        (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
+      - proyecto       (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
+      -- codigo no aparece en nuevo ni en edit --
   [SectionDivider "GENERAL"]
-    - nombre         (view + edit; full; requerido)
-
+    - supervisor     (view + edit; full — ViewField en view; label: "Supervisor"; Select en edit; editable en edit; supervisoresFiltrados por empresa+proyecto activos en el formulario)
+    - nombre         (view + edit; full — requerido; label: "Nombre")
+    - activo         (view + edit; full — Checkbox 0/1; label: "Activo")
 ```
+
+> **Nota activo en view mode:** renderizar como `<Checkbox checked={...} disabled />` con label a la derecha (no usar la card muted de otros checkboxes en esta pantalla).
 
 > Si se necesitan mas pestanas, agregar bloques con el mismo formato:
 > ```
@@ -169,30 +185,30 @@ Pestana: General  (icono: MapPin)
 2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT
    con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los bancos del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
+   contra todos los coordinadores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
    (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres
    similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"`
    y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
-4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Banco".
+4. Mostrar advertencia si `proyectos.length === 0` deshabilitar el boton "Nuevo Coordinador".
 
 ---
 
 ## VALIDACIONES_BACKEND
 
-- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un banco con ese nombre en este proyecto.'`
+- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un coordinador con ese nombre en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_cuenta_bancaria` con el mismo `(cuenta, empresa, proyecto, banco)`. Si existen -> `'No se puede eliminar este banco porque tiene cuentas bancarias asociadas.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_recibo_caja` con el mismo `(cuenta, empresa, proyecto, banco)`. Si existen -> `'No se puede eliminar este banco porque tiene recibos de caja asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_vendedor` con el mismo `(cuenta, empresa, proyecto, coordinador)`. Si existen -> `'No se puede eliminar este coordinador porque tiene vendedores asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
 
 ---
 
 ## UI_ESPECIFICO
 
-- Page header: icono elegido sobre `bg-{acento}-100`, color icono `text-{acento}-700`.
-- Modal gradient header: `from-{acento}-50/70 to-transparent`.
-- Active row: `bg-{acento}-50 dark:bg-{acento}-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-{acento}-600 text-{acento}-700`.
-- Sticky acciones (derecho, activo): `bg-{acento}-50 dark:bg-{acento}-950/30`.
+- Page header: icono elegido sobre `bg-blue-100`, color icono `text-blue-700`.
+- Modal gradient header: `from-blue-50/70 to-transparent`.
+- Active row: `bg-blue-50 dark:bg-blue-950/30`.
+- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-blue-600 text-blue-700`.
+- Sticky acciones (derecho, activo): `bg-blue-50 dark:bg-blue-950/30`.
+- Columna `activo` en tabla: badge `bg-emerald-100 text-emerald-700` para Activo, `bg-muted text-muted-foreground` para Inactivo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -200,8 +216,9 @@ Pestana: General  (icono: MapPin)
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa (ver patron en `cuentas-cobrar/series-recibos/_client.tsx`).
+- Cascade empresa -> proyecto + supervisor: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa (0 si no hay ninguno) **y** resetear `supervisor` al primer supervisor disponible para ese proyecto (0 si no hay ninguno).
+- Cascade proyecto -> supervisor: al cambiar proyecto en `f()`, resetear `supervisor` al primer supervisor disponible de ese proyecto, y si no hubiera uno disponible resetear en blanco con valor 0.
+- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa y primer supervisor de ese proyecto (ver patron en `cuentas-cobrar/series-recibos/_client.tsx`).
 
 ---
 
@@ -210,7 +227,7 @@ Pestana: General  (icono: MapPin)
 No requiere RPC ni queries especiales. Lectura directa:
 
 ```ts
-admin.schema('cartera').from('t_banco')
+admin.schema('cartera').from('t_coordinador')
   .select('*').eq('cuenta', cuenta)
   .order('nombre')
 ```
@@ -230,14 +247,14 @@ admin.schema('cartera').from('t_banco')
 
 Exactamente tres archivos, en este orden:
 
-1. `src/app/actions/bancos.ts`
+1. `src/app/actions/coordinadores.ts`
    Funciones: `getCuentaActiva` (privada), `getAuditUser` (privada), `writeAudit` (privada),
-   `getBanco`, `createBanco`, `updateBanco`, `deleteBanco`.
+   `getCoordinadores`, `createCoordinador`, `updateCoordinador`, `deleteCoordinador`.
 
-2. `src/app/dashboard/bancos/bancos/page.tsx`
+2. `src/app/dashboard/promesas/coordinadores/page.tsx`
    Server Component. Usar `Promise.all` con per-call `.catch()` segun patron de `server-actions.instructions.md`.
 
-3. `src/app/dashboard/bancos/bancos/_client.tsx`
+3. `src/app/dashboard/promesas/coordinadores/_client.tsx`
    Client Component completo: tabla con ColumnManager + ColumnFilter + teclado,
    Dialog CRUD (view/create/edit), AlertDialog de eliminacion, AuditLogDialog.
 

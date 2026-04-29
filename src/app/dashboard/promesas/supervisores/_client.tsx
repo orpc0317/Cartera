@@ -50,6 +50,7 @@ type ColPref = { key: string; visible: boolean }
 type ColFilters = Record<string, Set<string>>
 
 const ALL_COLUMNS: ColDef[] = [
+  { key: '__empresa',  label: 'Empresa',  defaultVisible: false },
   { key: '__proyecto', label: 'Proyecto', defaultVisible: true  },
   { key: 'nombre',    label: 'Nombre',   defaultVisible: true  },
   { key: '__activo',  label: 'Activo',   defaultVisible: true  },
@@ -74,6 +75,16 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
       <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+    </div>
+  )
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="col-span-2 flex items-center gap-2 pt-1">
+      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
+      <div className="flex-1 border-t border-primary/30" />
     </div>
   )
 }
@@ -207,6 +218,7 @@ export function SupervisoresClient({
     Object.entries(colFilters).every(([col, vals]) => {
       if (vals.size === 0) return true
       if (col === '__activo') return vals.has(String(s.activo))
+      if (col === '__empresa') return vals.has(empresaMap.get(s.empresa) ?? '')
       if (col === '__proyecto') return vals.has(proyectoMap.get(s.proyecto) ?? '')
       return vals.has(String(s[col as keyof Supervisor] ?? ''))
     })
@@ -404,11 +416,19 @@ export function SupervisoresClient({
             <p className="text-sm text-muted-foreground">Administra los supervisores por proyecto</p>
           </div>
         </div>
-        <Button onClick={openCreate} disabled={!puedeAgregar} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nuevo Supervisor
-        </Button>
+        {puedeAgregar && (
+          <Button onClick={openCreate} className="gap-2" disabled={proyectos.length === 0}>
+            <Plus className="h-4 w-4" />
+            Nuevo Supervisor
+          </Button>
+        )}
       </div>
+
+      {proyectos.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Primero crea proyectos antes de agregar supervisores.
+        </div>
+      )}
 
       {/* ── Búsqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
@@ -454,6 +474,21 @@ export function SupervisoresClient({
             <TableRow className="bg-muted/30">
               <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
               {visibleCols.map((col) => {
+                if (col.key === '__empresa') {
+                  return (
+                    <TableHead key="__empresa">
+                      <ColumnFilter
+                        label="Empresa"
+                        values={[...new Set(initialData.map((s) => empresaMap.get(s.empresa) ?? `#${s.empresa}`))].sort()}
+                        active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                          setColFilter('__empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
                 if (col.key === '__proyecto') {
                   return (
                     <TableHead key="__proyecto">
@@ -529,6 +564,13 @@ export function SupervisoresClient({
 
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case '__empresa':
+                          return (
+                            <TableCell key="__empresa" className="text-muted-foreground">
+                              {empresaMap.get(supervisor.empresa) ?? `#${supervisor.empresa}`}
+                            </TableCell>
+                          )
+
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
@@ -543,10 +585,10 @@ export function SupervisoresClient({
                           return (
                             <TableCell key="__activo">
                               <Badge
-                                variant={supervisor.activo === 1 ? 'default' : 'secondary'}
+                                variant="outline"
                                 className={supervisor.activo === 1
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-normal border-0'
-                                  : 'font-normal'
+                                  ? 'bg-emerald-100 text-emerald-700 font-normal border-0'
+                                  : 'bg-muted text-muted-foreground font-normal border-0'
                                 }
                               >
                                 {ACTIVO_LABELS[supervisor.activo] ?? `#${supervisor.activo}`}
@@ -615,7 +657,7 @@ export function SupervisoresClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[32rem] max-h-[90vh] overflow-hidden">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
 
           {/* Header */}
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-purple-50/70 to-transparent border-b border-border/50 shrink-0">
@@ -654,6 +696,7 @@ export function SupervisoresClient({
               {/* ── Vista ── */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
+                  <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2">
                     <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
                   </div>
@@ -661,27 +704,23 @@ export function SupervisoresClient({
                     <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Nombre Supervisor" value={viewTarget.nombre} />
+                    <ViewField label="Codigo" value={String(viewTarget.codigo)} />
                   </div>
+                  <SectionDivider label="GENERAL" />
                   <div className="col-span-2">
-                    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
-                      <Badge
-                        variant={viewTarget.activo === 1 ? 'default' : 'secondary'}
-                        className={viewTarget.activo === 1
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-normal border-0'
-                          : 'font-normal'
-                        }
-                      >
-                        {ACTIVO_LABELS[viewTarget.activo] ?? `#${viewTarget.activo}`}
-                      </Badge>
-                    </div>
+                    <ViewField label="Nombre" value={viewTarget.nombre} />
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 px-1">
+                    <Checkbox checked={viewTarget.activo === 1} disabled />
+                    <span className="text-[13px] font-medium text-foreground">Activo</span>
                   </div>
                 </div>
 
               ) : (
               /* ── Edición / Creación ── */
               <div className="grid grid-cols-2 gap-4">
+
+                <SectionDivider label="IDENTIFICACION" />
 
                 <div className="col-span-2 grid gap-1">
                   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
@@ -711,23 +750,20 @@ export function SupervisoresClient({
                   </Select>
                 </div>
 
+                <SectionDivider label="GENERAL" />
+
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Supervisor *</Label>
+                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
                   <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del supervisor" />
                 </div>
 
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
-                  <Select value={String(form.activo)} onValueChange={(v) => f('activo', Number(v))}>
-                    <SelectTrigger id="activo" className="w-full">
-                      <SelectValue>{ACTIVO_LABELS[form.activo] ?? `#${form.activo}`}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ACTIVO_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="col-span-2 flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                  <Checkbox
+                    id="activo"
+                    checked={form.activo === 1}
+                    onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
+                  />
+                  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
                 </div>
 
               </div>
@@ -741,14 +777,14 @@ export function SupervisoresClient({
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
                 {puedeModificar && (
-                  <Button onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                  <Button onClick={() => setIsEditing(true)} className="gap-2">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
+                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
                 <Button onClick={handleSave} disabled={isPending}>
                   {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>

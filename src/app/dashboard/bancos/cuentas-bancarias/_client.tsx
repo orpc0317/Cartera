@@ -629,7 +629,7 @@ export function CuentasBancariasClient({
 
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Datos de la Cuenta</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
 
@@ -678,7 +678,7 @@ export function CuentasBancariasClient({
 
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Datos de la Cuenta</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
 

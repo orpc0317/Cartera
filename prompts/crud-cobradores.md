@@ -1,4 +1,4 @@
-# CRUD: Bancos
+# CRUD: Cobradores
 
 ---
 
@@ -6,11 +6,11 @@
 
 | Campo          | Valor                                                        |
 |----------------|--------------------------------------------------------------|
-| NOMBRE         | Bancos                                                       |
-| MODULO         | Bancos                                                       |
-| TABLA_BD       | `cartera.t_banco`                                            |
-| RUTA           | `/dashboard/bancos/bancos`                                   |
-| PERMISO        | `BAN_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
+| NOMBRE         | Cobradores                                                   |
+| MODULO         | Promesas                                                     |
+| TABLA_BD       | `cartera.t_cobrador`                                         |
+| RUTA           | `/dashboard/promesas/cobradores`                             |
+| PERMISO        | `COB_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
 
@@ -23,32 +23,34 @@
 
 ## DESCRIPCION
 
-Pantalla para dar mantenimiento al catalogo de Bancos.
-Cada proyecto puede trabajar con varios bancos.
+Pantalla para dar mantenimiento al catalogo de Cobradores.
+Cada proyecto puede trabajar con varios cobradores, estos seran asociados al momento de registrar pagos.
 
 ---
 
 ## ENTIDAD
 
-Mapeo exacto del schema `cartera.t_banco`. Los tipos deben coincidir con la BD.
+Mapeo exacto del schema `cartera.t_cobrador`. Los tipos deben coincidir con la BD.
 
 ```
-Banco {
+Cobrador {
   cuenta:           varchar       -- gestionado por sistema (cuenta activa del usuario)
   empresa:          number        -- FK -> cartera.t_empresa.codigo
   proyecto:         number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
   codigo:           number        -- parte del PK, gestionado por la base de datos.
   nombre:           string        -- campo obligatorio
+  activo:           smallint      -- 1 = activo, 0 = inactivo
   agrego_usuario:   uuid          -- gestionado por sistema
   agrego_fecha:     timestamptz   -- gestionado por sistema
   modifico_usuario: uuid          -- gestionado por sistema
   modifico_fecha:   timestamptz   -- token de concurrencia optimista
 }
 
-BancoForm {              	-- campos editables por el usuario
-  empresa:        number	-- readonly tras creacion (disabled en edit mode)
-  proyecto:       number	-- readonly tras creacion (disabled en edit mode)
-  nombre:         string | not null
+CobradorForm {              	-- campos editables por el usuario
+  empresa:        number	    -- readonly tras creacion (disabled en edit mode)
+  proyecto:       number	    -- readonly tras creacion (disabled en edit mode)
+  nombre:         string    | not null
+  activo:         smallint  | 1 = activo, 0 = inactivo
 }
 
 ```
@@ -83,7 +85,7 @@ Cascade doble: empresa → proyecto.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `nombre`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `nombre`, `activo`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
@@ -93,16 +95,15 @@ Cascade doble: empresa → proyecto.
 Ver regla general en `crud-screens.instructions.md` → sección **Permission mapping to UI**.
 
 ```ts
-const permisos = await getPermisosDetalle(PERMISOS.BAN_CAT)
+const permisos = await getPermisosDetalle(PERMISOS.COB_CAT)
 // pasar como props: puedeAgregar={permisos.agregar} puedeModificar={permisos.modificar} puedeEliminar={permisos.eliminar}
-
 ```
 
 ## EXPORTACION
 
 Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 
-**Nombre de archivo:** `bancos-YYYY-MM-DD.csv`
+**Nombre de archivo:** `cobradores-YYYY-MM-DD.csv`
 
 **Columna sticky izquierda a incluir siempre:** `codigo` (label: `"Codigo"`).
 
@@ -124,13 +125,14 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 > Solo las columnas del selector pueden ocultarse.
 
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
-`STORAGE_KEY = 'bancos_cols_v1_${userId}'`
+`STORAGE_KEY = 'cobradores_cols_v1_${userId}'`
 
 | key            | label           | defaultVisible |
 |----------------|-----------------|----------------|
 | empresa        | Empresa         | false          |
 | proyecto       | Proyecto        | true           |
 | nombre         | Nombre          | true           |
+| activo         | Activo          | true           |
 
 ---
 
@@ -145,13 +147,21 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 ```
 Pestana: General  (icono: MapPin)
   [SectionDivider "IDENTIFICACION"]
-    - empresa        (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - proyecto       (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - codigo          (view only; full)
+    VIEW MODE:
+      - empresa        (full — ViewField; label: "Empresa")
+      - proyecto       (full — ViewField; label: "Proyecto")
+      - codigo         (full — ViewField; label: "Codigo"; valor: N con font-mono)
+    NUEVO / EDIT MODE:
+      - empresa        (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
+      - proyecto       (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
+      -- codigo no aparece en nuevo ni en edit --
   [SectionDivider "GENERAL"]
-    - nombre         (view + edit; full; requerido)
+    - nombre         (view + edit; full — requerido; label: "Nombre")
+    - activo         (view + edit; full — Checkbox 0/1; label: "Activo")
 
 ```
+> **Nota activo en view mode:** renderizar como `<Checkbox checked={...} disabled />` con label
+> a la derecha (no usar la card muted de otros checkboxes en esta pantalla).
 
 > Si se necesitan mas pestanas, agregar bloques con el mismo formato:
 > ```
@@ -169,30 +179,30 @@ Pestana: General  (icono: MapPin)
 2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT
    con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los bancos del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
+   contra todos los cobradores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
    (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres
    similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"`
    y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
-4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Banco".
+4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Cobrador".
 
 ---
 
 ## VALIDACIONES_BACKEND
 
-- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un banco con ese nombre en este proyecto.'`
+- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un cobrador con ese nombre en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_cuenta_bancaria` con el mismo `(cuenta, empresa, proyecto, banco)`. Si existen -> `'No se puede eliminar este banco porque tiene cuentas bancarias asociadas.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_recibo_caja` con el mismo `(cuenta, empresa, proyecto, banco)`. Si existen -> `'No se puede eliminar este banco porque tiene recibos de caja asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_recibo_caja` con el mismo `(cuenta, empresa, proyecto, cobrador)`. Si existen -> `'No se puede eliminar este cobrador porque tiene recibos de caja asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
 
 ---
 
 ## UI_ESPECIFICO
 
-- Page header: icono elegido sobre `bg-{acento}-100`, color icono `text-{acento}-700`.
-- Modal gradient header: `from-{acento}-50/70 to-transparent`.
-- Active row: `bg-{acento}-50 dark:bg-{acento}-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-{acento}-600 text-{acento}-700`.
-- Sticky acciones (derecho, activo): `bg-{acento}-50 dark:bg-{acento}-950/30`.
+- Page header: icono elegido sobre `bg-orange-100`, color icono `text-orange-700`.
+- Modal gradient header: `from-orange-50/70 to-transparent`.
+- Active row: `bg-orange-50 dark:bg-orange-950/30`.
+- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-orange-600 text-orange-700`.
+- Sticky acciones (derecho, activo): `bg-orange-50 dark:bg-orange-950/30`.
+- Columna `activo` en tabla: badge `bg-emerald-100 text-emerald-700` para Activo, `bg-muted text-muted-foreground` para Inactivo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -210,7 +220,7 @@ Pestana: General  (icono: MapPin)
 No requiere RPC ni queries especiales. Lectura directa:
 
 ```ts
-admin.schema('cartera').from('t_banco')
+admin.schema('cartera').from('t_cobrador')
   .select('*').eq('cuenta', cuenta)
   .order('nombre')
 ```
@@ -230,14 +240,14 @@ admin.schema('cartera').from('t_banco')
 
 Exactamente tres archivos, en este orden:
 
-1. `src/app/actions/bancos.ts`
+1. `src/app/actions/cobradores.ts`
    Funciones: `getCuentaActiva` (privada), `getAuditUser` (privada), `writeAudit` (privada),
-   `getBanco`, `createBanco`, `updateBanco`, `deleteBanco`.
+   `getCobradores`, `createCobrador`, `updateCobrador`, `deleteCobrador`.
 
-2. `src/app/dashboard/bancos/bancos/page.tsx`
+2. `src/app/dashboard/promesas/cobradores/page.tsx`
    Server Component. Usar `Promise.all` con per-call `.catch()` segun patron de `server-actions.instructions.md`.
 
-3. `src/app/dashboard/bancos/bancos/_client.tsx`
+3. `src/app/dashboard/promesas/cobradores/_client.tsx`
    Client Component completo: tabla con ColumnManager + ColumnFilter + teclado,
    Dialog CRUD (view/create/edit), AlertDialog de eliminacion, AuditLogDialog.
 

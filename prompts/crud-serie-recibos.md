@@ -16,14 +16,8 @@
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
-> - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", consultar
->   `ui-conventions.instructions.md` para ver los colores ya asignados por modulo y elegir un tono de Tailwind que no este en uso. 
-> Colores ya ocupados al momento de escribir este prompt:
->   emerald (Empresas), sky (Proyectos), violet (Fases), amber (Manzanas), rose  (Lotes), indigo (Clientes), purple (Supervisores), teal (Bancos), cyan (Cuentas Cobrar).
->   Siempre agregar la fila del nuevo modulo en `ui-conventions.instructions.md` al terminar.
-> - `ICONO_LUCIDE`: si se omite o se indica "elegir segun contexto", la IA selecciona el icono
->   Lucide mas representativo basandose en el nombre y descripcion de la pantalla. Verificar en
->   https://lucide.dev/icons/ que el icono exista antes de aceptar la sugerencia.
+> - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", leer la tabla **"Accent color per module"** en `.github/instructions/ui-conventions.instructions.md` para ver los colores ya asignados y elegir un tono de Tailwind que no este en uso. Si este modulo esta en la lista utilizar ese color. Al terminar de generar los archivos, agregar la fila del nuevo modulo a esa tabla (validar que no exista ya).
+> - `ICONO_LUCIDE`: si se especifica, usarlo tal cual. Si se omite o indica "elegir segun contexto", leer la tabla **"Module icon per screen"** en `.github/instructions/ui-conventions.instructions.md`, elegir el icono Lucide mas representativo que no este ya en uso, verificar que exista en https://lucide.dev/icons/ y agregarlo a la tabla al terminar de generar los archivos. Si este modulo ya existe en la lista utilizar ese icono y no agregarlo a la tabla.
 
 ---
 
@@ -58,8 +52,8 @@ SerieRecibo {
 }
 
 SerieReciboForm {              	-- campos editables por el usuario
-  empresa:        number	-- readonly tras creacion (disabled en edit mode)
-  proyecto:       number	-- readonly tras creacion (disabled en edit mode)
+  empresa:        number	      -- readonly tras creacion (disabled en edit mode)
+  proyecto:       number	      -- readonly tras creacion (disabled en edit mode)
   serie:          string       	-- readonly tras creacion (disabled en edit mode)
   serie_factura:  string | null -- null = sin serie de factura
   dias_fecha:     number
@@ -88,17 +82,14 @@ FK que deben cargarse en `page.tsx` y pasarse como props al client component:
 getEmpresas()       -> prop 'empresas'       -> alimenta el Select de empresa
 getProyectos()      -> prop 'proyectos'      -> alimenta el Select de proyecto (filtrado por empresa)
 getSeriesFactura()  -> prop 'seriesFactura'  -> alimenta el Select de serie_factura (filtrado por proyecto)
+
+Cascade triple: empresa → proyecto → serieFacturas.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0, resetear serieFacturas al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Al cambiar proyecto: resetear serieFacturas al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+
 ```
 
-Usar el mismo patron de cascade empresa -> proyecto que tienen Bancos y Cuentas Bancarias.
-
-`getSeriesFactura()` debe leer toda la tabla `cartera.t_serie_factura` filtrando por `cuenta`
-(obtenida con `getCuentaActiva()`, igual que todas las demas funciones del proyecto — `cuenta` nunca
-se expone en UI ni se pasa como prop). El filtrado por `proyecto` se hace en cliente.
-Columnas minimas: `empresa`, `proyecto`, `serie`.
-
-> Nota general: las tres funciones FK (`getEmpresas`, `getProyectos`, `getSeriesFactura`) aplican
-> `.eq('cuenta', cuenta)` internamente. El campo `cuenta` no aparece en ningun Select ni prop visible.
+> `getEmpresas`, `getProyectos` y `getSeriesFactura` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
 
 ---
 
@@ -113,19 +104,12 @@ Columnas minimas: `empresa`, `proyecto`, `serie`.
 
 ### Mapeo de permisos a UI
 
-| Permiso (`t_menu_usuario`) | Efecto en UI |
-|---|---|
-| `agregar`    | Muestra/oculta el boton "Nueva Serie" en la barra de herramientas |
-| `modificar`  | Muestra/oculta el boton "Editar" en el footer del modal; cambia el label del menu a "Ver / Editar" vs "Ver" |
-| `eliminar`   | Muestra/oculta la opcion "Eliminar" en el dropdown de acciones de cada fila |
+Ver regla general en `crud-screens.instructions.md` → sección **Permission mapping to UI**.
 
-Obtener permisos en `page.tsx`:
 ```ts
 const permisos = await getPermisosDetalle(PERMISOS.SER_REC)
 // pasar como props: puedeAgregar={permisos.agregar} puedeModificar={permisos.modificar} puedeEliminar={permisos.eliminar}
 ```
-
----
 
 ## EXPORTACION
 
@@ -159,7 +143,7 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 |----------------|-----------------|----------------|
 | empresa        | Empresa         | false          |
 | proyecto       | Proyecto        | true           |
-| recibo_automatico | Recibo Auto  | true           |
+| recibo_automatico | Automatico   | true           |
 | correlativo    | Correlativo     | false          |
 | predeterminado | Predeterminado  | true           |
 | formato        | Formato         | true           |

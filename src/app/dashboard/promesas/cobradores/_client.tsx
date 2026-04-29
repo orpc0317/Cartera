@@ -50,6 +50,7 @@ type ColPref = { key: string; visible: boolean }
 type ColFilters = Record<string, Set<string>>
 
 const ALL_COLUMNS: ColDef[] = [
+  { key: '__empresa',  label: 'Empresa',  defaultVisible: false },
   { key: '__proyecto', label: 'Proyecto', defaultVisible: true  },
   { key: 'nombre',     label: 'Nombre',   defaultVisible: true  },
   { key: '__activo',   label: 'Activo',   defaultVisible: true  },
@@ -74,6 +75,16 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
       <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+    </div>
+  )
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="col-span-2 flex items-center gap-2 pt-1">
+      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
+      <div className="flex-1 border-t border-primary/30" />
     </div>
   )
 }
@@ -208,6 +219,7 @@ export function CobradoresClient({
     Object.entries(colFilters).every(([col, vals]) => {
       if (vals.size === 0) return true
       if (col === '__activo')   return vals.has(String(c.activo))
+      if (col === '__empresa')  return vals.has(empresaMap.get(c.empresa) ?? '')
       if (col === '__proyecto') return vals.has(proyectoMap.get(c.proyecto) ?? '')
       return vals.has(String(c[col as keyof Cobrador] ?? ''))
     })
@@ -393,21 +405,29 @@ export function CobradoresClient({
       {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-emerald-100 p-2.5">
-            <Banknote className="h-5 w-5 text-emerald-700" />
+          <div className="rounded-xl bg-orange-100 p-2.5">
+            <Banknote className="h-5 w-5 text-orange-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Cobradores</h1>
             <p className="text-sm text-muted-foreground">Administra los cobradores por proyecto</p>
           </div>
         </div>
-        <Button onClick={openCreate} disabled={!puedeAgregar} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nuevo Cobrador
-        </Button>
+        {puedeAgregar && (
+          <Button onClick={openCreate} className="gap-2" disabled={proyectos.length === 0}>
+            <Plus className="h-4 w-4" />
+            Nuevo Cobrador
+          </Button>
+        )}
       </div>
 
-      {/* ── Búsqueda + ColumnManager ── */}
+      {proyectos.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Primero crea proyectos antes de agregar cobradores.
+        </div>
+      )}
+
+      {/* ── Búsqueda + ColumnManager ── */
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -451,6 +471,21 @@ export function CobradoresClient({
             <TableRow className="bg-muted/30">
               <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
               {visibleCols.map((col) => {
+                if (col.key === '__empresa') {
+                  return (
+                    <TableHead key="__empresa">
+                      <ColumnFilter
+                        label="Empresa"
+                        values={[...new Set(initialData.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                          setColFilter('__empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
                 if (col.key === '__proyecto') {
                   return (
                     <TableHead key="__proyecto">
@@ -511,14 +546,14 @@ export function CobradoresClient({
                   <TableRow
                     key={`${cobrador.empresa}-${cobrador.proyecto}-${cobrador.codigo}`}
                     className={`group cursor-pointer transition-colors ${
-                      isActive ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-muted/40'
+                      isActive ? 'bg-orange-50 dark:bg-orange-950/30' : 'hover:bg-muted/40'
                     }`}
                     onClick={() => setCursorIdx(rowIdx)}
                     onDoubleClick={() => openView(cobrador)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
                       isActive
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-[3px] border-l-emerald-600 text-emerald-700 dark:text-emerald-400 font-semibold'
+                        ? 'bg-orange-50 dark:bg-orange-950/30 border-l-[3px] border-l-orange-600 text-orange-700 dark:text-orange-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
                       {cobrador.codigo}
@@ -526,6 +561,13 @@ export function CobradoresClient({
 
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case '__empresa':
+                          return (
+                            <TableCell key="__empresa" className="text-muted-foreground">
+                              {empresaMap.get(cobrador.empresa) ?? `#${cobrador.empresa}`}
+                            </TableCell>
+                          )
+
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
@@ -540,10 +582,10 @@ export function CobradoresClient({
                           return (
                             <TableCell key="__activo">
                               <Badge
-                                variant={cobrador.activo === 1 ? 'default' : 'secondary'}
+                                variant="outline"
                                 className={cobrador.activo === 1
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-normal border-0'
-                                  : 'font-normal'
+                                  ? 'bg-emerald-100 text-emerald-700 font-normal border-0'
+                                  : 'bg-muted text-muted-foreground font-normal border-0'
                                 }
                               >
                                 {ACTIVO_LABELS[cobrador.activo] ?? `#${cobrador.activo}`}
@@ -561,7 +603,7 @@ export function CobradoresClient({
                     })}
 
                     <TableCell className={`sticky right-0 z-10 transition-colors ${
-                      isActive ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-card group-hover:bg-muted/40'
+                      isActive ? 'bg-orange-50 dark:bg-orange-950/30' : 'bg-card group-hover:bg-muted/40'
                     }`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
@@ -612,17 +654,17 @@ export function CobradoresClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[32rem] max-h-[90vh] overflow-hidden">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
 
           {/* Header */}
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-orange-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-emerald-100' : isEditing ? 'bg-amber-100' : 'bg-emerald-100'}`}>
+              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-orange-100' : isEditing ? 'bg-amber-100' : 'bg-orange-100'}`}>
                 {isEditing && !viewTarget
-                  ? <Plus className="h-5 w-5 text-emerald-600" />
+                  ? <Plus className="h-5 w-5 text-orange-600" />
                   : isEditing
                   ? <Pencil className="h-5 w-5 text-amber-600" />
-                  : <Banknote className="h-5 w-5 text-emerald-600" />}
+                  : <Banknote className="h-5 w-5 text-orange-600" />}
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
@@ -651,6 +693,7 @@ export function CobradoresClient({
               {/* ── Vista ── */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
+                  <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2">
                     <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
                   </div>
@@ -658,27 +701,23 @@ export function CobradoresClient({
                     <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Nombre Cobrador" value={viewTarget.nombre} />
+                    <ViewField label="Codigo" value={String(viewTarget.codigo)} />
                   </div>
+                  <SectionDivider label="GENERAL" />
                   <div className="col-span-2">
-                    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
-                      <Badge
-                        variant={viewTarget.activo === 1 ? 'default' : 'secondary'}
-                        className={viewTarget.activo === 1
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-normal border-0'
-                          : 'font-normal'
-                        }
-                      >
-                        {ACTIVO_LABELS[viewTarget.activo] ?? `#${viewTarget.activo}`}
-                      </Badge>
-                    </div>
+                    <ViewField label="Nombre" value={viewTarget.nombre} />
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 px-1">
+                    <Checkbox checked={viewTarget.activo === 1} disabled />
+                    <span className="text-[13px] font-medium text-foreground">Activo</span>
                   </div>
                 </div>
 
               ) : (
               /* ── Edición / Creación ── */
               <div className="grid grid-cols-2 gap-4">
+
+                <SectionDivider label="IDENTIFICACION" />
 
                 <div className="col-span-2 grid gap-1">
                   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
@@ -708,23 +747,20 @@ export function CobradoresClient({
                   </Select>
                 </div>
 
+                <SectionDivider label="GENERAL" />
+
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Cobrador *</Label>
+                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
                   <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del cobrador" />
                 </div>
 
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
-                  <Select value={String(form.activo)} onValueChange={(v) => f('activo', Number(v))}>
-                    <SelectTrigger id="activo" className="w-full">
-                      <SelectValue>{ACTIVO_LABELS[form.activo] ?? `#${form.activo}`}</SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ACTIVO_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="col-span-2 flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                  <Checkbox
+                    id="activo"
+                    checked={form.activo === 1}
+                    onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
+                  />
+                  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
                 </div>
 
               </div>
@@ -738,14 +774,14 @@ export function CobradoresClient({
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
                 {puedeModificar && (
-                  <Button onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                  <Button onClick={() => setIsEditing(true)} className="gap-2">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
+                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
                 <Button onClick={handleSave} disabled={isPending}>
                   {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>

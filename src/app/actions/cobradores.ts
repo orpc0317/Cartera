@@ -205,6 +205,19 @@ export async function deleteCobrador(
     .eq('codigo', codigo)
     .single()
 
+  // Verificar restricción: recibos de caja asociados
+  const { count: recibosCount } = await admin
+    .schema('cartera')
+    .from('t_recibo_caja')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('cobrador', codigo)
+  if (recibosCount && recibosCount > 0) {
+    return { error: 'No se puede eliminar este cobrador porque tiene recibos de caja asociados.' }
+  }
+
   const { error } = await admin
     .schema('cartera')
     .from('t_cobrador')

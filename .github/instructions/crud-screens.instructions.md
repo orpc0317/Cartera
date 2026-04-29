@@ -258,3 +258,25 @@ Examples in spec syntax:
   titulo={auditTarget.nombre}
 />
 ```
+
+---
+
+## Permission mapping to UI
+
+Applies to every CRUD screen. The three permissions from `t_menu_usuario` map to UI as follows:
+
+| Permission | UI effect |
+|---|---|
+| `agregar`   | Shows/hides the **"Nuevo {NOMBRE}"** button in the toolbar — `{NOMBRE}` is the singular entity name declared in the prompt's `IDENTIFICACION.NOMBRE` field |
+| `modificar` | Shows/hides the **"Editar"** button in the modal footer; changes the row dropdown label to **"Ver / Editar"** vs **"Ver"** |
+| `eliminar`  | Shows/hides the **"Eliminar"** option in the row action dropdown |
+
+Fetch in `page.tsx` using the `PERMISO` constant from the prompt's `IDENTIFICACION` table:
+
+```ts
+const permisos = await getPermisosDetalle(PERMISOS.{PERMISO})
+// pass as props:
+puedeAgregar={permisos.agregar}
+puedeModificar={permisos.modificar}
+puedeEliminar={permisos.eliminar}
+```

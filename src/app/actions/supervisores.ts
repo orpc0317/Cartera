@@ -205,6 +205,19 @@ export async function deleteSupervisor(
     .eq('codigo', codigo)
     .single()
 
+  // Verificar restricción: vendedores asociados
+  const { count: vendedoresCount } = await admin
+    .schema('cartera')
+    .from('t_vendedor')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('supervisor', codigo)
+  if (vendedoresCount && vendedoresCount > 0) {
+    return { error: 'No se puede eliminar este supervisor porque tiene vendedores asociados.' }
+  }
+
   const { error } = await admin
     .schema('cartera')
     .from('t_supervisor')
