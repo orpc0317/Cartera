@@ -1,5 +1,5 @@
 ﻿---
-description: "Cartera  CRUD modal and form patterns: DialogContent layout, header gradient, icon badge modes, ViewField, SectionDivider, view/edit grids, delete dialog, audit log."
+description: "Cartera CRUD modal and form patterns: DialogContent layout, header gradient, icon badge modes, ViewField, SectionDivider, view/edit grids, delete dialog, audit log."
 applyTo: "src/app/dashboard/**/_client.tsx"
 ---
 
@@ -280,3 +280,73 @@ puedeAgregar={permisos.agregar}
 puedeModificar={permisos.modificar}
 puedeEliminar={permisos.eliminar}
 ```
+
+---
+
+## TABS_MODAL spec format
+
+Each spec's `TABS_MODAL` section uses **one table per section** to declare fields. The rules below are global — do not repeat them inside spec files.
+
+### Global structure rules
+
+- The first tab is always **General** and is mandatory. Add tabs only if the screen requires it.
+- Each tab groups fields under `SectionDivider` headings listed top-to-bottom in visual order.
+- Fields not shown in a given mode get `—` in that column.
+- When Nuevo and Edit are identical for all fields in a section, collapse into a single `Nuevo / Edit` column.
+
+### Table format
+
+```markdown
+### Tab: General  (icono: <NombreIconoLucide>)
+
+**[NOMBRE_SECCION]**
+
+| Campo  | Label  | Ancho | View      | Nuevo      | Edit             | Notas |
+|--------|--------|-------|-----------|------------|------------------|-------|
+| campo1 | Label1 | full  | ViewField | Input; req | Input; req       |       |
+| campo2 | Label2 | half  | ViewField | Select     | Select; disabled |       |
+| campo3 | Label3 | half  | —         | —          | —                |       |
+```
+
+### Column legend
+
+**Ancho:** `full` | `half` | `third` — same semantics as the grid width annotations above.
+
+**View / Nuevo / Edit values:**
+
+| Value               | Meaning |
+|---------------------|---------|
+| `ViewField`         | Standard read-only card (`rounded-lg bg-muted/50`) — label + value |
+| `Checkbox card`     | `<Checkbox disabled />` inside a ViewField-style card (label above, checkbox below) |
+| `Moneda display`    | Apply **Moneda display rules** from `ui-conventions.instructions.md` |
+| `Input`             | `<Input>` text field |
+| `Input; req`        | Required `<Input>` |
+| `Input number ≥ 0`  | `type="number"` with `Math.max(0, …)` clamp |
+| `Select`            | `<Select>` loaded from prop |
+| `Select; disabled`  | `<Select disabled={!!viewTarget}>` — readonly after creation |
+| `Select nullable`   | `<Select>` with blank first option (`value=""`) representing `null` in DB |
+| `Checkbox 0/1`      | `<Checkbox>` storing smallint 0/1 |
+| `—`                 | Field not shown in this mode |
+
+**Notas column:** short constraint or cross-reference (`ver REGLA #N`). Full details go in `REGLAS_ESPECIFICAS`.
+
+### Adding more tabs
+
+```markdown
+### Tab: <Nombre>  (icono: <NombreIconoLucide>)
+
+**[NOMBRE_SECCION]**
+
+| Campo | Label | Ancho | View | Nuevo / Edit | Notas |
+|-------|-------|-------|------|--------------|-------|
+| ...   | ...   | ...   | ...  | ...          | ...   |
+```
+
+---
+
+## Canonical reference file
+
+El archivo de referencia canónica del patrón es:
+`src/app/dashboard/cuentas-cobrar/series-recibos/_client.tsx`
+
+Es la implementación más completa y actualizada del proyecto. Usarlo como referencia concreta al generar un nuevo screen.

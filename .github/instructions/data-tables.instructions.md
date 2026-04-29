@@ -1,5 +1,5 @@
 ﻿---
-description: "Cartera  data table patterns: column definitions, filtering, row/cell rules, keyboard nav. Full component code lives in existing _client.tsx files."
+description: "Cartera data table patterns: column definitions, filtering, row/cell rules, keyboard nav. Full component code lives in existing _client.tsx files."
 applyTo: "src/app/dashboard/**/_client.tsx"
 ---
 

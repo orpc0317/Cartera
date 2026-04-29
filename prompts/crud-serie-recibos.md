@@ -155,35 +155,27 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 
 ## TABS_MODAL
 
-> La primera pestana es siempre **General** y es obligatoria. Agregar pestanas adicionales
-> solo si la pantalla lo requiere. Cada pestana contiene secciones; cada seccion se renderiza
-> con `SectionDivider` y lista los campos en el orden en que deben aparecer.
-> En view mode y edit mode se aplica el mismo mapa de secciones (los campos cambian de
-> `<ViewField>` a `<Input>`/`<Select>`/`<Checkbox>` segun el modo).
+### Tab: General  (icono: ICONO_LUCIDE de la pantalla)
 
-```
-Pestana: General  (icono: ICONO_LUCIDE de la pantalla)
-  [SectionDivider "IDENTIFICACION"]
-    - empresa        (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - proyecto       (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - serie          (view + edit; full — disabled en edit — es parte del PK)
-  [SectionDivider "CONFIGURACION"]
-    - recibo_automatico (view + edit; third — Checkbox 0/1)
-    - correlativo    (view + edit; third)
-    - formato        (view + edit; third — input numerico, minimo 0)
-    - dias_fecha     (view + edit; half)
-    - serie_factura  (view + edit; half)
-    - predeterminado    (view + edit; half — Checkbox 0/1)
-    - activo            (view + edit; half — Checkbox 0/1)
-```
+**[IDENTIFICACION]**
 
-> Si se necesitan mas pestanas, agregar bloques con el mismo formato:
-> ```
-> Pestana: <Nombre>  (icono: <NombreIconoLucide>)
->   [SectionDivider "<TITULO SECCION>"]
->     - campo1
->     - campo2
-> ```
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
+|----------|----------|-------|-----------|-------------|------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
+| serie    | Serie    | full  | ViewField | Input; req  | Input; disabled  |       |
+
+**[CONFIGURACION]**
+
+| Campo             | Label          | Ancho | View          | Nuevo / Edit                                | Notas        |
+|-------------------|----------------|-------|---------------|---------------------------------------------|--------------|
+| recibo_automatico | Automatico     | third | Checkbox card | Checkbox 0/1                                |              |
+| correlativo       | Correlativo    | third | ViewField     | Input number ≥ 0; vacío si automatico=1     | ver REGLA #9 |
+| formato           | Formato        | third | ViewField     | Input number ≥ 0                            | ver REGLA #4 |
+| dias_fecha        | Dias Fecha     | half  | ViewField     | Input number ≥ 0                            |              |
+| serie_factura     | Serie Factura  | half  | ViewField     | Select nullable; filtrado empresa+proyecto  | ver REGLA #3 |
+| predeterminado    | Predeterminado | half  | Checkbox card | Checkbox 0/1                                | ver REGLA #8 |
+| activo            | Activo         | half  | Checkbox card | Checkbox 0/1                                |              |
 
 ---
 
@@ -207,9 +199,7 @@ Pestana: General  (icono: ICONO_LUCIDE de la pantalla)
 5. `predeterminado`, `recibo_automatico` y `activo` son checkboxes (smallint 0/1), no Selects.
 6. Valores por defecto al crear: `activo = 1`, todos los demas numericos en `0`.
 7. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nueva Serie".
-8. **Unicidad de `predeterminado`:** dentro de un mismo `(cuenta, empresa, proyecto)` solo puede
-   haber una serie con `predeterminado = 1`. En el backend, **antes** del INSERT/UPDATE principal,
-   si `form.predeterminado === 1` ejecutar:
+8. **Unicidad de `predeterminado`:** dentro de un mismo `(cuenta, empresa, proyecto)` solo puede haber una serie con `predeterminado = 1`. En el backend, **antes** del INSERT/UPDATE principal, si `form.predeterminado === 1` ejecutar:
    ```ts
    await admin.schema('cartera').from('t_serie_recibo')
      .update({ predeterminado: 0 })
@@ -237,12 +227,7 @@ Pestana: General  (icono: ICONO_LUCIDE de la pantalla)
 
 ## UI_ESPECIFICO
 
-- Page header: icono elegido sobre `bg-{acento}-100`, color icono `text-{acento}-700`.
-- Modal gradient header: `from-{acento}-50/70 to-transparent`.
-- Active row: `bg-{acento}-50 dark:bg-{acento}-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-{acento}-600 text-{acento}-700`.
-- Sticky acciones (derecho, activo): `bg-{acento}-50 dark:bg-{acento}-950/30`.
-- `predeterminado` y `activo` en view mode: `<Checkbox checked={...} disabled />` dentro de card muted.
+> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -252,19 +237,13 @@ Pestana: General  (icono: ICONO_LUCIDE de la pantalla)
 
 - Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa; resetear tambien `serie_factura` a `null`.
 - Cascade proyecto -> serie_factura: al cambiar `proyecto` en `f()`, resetear `serie_factura` a `null` (el Select mostrara las series filtradas por el nuevo proyecto).
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa (ver patron en `bancos/_client.tsx`); `serie_factura` inicia en `null`.
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa; `serie_factura` inicia en `null`.
 
 ---
 
-## QUERIES
+## QUERIES_TABLA
 
-No requiere RPC ni queries especiales. Lectura directa:
-
-```ts
-admin.schema('cartera').from('t_serie_recibo')
-  .select('*').eq('cuenta', cuenta)
-  .order('empresa').order('proyecto').order('serie')
-```
+No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto').order('serie')`.
 
 ---
 
@@ -301,5 +280,3 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
 Si existe conflicto entre las reglas generales y las reglas especificas de este prompt,
 prevalecen las de este prompt.
-Tomar como referencia de implementacion el archivo `src/app/dashboard/bancos/bancos/_client.tsx`
-— es el ejemplo mas completo y actualizado del patron del proyecto.

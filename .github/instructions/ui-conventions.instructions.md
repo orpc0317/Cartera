@@ -25,7 +25,7 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Cobradores       | `orange-100 / orange-600`     |
 | Bancos           | `teal-100 / teal-600`         |
 | Cuentas Bancarias | `cyan-100 / cyan-600`        |
-| Serie Recibos    | `cyan-100 / cyan-600`         |
+| Serie Recibos    | `green-100 / gree-600`        |
 | Coordinadores    | `blue-100 / blue-600`         |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
@@ -119,6 +119,15 @@ const v = typeof value === 'string' && !SKIP_KEYS.has(key)
 **Keys in SKIP_KEYS (must NOT be sanitized):**
 `correo`, `pais` / `direccion_pais`, `departamento` / `direccion_departamento`, `municipio` / `direccion_municipio`, `moneda`, `medida`, `manzana` (in LoteForm).
 Number fields are skipped automatically by the `typeof === 'string'` guard.
+
+---
+
+## Activo column — global badge rule
+
+The `activo` field (smallint 0/1) renders as a badge in every table and as a `Checkbox card` in every view mode modal. No exceptions unless the spec explicitly overrides.
+
+- **Table cell:** `<Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>` when `activo === 1`; `<Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>` when `activo === 0`.
+- **View mode:** `<Checkbox checked={!!record.activo} disabled />` inside a `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5` card (same container as `ViewField`), label above in `text-[10px] font-bold tracking-widest text-muted-foreground/55`.
 
 ---
 

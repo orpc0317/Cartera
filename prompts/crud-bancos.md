@@ -136,43 +136,30 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## TABS_MODAL
 
-> La primera pestana es siempre **General** y es obligatoria. Agregar pestanas adicionales
-> solo si la pantalla lo requiere. Cada pestana contiene secciones; cada seccion se renderiza
-> con `SectionDivider` y lista los campos en el orden en que deben aparecer.
-> En view mode y edit mode se aplica el mismo mapa de secciones (los campos cambian de
-> `<ViewField>` a `<Input>`/`<Select>`/`<Checkbox>` segun el modo).
+### Tab: General  (icono: MapPin)
 
-```
-Pestana: General  (icono: MapPin)
-  [SectionDivider "IDENTIFICACION"]
-    - empresa        (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - proyecto       (view + edit; full — disabled en edit si CAMPO_READONLY_TRAS_CREACION)
-    - codigo          (view only; full)
-  [SectionDivider "GENERAL"]
-    - nombre         (view + edit; full; requerido)
+**[IDENTIFICACION]**
 
-```
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
+|----------|----------|-------|-----------|-------------|------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                |       |
 
-> Si se necesitan mas pestanas, agregar bloques con el mismo formato:
-> ```
-> Pestana: <Nombre>  (icono: <NombreIconoLucide>)
->   [SectionDivider "<TITULO SECCION>"]
->     - campo1
->     - campo2
-> ```
+**[GENERAL]**
+
+| Campo  | Label  | Ancho | View      | Nuevo / Edit | Notas |
+|--------|--------|-------|-----------|--------------|-------|
+| nombre | Nombre | full  | ViewField | Input; req   |       |
 
 ---
 
 ## REGLAS_ESPECIFICAS
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
-2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT
-   con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
+2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los bancos del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
-   (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres
-   similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"`
-   y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
+   contra todos los bancos del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
 4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Banco".
 
 ---
@@ -188,11 +175,7 @@ Pestana: General  (icono: MapPin)
 
 ## UI_ESPECIFICO
 
-- Page header: icono elegido sobre `bg-{acento}-100`, color icono `text-{acento}-700`.
-- Modal gradient header: `from-{acento}-50/70 to-transparent`.
-- Active row: `bg-{acento}-50 dark:bg-{acento}-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-{acento}-600 text-{acento}-700`.
-- Sticky acciones (derecho, activo): `bg-{acento}-50 dark:bg-{acento}-950/30`.
+> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -200,20 +183,14 @@ Pestana: General  (icono: MapPin)
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa (ver patron en `cuentas-cobrar/series-recibos/_client.tsx`).
+- Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa (0 si no hay ninguno).
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
 
 ---
 
-## QUERIES
+## QUERIES_TABLA
 
-No requiere RPC ni queries especiales. Lectura directa:
-
-```ts
-admin.schema('cartera').from('t_banco')
-  .select('*').eq('cuenta', cuenta)
-  .order('nombre')
-```
+No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto').order('nombre')`.
 
 ---
 
@@ -249,5 +226,3 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 
 Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
 Si existe conflicto entre las reglas generales y las reglas especificas de este prompt, prevalecen las de este prompt.
-Tomar como referencia de implementacion el archivo `src/app/dashboard/cuentas-cobrar/series-recibos/_client.tsx`
-— es el ejemplo mas completo y actualizado del patron del proyecto.

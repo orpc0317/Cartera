@@ -144,51 +144,32 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## TABS_MODAL
 
-> La primera pestana es siempre **General** y es obligatoria. Agregar pestanas adicionales
-> solo si la pantalla lo requiere. Cada pestana contiene secciones; cada seccion se renderiza
-> con `SectionDivider` y lista los campos en el orden en que deben aparecer.
-> En view mode y edit mode se aplica el mismo mapa de secciones (los campos cambian de
-> `<ViewField>` a `<Input>`/`<Select>`/`<Checkbox>` segun el modo).
+### Tab: General  (icono: MapPin)
 
-```
-Pestana: General  (icono: MapPin)
-  [SectionDivider "IDENTIFICACION"]
-    VIEW MODE:
-      - empresa        (full — ViewField; label: "Empresa")
-      - proyecto       (full — ViewField; label: "Proyecto")
-      - codigo         (full — ViewField; label: "Codigo"; valor: N con font-mono)
-    NUEVO / EDIT MODE:
-      - empresa        (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
-      - proyecto       (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
-      -- codigo no aparece en nuevo ni en edit --
-  [SectionDivider "GENERAL"]
-    - supervisor     (view + edit; full — ViewField en view; label: "Supervisor"; Select en edit; editable en edit; supervisoresFiltrados por empresa+proyecto activos en el formulario)
-    - nombre         (view + edit; full — requerido; label: "Nombre")
-    - activo         (view + edit; full — Checkbox 0/1; label: "Activo")
-```
+**[IDENTIFICACION]**
 
-> **Nota activo en view mode:** renderizar como `<Checkbox checked={...} disabled />` con label a la derecha (no usar la card muted de otros checkboxes en esta pantalla).
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
+|----------|----------|-------|-----------|-------------|------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                |       |
 
-> Si se necesitan mas pestanas, agregar bloques con el mismo formato:
-> ```
-> Pestana: <Nombre>  (icono: <NombreIconoLucide>)
->   [SectionDivider "<TITULO SECCION>"]
->     - campo1
->     - campo2
-> ```
+**[GENERAL]**
+
+| Campo      | Label      | Ancho | View          | Nuevo / Edit                                | Notas |
+|------------|------------|-------|---------------|---------------------------------------------|-------|
+| supervisor | Supervisor | full  | ViewField     | Select; supervisoresFiltrados empresa+proy  |       |
+| nombre     | Nombre     | full  | ViewField     | Input; req                                  |       |
+| activo     | Activo     | full  | Checkbox card | Checkbox 0/1                                |       |
 
 ---
 
 ## REGLAS_ESPECIFICAS
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
-2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT
-   con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
+2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los coordinadores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
-   (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres
-   similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"`
-   y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
+   contra todos los coordinadores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
 4. Mostrar advertencia si `proyectos.length === 0` deshabilitar el boton "Nuevo Coordinador".
 
 ---
@@ -203,12 +184,7 @@ Pestana: General  (icono: MapPin)
 
 ## UI_ESPECIFICO
 
-- Page header: icono elegido sobre `bg-blue-100`, color icono `text-blue-700`.
-- Modal gradient header: `from-blue-50/70 to-transparent`.
-- Active row: `bg-blue-50 dark:bg-blue-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-blue-600 text-blue-700`.
-- Sticky acciones (derecho, activo): `bg-blue-50 dark:bg-blue-950/30`.
-- Columna `activo` en tabla: badge `bg-emerald-100 text-emerald-700` para Activo, `bg-muted text-muted-foreground` para Inactivo.
+> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -218,19 +194,13 @@ Pestana: General  (icono: MapPin)
 
 - Cascade empresa -> proyecto + supervisor: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa (0 si no hay ninguno) **y** resetear `supervisor` al primer supervisor disponible para ese proyecto (0 si no hay ninguno).
 - Cascade proyecto -> supervisor: al cambiar proyecto en `f()`, resetear `supervisor` al primer supervisor disponible de ese proyecto, y si no hubiera uno disponible resetear en blanco con valor 0.
-- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa y primer supervisor de ese proyecto (ver patron en `cuentas-cobrar/series-recibos/_client.tsx`).
+- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa y primer supervisor de ese proyecto.
 
 ---
 
-## QUERIES
+## QUERIES_TABLA
 
-No requiere RPC ni queries especiales. Lectura directa:
-
-```ts
-admin.schema('cartera').from('t_coordinador')
-  .select('*').eq('cuenta', cuenta)
-  .order('nombre')
-```
+No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto').order('nombre')`.
 
 ---
 
@@ -266,5 +236,3 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 
 Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
 Si existe conflicto entre las reglas generales y las reglas especificas de este prompt, prevalecen las de este prompt.
-Tomar como referencia de implementacion el archivo `src/app/dashboard/cuentas-cobrar/series-recibos/_client.tsx`
-— es el ejemplo mas completo y actualizado del patron del proyecto.

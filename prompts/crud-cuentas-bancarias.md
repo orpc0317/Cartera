@@ -160,46 +160,33 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## TABS_MODAL
 
-> La primera pestana es siempre **General** y es obligatoria. Agregar pestanas adicionales
-> solo si la pantalla lo requiere. Cada pestana contiene secciones; cada seccion se renderiza
-> con `SectionDivider` y lista los campos en el orden en que deben aparecer.
-> En view mode y edit mode se aplica el mismo mapa de secciones (los campos cambian de
-> `<ViewField>` a `<Input>`/`<Select>`/`<Checkbox>` segun el modo).
+### Tab: General  (icono: MapPin)
 
-```
-Pestana: General  (icono: MapPin)
-  [SectionDivider "IDENTIFICACION"]
-    VIEW MODE:
-      - empresa        (full — ViewField; label: "Empresa")
-      - proyecto       (full — ViewField; label: "Proyecto")
-      - codigo         (full — ViewField; label: "Codigo"; valor: N con font-mono)
-    NUEVO / EDIT MODE:
-      - empresa        (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
-      - proyecto       (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
-      -- codigo no aparece en nuevo ni en edit --
-  [SectionDivider "GENERAL"]
-    - banco          (view + edit; full — ViewField en view; Select en edit; editable en edit; bancosFiltrados por empresa+proyecto del viewTarget)
-    - nombre         (view + edit; full — requerido; label: "Nombre Cuenta")
-    - numero         (view + edit; half — requerido; label: "Numero Cuenta")
-    - moneda         (view + edit; half — Select cargado desde prop 'monedas'; aplicar regla global **Moneda display rules**; requerido)
-    - activo         (view + edit; full — Checkbox 0/1; label: "Activo")
-```
+**[IDENTIFICACION]**
 
-> **Nota moneda en view mode:** aplicar regla global **Moneda display rules** de `ui-conventions.instructions.md`
-> (no usar `<ViewField>` estandar).
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
+|----------|----------|-------|-----------|-------------|------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                |       |
 
-> **Nota activo en view mode:** renderizar como `<Checkbox checked={...} disabled />` con label
-> a la derecha (no usar la card muted de otros checkboxes en esta pantalla).
+**[GENERAL]**
+
+| Campo  | Label         | Ancho | View           | Nuevo / Edit                               | Notas                    |
+|--------|---------------|-------|----------------|--------------------------------------------|--------------------------|
+| banco  | Banco         | full  | ViewField      | Select; bancosFiltrados empresa+proy; req  |                          |
+| nombre | Nombre Cuenta | full  | ViewField      | Input; req                                 |                          |
+| numero | Numero Cuenta | half  | ViewField      | Input; req                                 |                          |
+| moneda | Moneda        | half  | Moneda display | Select desde prop 'monedas'; req           | ver Moneda display rules |
+| activo | Activo        | full  | Checkbox card  | Checkbox 0/1                               |                          |
 
 ---
 
 ## REGLAS_ESPECIFICAS
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
-2. No puede existir duplicado de `(banco, numero)` dentro del mismo `(cuenta, empresa, proyecto)`.
-   Validar en backend antes del INSERT y UPDATE con `.eq('banco', ...).eq('numero', ...)`.
-3. Mostrar advertencia si `bancos.length === 0` y deshabilitar el boton "Nueva Cuenta":
-   `"Primero crea bancos antes de agregar cuentas bancarias."`
+2. No puede existir duplicado de `(banco, numero)` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT y UPDATE con `.eq('banco', ...).eq('numero', ...)`.
+3. Mostrar advertencia si `bancos.length === 0` y deshabilitar el boton "Nueva Cuenta": `"Primero crea bancos antes de agregar cuentas bancarias."`
 4. El Select de banco en edit mode muestra `"Sin bancos para este proyecto"` si `bancosFiltrados.length === 0`.
 5. Valores por defecto al crear: `moneda = 'GTQ'` (o el `codigo` del primer elemento de `monedas` si 'GTQ' no existe), `activo = 1`, numericos en `0`.
 
@@ -220,14 +207,9 @@ Pestana: General  (icono: MapPin)
 
 ## UI_ESPECIFICO
 
-- Page header: `CreditCard` sobre `bg-cyan-100`, color icono `text-cyan-700`.
-- Modal gradient header: `from-cyan-50/70 to-transparent`.
-- Active row: `bg-cyan-50 dark:bg-cyan-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-cyan-600 text-cyan-700`.
-- Sticky acciones (derecho, activo): `bg-cyan-50 dark:bg-cyan-950/30`.
+> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
+
 - Columna `moneda` en tabla: aplicar regla global **Moneda display rules** (bandera + codigo ISO).
-- Columna `activo` en tabla: badge `bg-emerald-100 text-emerald-700` para Activo,
-  `bg-muted text-muted-foreground` para Inactivo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -243,15 +225,9 @@ Pestana: General  (icono: MapPin)
 
 ---
 
-## QUERIES
+## QUERIES_TABLA
 
-No requiere RPC ni queries especiales. Lectura directa:
-
-```ts
-admin.schema('cartera').from('t_cuenta_bancaria')
-  .select('*').eq('cuenta', cuenta)
-  .order('nombre')
-```
+No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto').order('nombre')`.
 
 ---
 
@@ -288,5 +264,3 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
 Si existe conflicto entre las reglas generales y las reglas especificas de este prompt,
 prevalecen las de este prompt.
-Tomar como referencia de implementacion el archivo `src/app/dashboard/cuentas-cobrar/series-recibos/_client.tsx`
-— es el ejemplo mas completo y actualizado del patron del proyecto.

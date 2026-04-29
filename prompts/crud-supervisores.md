@@ -138,51 +138,31 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## TABS_MODAL
 
-> La primera pestana es siempre **General** y es obligatoria. Agregar pestanas adicionales
-> solo si la pantalla lo requiere. Cada pestana contiene secciones; cada seccion se renderiza
-> con `SectionDivider` y lista los campos en el orden en que deben aparecer.
-> En view mode y edit mode se aplica el mismo mapa de secciones (los campos cambian de
-> `<ViewField>` a `<Input>`/`<Select>`/`<Checkbox>` segun el modo).
+### Tab: General  (icono: MapPin)
 
-```
-Pestana: General  (icono: MapPin)
-  [SectionDivider "IDENTIFICACION"]
-    VIEW MODE:
-      - empresa        (full — ViewField; label: "Empresa")
-      - proyecto       (full — ViewField; label: "Proyecto")
-      - codigo         (full — ViewField; label: "Codigo"; valor: N con font-mono)
-    NUEVO / EDIT MODE:
-      - empresa        (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
-      - proyecto       (full — Select; disabled en edit, ver CAMPOS_READONLY_TRAS_CREACION)
-      -- codigo no aparece en nuevo ni en edit --
-  [SectionDivider "GENERAL"]
-    - nombre         (view + edit; full — requerido; label: "Nombre")
-    - activo         (view + edit; full — Checkbox 0/1; label: "Activo")
+**[IDENTIFICACION]**
 
-```
-> **Nota activo en view mode:** renderizar como `<Checkbox checked={...} disabled />` con label
-> a la derecha (no usar la card muted de otros checkboxes en esta pantalla).
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
+|----------|----------|-------|-----------|-------------|------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                |       |
 
-> Si se necesitan mas pestanas, agregar bloques con el mismo formato:
-> ```
-> Pestana: <Nombre>  (icono: <NombreIconoLucide>)
->   [SectionDivider "<TITULO SECCION>"]
->     - campo1
->     - campo2
-> ```
+**[GENERAL]**
+
+| Campo  | Label  | Ancho | View          | Nuevo / Edit | Notas |
+|--------|--------|-------|---------------|--------------|-------|
+| nombre | Nombre | full  | ViewField     | Input; req   |       |
+| activo | Activo | full  | Checkbox card | Checkbox 0/1 |       |
 
 ---
 
 ## REGLAS_ESPECIFICAS
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
-2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT
-   con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
+2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los supervisores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85`
-   (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres
-   similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"`
-   y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
+   contra todos los supervisores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
 4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Supervisor".
 
 ---
@@ -191,18 +171,13 @@ Pestana: General  (icono: MapPin)
 
 - Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un supervisor con ese nombre en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_vendedor` con el mismo `(cuenta, empresa, proyecto, supervisor)`. Si existen -> `'No se puede eliminar este supervisor porque tiene vendedores asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_coordinador` con el mismo `(cuenta, empresa, proyecto, supervisor)`. Si existen -> `'No se puede eliminar este supervisor porque tiene vendedores asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
 
 ---
 
 ## UI_ESPECIFICO
 
-- Page header: icono elegido sobre `bg-purple-100`, color icono `text-purple-700`.
-- Modal gradient header: `from-purple-50/70 to-transparent`.
-- Active row: `bg-purple-50 dark:bg-purple-950/30`.
-- Sticky codigo (izquierdo, activo): `border-l-[3px] border-l-purple-600 text-purple-700`.
-- Sticky acciones (derecho, activo): `bg-purple-50 dark:bg-purple-950/30`.
-- Columna `activo` en tabla: badge `bg-emerald-100 text-emerald-700` para Activo, `bg-muted text-muted-foreground` para Inactivo.
+> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
 
 > La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
 
@@ -211,19 +186,13 @@ Pestana: General  (icono: MapPin)
 ## LOGIC_ESPECIFICO
 
 - Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa (ver patron en `cuentas-cobrar/series-recibos/_client.tsx`).
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
 
 ---
 
-## QUERIES
+## QUERIES_TABLA
 
-No requiere RPC ni queries especiales. Lectura directa:
-
-```ts
-admin.schema('cartera').from('t_supervisor')
-  .select('*').eq('cuenta', cuenta)
-  .order('nombre')
-```
+No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto').order('nombre')`.
 
 ---
 
@@ -259,5 +228,3 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 
 Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
 Si existe conflicto entre las reglas generales y las reglas especificas de este prompt, prevalecen las de este prompt.
-Tomar como referencia de implementacion el archivo `src/app/dashboard/cuentas-cobrar/series-recibos/_client.tsx`
-— es el ejemplo mas completo y actualizado del patron del proyecto.
