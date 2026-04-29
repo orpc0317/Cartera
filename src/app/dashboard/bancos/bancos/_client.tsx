@@ -674,7 +674,7 @@ export function BancosClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar banco?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará <strong>{deleteTarget?.nombre}</strong>. Esta acción no se puede deshacer.
+              Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

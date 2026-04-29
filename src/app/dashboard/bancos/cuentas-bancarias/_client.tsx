@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Table, TableBody, TableCell, TableHead,
@@ -112,6 +113,36 @@ const ALL_COLUMNS: ColDef[] = [
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
+
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+)
+
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
+
+function exportCsv(rows: CuentaBancaria[], colPrefs: ColPref[]) {
+  const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+    .filter((k) => !NEVER_EXPORT.has(k))
+  const headers = keys.map((k) => COL_LABELS[k] ?? k)
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof CuentaBancaria])).join(',')),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `cuentas-bancarias-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   prefs: ColPref[]; onToggle: (key: string) => void; onMove: (key: string, dir: -1 | 1) => void; onReset: () => void
@@ -530,9 +561,9 @@ export function CuentasBancariasClient({
                         case 'activo':
                           return (
                             <TableCell key="activo">
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cb.activo === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-muted text-muted-foreground'}`}>
+                              <Badge variant="secondary" className={cb.activo === 1 ? 'font-normal bg-emerald-100 text-emerald-700' : 'font-normal bg-muted text-muted-foreground'}>
                                 {cb.activo === 1 ? 'Activo' : 'Inactivo'}
-                              </span>
+                              </Badge>
                             </TableCell>
                           )
                         default:
@@ -546,7 +577,7 @@ export function CuentasBancariasClient({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openView(cb)}>
-                            <Eye className="mr-2 h-3.5 w-3.5" /> Ver / Editar
+                            <Eye className="mr-2 h-3.5 w-3.5" /> {puedeModificar ? 'Ver / Editar' : 'Ver'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setAuditTarget(cb)}>
                             <History className="mr-2 h-3.5 w-3.5" /> Historial
@@ -648,9 +679,9 @@ export function CuentasBancariasClient({
                     )
                   })()}
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <Checkbox checked={viewTarget.activo === 1} disabled />
-                    <span className="text-sm font-medium">Activo</span>
+                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
+                    <Checkbox checked={!!viewTarget.activo} disabled />
                   </div>
                 </div>
               ) : (
@@ -782,7 +813,7 @@ export function CuentasBancariasClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cuenta bancaria?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará <strong>{deleteTarget?.nombre}</strong> ({deleteTarget?.numero}). Esta acción no se puede deshacer.
+              Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong> ({deleteTarget?.numero}).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

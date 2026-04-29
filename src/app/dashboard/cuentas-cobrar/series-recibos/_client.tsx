@@ -33,6 +33,7 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -437,8 +438,8 @@ export function SeriesRecibosClient({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-cyan-100 p-2.5">
-            <Receipt className="h-5 w-5 text-cyan-700" />
+          <div className="rounded-xl bg-green-100 p-2.5">
+            <Receipt className="h-5 w-5 text-green-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Series de Recibos</h1>
@@ -531,13 +532,13 @@ export function SeriesRecibosClient({
                 return (
                   <TableRow
                     key={`${row.empresa}-${row.proyecto}-${row.serie}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-cyan-50 dark:bg-cyan-950/30' : 'hover:bg-muted/40'}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-green-50 dark:bg-green-950/30' : 'hover:bg-muted/40'}`}
                     onClick={() => setCursorIdx(rowIdx)}
                     onDoubleClick={() => openView(row)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
                       isActive
-                        ? 'bg-cyan-50 dark:bg-cyan-950/30 border-l-[3px] border-l-cyan-600 text-cyan-700 dark:text-cyan-400 font-semibold'
+                        ? 'bg-green-50 dark:bg-green-950/30 border-l-[3px] border-l-green-600 text-green-700 dark:text-green-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
                       {row.serie}
@@ -552,11 +553,11 @@ export function SeriesRecibosClient({
                         case 'formato':        return <TableCell key="formato" className="text-muted-foreground">{String(row.formato)}</TableCell>
                         case 'predeterminado':    return <TableCell key="predeterminado" className="text-muted-foreground">{row.predeterminado === 1 ? 'Sí' : 'No'}</TableCell>
                         case 'recibo_automatico': return <TableCell key="recibo_automatico" className="text-muted-foreground">{row.recibo_automatico === 1 ? 'Sí' : 'No'}</TableCell>
-                        case 'activo':         return <TableCell key="activo" className="text-muted-foreground">{row.activo === 1 ? 'Sí' : 'No'}</TableCell>
+                        case 'activo':         return <TableCell key="activo"><Badge variant="secondary" className={row.activo === 1 ? 'font-normal bg-emerald-100 text-emerald-700' : 'font-normal bg-muted text-muted-foreground'}>{row.activo === 1 ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                         default:               return <TableCell key={col.key} className="text-muted-foreground">{String((row as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-cyan-50 dark:bg-cyan-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-green-50 dark:bg-green-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                           <MoreHorizontal className="h-4 w-4" />
@@ -600,14 +601,14 @@ export function SeriesRecibosClient({
         modal={false}
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-cyan-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-green-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-cyan-100' : isEditing ? 'bg-amber-100' : 'bg-cyan-100'}`}>
+              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-green-100' : isEditing ? 'bg-amber-100' : 'bg-green-100'}`}>
                 {isEditing && !viewTarget
-                  ? <Plus className="h-5 w-5 text-cyan-600" />
+                  ? <Plus className="h-5 w-5 text-green-600" />
                   : isEditing
                   ? <Pencil className="h-5 w-5 text-amber-600" />
-                  : <Receipt className="h-5 w-5 text-cyan-600" />}
+                  : <Receipt className="h-5 w-5 text-green-600" />}
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">

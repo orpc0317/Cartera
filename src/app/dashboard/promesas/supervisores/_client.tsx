@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Eye, Plus, UserCog, Search,
-  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2,
+  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,6 +57,44 @@ const ALL_COLUMNS: ColDef[] = [
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
+
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+)
+
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
+
+function exportCsv(
+  rows: Supervisor[], colPrefs: ColPref[],
+  empresaMap: Map<number, string>, proyectoMap: Map<number, string>
+) {
+  const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+    .filter((k) => !NEVER_EXPORT.has(k))
+  const headers = keys.map((k) => COL_LABELS[k] ?? k)
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => keys.map((k) => {
+      if (k === '__empresa')  return formatCsvCell(empresaMap.get(r.empresa)  ?? r.empresa)
+      if (k === '__proyecto') return formatCsvCell(proyectoMap.get(r.proyecto) ?? r.proyecto)
+      if (k === '__activo')   return formatCsvCell(r.activo === 1 ? 'Activo' : 'Inactivo')
+      return formatCsvCell(r[k as keyof Supervisor])
+    }).join(',')),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `supervisores-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 // ─── Formulario vacío ──────────────────────────────────────────────────────
 
@@ -451,7 +489,10 @@ export function SupervisoresClient({
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs, empresaMap, proyectoMap)} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
           <ColumnManager
             prefs={colPrefs}
             onToggle={toggleCol}
@@ -585,13 +626,13 @@ export function SupervisoresClient({
                           return (
                             <TableCell key="__activo">
                               <Badge
-                                variant="outline"
+                                variant="secondary"
                                 className={supervisor.activo === 1
-                                  ? 'bg-emerald-100 text-emerald-700 font-normal border-0'
-                                  : 'bg-muted text-muted-foreground font-normal border-0'
+                                  ? 'font-normal bg-emerald-100 text-emerald-700'
+                                  : 'font-normal bg-muted text-muted-foreground'
                                 }
                               >
-                                {ACTIVO_LABELS[supervisor.activo] ?? `#${supervisor.activo}`}
+                                {supervisor.activo === 1 ? 'Activo' : 'Inactivo'}
                               </Badge>
                             </TableCell>
                           )
@@ -710,9 +751,9 @@ export function SupervisoresClient({
                   <div className="col-span-2">
                     <ViewField label="Nombre" value={viewTarget.nombre} />
                   </div>
-                  <div className="col-span-2 flex items-center gap-2 px-1">
-                    <Checkbox checked={viewTarget.activo === 1} disabled />
-                    <span className="text-[13px] font-medium text-foreground">Activo</span>
+                  <div className="col-span-2 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
+                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
+                    <Checkbox checked={!!viewTarget.activo} disabled />
                   </div>
                 </div>
 
