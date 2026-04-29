@@ -218,6 +218,15 @@ Examples in spec syntax:
   ```
   This applies to **every** FK `<Select>`: empresa, proyecto, fase, banco, cuenta bancaria, vendedor, cobrador, etc.
 
+  > **❌ Antipatrón — NO usar hijo estático que lee `form.field` directamente:**
+  > ```tsx
+  > // WRONG — le quita al componente control del estado; el placeholder nunca se muestra correctamente
+  > <SelectValue placeholder="Selecciona empresa">
+  >   {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
+  > </SelectValue>
+  > ```
+  > Usar **siempre** la render function `{(v: string) => v ? (...) : null}` para FK selects, y `<SelectValue />` limpio (sin hijo) para hardcoded selects.
+
 - **Auto-select first item on form open**: Every `<Select>` (hardcoded or DB-loaded) **must** pre-select its first available item when the create dialog opens (`openCreate`) and whenever a cascade resets a downstream field. This speeds up data entry.
   - In `openCreate`: compute the first valid value for every dropdown and pass them to `setForm({...EMPTY_FORM, ...})` explicitly.
   - In the cascade inside `f()`: after resetting downstream fields, compute and set the first valid value for each one.

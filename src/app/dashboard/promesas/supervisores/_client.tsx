@@ -768,7 +768,7 @@ export function SupervisoresClient({
                   <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
-                        {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
+                        {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -782,7 +782,7 @@ export function SupervisoresClient({
                   <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
-                        {proyectoMap.get(form.proyecto) ?? 'Selecciona proyecto'}
+                        {(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>

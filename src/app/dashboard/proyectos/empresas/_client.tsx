@@ -799,7 +799,7 @@ export function EmpresasClient({ initialData, proyectos, paises, departamentos, 
                     onValueChange={(v) => handleField('regimen_isr', Number(v))}
                   >
                     <SelectTrigger id="regimen">
-                      <SelectValue>{REGIMENES_ISR[form.regimen_isr] ?? 'Seleccionar régimen'}</SelectValue>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(REGIMENES_ISR).map(([k, v]) => (

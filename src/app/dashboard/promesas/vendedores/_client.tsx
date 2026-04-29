@@ -758,7 +758,7 @@ export function VendedoresClient({
                   <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
                   <Select value={String(form.activo)} onValueChange={(v) => f('activo', Number(v))}>
                     <SelectTrigger id="activo" className="w-full">
-                      <SelectValue>{ACTIVO_LABELS[form.activo] ?? `#${form.activo}`}</SelectValue>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(ACTIVO_LABELS).map(([k, v]) => (

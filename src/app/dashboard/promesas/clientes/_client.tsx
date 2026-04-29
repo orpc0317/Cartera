@@ -1025,7 +1025,7 @@ export function ClientesClient({
                       <Label htmlFor="tipo_id" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Tipo ID</Label>
                       <Select value={String(form.tipo_identificacion)} onValueChange={(v) => f('tipo_identificacion', Number(v))}>
                         <SelectTrigger id="tipo_id" className="w-full">
-                          <SelectValue>{TIPO_IDENTIFICACION_LABELS[form.tipo_identificacion] ?? `#${form.tipo_identificacion}`}</SelectValue>
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {Object.entries(TIPO_IDENTIFICACION_LABELS).map(([k, v]) => (
@@ -1044,7 +1044,7 @@ export function ClientesClient({
                       <Label htmlFor="regimen_iva" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen IVA</Label>
                       <Select value={String(form.regimen_iva)} onValueChange={(v) => f('regimen_iva', Number(v))}>
                         <SelectTrigger id="regimen_iva" className="w-full">
-                          <SelectValue>{REGIMENES_IVA[form.regimen_iva] ?? 'Seleccionar'}</SelectValue>
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {Object.entries(REGIMENES_IVA).map(([k, v]) => (
