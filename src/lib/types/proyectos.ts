@@ -218,6 +218,7 @@ export type Cliente = {
   identificacion_tributaria?: string
   tipo_identificacion?: number
   regimen_iva: number
+  activo?: number
   agrego_usuario?: string
   agrego_fecha?: string
   modifico_usuario?: string
@@ -274,6 +275,28 @@ export type Cobrador = {
 }
 
 export type CobradorForm = Omit<Cobrador, 'cuenta' | 'userid' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+export type Coordinador = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  supervisor: number
+  codigo: number
+  nombre: string
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+  modifico_usuario?: string
+  modifico_fecha?: string
+}
+
+export type CoordinadorForm = {
+  empresa: number
+  proyecto: number
+  supervisor: number
+  nombre: string
+  activo: number
+}
 
 export type SerieRecibo = {
   cuenta: string

@@ -84,8 +84,8 @@ getProyectos()      -> prop 'proyectos'      -> alimenta el Select de proyecto (
 getSeriesFactura()  -> prop 'seriesFactura'  -> alimenta el Select de serie_factura (filtrado por proyecto)
 
 Cascade triple: empresa → proyecto → serieFacturas.
-- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0, resetear serieFacturas al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
-- Al cambiar proyecto: resetear serieFacturas al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0, resetear serieFacturas al primero disponible, y si no hubiera uno disponible resetear en blanco con valor null.
+- Al cambiar proyecto: resetear serieFacturas al primero disponible, y si no hubiera uno disponible resetear en blanco con valor null.
 
 ```
 
@@ -139,17 +139,21 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK).
 `STORAGE_KEY = 'series_recibos_cols_v2_${userId}'`
 
-| key            | label           | defaultVisible |
-|----------------|-----------------|----------------|
-| empresa        | Empresa         | false          |
-| proyecto       | Proyecto        | true           |
-| recibo_automatico | Automatico   | true           |
-| correlativo    | Correlativo     | false          |
-| predeterminado | Predeterminado  | true           |
-| formato        | Formato         | true           |
-| serie_factura  | Serie Factura   | true           |
-| dias_fecha     | Dias Fecha      | false          |
-| activo         | Activo          | true           |
+> **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
+> `serie_factura` es un codigo texto — mostrar directamente.
+
+| key               | label           | defaultVisible | render                                                |
+|-------------------|-----------------|----------------|-------------------------------------------------------|
+| empresa           | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
+| proyecto          | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
+| recibo_automatico | Automatico      | true           | Sí / No (1=Si, 0=No)                                 |
+| correlativo       | Correlativo     | false          | valor directo                                         |
+| predeterminado    | Predeterminado  | true           | Sí / No (1=Si, 0=No)                                 |
+| formato           | Formato         | true           | valor directo                                         |
+| serie_factura     | Serie Factura   | true           | valor directo (codigo texto)                          |
+| dias_fecha        | Dias Fecha      | false          | valor directo                                         |
+| activo            | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---
 
@@ -235,9 +239,8 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa; resetear tambien `serie_factura` a `null`.
-- Cascade proyecto -> serie_factura: al cambiar `proyecto` en `f()`, resetear `serie_factura` a `null` (el Select mostrara las series filtradas por el nuevo proyecto).
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa; `serie_factura` inicia en `null`.
+- Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
+- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa y primera serie_factura de ese proyecto.
 
 ---
 

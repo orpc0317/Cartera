@@ -184,7 +184,7 @@ Examples in spec syntax:
 - All `<Label>`: `className="text-[11px] font-semibold tracking-wider text-muted-foreground"`.
 - Geo cascade: use native `<select>` (not Shadcn `<Select>`) with class:
   `flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50`
-- Phone fields: `<PhoneField>` from `@/components/ui/phone-field`. Import `DIAL_CODES` and `splitPhone` from the same file. Sync `tel1Iso`/`tel1Local` with form via `useEffect` placed **after** the `form` useState declaration.
+- Phone fields: see **PhoneField pattern** section below for the full implementation.
 - **Numeric input spin buttons**: By default, `type="number"` inputs show up/down spin buttons. Control this per field:
   - **Con spin** (`sin-spin: false`): small bounded integers where stepping one-by-one is useful (e.g. `dias_fecha`, `formato`). No extra class needed — browser default.
   - **Sin spin** (`sin-spin: true`): large free-entry numbers where the spinner is useless and confusing (e.g. `correlativo`, monetary amounts, phone numbers). Add `className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"` to the `<Input>`.
@@ -233,6 +233,115 @@ Examples in spec syntax:
   - **Exception**: the `ClienteCombobox` is never auto-selected — it must always be chosen explicitly by the user.
   - Hardcoded dropdowns: pre-select the first key of the map/array (e.g. `forma_pago = Number(Object.keys(FORMAS_PAGO)[0])`).
   - DB-loaded dropdowns with cascades (fase → manzana → lote): follow the same cascade order, computing each first value from the filtered list.
+
+---
+
+## PhoneField pattern
+
+Use `<PhoneField>` from `@/components/ui/phone-field` for every telephone field. Import `DIAL_CODES` and `splitPhone` from the same module.
+
+### State
+
+Declare two local state pairs per phone field, **after** the `form` useState:
+
+```ts
+const [tel1Iso, setTel1Iso] = useState('')
+const [tel1Local, setTel1Local] = useState('')
+const [tel2Iso, setTel2Iso] = useState('')
+const [tel2Local, setTel2Local] = useState('')
+```
+
+### Sync on edit open
+
+When opening edit mode, use `splitPhone` to decompose the stored value:
+
+```ts
+const { iso, local } = splitPhone(cliente.telefono1)
+setTel1Iso(iso); setTel1Local(local)
+```
+
+Or use `useEffect` to react to `form.telefono1` changes (placed after the `form` useState):
+
+```ts
+useEffect(() => {
+  if (!form.telefono1) return
+  const { iso, local } = splitPhone(form.telefono1)
+  setTel1Iso(iso); setTel1Local(local)
+}, [form.telefono1])
+```
+
+### JSX
+
+```tsx
+<PhoneField
+  iso={tel1Iso}
+  local={tel1Local}
+  onIsoChange={(v) => {
+    setTel1Iso(v)
+    f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local)
+  }}
+  onLocalChange={(v) => {
+    setTel1Local(v)
+    f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v)
+  }}
+  placeholder="Número local"
+/>
+```
+
+The stored value in `form.telefono1` is `+{dialCode}{local}` when a country with a dial code is selected, or just `local` otherwise. Do **not** reimplement `splitPhone` — it already handles these cases.
+
+### Initialization in openCreate()
+
+When the dialog opens for create, initialize the ISO codes to the pre-selected country (see **Country / Geo pre-selection in openCreate()** below):
+
+```ts
+setTel1Iso(detectedCountryIso); setTel1Local('')
+setTel2Iso(detectedCountryIso); setTel2Local('')
+```
+
+---
+
+## Country / Geo pre-selection in openCreate()
+
+Any screen that stores a `pais` / `direccion_pais` field **must** pre-select a sensible default when the create dialog opens. Use this 3-level priority chain:
+
+1. **Project country** — read `pais` (or `direccion_pais`) from the active project record (`proyectos.find(p => p.codigo === firstProyecto)`).
+2. **Empresa country** — if the project field is null/empty, read the same field from the active empresa record (`empresas.find(e => e.codigo === firstEmpresa)`).
+3. **IP geolocation** — if both are null/empty, call `fetch('https://ipapi.co/json/')` and read `country_code` from the JSON response. Wrap in `.catch(() => {})` — never block the dialog on a network failure.
+
+After obtaining the ISO-2 code from any of the three sources:
+- Verify the code exists in the `paises` prop array. If not, fall back to `paises[0].codigo`. If `paises` is empty, use `''`.
+- Apply the geo cascade immediately: pre-select the first matching `departamento` for that country, then the first matching `municipio` for that country + departamento. Use `''` for each level if no matches exist.
+- Initialize phone field ISO states (`tel1Iso`, `tel2Iso`) to the same country code.
+
+```ts
+function applyWithPais(paisCode: string) {
+  const resolved = paises.find((p) => p.codigo === paisCode) ? paisCode : (paises[0]?.codigo ?? '')
+  const firstDepto = departamentos.find((d) => d.pais === resolved)
+  const deptoCod = firstDepto?.codigo ?? ''
+  const municipioCod = firstDepto
+    ? (municipios.find((m) => m.pais === resolved && m.departamento === deptoCod)?.codigo ?? '')
+    : ''
+  setForm((prev) => ({ ...prev, direccion_pais: resolved, direccion_departamento: deptoCod, direccion_municipio: municipioCod }))
+  setTel1Iso(resolved); setTel2Iso(resolved)
+}
+
+// In openCreate():
+const paisFromProject = firstProyecto?.pais ?? ''
+const paisFromEmpresa = firstEmpresa?.pais ?? ''
+if (paisFromProject) {
+  applyWithPais(paisFromProject)
+} else if (paisFromEmpresa) {
+  applyWithPais(paisFromEmpresa)
+} else {
+  fetch('https://ipapi.co/json/')
+    .then((r) => r.json())
+    .then((d: Record<string, unknown>) => { if (d.country_code) applyWithPais(d.country_code as string) })
+    .catch(() => {})
+}
+```
+
+> **Screens without geo cascade** (e.g. those without `departamento` / `municipio`): apply the same 3-level detection but skip the cascade steps. Use the ISO code only to pre-fill the `pais` field.
 
 ---
 

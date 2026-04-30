@@ -208,6 +208,30 @@ export async function deleteCliente(
     .eq('codigo', codigo)
     .single()
 
+  const { count: promesasCount } = await admin
+    .schema('cartera')
+    .from('t_promesa')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('cliente', codigo)
+  if (promesasCount && promesasCount > 0) {
+    return { error: 'No se puede eliminar este cliente porque tiene promesas asociadas.' }
+  }
+
+  const { count: recibosCount } = await admin
+    .schema('cartera')
+    .from('t_recibo_caja')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('cliente', codigo)
+  if (recibosCount && recibosCount > 0) {
+    return { error: 'No se puede eliminar este cliente porque tiene recibos asociados.' }
+  }
+
   const { error } = await admin
     .schema('cartera')
     .from('t_cliente')

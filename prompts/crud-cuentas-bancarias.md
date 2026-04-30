@@ -146,15 +146,19 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
 `STORAGE_KEY = 'cuentas_ban_cols_v1_${userId}'`
 
-| key      | label    | defaultVisible |
-|----------|----------|----------------|
-| empresa  | Empresa  | false          |
-| proyecto | Proyecto | false          |
-| banco    | Banco    | true           |
-| nombre   | Nombre   | true           |
-| numero   | Numero   | true           |
-| moneda   | Moneda   | true           |
-| activo   | Activo   | true           |
+> **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
+> `banco` → nombre del banco (prop `bancos`); `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
+
+| key      | label    | defaultVisible | render                                                |
+|----------|----------|----------------|-------------------------------------------------------|
+| empresa  | Empresa  | false          | nombre de la empresa (del prop `empresas`)            |
+| proyecto | Proyecto | false          | nombre del proyecto (del prop `proyectos`)            |
+| banco    | Banco    | true           | nombre del banco (del prop `bancos`)                  |
+| nombre   | Nombre   | true           | valor directo                                         |
+| numero   | Numero   | true           | valor directo                                         |
+| moneda   | Moneda   | true           | bandera + ISO (Moneda display rules)                  |
+| activo   | Activo   | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---
 
@@ -217,11 +221,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa → proyecto → banco: al cambiar empresa en `f()`, resetear proyecto al primero
-  disponible de esa empresa y banco a `0`. Al cambiar proyecto, resetear banco a `0`.
-- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa, primer banco
-  de ese proyecto.
+- Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
 - `moneda` esta en `SKIP_KEYS`: no aplicar `toDbString()` en la funcion `f()`.
+- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa, primer banco
+  de ese proyecto **Y** pre-seleccionar `moneda` usando el algoritmo de **Currency pre-selection from country** de `ui-conventions.instructions.md`: detectar el pais por proyecto → empresa → IP (ver **Country / Geo pre-selection** en `crud-screens.instructions.md`) y convertirlo a moneda con `COUNTRY_CURRENCY_MAP` de `@/lib/constants`. Si no existe match, usar `monedas[0].codigo` como fallback.
 
 ---
 

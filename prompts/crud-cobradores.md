@@ -127,12 +127,15 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
 `STORAGE_KEY = 'cobradores_cols_v1_${userId}'`
 
-| key            | label           | defaultVisible |
-|----------------|-----------------|----------------|
-| empresa        | Empresa         | false          |
-| proyecto       | Proyecto        | true           |
-| nombre         | Nombre          | true           |
-| activo         | Activo          | true           |
+> **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
+
+| key            | label           | defaultVisible | render                                                |
+|----------------|-----------------|----------------|-------------------------------------------------------|
+| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
+| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
+| nombre         | Nombre          | true           | valor directo                                         |
+| activo         | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---
 
@@ -185,7 +188,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa.
+- Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
 - `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
 
 ---

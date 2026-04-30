@@ -14,6 +14,7 @@ export const PERMISOS = {
   SUP_CAT:   'SUP.CAT',
   VEN_CAT:   'VEN.CAT',
   COB_CAT:   'COB.CAT',
+  COO_CAT:   'COO.CAT',
   RES_OPE:   'RES.OPE',
   SER_REC:   'SER.REC',
 } as const

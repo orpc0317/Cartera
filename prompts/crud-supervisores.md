@@ -127,12 +127,15 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
 `STORAGE_KEY = 'supervisores_cols_v1_${userId}'`
 
-| key            | label           | defaultVisible |
-|----------------|-----------------|----------------|
-| empresa        | Empresa         | false          |
-| proyecto       | Proyecto        | true           |
-| nombre         | Nombre          | true           |
-| activo         | Activo          | true           |
+> **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
+
+| key            | label           | defaultVisible | render                                                |
+|----------------|-----------------|----------------|-------------------------------------------------------|
+| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
+| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
+| nombre         | Nombre          | true           | valor directo                                         |
+| activo         | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---
 
@@ -171,7 +174,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 - Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un supervisor con ese nombre en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_coordinador` con el mismo `(cuenta, empresa, proyecto, supervisor)`. Si existen -> `'No se puede eliminar este supervisor porque tiene vendedores asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_coordinador` con el mismo `(cuenta, empresa, proyecto, supervisor)`. Si existen -> `'No se puede eliminar este supervisor porque tiene coordinadores asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
 
 ---
 
@@ -185,7 +188,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa -> proyecto: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa.
+- Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
 - `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
 
 ---

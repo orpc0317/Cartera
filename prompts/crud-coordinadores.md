@@ -11,8 +11,8 @@
 | TABLA_BD       | `cartera.t_coordinador`                                      |
 | RUTA           | `/dashboard/promesas/coordinadores`                          |
 | PERMISO        | `COO_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
-| COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
-| ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| COLOR_ACENTO   | `blue-100 / blue-600`                                        |
+| ICONO_LUCIDE   | `Network`                                                    |
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
@@ -132,13 +132,17 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
 `STORAGE_KEY = 'coordinadores_cols_v1_${userId}'`
 
-| key            | label           | defaultVisible |
-|----------------|-----------------|----------------|
-| empresa        | Empresa         | false          |
-| proyecto       | Proyecto        | true           |
-| nombre         | Nombre          | true           |
-| supervisor     | Supervisor      | false          |
-| activo         | Activo          | true           |
+> **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
+> `supervisor` → nombre del supervisor (prop `supervisores`).
+
+| key            | label           | defaultVisible | render                                                |
+|----------------|-----------------|----------------|-------------------------------------------------------|
+| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
+| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
+| nombre         | Nombre          | true           | valor directo                                         |
+| supervisor     | Supervisor      | false          | nombre del supervisor (del prop `supervisores`)       |
+| activo         | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---
 
@@ -192,8 +196,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ## LOGIC_ESPECIFICO
 
-- Cascade empresa -> proyecto + supervisor: al cambiar empresa en `f()`, resetear `proyecto` al primer proyecto disponible de esa empresa (0 si no hay ninguno) **y** resetear `supervisor` al primer supervisor disponible para ese proyecto (0 si no hay ninguno).
-- Cascade proyecto -> supervisor: al cambiar proyecto en `f()`, resetear `supervisor` al primer supervisor disponible de ese proyecto, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
 - `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa y primer supervisor de ese proyecto.
 
 ---

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Eye, Plus, Users, Search,
-  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Receipt,
+  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Receipt, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,25 +54,28 @@ type ColPref = { key: string; visible: boolean }
 // ─── Columnas ──────────────────────────────────────────────────────────────
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: '__proyecto',                label: 'Proyecto',        defaultVisible: true  },
+  { key: 'empresa',                   label: 'Empresa',         defaultVisible: false },
+  { key: 'proyecto',                  label: 'Proyecto',        defaultVisible: true  },
   { key: 'nombre',                    label: 'Nombre',          defaultVisible: true  },
-  { key: 'telefono1',                 label: 'Telefono',        defaultVisible: true  },
-  { key: 'correo',                    label: 'Correo',          defaultVisible: true  },
-  { key: '__tipo_identificacion',     label: 'Tipo ID',         defaultVisible: true  },
-  { key: 'identificacion_tributaria', label: 'ID Tributaria',   defaultVisible: true  },
-  { key: '__regimen_iva',             label: 'Regimen IVA',     defaultVisible: true  },
   { key: 'direccion',                 label: 'Direccion',       defaultVisible: false },
-  { key: 'direccion_pais',            label: 'Pais',            defaultVisible: false },
-  { key: 'codigo_postal',             label: 'Cod. Postal',     defaultVisible: false },
+  { key: 'direccion_departamento',    label: 'Departamento',    defaultVisible: false },
+  { key: 'direccion_municipio',       label: 'Municipio',       defaultVisible: false },
+  { key: 'codigo_postal',             label: 'Codigo Postal',   defaultVisible: false },
+  { key: 'telefono1',                 label: 'Telefono',        defaultVisible: true  },
+  { key: 'telefono2',                 label: 'Telefono2',       defaultVisible: false },
+  { key: 'correo',                    label: 'Correo',          defaultVisible: true  },
+  { key: 'tipo_identificacion',       label: 'Identificacion',  defaultVisible: false },
+  { key: 'identificacion_tributaria', label: 'ID Tributaria',   defaultVisible: true  },
   { key: 'nombre_factura',            label: 'Nombre Factura',  defaultVisible: false },
-  { key: 'telefono2',                 label: 'Telefono 2',      defaultVisible: false },
+  { key: 'regimen_iva',               label: 'Regimen IVA',     defaultVisible: false },
+  { key: 'activo',                    label: 'Activo',          defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
 // ─── Formulario vacío ──────────────────────────────────────────────────────
 
-const TIPO_IDENTIFICACION_LABELS: Record<number, string> = { 0: 'NIT', 1: 'DPI', 2: 'Extranjero' }
+const TIPO_IDENTIFICACION_LABELS: Record<number, string> = { 0: 'No Aplica', 1: 'NIT', 2: 'DPI', 3: 'Extranjero' }
 
 const EMPTY_FORM: ClienteForm = {
   empresa: 0,
@@ -85,12 +88,41 @@ const EMPTY_FORM: ClienteForm = {
   nombre_factura: '',
   identificacion_tributaria: '',
   tipo_identificacion: 0,
-  regimen_iva: 1,
+  regimen_iva: 0,
+  activo: 1,
   direccion: '',
   direccion_pais: '',
   direccion_departamento: '',
   direccion_municipio: '',
   codigo_postal: '',
+}
+
+// ─── CSV Export ──────────────────────────────────────────────────────────────
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+)
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
+function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
+  const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+    .filter((k) => !NEVER_EXPORT.has(k))
+  const headers = keys.map((k) => COL_LABELS[k] ?? k)
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Cliente])).join(',')),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `clientes-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
@@ -284,12 +316,22 @@ export function ClientesClient({
 
   const filtered = useMemo(() => afterSearch.filter((c) =>
     Object.entries(colFilters).every(([col, vals]) => {
-      if (col === '__tipo_identificacion') return vals.has(String(c.tipo_identificacion ?? 0))
-      if (col === '__regimen_iva') return vals.has(String(c.regimen_iva))
-      if (col === '__proyecto') return vals.has(String(c.proyecto))
+      if (col === 'empresa') return vals.has(String(c.empresa))
+      if (col === 'proyecto') return vals.has(String(c.proyecto))
+      if (col === 'tipo_identificacion') return vals.has(String(c.tipo_identificacion ?? 0))
+      if (col === 'regimen_iva') return vals.has(String(c.regimen_iva))
+      if (col === 'activo') return vals.has(String(c.activo ?? 1))
+      if (col === 'direccion_departamento') {
+        const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
+        return vals.has(d?.nombre ?? c.direccion_departamento ?? '')
+      }
+      if (col === 'direccion_municipio') {
+        const m = municipios.find((x) => x.pais === c.direccion_pais && x.departamento === c.direccion_departamento && x.codigo === c.direccion_municipio)
+        return vals.has(m?.nombre ?? c.direccion_municipio ?? '')
+      }
       return vals.has(String(c[col as keyof Cliente] ?? ''))
     })
-  ), [afterSearch, colFilters])
+  ), [afterSearch, colFilters, departamentos, municipios])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -419,18 +461,52 @@ export function ClientesClient({
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)
     const firstProyectoCodigo = firstProyecto?.codigo ?? 0
-    const defaultPhoneIso = firstProyecto?.pais ?? ''
+
+    function applyWithPais(paisCode: string) {
+      const resolved = paises.find((p) => p.codigo === paisCode) ? paisCode : (paises[0]?.codigo ?? '')
+      const firstDepto = departamentos.find((d) => d.pais === resolved)
+      const deptoCod = firstDepto?.codigo ?? ''
+      const municipioCod = firstDepto
+        ? (municipios.find((m) => m.pais === resolved && m.departamento === deptoCod)?.codigo ?? '')
+        : ''
+      setForm((prev) => ({
+        ...prev,
+        direccion_pais: resolved,
+        direccion_departamento: deptoCod,
+        direccion_municipio: municipioCod,
+      }))
+      setPaisCodigo(resolved)
+      setDeptoCodigo(deptoCod)
+      setTel1Iso(resolved)
+      setTel2Iso(resolved)
+    }
+
     setForm({
       ...EMPTY_FORM,
       empresa: firstEmpresa,
       proyecto: firstProyectoCodigo,
-      direccion_pais: defaultPhoneIso,
+      tipo_identificacion: 0,
+      regimen_iva: 0,
+      activo: 1,
     })
-    setPaisCodigo(defaultPhoneIso)
+    setPaisCodigo('')
     setDeptoCodigo('')
-    setTel1Iso(defaultPhoneIso); setTel1Local('')
-    setTel2Iso(defaultPhoneIso); setTel2Local('')
+    setTel1Iso(''); setTel1Local('')
+    setTel2Iso(''); setTel2Local('')
     setDialogOpen(true)
+
+    const paisFromProject = firstProyecto?.pais ?? ''
+    const paisFromEmpresa = empresas[0]?.pais ?? ''
+    if (paisFromProject) {
+      applyWithPais(paisFromProject)
+    } else if (paisFromEmpresa) {
+      applyWithPais(paisFromEmpresa)
+    } else {
+      fetch('https://ipapi.co/json/')
+        .then((r) => r.json())
+        .then((d: Record<string, unknown>) => { if (d.country_code) applyWithPais(d.country_code as string) })
+        .catch(() => {})
+    }
   }
 
   function openView(cliente: Cliente) {
@@ -474,11 +550,11 @@ export function ClientesClient({
   function handleSave() {
     if (!form.nombre.trim())    { toast.error('El nombre es requerido.'); return }
     if (!form.telefono1.trim()) { toast.error('El teléfono es requerido.'); return }
-    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 0 && form.identificacion_tributaria.trim() && !validarNIT(form.identificacion_tributaria)) {
+    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && form.identificacion_tributaria.trim() && !validarNIT(form.identificacion_tributaria)) {
       toast.error('El NIT no tiene una estructura válida.')
       return
     }
-    if (form.tipo_identificacion === 1 && form.identificacion_tributaria.trim() && !validarDPI(form.identificacion_tributaria)) {
+    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 2 && form.identificacion_tributaria.trim() && !validarDPI(form.identificacion_tributaria)) {
       toast.error('El DPI debe contener exactamente 13 dígitos numéricos y tener una estructura de CUI válida.')
       return
     }
@@ -537,13 +613,20 @@ export function ClientesClient({
             <p className="text-sm text-muted-foreground">Administra los clientes por proyecto</p>
           </div>
         </div>
-        <Button onClick={openCreate} disabled={!puedeAgregar} className="gap-2">
+        <Button onClick={openCreate} disabled={!puedeAgregar || proyectos.length === 0} className="gap-2">
           <Plus className="h-4 w-4" />
           Nuevo Cliente
         </Button>
       </div>
 
-      {/* ── Búsqueda + ColumnManager ── */}
+      {/* ── Advertencia ── */}
+      {proyectos.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          No hay proyectos disponibles. Crea un proyecto antes de agregar clientes.
+        </div>
+      )}
+
+      {/* ── Búsqueda + ColumnManager ── */}}
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -559,7 +642,10 @@ export function ClientesClient({
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
           <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
         </div>
       </div>
@@ -577,47 +663,106 @@ export function ClientesClient({
             <TableRow className="bg-muted/30">
               <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
               {visibleCols.map((col) => {
-                if (col.key === '__proyecto') {
+                if (col.key === 'empresa') {
                   return (
-                    <TableHead key="__proyecto">
+                    <TableHead key="empresa">
+                      <ColumnFilter
+                        label="Empresa"
+                        values={[...new Set(initialData.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        active={new Set([...(colFilters['empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                          setColFilter('empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === 'proyecto') {
+                  return (
+                    <TableHead key="proyecto">
                       <ColumnFilter
                         label="Proyecto"
                         values={[...new Set(initialData.map((c) => proyectoMap.get(c.proyecto) ?? `#${c.proyecto}`))].sort()}
-                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? `#${k}`))}
+                        active={new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
-                          setColFilter('__proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                          setColFilter('proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
                     </TableHead>
                   )
                 }
-                if (col.key === '__tipo_identificacion') {
+                if (col.key === 'tipo_identificacion') {
                   return (
-                    <TableHead key="__tipo_identificacion">
+                    <TableHead key="tipo_identificacion">
                       <ColumnFilter
-                        label="Tipo ID"
+                        label="Identificacion"
                         values={Object.values(TIPO_IDENTIFICACION_LABELS)}
-                        active={new Set([...(colFilters['__tipo_identificacion'] ?? new Set())].map((k) => TIPO_IDENTIFICACION_LABELS[Number(k)] ?? `#${k}`))}
+                        active={new Set([...(colFilters['tipo_identificacion'] ?? new Set())].map((k) => TIPO_IDENTIFICACION_LABELS[Number(k)] ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = Object.fromEntries(Object.entries(TIPO_IDENTIFICACION_LABELS).map(([k, v]) => [v, k]))
-                          setColFilter('__tipo_identificacion', new Set([...labels].map((l) => byLabel[l] ?? l)))
+                          setColFilter('tipo_identificacion', new Set([...labels].map((l) => byLabel[l] ?? l)))
                         }}
                       />
                     </TableHead>
                   )
                 }
-                if (col.key === '__regimen_iva') {
+                if (col.key === 'regimen_iva') {
                   return (
-                    <TableHead key="__regimen_iva">
+                    <TableHead key="regimen_iva">
                       <ColumnFilter
                         label="Regimen IVA"
                         values={[...new Set(initialData.map((c) => REGIMENES_IVA[c.regimen_iva] ?? `#${c.regimen_iva}`))].sort()}
-                        active={new Set([...(colFilters['__regimen_iva'] ?? new Set())].map((k) => REGIMENES_IVA[Number(k)] ?? `#${k}`))}
+                        active={new Set([...(colFilters['regimen_iva'] ?? new Set())].map((k) => REGIMENES_IVA[Number(k)] ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = Object.fromEntries(Object.entries(REGIMENES_IVA).map(([k, v]) => [v, k]))
-                          setColFilter('__regimen_iva', new Set([...labels].map((l) => byLabel[l] ?? l)))
+                          setColFilter('regimen_iva', new Set([...labels].map((l) => byLabel[l] ?? l)))
                         }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === 'activo') {
+                  return (
+                    <TableHead key="activo">
+                      <ColumnFilter
+                        label="Activo"
+                        values={['Activo', 'Inactivo']}
+                        active={new Set([...(colFilters['activo'] ?? new Set())].map((k) => k === '1' ? 'Activo' : 'Inactivo'))}
+                        onChange={(labels) => {
+                          setColFilter('activo', new Set([...labels].map((l) => l === 'Activo' ? '1' : '0')))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === 'direccion_departamento') {
+                  return (
+                    <TableHead key="direccion_departamento">
+                      <ColumnFilter
+                        label="Departamento"
+                        values={[...new Set(initialData.map((c) => {
+                          const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
+                          return d?.nombre ?? c.direccion_departamento ?? ''
+                        }))].filter(Boolean).sort()}
+                        active={colFilters['direccion_departamento'] ?? new Set()}
+                        onChange={(v) => setColFilter('direccion_departamento', v)}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === 'direccion_municipio') {
+                  return (
+                    <TableHead key="direccion_municipio">
+                      <ColumnFilter
+                        label="Municipio"
+                        values={[...new Set(initialData.map((c) => {
+                          const m = municipios.find((x) => x.pais === c.direccion_pais && x.departamento === c.direccion_departamento && x.codigo === c.direccion_municipio)
+                          return m?.nombre ?? c.direccion_municipio ?? ''
+                        }))].filter(Boolean).sort()}
+                        active={colFilters['direccion_municipio'] ?? new Set()}
+                        onChange={(v) => setColFilter('direccion_municipio', v)}
                       />
                     </TableHead>
                   )
@@ -667,18 +812,28 @@ export function ClientesClient({
 
                     {visibleCols.map((col) => {
                       switch (col.key) {
-                        case 'nombre':
-                          return <TableCell key="nombre" className="font-medium">{cliente.nombre}</TableCell>
-
-                        case '__proyecto':
+                        case 'empresa':
                           return (
-                            <TableCell key="__proyecto" className="text-muted-foreground">
+                            <TableCell key="empresa" className="text-muted-foreground">
+                              {empresaMap.get(cliente.empresa) ?? `#${cliente.empresa}`}
+                            </TableCell>
+                          )
+
+                        case 'proyecto':
+                          return (
+                            <TableCell key="proyecto" className="text-muted-foreground">
                               {proyectoMap.get(cliente.proyecto) ?? `#${cliente.proyecto}`}
                             </TableCell>
                           )
 
+                        case 'nombre':
+                          return <TableCell key="nombre" className="font-medium">{cliente.nombre}</TableCell>
+
                         case 'telefono1':
                           return <TableCell key="telefono1" className="text-muted-foreground">{cliente.telefono1 || '—'}</TableCell>
+
+                        case 'telefono2':
+                          return <TableCell key="telefono2" className="text-muted-foreground">{cliente.telefono2 || '—'}</TableCell>
 
                         case 'correo':
                           return <TableCell key="correo" className="text-muted-foreground">{cliente.correo || '—'}</TableCell>
@@ -686,42 +841,57 @@ export function ClientesClient({
                         case 'identificacion_tributaria':
                           return <TableCell key="identificacion_tributaria" className="font-mono text-xs text-muted-foreground">{cliente.identificacion_tributaria || '—'}</TableCell>
 
-                        case '__tipo_identificacion':
+                        case 'tipo_identificacion':
                           return (
-                            <TableCell key="__tipo_identificacion">
+                            <TableCell key="tipo_identificacion">
                               <Badge variant="outline" className="font-normal">
                                 {TIPO_IDENTIFICACION_LABELS[cliente.tipo_identificacion ?? 0] ?? `#${cliente.tipo_identificacion}`}
                               </Badge>
                             </TableCell>
                           )
 
-                        case '__regimen_iva':
+                        case 'regimen_iva':
                           return (
-                            <TableCell key="__regimen_iva">
+                            <TableCell key="regimen_iva">
                               <Badge variant="secondary" className="font-normal">
                                 {REGIMENES_IVA[cliente.regimen_iva] ?? `#${cliente.regimen_iva}`}
                               </Badge>
                             </TableCell>
                           )
 
-                        case 'direccion_pais': {
-                          const p = paises.find((x) => x.codigo === cliente.direccion_pais)
+                        case 'direccion_departamento': {
+                          const d = departamentos.find((x) => x.pais === cliente.direccion_pais && x.codigo === cliente.direccion_departamento)
                           return (
-                            <TableCell key="direccion_pais" className="text-muted-foreground">
-                              {cliente.direccion_pais ? (
-                                <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${cliente.direccion_pais.toLowerCase()}.png`} alt={cliente.direccion_pais} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {p?.nombre ?? cliente.direccion_pais}
-                                </span>
-                              ) : '—'}
+                            <TableCell key="direccion_departamento" className="text-muted-foreground">
+                              {d?.nombre ?? cliente.direccion_departamento ?? '—'}
                             </TableCell>
                           )
                         }
 
+                        case 'direccion_municipio': {
+                          const m = municipios.find((x) => x.pais === cliente.direccion_pais && x.departamento === cliente.direccion_departamento && x.codigo === cliente.direccion_municipio)
+                          return (
+                            <TableCell key="direccion_municipio" className="text-muted-foreground">
+                              {m?.nombre ?? cliente.direccion_municipio ?? '—'}
+                            </TableCell>
+                          )
+                        }
+
+                        case 'activo':
+                          return (
+                            <TableCell key="activo">
+                              {cliente.activo === 1
+                                ? <Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>
+                                : <Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>}
+                            </TableCell>
+                          )
+
                         default:
-                          return <TableCell key={col.key} className="text-muted-foreground">
-                            {(cliente[col.key as keyof Cliente] as string) || '—'}
-                          </TableCell>
+                          return (
+                            <TableCell key={col.key} className="text-muted-foreground">
+                              {(cliente[col.key as keyof Cliente] as string) || '—'}
+                            </TableCell>
+                          )
                       }
                     })}
 
@@ -1004,13 +1174,16 @@ export function ClientesClient({
             <TabsContent value="facturacion" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
+                  <SectionDivider label="Facturacion" />
                   <div className="col-span-2">
                     <ViewField label="Nombre Factura" value={viewTarget.nombre_factura} />
                   </div>
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
-                    <ViewField label="Tipo ID" value={TIPO_IDENTIFICACION_LABELS[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
-                    <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
-                    <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
+                  <ViewField label="Identificacion" value={TIPO_IDENTIFICACION_LABELS[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
+                  <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
+                  <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
+                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
+                    <Checkbox checked={!!viewTarget.activo} disabled />
                   </div>
                 </div>
               ) : (
@@ -1020,38 +1193,46 @@ export function ClientesClient({
                     <Input id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturación (si difiere)" />
                   </div>
 
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
-                    <div className="grid gap-1">
-                      <Label htmlFor="tipo_id" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Tipo ID</Label>
-                      <Select value={String(form.tipo_identificacion)} onValueChange={(v) => f('tipo_identificacion', Number(v))}>
-                        <SelectTrigger id="tipo_id" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(TIPO_IDENTIFICACION_LABELS).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="tipo_id" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Identificacion</Label>
+                    <Select value={String(form.tipo_identificacion)} onValueChange={(v) => f('tipo_identificacion', Number(v))}>
+                      <SelectTrigger id="tipo_id" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(TIPO_IDENTIFICACION_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    <div className="grid gap-1">
-                      <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria</Label>
-                      <Input id="id_trib" value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
-                    </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria</Label>
+                    <Input id="id_trib" value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
+                  </div>
 
-                    <div className="grid gap-1">
-                      <Label htmlFor="regimen_iva" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen IVA</Label>
-                      <Select value={String(form.regimen_iva)} onValueChange={(v) => f('regimen_iva', Number(v))}>
-                        <SelectTrigger id="regimen_iva" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(REGIMENES_IVA).map(([k, v]) => (
-                            <SelectItem key={k} value={k}>{v}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  <div className="grid gap-1">
+                    <Label htmlFor="regimen_iva" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen IVA</Label>
+                    <Select value={String(form.regimen_iva)} onValueChange={(v) => f('regimen_iva', Number(v))}>
+                      <SelectTrigger id="regimen_iva" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(REGIMENES_IVA).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
+                    <div className="flex h-8 items-center">
+                      <Checkbox
+                        checked={!!form.activo}
+                        onCheckedChange={(checked: boolean) => setForm((p) => ({ ...p, activo: checked ? 1 : 0 }))}
+                      />
                     </div>
                   </div>
                 </div>

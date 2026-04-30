@@ -56,7 +56,7 @@ Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table act
 | Bancos            | `Landmark`       |
 | Cuentas Bancarias | `CreditCard`     |
 | Serie Recibos     | `Receipt`        |
-| Coordinadores     | `ClipboardList`  |
+| Coordinadores    | `Network`        |
 
 ---
 
@@ -285,3 +285,38 @@ And in the filter match:
 ```ts
 if (col === 'moneda') return vals.has(r.moneda)
 ```
+
+---
+
+## Currency pre-selection from country (COUNTRY_CURRENCY_MAP)
+
+Any screen that has a `moneda` field **must** pre-select a sensible default in `openCreate()` based on the detected country. Use `COUNTRY_CURRENCY_MAP` from `@/lib/constants` to convert the ISO-2 country code to an ISO-4217 currency code.
+
+### Algorithm (apply after country detection — see *Country / Geo pre-selection* in `crud-screens.instructions.md`):
+
+```ts
+import { COUNTRY_CURRENCY_MAP } from '@/lib/constants'
+
+const detectedMoneda = COUNTRY_CURRENCY_MAP[detectedCountryIso] ?? ''
+const monedaDefault = monedas.find((m) => m.codigo === detectedMoneda)
+  ? detectedMoneda
+  : (monedas[0]?.codigo ?? '')
+setForm((prev) => ({ ...prev, moneda: monedaDefault }))
+```
+
+### COUNTRY_CURRENCY_MAP definition (in `src/lib/constants.ts`)
+
+If the map does not yet exist in `constants.ts`, add it:
+
+```ts
+export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  AR: 'ARS', BO: 'BOB', BR: 'BRL', CA: 'CAD',
+  CL: 'CLP', CO: 'COP', CR: 'CRC', CU: 'CUP',
+  DO: 'DOP', EC: 'USD', EU: 'EUR', GB: 'GBP',
+  GT: 'GTQ', HN: 'HNL', MX: 'MXN', NI: 'NIO',
+  PA: 'PAB', PE: 'PEN', PY: 'PYG', SV: 'SVC',
+  US: 'USD', UY: 'UYU', VE: 'VES',
+}
+```
+
+> This map is a **shared constant** — define it once in `@/lib/constants` and import it in every `_client.tsx` that needs currency pre-selection. Never redefine it inline.
