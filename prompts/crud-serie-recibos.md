@@ -13,6 +13,7 @@
 | PERMISO        | `SER_REC` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| MODO           | nuevo                                                        |
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
@@ -52,10 +53,10 @@ SerieRecibo {
 }
 
 SerieReciboForm {              	-- campos editables por el usuario
-  empresa:        number	      -- readonly tras creacion (disabled en edit mode)
-  proyecto:       number	      -- readonly tras creacion (disabled en edit mode)
-  serie:          string       	-- readonly tras creacion (disabled en edit mode)
-  serie_factura:  string | null -- null = sin serie de factura
+  empresa:        number
+  proyecto:       number
+  serie:          string
+  serie_factura:  string | null
   dias_fecha:     number
   correlativo:    number
   formato:        number
@@ -68,9 +69,7 @@ SerieReciboForm {              	-- campos editables por el usuario
 **LLAVE_PRIMARIA compuesta:** `(cuenta, empresa, proyecto, serie)`
 - `cuenta` es implicito (se obtiene del usuario autenticado, no va en el form)
 - Para UPDATE y DELETE identificar por: `empresa + proyecto + serie`
-
-**CAMPOS_READONLY_TRAS_CREACION:** `empresa`, `proyecto`, `serie`
-Renderizar con `disabled={!!viewTarget}` en modo edicion. No incluir en el payload del UPDATE.
+- `empresa`, `proyecto` y `serie` son readonly tras creacion: no incluir en el payload del UPDATE.
 
 ---
 
@@ -278,8 +277,22 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 
 ---
 
+## CAMBIOS_PENDIENTES
+
+> Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
+> Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Ejemplo de como se deberia especificar puntualmente los cambios realizados:
+> [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
+> [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
+> [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
+
+_(sin cambios pendientes)_
+
+---
+
 ## INSTRUCCION_FINAL
 
-Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
-Si existe conflicto entre las reglas generales y las reglas especificas de este prompt,
-prevalecen las de este prompt.
+- Si `MODO = nuevo`: genera los tres archivos completos aplicando TODAS las reglas de los archivos de instrucciones listados.
+- Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
+
+En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.

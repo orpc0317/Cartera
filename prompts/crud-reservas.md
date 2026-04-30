@@ -13,6 +13,7 @@
 | PERMISO        | `RES_OPE` — ya existe en `src/lib/permisos.ts`              |
 | COLOR_ACENTO   | elegir según tabla de `ui-conventions.instructions.md`       |
 | ICONO_LUCIDE   | `ClipboardList`                                              |
+| MODO           | nuevo                                                        |
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
@@ -65,16 +66,16 @@ ReservaForm {                         -- campos del formulario de creacion
   fase:            number
   manzana:         string
   lote:            string
-  cliente:         number             -- seleccionado con ClienteCombobox (busqueda por nombre)
-  fecha:           string             -- ISO date YYYY-MM-DD; default: hoy
-  monto:           number             -- debe ser mayor a 0.00
-  serie_recibo:    string             -- FK -> t_serie_recibo.serie
-  recibo:          string             -- numero manual; ignorado si serie es automatica
-  forma_pago:      number             -- 1=Efectivo 2=Cheque 3=Deposito 4=Transferencia
-  banco:           number             -- solo si forma_pago=2 (Cheque)
-  numero_cuenta:   string             -- solo si forma_pago=2 (Cheque)
-  cuenta_bancaria: number             -- solo si forma_pago=3 o 4 (Deposito/Transferencia)
-  numero_documento:string             -- Cheque/Deposito/Transferencia
+  cliente:         number
+  fecha:           string
+  monto:           number
+  serie_recibo:    string
+  recibo:          string
+  forma_pago:      number
+  banco:           number
+  numero_cuenta:   string
+  cuenta_bancaria: number
+  numero_documento:string
   vendedor:        number             
   cobrador:        number
 }
@@ -454,8 +455,22 @@ No se requieren archivos adicionales. No crear nuevas funciones de accion — re
 
 ---
 
+## CAMBIOS_PENDIENTES
+
+> Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
+> Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Ejemplo de como se deberia especificar puntualmente los cambios realizados:
+> [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
+> [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
+> [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
+
+_(sin cambios pendientes)_
+
+---
+
 ## INSTRUCCION_FINAL
 
-Genera los dos archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
-Si existe conflicto entre las reglas generales y las reglas especificas de este prompt,
-prevalecen las de este prompt.
+- Si `MODO = nuevo`: genera los dos archivos completos aplicando TODAS las reglas de los archivos de instrucciones listados.
+- Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
+
+En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.

@@ -13,6 +13,7 @@
 | PERMISO        | `CLI_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| MODO           | nuevo                                                        |
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
@@ -58,22 +59,22 @@ Cliente {
 }
 
 ClienteForm {          	-- campos editables por el usuario
-  empresa:                    number	  -- readonly tras creacion (disabled en edit mode)
-  proyecto:                   number	  -- readonly tras creacion (disabled en edit mode)
-  nombre:                     string   | not null
-  direccion:                  string     -- direccion del cliente
-  direccion_pais:             string     -- FK -> cartera.t_pais.codigo, (codigo ISO)
-  direccion_departamento:     string     -- FK -> cartera.t_departamento.codigo, filtrado por pais
-  direccion_municipio:        string     -- FK -> cartera.t_munipios.codigo, filtrado por pais, departamento
-  codigo_postal:              string     -- codigo postal de la direccion
-  telefono1:                  string     -- 1er telefono de contacto
-  telefono2:                  string     -- 2do telefono de contacto
-  correo:                     string     -- correo electronico del cliente
-  tipo_identificacion:        smallint   -- tipo identificacion tributaria (0 No Aplica, 1 NIT, 2 DPI, 3 Extranjero)
-  nombre_factura:             string     -- nombre a facturar
-  identificacion_tributaria:  string     -- identificacion tributaria (NIT)
-  regimen_iva:                smallint   -- regimen iva (0 No Aplica, 1 General, 2 Pequeño Contribuyente, 3 Exento)
-  activo:                     smallint   -- 1 = activo, 0 = inactivo
+  empresa:                    number
+  proyecto:                   number
+  nombre:                     string
+  direccion:                  string
+  direccion_pais:             string
+  direccion_departamento:     string
+  direccion_municipio:        string
+  codigo_postal:              string
+  telefono1:                  string
+  telefono2:                  string
+  correo:                     string
+  tipo_identificacion:        smallint
+  nombre_factura:             string
+  identificacion_tributaria:  string
+  regimen_iva:                smallint
+  activo:                     smallint
 }
 
 ```
@@ -81,9 +82,7 @@ ClienteForm {          	-- campos editables por el usuario
 **LLAVE_PRIMARIA compuesta:** `(cuenta, empresa, proyecto, codigo)`
 - `cuenta` es implicito (se obtiene del usuario autenticado, no va en el form)
 - Para UPDATE y DELETE identificar por: `empresa + proyecto + codigo`
-
-**CAMPOS_READONLY_TRAS_CREACION:** `empresa`, `proyecto`
-Renderizar con `disabled={!!viewTarget}` en modo edicion. No incluir en el payload del UPDATE.
+- `empresa` y `proyecto` son readonly tras creacion: no incluir en el payload del UPDATE.
 
 ---
 
@@ -292,7 +291,22 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 
 ---
 
+## CAMBIOS_PENDIENTES
+
+> Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
+> Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Ejemplo de como se deberia especificar puntualmente los cambios realizados:
+> [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
+> [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
+> [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
+
+_(sin cambios pendientes)_
+
+---
+
 ## INSTRUCCION_FINAL
 
-Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
-Si existe conflicto entre las reglas generales y las reglas especificas de este prompt, prevalecen las de este prompt.
+- Si `MODO = nuevo`: genera los tres archivos completos aplicando TODAS las reglas de los archivos de instrucciones listados.
+- Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
+
+En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.

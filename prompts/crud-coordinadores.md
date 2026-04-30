@@ -13,6 +13,7 @@
 | PERMISO        | `COO_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | `blue-100 / blue-600`                                        |
 | ICONO_LUCIDE   | `Network`                                                    |
+| MODO           | nuevo                                                        |
 
 > **Nota sobre estos campos:**
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
@@ -40,7 +41,7 @@ Coordinador {
   proyecto:         number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
   supervisor:       number        -- FK -> cartera.t_supervisor.codigo, filtrado por empresa+proyecto
   codigo:           number        -- parte del PK, gestionado por la base de datos.
-  nombre:           string        -- campo obligatorio
+  nombre:           string
   activo:           smallint      -- 1 = activo, 0 = inactivo
   agrego_usuario:   uuid          -- gestionado por sistema
   agrego_fecha:     timestamptz   -- gestionado por sistema
@@ -49,11 +50,11 @@ Coordinador {
 }
 
 CoordinadorForm {          	-- campos editables por el usuario
-  empresa:        number	  -- readonly tras creacion (disabled en edit mode)
-  proyecto:       number	  -- readonly tras creacion (disabled en edit mode)
-  nombre:         string   | not null
-  supervisor:     number    -- editable; obligatorio
-  activo:         smallint | 1 = activo, 0 = inactivo
+  empresa:        number
+  proyecto:       number
+  nombre:         string
+  supervisor:     number
+  activo:         smallint
 }
 
 ```
@@ -61,9 +62,7 @@ CoordinadorForm {          	-- campos editables por el usuario
 **LLAVE_PRIMARIA compuesta:** `(cuenta, empresa, proyecto, codigo)`
 - `cuenta` es implicito (se obtiene del usuario autenticado, no va en el form)
 - Para UPDATE y DELETE identificar por: `empresa + proyecto + codigo`
-
-**CAMPOS_READONLY_TRAS_CREACION:** `empresa`, `proyecto`
-Renderizar con `disabled={!!viewTarget}` en modo edicion. No incluir en el payload del UPDATE.
+- `empresa` y `proyecto` son readonly tras creacion: no incluir en el payload del UPDATE.
 
 ---
 
@@ -235,7 +234,22 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 
 ---
 
+## CAMBIOS_PENDIENTES
+
+> Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
+> Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Ejemplo de como se deberia especificar puntualmente los cambios realizados:
+> [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
+> [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
+> [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
+
+_(sin cambios pendientes)_
+
+---
+
 ## INSTRUCCION_FINAL
 
-Genera los tres archivos aplicando TODAS las reglas de los archivos de instrucciones listados.
-Si existe conflicto entre las reglas generales y las reglas especificas de este prompt, prevalecen las de este prompt.
+- Si `MODO = nuevo`: genera los tres archivos completos aplicando TODAS las reglas de los archivos de instrucciones listados.
+- Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
+
+En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.
