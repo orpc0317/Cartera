@@ -15,11 +15,16 @@
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
 | MODO           | nuevo                                                        |
 
-> **Nota sobre estos campos:**
-> - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
-> - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", leer la tabla **"Accent color per module"** en `.github/instructions/ui-conventions.instructions.md` para ver los colores ya asignados y elegir un tono de Tailwind que no este en uso. Si este modulo esta en la lista utilizar ese color. Al terminar de generar los archivos, agregar la fila del nuevo modulo a esa tabla (validar que no exista ya).
-> - `ICONO_LUCIDE`: si se especifica, usarlo tal cual. Si se omite o indica "elegir segun contexto", leer la tabla **"Module icon per screen"** en `.github/instructions/ui-conventions.instructions.md`, elegir el icono Lucide mas representativo que no este ya en uso, verificar que exista en https://lucide.dev/icons/ y agregarlo a la tabla al terminar de generar los archivos. Si este modulo ya existe en la lista utilizar ese icono y no agregarlo a la tabla.
-> - `MODO`: "nuevo" para que este prompt se utilice para desarrollar la pantalla desde cero. En modo "nuevo", si ya existiera una pantalla desarrollada para este prompt, antes de iniciar el desarrollos desce 0, se debe consultar e indicar al programador que ya hay una pantalla relacionada y que la IA la va a volver a desarrollar desde 0. Si el programador dice que SI, se procede, si dice que NO no se hace nada; "actualizar" para que este prompt se utilice estrictamente para hacer cambios a esta pantalla. Los camibos se deben detallar muy detenidamente en [CAMBIOS_PENDIENTES] y una vez realizados los cambios hay que regresar el `MODO`a "nuevo", que es el estado natural de este prompt. Y tambien hay que dejar nuevamente [CAMBIOS_PENDIENTES] en _(sin cambios pendientes)_
+---
+
+## MODO_GUARD
+
+> [!CAUTION]
+> **Antes de generar cualquier archivo:** verificar si `src/app/dashboard/bancos/cuentas-bancarias/page.tsx` ya existe en el repositorio.
+> - **Si existe** → **DETENER. Preguntar al desarrollador** si desea sobrescribir. No continuar hasta recibir confirmación explícita de que sí.
+> - **Si no existe** → continuar con el procedimiento normal.
+>
+> Esta verificación se omite únicamente si `MODO = actualizar`.
 
 ---
 
@@ -109,18 +114,7 @@ Resumen: siempre bandera + codigo ISO (ej: 🇬🇹 GTQ). El mapa de banderas se
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
 
-### Mapeo de permisos a UI
-
-Ver regla general en `crud-screens.instructions.md` → sección **Permission mapping to UI**.
-
-```ts
-const permisos = await getPermisosDetalle(PERMISOS.CUE_BAN)
-// pasar como props: puedeAgregar={permisos.agregar} puedeModificar={permisos.modificar} puedeEliminar={permisos.eliminar}
-```
-
 ## EXPORTACION
-
-Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 
 **Nombre de archivo:** `cuentas-bancarias-YYYY-MM-DD.csv`
 
@@ -131,17 +125,6 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 ---
 
 ## COLUMNAS_TABLA
-
-> La tabla incluye un **selector de columnas** (`ColumnManager`) en la esquina superior derecha
-> que permite al usuario mostrar u ocultar columnas y reordenarlas. La preferencia se persiste
-> en `localStorage` con `STORAGE_KEY` (clave por usuario). `defaultVisible` define la
-> visibilidad inicial la primera vez que el usuario abre la pantalla o al hacer "Restablecer".
->
-> Columnas fijas (no entran en el selector):
-> - **Sticky izquierdo**: columna identificadora del registro (aqui: `codigo`). Siempre visible.
-> - **Sticky derecho**: columna de acciones (menu de 3 puntos). Siempre visible.
->
-> Solo las columnas del selector pueden ocultarse.
 
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
 `STORAGE_KEY = 'cuentas_ban_cols_v1_${userId}'`
@@ -209,16 +192,6 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
-## UI_ESPECIFICO
-
-> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
-
-- Columna `moneda` en tabla: aplicar regla global **Moneda display rules** (bandera + codigo ISO).
-
-> La estructura de pestanas y secciones del modal esta definida en `TABS_MODAL`.
-
----
-
 ## LOGIC_ESPECIFICO
 
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
@@ -234,31 +207,6 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 
 ---
 
-## USA_ESTRICTAMENTE
-
-Leer todos los archivos de instrucciones listados en la sección **"Instrucciones de arquitectura específicas del proyecto"** de `.github/copilot-instructions.md`.
-
----
-
-## ARCHIVOS_SALIDA
-
-Exactamente tres archivos, en este orden:
-
-1. `src/app/actions/cuentas-bancarias.ts`
-   Funciones: `getCuentaActiva` (privada), `getAuditUser` (privada), `writeAudit` (privada),
-   `getCuentasBancarias`, `createCuentaBancaria`, `updateCuentaBancaria`, `deleteCuentaBancaria`.
-
-2. `src/app/dashboard/bancos/cuentas-bancarias/page.tsx`
-   Server Component. Usar `Promise.all` con per-call `.catch()` segun patron de `server-actions.instructions.md`.
-
-3. `src/app/dashboard/bancos/cuentas-bancarias/_client.tsx`
-   Client Component completo: tabla con ColumnManager + ColumnFilter + teclado,
-   Dialog CRUD (view/create/edit), AlertDialog de eliminacion, AuditLogDialog.
-
-No se requieren archivos adicionales. Este proyecto no usa archivos de hooks separados ni tests.
-
----
-
 ## CAMBIOS_PENDIENTES
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
@@ -269,12 +217,3 @@ No se requieren archivos adicionales. Este proyecto no usa archivos de hooks sep
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
 _(sin cambios pendientes)_
-
----
-
-## INSTRUCCION_FINAL
-
-- Si `MODO = nuevo`: genera los tres archivos completos aplicando TODAS las reglas de los archivos de instrucciones listados.
-- Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
-
-En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.

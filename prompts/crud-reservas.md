@@ -15,11 +15,16 @@
 | ICONO_LUCIDE   | `ClipboardList`                                              |
 | MODO           | nuevo                                                        |
 
-> **Nota sobre estos campos:**
-> - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
-> - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", leer la tabla **"Accent color per module"** en `.github/instructions/ui-conventions.instructions.md` para ver los colores ya asignados y elegir un tono de Tailwind que no este en uso. Si este modulo esta en la lista utilizar ese color. Al terminar de generar los archivos, agregar la fila del nuevo modulo a esa tabla (validar que no exista ya).
-> - `ICONO_LUCIDE`: si se especifica, usarlo tal cual. Si se omite o indica "elegir segun contexto", leer la tabla **"Module icon per screen"** en `.github/instructions/ui-conventions.instructions.md`, elegir el icono Lucide mas representativo que no este ya en uso, verificar que exista en https://lucide.dev/icons/ y agregarlo a la tabla al terminar de generar los archivos. Si este modulo ya existe en la lista utilizar ese icono y no agregarlo a la tabla.
-> - `MODO`: "nuevo" para que este prompt se utilice para desarrollar la pantalla desde cero. En modo "nuevo", si ya existiera una pantalla desarrollada para este prompt, antes de iniciar el desarrollos desce 0, se debe consultar e indicar al programador que ya hay una pantalla relacionada y que la IA la va a volver a desarrollar desde 0. Si el programador dice que SI, se procede, si dice que NO no se hace nada; "actualizar" para que este prompt se utilice estrictamente para hacer cambios a esta pantalla. Los camibos se deben detallar muy detenidamente en [CAMBIOS_PENDIENTES] y una vez realizados los cambios hay que regresar el `MODO`a "nuevo", que es el estado natural de este prompt. Y tambien hay que dejar nuevamente [CAMBIOS_PENDIENTES] en _(sin cambios pendientes)_
+---
+
+## MODO_GUARD
+
+> [!CAUTION]
+> **Antes de generar cualquier archivo:** verificar si `src/app/dashboard/promesas/reservas/page.tsx` ya existe en el repositorio.
+> - **Si existe** → **DETENER. Preguntar al desarrollador** si desea sobrescribir. No continuar hasta recibir confirmación explícita de que sí.
+> - **Si no existe** → continuar con el procedimiento normal.
+>
+> Esta verificación se omite únicamente si `MODO = actualizar`.
 
 ---
 
@@ -148,21 +153,7 @@ Series de recibo: incluir solo las del proyecto activo. Solo series con activo=1
 > **No hay UPDATE ni DELETE directo.** Las reservas son inmutables una vez creadas.
 > La anulacion y la conversion a promesa son flujos separados (fuera del alcance de esta pantalla).
 
-### Mapeo de permisos a UI
-
-Ver regla general en `crud-screens.instructions.md` → seccion **Permission mapping to UI**.
-
-```ts
-const permisos = await getPermisosDetalle(PERMISOS.RES_OPE)
-// pasar como props: puedeAgregar={permisos.agregar}
-// puedeModificar y puedeEliminar no aplican en esta pantalla (no hay edicion ni borrado)
-```
-
----
-
 ## EXPORTACION
-
-Ver regla general en `data-tables.instructions.md` → seccion **CSV Export**.
 
 **Nombre de archivo:** `reservas-YYYY-MM-DD.csv`
 
@@ -173,17 +164,6 @@ Ver regla general en `data-tables.instructions.md` → seccion **CSV Export**.
 ---
 
 ## COLUMNAS_TABLA
-
-> La tabla incluye un **selector de columnas** (`ColumnManager`) en la esquina superior derecha
-> que permite al usuario mostrar u ocultar columnas y reordenarlas. La preferencia se persiste
-> en `localStorage` con `STORAGE_KEY` (clave por usuario). `defaultVisible` define la
-> visibilidad inicial la primera vez que el usuario abre la pantalla o al hacer "Restablecer".
->
-> Columnas fijas (no entran en el selector):
-> - **Sticky izquierdo**: `numero` (identificador de la reserva). Siempre visible.
-> - **Sticky derecho**: columna de acciones (menu de 3 puntos, solo "Ver" y "Historial"). Siempre visible.
->
-> Solo las columnas del selector pueden ocultarse.
 
 Sticky izquierdo: `numero` (label: `"Numero"`).
 `STORAGE_KEY = 'reservas_cols_v1_${userId}'`
@@ -395,20 +375,6 @@ En orden:
 
 ---
 
-## UI_ESPECIFICO
-
-> Aplicar **Accent patterns** de `ui-conventions.instructions.md` usando el color de acento del modulo.
-
-> La estructura de pestanas del modal de vista esta definida en `TABS_MODAL`.
-> La estructura del formulario de creacion esta definida en `FORMULARIO_CREACION`.
-
-- `moneda` en tabla: bandera del pais + codigo ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
-- `estado` en tabla: `<Badge variant="outline">` con las clases de `RESERVA_ESTADOS`.
-- `monto` en tabla: `fmt(reserva.monto)` (2 decimales, locale es-GT). La moneda se muestra en la columna adyacente.
-- El menu de acciones de cada fila solo expone: **"Ver"** (y **"Historial"** si el modulo lo requiere). No hay Editar ni Eliminar.
-
----
-
 ## LOGIC_ESPECIFICO
 
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
@@ -430,29 +396,6 @@ Orden de la tabla: los datos llegan ordenados por `numero DESC` desde `getReserv
 
 ---
 
-## USA_ESTRICTAMENTE
-
-Leer todos los archivos de instrucciones listados en la sección **"Instrucciones de arquitectura específicas del proyecto"** de `.github/copilot-instructions.md`.
-
----
-
-## ARCHIVOS_SALIDA
-
-Exactamente dos archivos (las acciones ya existen en `src/app/actions/lotes.ts`):
-
-1. `src/app/dashboard/promesas/reservas/page.tsx`
-   Server Component. Usar `Promise.all` con per-call `.catch()` segun patron de `server-actions.instructions.md`.
-   Las 13 llamadas ya estan definidas — ver archivo actual en el repositorio.
-
-2. `src/app/dashboard/promesas/reservas/_client.tsx`
-   Client Component completo: tabla con ColumnManager + ColumnFilter + filtros de fecha/vendedor + teclado,
-   Dialog de vista (solo lectura, 2 tabs), Dialog de creacion (2 tabs), AuditLogDialog.
-   Subcomponentes a incluir: `ViewField`, `SectionDivider`, `ColumnFilter`, `ColumnManager`, `ClienteCombobox`.
-
-No se requieren archivos adicionales. No crear nuevas funciones de accion — reutilizar las de `src/app/actions/lotes.ts`.
-
----
-
 ## CAMBIOS_PENDIENTES
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
@@ -463,12 +406,3 @@ No se requieren archivos adicionales. No crear nuevas funciones de accion — re
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
 _(sin cambios pendientes)_
-
----
-
-## INSTRUCCION_FINAL
-
-- Si `MODO = nuevo`: genera los dos archivos completos aplicando TODAS las reglas de los archivos de instrucciones listados.
-- Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
-
-En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.
