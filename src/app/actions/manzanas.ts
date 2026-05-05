@@ -74,6 +74,7 @@ export async function getManzanas(empresa?: number, proyecto?: number, fase?: nu
 
 export async function createManzana(form: ManzanaForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -111,6 +112,7 @@ export async function updateManzana(
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -157,6 +159,7 @@ export async function updateManzana(
 
 export async function deleteManzana(empresa: number, proyecto: number, fase: number, codigo: string): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

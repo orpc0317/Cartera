@@ -94,6 +94,7 @@ export async function getEmpresa(codigo: number): Promise<Empresa> {
 
 export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const normalized: EmpresaForm = {
@@ -149,6 +150,7 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
 
 export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, lastModified?: string): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Capturar estado anterior para auditoría
@@ -211,6 +213,7 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
 
 export async function deleteEmpresa(codigo: number): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Capturar estado anterior

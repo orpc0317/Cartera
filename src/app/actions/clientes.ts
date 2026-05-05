@@ -77,6 +77,7 @@ export async function getClientes(empresa?: number, proyecto?: number): Promise<
 
 export async function createCliente(form: ClienteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -130,6 +131,7 @@ export async function updateCliente(
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -196,6 +198,7 @@ export async function deleteCliente(
   codigo: number,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

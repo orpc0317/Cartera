@@ -19,6 +19,7 @@
 > - `PERMISO` y `RUTA`: no estan cubiertos por ningun archivo de instrucciones; siempre declarar.
 > - `COLOR_ACENTO`: si se especifica, usarlo tal cual. Si se omite o indica "elegir", leer la tabla **"Accent color per module"** en `.github/instructions/ui-conventions.instructions.md` para ver los colores ya asignados y elegir un tono de Tailwind que no este en uso. Si este modulo esta en la lista utilizar ese color. Al terminar de generar los archivos, agregar la fila del nuevo modulo a esa tabla (validar que no exista ya).
 > - `ICONO_LUCIDE`: si se especifica, usarlo tal cual. Si se omite o indica "elegir segun contexto", leer la tabla **"Module icon per screen"** en `.github/instructions/ui-conventions.instructions.md`, elegir el icono Lucide mas representativo que no este ya en uso, verificar que exista en https://lucide.dev/icons/ y agregarlo a la tabla al terminar de generar los archivos. Si este modulo ya existe en la lista utilizar ese icono y no agregarlo a la tabla.
+> - `MODO`: "nuevo" para que este prompt se utilice para desarrollar la pantalla desde cero. En modo "nuevo", si ya existiera una pantalla desarrollada para este prompt, antes de iniciar el desarrollos desce 0, se debe consultar e indicar al programador que ya hay una pantalla relacionada y que la IA la va a volver a desarrollar desde 0. Si el programador dice que SI, se procede, si dice que NO no se hace nada; "actualizar" para que este prompt se utilice estrictamente para hacer cambios a esta pantalla. Los camibos se deben detallar muy detenidamente en [CAMBIOS_PENDIENTES] y una vez realizados los cambios hay que regresar el `MODO`a "nuevo", que es el estado natural de este prompt. Y tambien hay que dejar nuevamente [CAMBIOS_PENDIENTES] en _(sin cambios pendientes)_
 
 ---
 
@@ -251,10 +252,7 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 
 ## USA_ESTRICTAMENTE
 
-- `.github/instructions/crud-screens.instructions.md`
-- `.github/instructions/data-tables.instructions.md`
-- `.github/instructions/server-actions.instructions.md`
-- `.github/instructions/ui-conventions.instructions.md`
+Leer todos los archivos de instrucciones listados en la sección **"Instrucciones de arquitectura específicas del proyecto"** de `.github/copilot-instructions.md`.
 
 ---
 

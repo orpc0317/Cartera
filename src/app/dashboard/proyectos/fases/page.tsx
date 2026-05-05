@@ -1,7 +1,6 @@
 import { getFases } from '@/app/actions/fases'
 import { getProyectos } from '@/app/actions/proyectos'
 import { getEmpresas } from '@/app/actions/empresas'
-import { getManzanas } from '@/app/actions/manzanas'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
@@ -11,17 +10,22 @@ export default async function FasesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let data: Awaited<ReturnType<typeof getFases>> = []
-  let proyectos: Awaited<ReturnType<typeof getProyectos>> = []
-  let empresas: Awaited<ReturnType<typeof getEmpresas>> = []
-  let manzanas: Awaited<ReturnType<typeof getManzanas>> = []
-  let permisos = { consultar: true, agregar: true, modificar: true, eliminar: true }
-  try {
-    ;[data, proyectos, empresas, manzanas, permisos] = await Promise.all([
-      getFases(), getProyectos(), getEmpresas(), getManzanas(), getPermisosDetalle(PERMISOS.FAS_CAT),
-    ])
-  } catch {
-    // schema not yet exposed
-  }
-  return <FasesClient initialData={data} proyectos={proyectos} empresas={empresas} manzanas={manzanas} puedeEliminar={permisos.eliminar} userId={user?.id ?? ''} />
+  const [fases, empresas, proyectos, permisos] = await Promise.all([
+    getFases().catch((e: Error) => { console.error('getFases:', e.message); return [] as Awaited<ReturnType<typeof getFases>> }),
+    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] as Awaited<ReturnType<typeof getEmpresas>> }),
+    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] as Awaited<ReturnType<typeof getProyectos>> }),
+    getPermisosDetalle(PERMISOS.FAS_CAT).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+  ])
+
+  return (
+    <FasesClient
+      initialData={fases}
+      empresas={empresas}
+      proyectos={proyectos}
+      puedeAgregar={permisos.agregar}
+      puedeModificar={permisos.modificar}
+      puedeEliminar={permisos.eliminar}
+      userId={user?.id ?? ''}
+    />
+  )
 }

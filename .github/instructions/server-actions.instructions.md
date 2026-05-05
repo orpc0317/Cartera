@@ -19,6 +19,19 @@ Every query must `.eq('cuenta', cuenta)`. If `cuenta` is empty, queries return 0
 
 ---
 
+## Mutation guard for empty cuenta
+
+Every **write** operation (create, update, delete) must guard against an empty `cuenta` immediately after resolving it:
+
+```ts
+const cuenta = await getCuentaActiva()
+if (!cuenta) return { error: 'Sesión no válida.' }
+```
+
+Read operations (`get*`) do **not** need this guard — an empty `cuenta` silently returns 0 rows.
+
+---
+
 ## page.tsx data fetching pattern
 
 Use **per-call `.catch()`** — never a single `try/catch` wrapping all calls:

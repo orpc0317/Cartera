@@ -55,24 +55,24 @@ async function writeAudit(
   })
 }
 
-export async function getFases(empresa?: number, proyecto?: number): Promise<Fase[]> {
+export async function getFases(): Promise<Fase[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  let query = admin
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_fase')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, medida, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
-    .order('codigo')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
-  const { data, error } = await query
+    .order('empresa')
+    .order('proyecto')
+    .order('nombre')
   if (error) throw new Error(error.message)
   return data as Fase[]
 }
 
 export async function createFase(form: FaseForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -97,7 +97,7 @@ export async function createFase(form: FaseForm): Promise<{ error?: string }> {
     .eq('cuenta', cuenta)
     .eq('empresa', form.empresa)
     .eq('proyecto', form.proyecto)
-    .ilike('nombre', form.nombre.trim())
+    .eq('nombre', form.nombre.trim())
     .maybeSingle()
   if (existente) return { error: 'Ya existe una fase con ese nombre en este proyecto.' }
 
@@ -126,7 +126,6 @@ export async function createFase(form: FaseForm): Promise<{ error?: string }> {
   })
 
   revalidatePath('/dashboard/proyectos/fases')
-  revalidatePath('/dashboard')
   return {}
 }
 
@@ -134,10 +133,11 @@ export async function updateFase(
   empresa: number,
   proyecto: number,
   codigo: number,
-  form: Partial<FaseForm>,
+  nombre: string,
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -150,27 +150,25 @@ export async function updateFase(
     .eq('codigo', codigo)
     .single()
 
-  const now = new Date().toISOString()
+  // Validate duplicate nombre (excluding own record)
+  const { data: existente } = await admin
+    .schema('cartera')
+    .from('t_fase')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('nombre', nombre.trim())
+    .neq('codigo', codigo)
+    .maybeSingle()
+  if (existente) return { error: 'Ya existe una fase con ese nombre en este proyecto.' }
 
-  // Validar nombre duplicado dentro del mismo proyecto (excluyendo el registro actual)
-  if (form.nombre) {
-    const { data: existente } = await admin
-      .schema('cartera')
-      .from('t_fase')
-      .select('codigo')
-      .eq('cuenta', cuenta)
-      .eq('empresa', empresa)
-      .eq('proyecto', proyecto)
-      .ilike('nombre', (form.nombre as string).trim())
-      .neq('codigo', codigo)
-      .maybeSingle()
-    if (existente) return { error: 'Ya existe una fase con ese nombre en este proyecto.' }
-  }
+  const now = new Date().toISOString()
 
   let query = admin
     .schema('cartera')
     .from('t_fase')
-    .update({ ...form, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .update({ nombre: nombre.trim(), modifico_usuario: auditUser.userId, modifico_fecha: now })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -196,9 +194,27 @@ export async function updateFase(
   return {}
 }
 
-export async function deleteFase(empresa: number, proyecto: number, codigo: number): Promise<{ error?: string }> {
+export async function deleteFase(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  // Verify no manzanas associated before delete
+  const { count } = await admin
+    .schema('cartera')
+    .from('t_manzana')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('fase', codigo)
+  if (count && count > 0) {
+    return { error: 'No se puede eliminar esta fase porque tiene manzanas asociadas.' }
+  }
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -229,6 +245,5 @@ export async function deleteFase(empresa: number, proyecto: number, codigo: numb
   })
 
   revalidatePath('/dashboard/proyectos/fases')
-  revalidatePath('/dashboard')
   return {}
 }

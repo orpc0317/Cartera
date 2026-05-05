@@ -91,6 +91,7 @@ export async function getSeriesRecibos(): Promise<SerieRecibo[]> {
 
 export async function createSerieRecibo(form: SerieReciboForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const serie = toDbString(form.serie)
@@ -163,6 +164,7 @@ export async function updateSerieRecibo(
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -234,6 +236,7 @@ export async function deleteSerieRecibo(
   serie: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Restriction: cannot delete if there are associated recibos de caja

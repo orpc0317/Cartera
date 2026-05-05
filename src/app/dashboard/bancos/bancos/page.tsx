@@ -10,17 +10,12 @@ export default async function BancosPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let data: Awaited<ReturnType<typeof getBancos>> = []
-  let empresas: Awaited<ReturnType<typeof getEmpresas>> = []
-  let proyectos: Awaited<ReturnType<typeof getProyectos>> = []
-  let permisos = { consultar: true, agregar: true, modificar: true, eliminar: true }
-  try {
-    ;[data, empresas, proyectos, permisos] = await Promise.all([
-      getBancos(), getEmpresas(), getProyectos(), getPermisosDetalle(PERMISOS.BAN_CAT),
-    ])
-  } catch {
-    // schema not yet exposed
-  }
+  const [data, empresas, proyectos, permisos] = await Promise.all([
+    getBancos().catch((e: Error) => { console.error('getBancos:', e.message); return [] as Awaited<ReturnType<typeof getBancos>> }),
+    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] as Awaited<ReturnType<typeof getEmpresas>> }),
+    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] as Awaited<ReturnType<typeof getProyectos>> }),
+    getPermisosDetalle(PERMISOS.BAN_CAT).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+  ])
   return (
     <BancosClient
       initialData={data}

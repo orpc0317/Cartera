@@ -106,6 +106,7 @@ export async function getLotesDisponibles(empresa?: number, proyecto?: number): 
 
 export async function createLote(form: LoteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -144,6 +145,7 @@ export async function updateLote(
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -192,6 +194,7 @@ export async function updateLote(
 
 export async function deleteLote(empresa: number, proyecto: number, fase: number, manzana: string, codigo: string): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -351,6 +354,7 @@ export async function createReserva(
   loteLastModified: string | undefined,
 ): Promise<CreateReservaResult> {
   const cuenta    = await getCuentaActiva()
+  if (!cuenta) return { ok: false, error: 'Sesión no válida.' }
   const auditUser = await getAuditUser()
   if (!auditUser.userId) return { ok: false, error: 'Usuario no autenticado.' }
 

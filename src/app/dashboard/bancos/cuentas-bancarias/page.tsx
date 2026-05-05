@@ -11,25 +11,14 @@ export default async function CuentasBancariasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let data: Awaited<ReturnType<typeof getCuentasBancarias>> = []
-  let empresas: Awaited<ReturnType<typeof getEmpresas>> = []
-  let proyectos: Awaited<ReturnType<typeof getProyectos>> = []
-  let bancos: Awaited<ReturnType<typeof getBancos>> = []
-  let monedas: Awaited<ReturnType<typeof getMonedas>> = []
-  let permisos = { consultar: true, agregar: true, modificar: true, eliminar: true }
-
-  try {
-    ;[data, empresas, proyectos, bancos, monedas, permisos] = await Promise.all([
-      getCuentasBancarias(),
-      getEmpresas(),
-      getProyectos(),
-      getBancos(),
-      getMonedas(),
-      getPermisosDetalle(PERMISOS.CUE_BAN),
-    ])
-  } catch {
-    // schema not yet exposed
-  }
+  const [data, empresas, proyectos, bancos, monedas, permisos] = await Promise.all([
+    getCuentasBancarias().catch((e: Error) => { console.error('getCuentasBancarias:', e.message); return [] as Awaited<ReturnType<typeof getCuentasBancarias>> }),
+    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] as Awaited<ReturnType<typeof getEmpresas>> }),
+    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] as Awaited<ReturnType<typeof getProyectos>> }),
+    getBancos().catch((e: Error) => { console.error('getBancos:', e.message); return [] as Awaited<ReturnType<typeof getBancos>> }),
+    getMonedas().catch((e: Error) => { console.error('getMonedas:', e.message); return [] as Awaited<ReturnType<typeof getMonedas>> }),
+    getPermisosDetalle(PERMISOS.CUE_BAN).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+  ])
 
   return (
     <CuentasBancariasClient

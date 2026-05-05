@@ -1,4 +1,4 @@
-# CRUD: Cobradores
+# CRUD: Fases
 
 ---
 
@@ -6,11 +6,11 @@
 
 | Campo          | Valor                                                        |
 |----------------|--------------------------------------------------------------|
-| NOMBRE         | Cobradores                                                   |
-| MODULO         | Promesas                                                     |
-| TABLA_BD       | `cartera.t_cobrador`                                         |
-| RUTA           | `/dashboard/promesas/cobradores`                             |
-| PERMISO        | `COB_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
+| NOMBRE         | Fases                                                        |
+| MODULO         | Proyectos                                                    |
+| TABLA_BD       | `cartera.t_fase`                                             |
+| RUTA           | `/dashboard/proyectos/fases`                                 |
+| PERMISO        | `FAS_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
 | MODO           | nuevo                                                        |
@@ -25,34 +25,32 @@
 
 ## DESCRIPCION
 
-Pantalla para dar mantenimiento al catalogo de Cobradores.
-Cada proyecto puede trabajar con varios cobradores, estos seran asociados al momento de registrar pagos.
+Pantalla para dar mantenimiento al catalogo de Fases.
+Cada proyecto se divide en Fases, y luego las Fases se dividiran en Manzanas.
 
 ---
 
 ## ENTIDAD
 
-Mapeo exacto del schema `cartera.t_cobrador`. Los tipos deben coincidir con la BD.
+Mapeo exacto del schema `cartera.t_fase`. Los tipos deben coincidir con la BD.
 
 ```
-Cobrador {
+Fase {
   cuenta:           varchar       -- gestionado por sistema (cuenta activa del usuario)
   empresa:          number        -- FK -> cartera.t_empresa.codigo
   proyecto:         number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
   codigo:           number        -- parte del PK, gestionado por la base de datos.
   nombre:           string
-  activo:           smallint      -- 1 = activo, 0 = inactivo
   agrego_usuario:   uuid          -- gestionado por sistema
   agrego_fecha:     timestamptz   -- gestionado por sistema
   modifico_usuario: uuid          -- gestionado por sistema
   modifico_fecha:   timestamptz   -- token de concurrencia optimista
 }
 
-CobradorForm {              	-- campos editables por el usuario
+FaseForm {              	       -- campos editables por el usuario
   empresa:        number
   proyecto:       number
   nombre:         string
-  activo:         smallint
 }
 
 ```
@@ -85,7 +83,7 @@ Cascade doble: empresa → proyecto.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `nombre`, `activo`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `nombre`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
@@ -95,15 +93,16 @@ Cascade doble: empresa → proyecto.
 Ver regla general en `crud-screens.instructions.md` → sección **Permission mapping to UI**.
 
 ```ts
-const permisos = await getPermisosDetalle(PERMISOS.COB_CAT)
+const permisos = await getPermisosDetalle(PERMISOS.FAS_CAT)
 // pasar como props: puedeAgregar={permisos.agregar} puedeModificar={permisos.modificar} puedeEliminar={permisos.eliminar}
+
 ```
 
 ## EXPORTACION
 
 Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 
-**Nombre de archivo:** `cobradores-YYYY-MM-DD.csv`
+**Nombre de archivo:** `fases-YYYY-MM-DD.csv`
 
 **Columna sticky izquierda a incluir siempre:** `codigo` (label: `"Codigo"`).
 
@@ -125,17 +124,16 @@ Ver regla general en `data-tables.instructions.md` → sección **CSV Export**.
 > Solo las columnas del selector pueden ocultarse.
 
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
-`STORAGE_KEY = 'cobradores_cols_v1_${userId}'`
+`STORAGE_KEY = 'fases_cols_v1_${userId}'`
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
 > `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
 
-| key            | label           | defaultVisible | render                                                |
-|----------------|-----------------|----------------|-------------------------------------------------------|
-| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
-| nombre         | Nombre          | true           | valor directo                                         |
-| activo         | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
+| key            | label           | defaultVisible | render                                               |
+|----------------|-----------------|----------------|------------------------------------------------------|
+| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)           |
+| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)           |
+| nombre         | Nombre          | true           | valor directo                                        |
 
 ---
 
@@ -153,10 +151,9 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[GENERAL]**
 
-| Campo  | Label  | Ancho | View          | Nuevo / Edit | Notas |
-|--------|--------|-------|---------------|--------------|-------|
-| nombre | Nombre | full  | ViewField     | Input; req   |       |
-| activo | Activo | full  | Checkbox card | Checkbox 0/1 |       |
+| Campo  | Label  | Ancho | View      | Nuevo / Edit | Notas |
+|--------|--------|-------|-----------|--------------|-------|
+| nombre | Nombre | full  | ViewField | Input; req   |       |
 
 ---
 
@@ -165,16 +162,16 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
 2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los cobradores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
-4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Cobrador".
+   contra todas las fases del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
+4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nueva Fase".
 
 ---
 
 ## VALIDACIONES_BACKEND
 
-- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un cobrador con ese nombre en este proyecto.'`
+- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe una fase con ese nombre en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_recibo_caja` con el mismo `(cuenta, empresa, proyecto, cobrador)`. Si existen -> `'No se puede eliminar este cobrador porque tiene recibos de caja asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_manzana` con el mismo `(cuenta, empresa, proyecto, fase)`. Si existen -> `'No se puede eliminar esta fase porque tiene manzanas asociadas.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
 
 ---
 
@@ -209,14 +206,14 @@ Leer todos los archivos de instrucciones listados en la sección **"Instruccione
 
 Exactamente tres archivos, en este orden:
 
-1. `src/app/actions/cobradores.ts`
+1. `src/app/actions/fases.ts`
    Funciones: `getCuentaActiva` (privada), `getAuditUser` (privada), `writeAudit` (privada),
-   `getCobradores`, `createCobrador`, `updateCobrador`, `deleteCobrador`.
+   `getFase`, `createFase`, `updateFase`, `deleteFase`.
 
-2. `src/app/dashboard/promesas/cobradores/page.tsx`
+2. `src/app/dashboard/proyectos/fases/page.tsx`
    Server Component. Usar `Promise.all` con per-call `.catch()` segun patron de `server-actions.instructions.md`.
 
-3. `src/app/dashboard/promesas/cobradores/_client.tsx`
+3. `src/app/dashboard/proyectos/fases/_client.tsx`
    Client Component completo: tabla con ColumnManager + ColumnFilter + teclado,
    Dialog CRUD (view/create/edit), AlertDialog de eliminacion, AuditLogDialog.
 
@@ -243,3 +240,4 @@ _(sin cambios pendientes)_
 - Si `MODO = actualizar`: lee los archivos existentes y aplica **únicamente** los cambios listados en `CAMBIOS_PENDIENTES`, sin regenerar ni tocar nada que no esté en esa lista.
 
 En ambos modos: si existe conflicto entre las reglas generales y las reglas específicas de este prompt, prevalecen las de este prompt.
+-

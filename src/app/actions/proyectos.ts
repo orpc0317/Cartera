@@ -73,6 +73,7 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
 
 export async function createProyecto(form: ProyectoForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -143,6 +144,7 @@ export async function updateProyecto(
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -208,6 +210,7 @@ export async function updateProyecto(
 
 export async function deleteProyecto(empresa: number, codigo: number): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

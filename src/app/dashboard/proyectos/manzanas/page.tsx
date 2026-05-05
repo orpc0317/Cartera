@@ -12,18 +12,13 @@ export default async function ManzanasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let data: Awaited<ReturnType<typeof getManzanas>> = []
-  let fases: Awaited<ReturnType<typeof getFases>> = []
-  let proyectos: Awaited<ReturnType<typeof getProyectos>> = []
-  let empresas: Awaited<ReturnType<typeof getEmpresas>> = []
-  let lotes: Awaited<ReturnType<typeof getLotes>> = []
-  let permisos = { consultar: true, agregar: true, modificar: true, eliminar: true }
-  try {
-    ;[data, fases, proyectos, empresas, lotes, permisos] = await Promise.all([
-      getManzanas(), getFases(), getProyectos(), getEmpresas(), getLotes(), getPermisosDetalle(PERMISOS.MAN_CAT),
-    ])
-  } catch {
-    // schema not yet exposed
-  }
+  const [data, fases, proyectos, empresas, lotes, permisos] = await Promise.all([
+    getManzanas().catch((e: Error) => { console.error('getManzanas:', e.message); return [] as Awaited<ReturnType<typeof getManzanas>> }),
+    getFases().catch((e: Error) => { console.error('getFases:', e.message); return [] as Awaited<ReturnType<typeof getFases>> }),
+    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] as Awaited<ReturnType<typeof getProyectos>> }),
+    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] as Awaited<ReturnType<typeof getEmpresas>> }),
+    getLotes().catch((e: Error) => { console.error('getLotes:', e.message); return [] as Awaited<ReturnType<typeof getLotes>> }),
+    getPermisosDetalle(PERMISOS.MAN_CAT).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+  ])
   return <ManzanasClient initialData={data} fases={fases} proyectos={proyectos} empresas={empresas} lotes={lotes} puedeEliminar={permisos.eliminar} userId={user?.id ?? ''} />
 }

@@ -78,6 +78,7 @@ export async function getBancos(empresa?: number, proyecto?: number): Promise<Ba
 
 export async function createBanco(form: BancoForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -144,6 +145,7 @@ export async function updateBanco(
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -208,6 +210,7 @@ export async function updateBanco(
 
 export async function deleteBanco(empresa: number, proyecto: number, codigo: number): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Guard: no se puede eliminar si tiene cuentas bancarias asociadas
