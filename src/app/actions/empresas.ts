@@ -216,6 +216,16 @@ export async function deleteEmpresa(codigo: number): Promise<{ error?: string }>
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
+  // Verificar restricción de cascada: no eliminar si hay proyectos asociados
+  const { count } = await admin
+    .schema('cartera')
+    .from('t_proyecto')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', codigo)
+  if (count && count > 0)
+    return { error: 'No se puede eliminar esta empresa porque tiene proyectos asociados.' }
+
   // Capturar estado anterior
   const { data: oldRow } = await admin
     .schema('cartera')
