@@ -213,6 +213,32 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
+  // Verificar restricciones referenciales antes de eliminar
+  const [
+    { count: cFase },
+    { count: cSerie },
+    { count: cCuentaBancaria },
+    { count: cSupervisor },
+    { count: cCobrador },
+    { count: cCliente },
+    { count: cPromesa },
+  ] = await Promise.all([
+    admin.schema('cartera').from('t_fase').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_serie_recibo').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_cuenta_bancaria').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_supervisor').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_cobrador').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_cliente').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_promesa').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+  ])
+  if ((cFase ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene fases registradas.' }
+  if ((cSerie ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene series de recibos registradas.' }
+  if ((cCuentaBancaria ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene cuentas bancarias registradas.' }
+  if ((cSupervisor ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene supervisores registrados.' }
+  if ((cCobrador ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene cobradores registrados.' }
+  if ((cCliente ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene clientes registrados.' }
+  if ((cPromesa ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene promesas de venta registradas.' }
+
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_proyecto')
@@ -250,26 +276,67 @@ const LOGO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+
 const LOGO_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 const LOGO_BUCKET = 'project-logos'
 
+/** Verifica que los primeros bytes del archivo coincidan con el tipo MIME declarado. */
+function verifyMagicBytes(buffer: Uint8Array, mimeType: string): boolean {
+  switch (mimeType) {
+    case 'image/png':
+      return (
+        buffer[0] === 0x89 && buffer[1] === 0x50 &&
+        buffer[2] === 0x4E && buffer[3] === 0x47
+      )
+    case 'image/jpeg':
+      return buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF
+    case 'image/webp':
+      return (
+        buffer.length >= 12 &&
+        buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+        buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+      )
+    case 'image/svg+xml':
+      return true // SVG es texto XML; no tiene magic bytes fijos
+    default:
+      return false
+  }
+}
+
+/** Extrae la ruta relativa al bucket desde una URL pública de Supabase Storage. */
+function extractStoragePath(publicUrl: string, bucket: string): string | null {
+  try {
+    const marker = `/storage/v1/object/public/${bucket}/`
+    const idx = publicUrl.indexOf(marker)
+    return idx >= 0 ? decodeURIComponent(publicUrl.slice(idx + marker.length)) : null
+  } catch { return null }
+}
+
 export async function uploadProjectLogo(
   formData: FormData,
+  oldUrl?: string,
 ): Promise<{ url?: string; error?: string }> {
   const file = formData.get('file') as File | null
   if (!file || file.size === 0) return { error: 'Archivo no recibido.' }
 
-  // Server-side validation (defense-in-depth, client also validates)
+  // Validar MIME type contra lista blanca
   if (!LOGO_ALLOWED_TYPES.includes(file.type))
     return { error: 'Formato no permitido. Use PNG, JPG, WebP o SVG.' }
+
+  // Validar tamaño
   if (file.size > LOGO_MAX_BYTES)
     return { error: 'El archivo supera el tamaño máximo de 5 MB.' }
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
-  const ext = file.type === 'image/svg+xml' ? 'svg' : file.type.split('/')[1]
-  const path = `${cuenta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
+  // Leer bytes antes de subir para verificar magic bytes
   const arrayBuffer = await file.arrayBuffer()
   const buffer = new Uint8Array(arrayBuffer)
+
+  // Verificar magic bytes — el file.type puede ser falsificado desde el cliente
+  if (!verifyMagicBytes(buffer, file.type))
+    return { error: 'El contenido del archivo no coincide con el tipo declarado.' }
+
+  // Nombre de archivo generado — nunca usar el nombre original del usuario
+  const ext = file.type === 'image/svg+xml' ? 'svg' : file.type.split('/')[1]
+  const path = `${cuenta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
   const admin = createAdminClient()
   const { error } = await admin.storage
@@ -277,6 +344,12 @@ export async function uploadProjectLogo(
     .upload(path, buffer, { contentType: file.type, upsert: false })
 
   if (error) return { error: error.message }
+
+  // Eliminar archivo anterior (best-effort — no falla si no existe o si la URL es inválida)
+  if (oldUrl) {
+    const oldPath = extractStoragePath(oldUrl, LOGO_BUCKET)
+    if (oldPath) await admin.storage.from(LOGO_BUCKET).remove([oldPath]).catch(() => {})
+  }
 
   const { data } = admin.storage.from(LOGO_BUCKET).getPublicUrl(path)
   return { url: data.publicUrl }

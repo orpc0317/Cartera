@@ -63,4 +63,5 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
   - `server-actions.instructions.md` — patrón `getCuentaActiva`, concurrencia optimista con `modifico_fecha`.
   - `ui-conventions.instructions.md` — colores de acento por módulo, iconos Lucide, etiquetas, formatos numéricos.
   - `data-tables.instructions.md` — patrón de tablas de datos.
+  - `image-upload.instructions.md` — seguridad y validación para carga de imágenes (magic bytes, SVG, cleanup). Cargar cuando la pantalla incluya un campo de tipo imagen.
 - Los prompts en `prompts/crud-*.md` son la especificación de cada pantalla; seguirlos al pie de la letra.

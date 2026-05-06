@@ -197,6 +197,43 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
+  // Cascade checks
+  const { count: cPromesa } = await admin
+    .schema('cartera')
+    .from('t_promesa')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('fase', fase)
+    .eq('manzana', manzana)
+    .eq('lote', codigo)
+  if (cPromesa && cPromesa > 0) return { error: 'No se puede eliminar este lote porque tiene promesas asociadas.' }
+
+  const { count: cReserva } = await admin
+    .schema('cartera')
+    .from('t_reserva')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('fase', fase)
+    .eq('manzana', manzana)
+    .eq('lote', codigo)
+  if (cReserva && cReserva > 0) return { error: 'No se puede eliminar este lote porque tiene reservas asociadas.' }
+
+  const { count: cRecibo } = await admin
+    .schema('cartera')
+    .from('t_recibo_caja')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('fase', fase)
+    .eq('manzana', manzana)
+    .eq('lote', codigo)
+  if (cRecibo && cRecibo > 0) return { error: 'No se puede eliminar este lote porque tiene recibos asociados.' }
+
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_lote')

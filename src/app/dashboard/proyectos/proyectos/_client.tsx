@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal } from 'lucide-react'
+import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,7 +36,7 @@ import {
   createProyecto, updateProyecto, deleteProyecto, uploadProjectLogo,
 } from '@/app/actions/proyectos'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import type { Empresa, Proyecto, ProyectoForm, Fase } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, ProyectoForm, Fase, Moneda } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { CountrySelect } from '@/components/ui/country-select'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -139,12 +139,6 @@ const CURRENCIES: { iso: string; name: string; flagIso: string }[] = [
 
 const CURRENCY_MAP = new Map(CURRENCIES.map((c) => [c.iso, c]))
 
-// País ISO → moneda ISO (países con moneda propia 1:1 + países con euro)
-const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  ...Object.fromEntries(CURRENCIES.filter((c) => c.flagIso !== 'EU').map((c) => [c.flagIso, c.iso])),
-  DE: 'EUR', ES: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR',
-}
-
 // ─── Códigos de marcación telefónica ─────────────────────────────────────
 const PHONE_COUNTRIES: { iso: string; code: string; name: string }[] = [
   { iso: 'AR', code: '54',  name: 'Argentina' },
@@ -244,6 +238,18 @@ const ALL_COLUMNS: ColDef[] = [
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
+
+// ─── CSV Export ──────────────────────────────────────────────────────────────
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+)
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
 
 function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   prefs: ColPref[]
@@ -428,6 +434,9 @@ export function ProyectosClient({
   paises,
   departamentos,
   municipios,
+  monedas,
+  puedeAgregar,
+  puedeModificar,
   puedeEliminar,
   userId,
 }: {
@@ -437,6 +446,9 @@ export function ProyectosClient({
   paises: Pais[]
   departamentos: Departamento[]
   municipios: Municipio[]
+  monedas: Moneda[]
+  puedeAgregar: boolean
+  puedeModificar: boolean
   puedeEliminar: boolean
   userId: string
 }) {
@@ -483,6 +495,18 @@ export function ProyectosClient({
     () => new Map(empresas.map((e) => [e.codigo, e.nombre])),
     [empresas]
   )
+
+  // Solo las monedas presentes en el catálogo t_moneda
+  const activeCurrencies = useMemo(() => {
+    const set = new Set(monedas.map((m) => m.codigo))
+    return CURRENCIES.filter((c) => set.has(c.iso))
+  }, [monedas])
+
+  // País ISO → moneda ISO, restringido a monedas activas
+  const countryToCurrency = useMemo(() => ({
+    ...Object.fromEntries(activeCurrencies.filter((c) => c.flagIso !== 'EU').map((c) => [c.flagIso, c.iso])),
+    ...(activeCurrencies.some((c) => c.iso === 'EUR') ? { DE: 'EUR', ES: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR' } : {}),
+  }), [activeCurrencies])
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
@@ -623,7 +647,7 @@ export function ProyectosClient({
     setViewTarget(null)
     setIsEditing(true)
     const defIso = empresas[0]?.pais ?? ''
-    const defMoneda = COUNTRY_TO_CURRENCY[defIso] ?? 'GTQ'
+    const defMoneda = countryToCurrency[defIso] ?? 'GTQ'
     setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, moneda: defMoneda, pais: defIso })
     setPaisCodigo(defIso)
     setDeptoCodigo('')
@@ -685,7 +709,7 @@ export function ProyectosClient({
         const emp = empresas.find((e) => e.codigo === Number(value))
         const iso = emp?.pais ?? ''
         next.pais = iso; next.departamento = ''; next.municipio = ''
-        next.moneda = COUNTRY_TO_CURRENCY[iso] ?? 'GTQ'
+        next.moneda = countryToCurrency[iso] ?? 'GTQ'
         setPaisCodigo(iso); setDeptoCodigo('')
         if (!next.telefono1) { setTel1Iso(iso); setTel1Local('') }
         if (!next.telefono2) { setTel2Iso(iso); setTel2Local('') }
@@ -749,7 +773,7 @@ export function ProyectosClient({
       if (logoFile) {
         const fd = new FormData()
         fd.append('file', logoFile)
-        const up = await uploadProjectLogo(fd)
+        const up = await uploadProjectLogo(fd, viewTarget?.logo_url ?? undefined)
         if (up.error) { toast.error(up.error); return }
         payload = { ...payload, logo_url: up.url ?? '' }
       }
@@ -783,6 +807,31 @@ export function ProyectosClient({
     })
   }
 
+  function exportCsv() {
+    const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+      .filter((k) => !NEVER_EXPORT.has(k))
+    const headers = keys.map((k) => COL_LABELS[k] ?? k)
+    const lines = [
+      headers.join(','),
+      ...filtered.map((p) => keys.map((k) => {
+        switch (k) {
+          case 'empresa': return formatCsvCell(empresaMap.get(p.empresa) ?? '')
+          case 'pais': return formatCsvCell(paises.find((x) => x.codigo === p.pais)?.nombre ?? p.pais ?? '')
+          case 'departamento': return formatCsvCell(departamentos.find((d) => d.codigo === p.departamento)?.nombre ?? p.departamento ?? '')
+          case 'municipio': return formatCsvCell(municipios.find((m) => m.codigo === p.municipio)?.nombre ?? p.municipio ?? '')
+          default: return formatCsvCell(p[k as keyof Proyecto])
+        }
+      }).join(',')),
+    ]
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `proyectos-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
       {/* Header */}
@@ -798,7 +847,7 @@ export function ProyectosClient({
             </p>
           </div>
         </div>
-        <Button onClick={openCreate} className="gap-2" disabled={empresas.length === 0}>
+        <Button onClick={openCreate} className="gap-2" disabled={empresas.length === 0 || !puedeAgregar}>
           <Plus className="h-4 w-4" />
           Nuevo Proyecto
         </Button>
@@ -827,7 +876,11 @@ export function ProyectosClient({
             Limpiar filtros
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCsv} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            Exportar CSV
+          </Button>
           <ColumnManager
             prefs={colPrefs}
             onToggle={toggleCol}
@@ -931,7 +984,7 @@ export function ProyectosClient({
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openView(proyecto)}>
                             <Eye className="mr-2 h-3.5 w-3.5" />
-                            Ver / Editar
+                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setAuditTarget(proyecto)}>
                             <History className="mr-2 h-3.5 w-3.5" />
@@ -1315,7 +1368,7 @@ export function ProyectosClient({
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {CURRENCIES.map((c) => (
+                          {activeCurrencies.map((c) => (
                             <SelectItem key={c.iso} value={c.iso}>
                               <span className="flex items-center gap-2">
                                 <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
@@ -1353,9 +1406,11 @@ export function ProyectosClient({
             {!isEditing && viewTarget ? (
               <>
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                <Button onClick={startEdit} className="gap-2">
-                  <Pencil className="h-3.5 w-3.5" /> Editar
-                </Button>
+                {puedeModificar && (
+                  <Button onClick={startEdit} className="gap-2">
+                    <Pencil className="h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
               </>
             ) : (
               <>

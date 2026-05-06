@@ -46,6 +46,7 @@ Fase {
   proyecto:         number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
   codigo:           number        -- parte del PK, gestionado por la base de datos.
   nombre:           string
+  medida:           string        -- seleccion: MTS2, V2, MNZS 
   agrego_usuario:   uuid          -- gestionado por sistema
   agrego_fecha:     timestamptz   -- gestionado por sistema
   modifico_usuario: uuid          -- gestionado por sistema
@@ -56,6 +57,7 @@ FaseForm {              	       -- campos editables por el usuario
   empresa:        number
   proyecto:       number
   nombre:         string
+  medida:         string
 }
 
 ```
@@ -111,11 +113,12 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
 > `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
 
-| key            | label           | defaultVisible | render                                               |
-|----------------|-----------------|----------------|------------------------------------------------------|
-| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)           |
-| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)           |
-| nombre         | Nombre          | true           | valor directo                                        |
+| key            | label           | defaultVisible | render                                                   |
+|----------------|-----------------|----------------|----------------------------------------------------------|
+| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)               |
+| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)               |
+| nombre         | Nombre          | true           | valor directo                                            |
+| medida         | Unidad Medida   | true           | label de `UNIDAD_MEDIDA` (importar de `@/lib/constants`) |
 
 ---
 
@@ -133,9 +136,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[GENERAL]**
 
-| Campo  | Label  | Ancho | View      | Nuevo / Edit | Notas |
-|--------|--------|-------|-----------|--------------|-------|
-| nombre | Nombre | full  | ViewField | Input; req   |       |
+| Campo  | Label         | Ancho | View      | Nuevo / Edit | Notas |
+|--------|---------------|-------|-----------|--------------|-------|
+| nombre | Nombre        | full  | ViewField | Input; req   |       |
+| medida | Medida        | half  | ViewField | Select; req  |       |
 
 ---
 
@@ -160,7 +164,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 ## LOGIC_ESPECIFICO
 
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa **Y** pre-seleccionar MTS2 en `unidad_medida`
 
 ---
 

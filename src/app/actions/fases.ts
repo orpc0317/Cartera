@@ -134,6 +134,7 @@ export async function updateFase(
   proyecto: number,
   codigo: number,
   nombre: string,
+  medida: string,
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
@@ -168,7 +169,7 @@ export async function updateFase(
   let query = admin
     .schema('cartera')
     .from('t_fase')
-    .update({ nombre: nombre.trim(), modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .update({ nombre: nombre.trim(), medida, modifico_usuario: auditUser.userId, modifico_fecha: now })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

@@ -40,7 +40,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { CountrySelect } from '@/components/ui/country-select'
 import { PhoneField, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
 import { createCliente, updateCliente, deleteCliente } from '@/app/actions/clientes'
-import { REGIMENES_IVA, validarNIT, validarDPI } from '@/lib/constants'
+import { TIPO_IDENTIFICACION, REGIMENES_IVA, validarNIT, validarDPI } from '@/lib/constants'
 import type { Empresa, Proyecto, Cliente, ClienteForm } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -74,8 +74,6 @@ const ALL_COLUMNS: ColDef[] = [
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
 // ─── Formulario vacío ──────────────────────────────────────────────────────
-
-const TIPO_IDENTIFICACION_LABELS: Record<number, string> = { 0: 'No Aplica', 1: 'NIT', 2: 'DPI', 3: 'Extranjero' }
 
 const EMPTY_FORM: ClienteForm = {
   empresa: 0,
@@ -698,10 +696,10 @@ export function ClientesClient({
                     <TableHead key="tipo_identificacion">
                       <ColumnFilter
                         label="Identificacion"
-                        values={Object.values(TIPO_IDENTIFICACION_LABELS)}
-                        active={new Set([...(colFilters['tipo_identificacion'] ?? new Set())].map((k) => TIPO_IDENTIFICACION_LABELS[Number(k)] ?? `#${k}`))}
+                        values={Object.values(TIPO_IDENTIFICACION)}
+                        active={new Set([...(colFilters['tipo_identificacion'] ?? new Set())].map((k) => TIPO_IDENTIFICACION[Number(k)] ?? `#${k}`))}
                         onChange={(labels) => {
-                          const byLabel = Object.fromEntries(Object.entries(TIPO_IDENTIFICACION_LABELS).map(([k, v]) => [v, k]))
+                          const byLabel = Object.fromEntries(Object.entries(TIPO_IDENTIFICACION).map(([k, v]) => [v, k]))
                           setColFilter('tipo_identificacion', new Set([...labels].map((l) => byLabel[l] ?? l)))
                         }}
                       />
@@ -845,7 +843,7 @@ export function ClientesClient({
                           return (
                             <TableCell key="tipo_identificacion">
                               <Badge variant="outline" className="font-normal">
-                                {TIPO_IDENTIFICACION_LABELS[cliente.tipo_identificacion ?? 0] ?? `#${cliente.tipo_identificacion}`}
+                                {TIPO_IDENTIFICACION[cliente.tipo_identificacion ?? 0] ?? `#${cliente.tipo_identificacion}`}
                               </Badge>
                             </TableCell>
                           )
@@ -1178,7 +1176,7 @@ export function ClientesClient({
                   <div className="col-span-2">
                     <ViewField label="Nombre Factura" value={viewTarget.nombre_factura} />
                   </div>
-                  <ViewField label="Identificacion" value={TIPO_IDENTIFICACION_LABELS[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
+                  <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
                   <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                   <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
                   <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
@@ -1200,7 +1198,7 @@ export function ClientesClient({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(TIPO_IDENTIFICACION_LABELS).map(([k, v]) => (
+                        {Object.entries(TIPO_IDENTIFICACION).map(([k, v]) => (
                           <SelectItem key={k} value={k}>{v}</SelectItem>
                         ))}
                       </SelectContent>

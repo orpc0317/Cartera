@@ -6,16 +6,57 @@ export function flagEmoji(code: string): string {
 }
 
 export const REGIMENES_ISR: Record<number, string> = {
-  1: 'Régimen General',
-  2: 'Pequeño Contribuyente',
-  3: 'Exento',
+  0: 'No Aplica',
+  1: 'Sobre las Utilidades de Actividades Lucrativas',
+  2: 'Opcional Simplificado Sobre Ingresos de Actividades Lucrativas (sin Resolución)',
+  3: 'Opcional Simplificado Sobre Ingresos de Actividades Lucrativas (con Resolución)',
+}
+
+export const TIPO_IDENTIFICACION: Record<number, string> = {
+  0: 'No Aplica',
+  1: 'NIT',
+  2: 'DPI',
+  3: 'Extranjero',
 }
 
 export const REGIMENES_IVA: Record<number, string> = {
-  0: 'No aplica',
+  0: 'No Aplica',
   1: 'General (12%)',
   2: 'Pequeño Contribuyente (5%)',
   3: 'Exento',
+}
+
+export const UNIDAD_MEDIDA: Record<string, string> = {
+  MTS2: 'Metros cuadrados (m²)',
+  V2:   'Varas cuadradas (v²)',
+  MNZS: 'Manzanas',
+}
+
+/**
+ * Estado calculado de un lote, derivado de los campos promesa y recibo_numero.
+ * No existe como columna en la BD — se computa en el cliente.
+ */
+export type LoteEstado = 'Disponible' | 'Reservado' | 'Vendido'
+
+export function getLoteEstado(promesa: number, reciboNumero: number): LoteEstado {
+  if (promesa > 0) return 'Vendido'
+  if (reciboNumero > 0) return 'Reservado'
+  return 'Disponible'
+}
+
+export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  AR: 'ARS', BO: 'BOB', BR: 'BRL', CA: 'CAD',
+  CL: 'CLP', CO: 'COP', CR: 'CRC', CU: 'CUP',
+  DO: 'DOP', EC: 'USD', EU: 'EUR', GB: 'GBP',
+  GT: 'GTQ', HN: 'HNL', MX: 'MXN', NI: 'NIO',
+  PA: 'PAB', PE: 'PEN', PY: 'PYG', SV: 'SVC',
+  US: 'USD', UY: 'UYU', VE: 'VES',
+}
+
+export const LOTE_ESTADO_BADGE: Record<LoteEstado, { variant: 'outline' | 'secondary' | 'default'; className: string }> = {
+  Disponible: { variant: 'outline',   className: 'border-emerald-500 text-emerald-700' },
+  Reservado:  { variant: 'outline',   className: 'border-amber-500   text-amber-700'   },
+  Vendido:    { variant: 'secondary', className: 'bg-rose-100 text-rose-700 border-rose-200' },
 }
 
 /**

@@ -157,10 +157,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | telefono1                   | Telefono        | true           | valor directo                                         |
 | telefono2                   | Telefono2       | false          | valor directo                                         |
 | correo                      | Correo          | true           | valor directo                                         |
-| tipo_identificacion         | Identificacion  | false          | label de `TIPO_IDENTIFICACION_LABELS`                 |
+| tipo_identificacion         | Identificacion  | false          | label de `TIPO_IDENTIFICACION` (importar de `@/lib/constants`) |
 | identificacion_tributaria   | ID Tributaria   | true           | valor directo                                         |
 | nombre_factura              | Nombre Factura  | false          | valor directo                                         |
-| regimen_iva                 | Regimen IVA     | false          | label de `REGIMEN_IVA_LABELS`                         |
+| regimen_iva                 | Regimen IVA     | false          | label de `REGIMENES_IVA` (importar de `@/lib/constants`) |
 | activo                      | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---

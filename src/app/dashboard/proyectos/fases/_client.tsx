@@ -39,6 +39,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { createFase, updateFase, deleteFase } from '@/app/actions/fases'
 import type { Empresa, Proyecto, Fase, FaseForm } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { UNIDAD_MEDIDA } from '@/lib/constants'
 
 // ─── Column types ───────────────────────────────────────────────────────────
 
@@ -49,9 +50,10 @@ type ColPref = { key: string; visible: boolean }
 // ─── Column definitions ─────────────────────────────────────────────────────
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
-  { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
-  { key: 'nombre',   label: 'Nombre',   defaultVisible: true  },
+  { key: 'empresa',  label: 'Empresa',       defaultVisible: false },
+  { key: 'proyecto', label: 'Proyecto',      defaultVisible: true  },
+  { key: 'nombre',   label: 'Nombre',        defaultVisible: true  },
+  { key: 'medida',   label: 'Unidad Medida', defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -73,6 +75,8 @@ const COL_LABELS: Record<string, string> = Object.fromEntries(
   [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
 )
 
+const UNIDAD_MEDIDA_CSV = (key: string) => UNIDAD_MEDIDA[key] ?? key
+
 function formatCsvCell(value: unknown): string {
   const str = value == null ? '' : String(value)
   return str.includes(',') || str.includes('\n') || str.includes('"')
@@ -86,7 +90,11 @@ function exportCsv(rows: Fase[], colPrefs: ColPref[]) {
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
   const lines = [
     headers.join(','),
-    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Fase])).join(',')),
+    ...rows.map((r) => keys.map((k) =>
+      k === 'medida'
+        ? formatCsvCell(UNIDAD_MEDIDA_CSV(String(r.medida ?? '')))
+        : formatCsvCell(r[k as keyof Fase])
+    ).join(',')),  
   ]
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -352,7 +360,7 @@ export function FasesClient({
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto })
+    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto, medida: 'MTS2' })
     setDialogOpen(true)
   }
 
@@ -394,6 +402,7 @@ export function FasesClient({
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
     if (!form.empresa)       { toast.error('La empresa es requerida.'); return }
     if (!form.proyecto)      { toast.error('El proyecto es requerido.'); return }
+    if (!form.medida)        { toast.error('La medida es requerida.'); return }
 
     // Frontend similarity check (jaroWinkler >= 0.85)
     const normalizedInput = toDbString(form.nombre)
@@ -413,7 +422,7 @@ export function FasesClient({
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
-        ? await updateFase(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form.nombre, lastModified)
+        ? await updateFase(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form.nombre, form.medida, lastModified)
         : await createFase(form)
 
       if (result.error) {
@@ -591,6 +600,12 @@ export function FasesClient({
                           )
                         case 'nombre':
                           return <TableCell key="nombre" className="font-medium">{fase.nombre}</TableCell>
+                        case 'medida':
+                          return (
+                            <TableCell key="medida" className="text-muted-foreground">
+                              {UNIDAD_MEDIDA[fase.medida] ?? fase.medida}
+                            </TableCell>
+                          )
                         default:
                           return (
                             <TableCell key={col.key} className="text-muted-foreground">
@@ -689,6 +704,9 @@ export function FasesClient({
                   <div className="col-span-2">
                     <ViewField label="Nombre" value={viewTarget.nombre} />
                   </div>
+                  <div className="col-span-1">
+                    <ViewField label="Medida" value={UNIDAD_MEDIDA[viewTarget.medida] ?? viewTarget.medida} />
+                  </div>
                 </div>
               ) : (
 
@@ -755,6 +773,28 @@ export function FasesClient({
                     onChange={(e) => f('nombre', e.target.value)}
                     placeholder="Nombre de la fase"
                   />
+                </div>
+
+                {/* Medida */}
+                <div className="col-span-1 grid gap-1">
+                  <Label htmlFor="medida" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    Medida *
+                  </Label>
+                  <Select
+                    value={form.medida}
+                    onValueChange={(v) => f('medida', v)}
+                  >
+                    <SelectTrigger id="medida">
+                      <SelectValue placeholder="Selecciona medida">
+                        {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(UNIDAD_MEDIDA).map(([k, label]) => (
+                        <SelectItem key={k} value={k}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               )}

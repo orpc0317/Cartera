@@ -168,37 +168,6 @@ export type SerieFactura = {
   serie: string
 }
 
-export type SerieRecibo = {
-  cuenta: string
-  empresa: number
-  proyecto: number
-  serie: string
-  serie_factura: string | null
-  dias_fecha: number
-  correlativo: number
-  formato: number
-  predeterminado: number
-  recibo_automatico: number
-  activo: number
-  agrego_usuario?: string = {
-  empresa: number
-  proyecto: number
-  serie: string
-  serie_factura: string | null
-  dias_fecha: number
-  correlativo: number
-  formato: number
-  predeterminado: number
-  recibo_automatico: number
-  activo: number
-}
-
-// Estado derivado del lote
-export function getLoteEstado(lote: Lote): 'disponible' | 'reservado' | 'con-promesa' {
-  if (lote.promesa > 0) return 'con-promesa'
-  if (lote.recibo_numero > 0) return 'reservado'
-  return 'disponible'
-}
 
 export type Cliente = {
   cuenta: string

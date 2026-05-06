@@ -28,6 +28,9 @@ Before writing any code, load these instruction files **in parallel**:
 | `.github/instructions/ui-conventions.instructions.md` | Accent colors, Lucide icons, label rules |
 | `.github/instructions/data-tables.instructions.md` | Column defs, ColumnFilter, ColumnManager, keyboard nav |
 
+> **Si el spec contiene algún campo de tipo imagen** (p.ej. `logo_url`), cargar también:
+> `.github/instructions/image-upload.instructions.md` — magic bytes, SVG risk, cleanup de archivo anterior, patrón `LogoUploadField`.
+
 ---
 
 ## Procedure

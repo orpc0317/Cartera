@@ -130,8 +130,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 `STORAGE_KEY = 'cuentas_ban_cols_v1_${userId}'`
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
-> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
-> `banco` → nombre del banco (prop `bancos`); `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
+> `empresa` → nombre de la empresa (prop `empresas`); 
+> `proyecto` → nombre del proyecto (prop `proyectos`);
+> `banco` → nombre del banco (prop `bancos`); 
+> `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
 
 | key      | label    | defaultVisible | render                                                |
 |----------|----------|----------------|-------------------------------------------------------|

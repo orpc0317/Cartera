@@ -78,6 +78,17 @@ export async function createManzana(form: ManzanaForm): Promise<{ error?: string
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
+  const { count } = await admin
+    .schema('cartera')
+    .from('t_manzana')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .eq('fase', form.fase)
+    .eq('codigo', form.codigo)
+  if (count && count > 0) return { error: 'Ya existe una manzana con ese codigo en esta fase.' }
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_manzana')
