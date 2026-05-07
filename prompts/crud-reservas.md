@@ -290,48 +290,48 @@ Tiene dos pestanas: **General** y **Pago**.
 
 **[IDENTIFICACION]**
 
-| Campo   | Label   | Ancho | Edit                                                  |
-|---------|---------|-------|-------------------------------------------------------|
-| empresa | Empresa | full  | Select; req                                           |
-| proyecto| Proyecto| full  | Select; proyectosPorEmpresa; req                      |
+| Campo   | Label   | Ancho | Edit                                                  | Default (Nuevo)    |
+|---------|---------|-------|-------------------------------------------------------|--------------------|
+| empresa | Empresa | full  | Select; req                                           | primera disponible |
+| proyecto| Proyecto| full  | Select; proyectosPorEmpresa; req                      | primero de empresa |
 
 **[GENERAL]**
 
-| Campo   | Label   | Ancho | Edit                                                         |
-|---------|---------|-------|--------------------------------------------------------------|
-| fecha   | Fecha   | half  | Input type="date"; req; default hoy                         |
-| fase    | Fase    | full  | Select; fasesConLotes (fases con lotes disponibles); req     |
-| manzana | Manzana | full  | Select; manzanasConLotes; req                                |
-| lote    | Lote    | full  | Select; lotesEnManzana; req. Muestra codigo + valor + moneda |
+| Campo   | Label   | Ancho | Edit                                                         | Default (Nuevo)                    |
+|---------|---------|-------|--------------------------------------------------------------|------------------------------------|
+| fecha   | Fecha   | half  | Input type="date"; req; default hoy                         | hoy                                |
+| fase    | Fase    | full  | Select; fasesConLotes (fases con lotes disponibles); req     | primera fase con lotes disponibles |
+| manzana | Manzana | full  | Select; manzanasConLotes; req                                | primera manzana con lotes          |
+| lote    | Lote    | full  | Select; lotesEnManzana; req. Muestra codigo + valor + moneda | primer lote disponible             |
 
 > Al seleccionar lote mostrar debajo un card informativo con: valor del lote, moneda, area (si existe).
 
-| Campo    | Label    | Ancho | Edit                                                   |
-|----------|----------|-------|--------------------------------------------------------|
-| cliente  | Cliente  | full  | ClienteCombobox (busqueda por nombre); req             |
-| vendedor | Vendedor | half  | Select; vendedoresPorProyecto (activo=1); req          |
-| cobrador | Cobrador | half  | Select; cobradoresPorProyecto (activo=1); req          |
+| Campo    | Label    | Ancho | Edit                                                   | Default (Nuevo)      |
+|----------|----------|-------|--------------------------------------------------------|----------------------|
+| cliente  | Cliente  | full  | ClienteCombobox (busqueda por nombre); req             | ''                   |
+| vendedor | Vendedor | half  | Select; vendedoresPorProyecto (activo=1); req          | primero del proyecto |
+| cobrador | Cobrador | half  | Select; cobradoresPorProyecto (activo=1); req          | primero del proyecto |
 
 ### Tab: Pago  (icono: Receipt)
 
 **[RECIBO]**
 
-| Campo        | Label         | Ancho | Edit                                                         |
-|--------------|---------------|-------|--------------------------------------------------------------|
-| serie_recibo | Serie Recibo  | half  | Select; seriesReciboPorProyecto; req                         |
-| recibo       | Numero Recibo | half  | Input; visible y req solo si serie NO es automatica; sin-spin: true |
-| moneda       | Moneda        | half  | Moneda display (bandera + ISO); req                          |
-| monto        | Monto         | half  | Input type="number"; req; > 0; sin-spin: true                |
+| Campo        | Label         | Ancho | Edit                                                         | Default (Nuevo)                         |
+|--------------|---------------|-------|--------------------------------------------------------------|-----------------------------------------|
+| serie_recibo | Serie Recibo  | half  | Select; seriesReciboPorProyecto; req                         | primera serie activa del proyecto       |
+| recibo       | Numero Recibo | half  | Input; visible y req solo si serie NO es automatica; sin-spin: true | ''                             |
+| moneda       | Moneda        | half  | Moneda display (bandera + ISO); req                          | COUNTRY_CURRENCY_MAP[proyecto.pais]     |
+| monto        | Monto         | half  | Input type="number"; req; > 0; sin-spin: true                | ''                                      |
 
 **[FORMA DE PAGO]**
 
-| Campo           | Label               | Ancho | Edit                                                              |
-|-----------------|---------------------|-------|-------------------------------------------------------------------|
-| forma_pago      | Forma de Pago       | full  | Select hardcoded FORMAS_PAGO; req                                 |
-| banco           | Banco               | full  | Select; bancosPorProyecto; visible y req solo si forma_pago=2     |
-| numero_cuenta   | Numero Cuenta       | half  | Input; visible y req solo si forma_pago=2; sin-spin: true         |
-| cuenta_bancaria | Cuenta Bancaria     | full  | Select; cuentasActivas; visible y req si forma_pago=3 o 4         |
-| numero_documento| Numero Documento    | half  | Input; visible y req si forma_pago=2,3,4; sin-spin: true          |
+| Campo           | Label               | Ancho | Edit                                                              | Default (Nuevo)  |
+|-----------------|---------------------|-------|-------------------------------------------------------------------|------------------|
+| forma_pago      | Forma de Pago       | full  | Select hardcoded FORMAS_PAGO; req                                 | 1 (Efectivo)     |
+| banco           | Banco               | full  | Select; bancosPorProyecto; visible y req solo si forma_pago=2     | ''               |
+| numero_cuenta   | Numero Cuenta       | half  | Input; visible y req solo si forma_pago=2; sin-spin: true         | ''               |
+| cuenta_bancaria | Cuenta Bancaria     | full  | Select; cuentasActivas; visible y req si forma_pago=3 o 4         | ''               |
+| numero_documento| Numero Documento    | half  | Input; visible y req si forma_pago=2,3,4; sin-spin: true          | ''               |
 
 ---
 

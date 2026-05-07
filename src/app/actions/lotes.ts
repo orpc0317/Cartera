@@ -441,3 +441,67 @@ export async function createReserva(
 
   return { ok: true, numero: result.numero!, recibo: result.recibo! }
 }
+
+// ─── Info de Reserva para Lote ─────────────────────────────────────────────
+
+export type LoteReservaInfo = {
+  reserva_numero: number
+  cliente_nombre: string
+  fecha: string
+}
+
+export async function getLoteReservaInfo(
+  empresa: number,
+  proyecto: number,
+  fase: number,
+  manzana: string,
+  codigo: string,
+): Promise<LoteReservaInfo | null> {
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return null
+  const admin = createAdminClient()
+
+  const { data: reserva } = await admin
+    .schema('cartera')
+    .from('t_reserva')
+    .select('numero, cliente, recibo_serie, recibo_numero')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('fase', fase)
+    .eq('manzana', manzana)
+    .eq('lote', codigo)
+    .order('numero', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!reserva) return null
+
+  const [{ data: cliente }, { data: recibo }] = await Promise.all([
+    admin
+      .schema('cartera')
+      .from('t_cliente')
+      .select('nombre')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .eq('codigo', reserva.cliente)
+      .maybeSingle(),
+    admin
+      .schema('cartera')
+      .from('t_recibo_caja')
+      .select('fecha')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .eq('serie', reserva.recibo_serie)
+      .eq('numero', reserva.recibo_numero)
+      .maybeSingle(),
+  ])
+
+  return {
+    reserva_numero: (reserva as { numero?: number }).numero ?? 0,
+    cliente_nombre: (cliente as { nombre?: string } | null)?.nombre ?? '',
+    fecha: (recibo as { fecha?: string } | null)?.fecha ?? '',
+  }
+}

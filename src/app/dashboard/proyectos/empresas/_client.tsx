@@ -46,7 +46,7 @@ import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
-const SKIP_KEYS = new Set(['pais', 'departamento', 'municipio'])
+const SKIP_KEYS = new Set(['direccion_pais', 'direccion_departamento', 'direccion_municipio'])
 
 // ─── Helper components ─────────────────────────────────────────────────────
 
@@ -141,9 +141,9 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'razon_social',             label: 'Razon Social',  defaultVisible: true  },
   { key: 'identificaion_tributaria', label: 'ID Tributaria', defaultVisible: true  },
   { key: 'direccion',                label: 'Direccion',     defaultVisible: false },
-  { key: 'pais',                     label: 'Pais',          defaultVisible: false },
-  { key: 'departamento',             label: 'Departamento',  defaultVisible: false },
-  { key: 'municipio',                label: 'Municipio',     defaultVisible: false },
+  { key: 'direccion_pais',           label: 'Pais',          defaultVisible: false },
+  { key: 'direccion_departamento',   label: 'Departamento',  defaultVisible: false },
+  { key: 'direccion_municipio',      label: 'Municipio',     defaultVisible: false },
   { key: 'codigo_postal',            label: 'Codigo Postal', defaultVisible: false },
   { key: '__regimen',                label: 'Regimen ISR',   defaultVisible: false },
 ]
@@ -205,9 +205,9 @@ const EMPTY_FORM: EmpresaForm = {
   nombre: '',
   razon_social: '',
   identificaion_tributaria: '',
-  pais: '',
-  departamento: '',
-  municipio: '',
+  direccion_pais: '',
+  direccion_departamento: '',
+  direccion_municipio: '',
   direccion: '',
   codigo_postal: '',
   regimen_isr: 0,
@@ -275,9 +275,9 @@ export function EmpresasClient({
       e.nombre?.toLowerCase().includes(q) ||
       e.razon_social?.toLowerCase().includes(q) ||
       e.identificaion_tributaria?.toLowerCase().includes(q) ||
-      e.pais?.toLowerCase().includes(q) ||
-      e.departamento?.toLowerCase().includes(q) ||
-      e.municipio?.toLowerCase().includes(q) ||
+      e.direccion_pais?.toLowerCase().includes(q) ||
+      e.direccion_departamento?.toLowerCase().includes(q) ||
+      e.direccion_municipio?.toLowerCase().includes(q) ||
       e.direccion?.toLowerCase().includes(q) ||
       String(e.codigo).includes(q)
   })
@@ -357,8 +357,8 @@ export function EmpresasClient({
   // ─ Form helpers ─────────────────────────────────────────────────────────
 
   function buildFormFromEmpresa(empresa: Empresa) {
-    const pCode = empresa.pais ?? ''
-    const dCode = empresa.departamento ?? ''
+    const pCode = empresa.direccion_pais ?? ''
+    const dCode = empresa.direccion_departamento ?? ''
     return {
       paisCodigo: pCode,
       deptoCodigo: dCode,
@@ -367,9 +367,9 @@ export function EmpresasClient({
         nombre:                    empresa.nombre,
         razon_social:              empresa.razon_social ?? '',
         identificaion_tributaria:  empresa.identificaion_tributaria ?? '',
-        pais:                      pCode,
-        departamento:              dCode,
-        municipio:                 empresa.municipio ?? '',
+        direccion_pais:            pCode,
+        direccion_departamento:    dCode,
+        direccion_municipio:       empresa.direccion_municipio ?? '',
         direccion:                 empresa.direccion ?? '',
         codigo_postal:             empresa.codigo_postal ?? '',
         regimen_isr:               empresa.regimen_isr ?? 0,
@@ -437,14 +437,14 @@ export function EmpresasClient({
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
     if (!form.razon_social.trim()) { toast.error('La razon social es requerida.'); return }
     if (!form.identificaion_tributaria.trim()) { toast.error('La identificacion tributaria es requerida.'); return }
-    if (form.pais === 'GT' && form.identificaion_tributaria && !validarNIT(form.identificaion_tributaria)) {
+    if (form.direccion_pais === 'GT' && form.identificaion_tributaria && !validarNIT(form.identificaion_tributaria)) {
       toast.error('El NIT no tiene una estructura valida.')
       return
     }
     if (!form.direccion.trim()) { toast.error('La direccion es requerida.'); return }
-    if (!form.pais) { toast.error('El pais es requerido.'); return }
-    if (!form.departamento) { toast.error('El departamento es requerido.'); return }
-    if (!form.municipio) { toast.error('El municipio es requerido.'); return }
+    if (!form.direccion_pais) { toast.error('El pais es requerido.'); return }
+    if (!form.direccion_departamento) { toast.error('El departamento es requerido.'); return }
+    if (!form.direccion_municipio) { toast.error('El municipio es requerido.'); return }
 
     const normalizedInput = toDbString(form.nombre)
     const candidates = initialData.filter((e) => viewTarget ? e.codigo !== viewTarget.codigo : true)
@@ -486,9 +486,9 @@ export function EmpresasClient({
       e.razon_social,
       e.identificaion_tributaria,
       e.direccion,
-      paises.find((p) => p.codigo === e.pais)?.nombre ?? e.pais,
-      departamentos.find((d) => d.pais === e.pais && d.codigo === e.departamento)?.nombre ?? e.departamento,
-      municipios.find((m) => m.pais === e.pais && m.departamento === e.departamento && m.codigo === e.municipio)?.nombre ?? e.municipio,
+      paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais,
+      departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento,
+      municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio,
       e.codigo_postal,
       REGIMENES_ISR[e.regimen_isr] ?? String(e.regimen_isr),
     ])
@@ -576,7 +576,7 @@ export function EmpresasClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => {
                 if (col.key === '__regimen') {
                   return (
@@ -601,12 +601,12 @@ export function EmpresasClient({
                     <ColumnFilter
                       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                       values={
-                        col.key === 'pais'
-                          ? [...new Set(initialData.map((e) => paises.find((p) => p.codigo === e.pais)?.nombre ?? e.pais ?? ''))].sort()
-                          : col.key === 'departamento'
-                          ? [...new Set(initialData.map((e) => departamentos.find((d) => d.pais === e.pais && d.codigo === e.departamento)?.nombre ?? e.departamento ?? ''))].sort()
-                          : col.key === 'municipio'
-                          ? [...new Set(initialData.map((e) => municipios.find((m) => m.pais === e.pais && m.departamento === e.departamento && m.codigo === e.municipio)?.nombre ?? e.municipio ?? ''))].sort()
+                        col.key === 'direccion_pais'
+                          ? [...new Set(initialData.map((e) => paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais ?? ''))].sort()
+                          : col.key === 'direccion_departamento'
+                          ? [...new Set(initialData.map((e) => departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento ?? ''))].sort()
+                          : col.key === 'direccion_municipio'
+                          ? [...new Set(initialData.map((e) => municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio ?? ''))].sort()
                           : uniqueVals(col.key as keyof Empresa)
                       }
                       active={colFilters[col.key] ?? new Set()}
@@ -656,32 +656,32 @@ export function EmpresasClient({
                           return <TableCell key="identificaion_tributaria" className="font-mono text-xs text-muted-foreground">{empresa.identificaion_tributaria || '—'}</TableCell>
                         case 'direccion':
                           return <TableCell key="direccion" className="text-muted-foreground">{empresa.direccion || '—'}</TableCell>
-                        case 'pais': {
-                          const p = paises.find((x) => x.codigo === empresa.pais)
+                        case 'direccion_pais': {
+                          const p = paises.find((x) => x.codigo === empresa.direccion_pais)
                           return (
-                            <TableCell key="pais" className="text-muted-foreground">
-                              {empresa.pais ? (
+                            <TableCell key="direccion_pais" className="text-muted-foreground">
+                              {empresa.direccion_pais ? (
                                 <span className="flex items-center gap-1.5">
                                   <img
-                                    src={`https://flagcdn.com/w20/${empresa.pais.toLowerCase()}.png`}
-                                    alt={empresa.pais}
+                                    src={`https://flagcdn.com/w20/${empresa.direccion_pais.toLowerCase()}.png`}
+                                    alt={empresa.direccion_pais}
                                     width={20}
                                     height={14}
                                     className="object-cover rounded-sm shrink-0"
                                   />
-                                  {p?.nombre ?? empresa.pais}
+                                  {p?.nombre ?? empresa.direccion_pais}
                                 </span>
                               ) : '—'}
                             </TableCell>
                           )
                         }
-                        case 'departamento': {
-                          const d = departamentos.find((x) => x.pais === empresa.pais && x.codigo === empresa.departamento)
-                          return <TableCell key="departamento" className="text-muted-foreground">{d?.nombre ?? empresa.departamento || '—'}</TableCell>
+                        case 'direccion_departamento': {
+                          const d = departamentos.find((x) => x.pais === empresa.direccion_pais && x.codigo === empresa.direccion_departamento)
+                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{(d?.nombre ?? empresa.direccion_departamento) || '—'}</TableCell>
                         }
-                        case 'municipio': {
-                          const m = municipios.find((x) => x.pais === empresa.pais && x.departamento === empresa.departamento && x.codigo === empresa.municipio)
-                          return <TableCell key="municipio" className="text-muted-foreground">{m?.nombre ?? empresa.municipio || '—'}</TableCell>
+                        case 'direccion_municipio': {
+                          const m = municipios.find((x) => x.pais === empresa.direccion_pais && x.departamento === empresa.direccion_departamento && x.codigo === empresa.direccion_municipio)
+                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{(m?.nombre ?? empresa.direccion_municipio) || '—'}</TableCell>
                         }
                         case 'codigo_postal':
                           return <TableCell key="codigo_postal" className="text-muted-foreground">{empresa.codigo_postal || '—'}</TableCell>
@@ -742,6 +742,7 @@ export function EmpresasClient({
         modal={false}
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares está activo
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -798,29 +799,29 @@ export function EmpresasClient({
                   </div>
                   <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
                     <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
-                    {viewTarget.pais ? (() => {
-                      const p = paises.find((x) => x.codigo === viewTarget.pais)
+                    {viewTarget.direccion_pais ? (() => {
+                      const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                       return (
                         <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
                           <img
-                            src={`https://flagcdn.com/w20/${viewTarget.pais.toLowerCase()}.png`}
-                            alt={viewTarget.pais}
+                            src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
+                            alt={viewTarget.direccion_pais}
                             width={20}
                             height={14}
                             className="object-cover rounded-sm shrink-0"
                           />
-                          {p?.nombre ?? viewTarget.pais}
+                          {p?.nombre ?? viewTarget.direccion_pais}
                         </span>
                       )
                     })() : <span className="text-[13px] font-medium text-foreground"></span>}
                   </div>
                   <ViewField
                     label="Departamento"
-                    value={departamentos.find((d) => d.pais === viewTarget.pais && d.codigo === viewTarget.departamento)?.nombre ?? viewTarget.departamento}
+                    value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
                   />
                   <ViewField
                     label="Municipio"
-                    value={municipios.find((m) => m.pais === viewTarget.pais && m.departamento === viewTarget.departamento && m.codigo === viewTarget.municipio)?.nombre ?? viewTarget.municipio}
+                    value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
                   />
                   <ViewField label="Codigo Postal" value={viewTarget.codigo_postal} />
                   <div className="col-span-2">
@@ -832,11 +833,13 @@ export function EmpresasClient({
 
               /* ── Modo Edicion / Creacion ── */
               <div className="grid grid-cols-2 gap-4">
-                <SectionDivider label="IDENTIFICACION" />
                 {viewTarget && (
-                  <div className="col-span-2">
-                    <ViewField label="Codigo" value={String(viewTarget.codigo)} />
-                  </div>
+                  <>
+                    <SectionDivider label="IDENTIFICACION" />
+                    <div className="col-span-2">
+                      <ViewField label="Codigo" value={String(viewTarget.codigo)} />
+                    </div>
+                  </>
                 )}
                 <SectionDivider label="GENERAL" />
 
@@ -894,9 +897,9 @@ export function EmpresasClient({
                       setDeptoCodigo(firstDepto?.codigo ?? '')
                       setForm((prev) => ({
                         ...prev,
-                        pais:          codigo,
-                        departamento:  firstDepto?.codigo ?? '',
-                        municipio:     firstMuni?.codigo ?? '',
+                        direccion_pais:          codigo,
+                        direccion_departamento:   firstDepto?.codigo ?? '',
+                        direccion_municipio:      firstMuni?.codigo ?? '',
                       }))
                     }}
                   />
@@ -913,7 +916,7 @@ export function EmpresasClient({
                       const v = e.target.value
                       const firstMuni = municipios.filter((m) => m.pais === paisCodigo && m.departamento === v)[0]
                       setDeptoCodigo(v)
-                      setForm((prev) => ({ ...prev, departamento: v, municipio: firstMuni?.codigo ?? '' }))
+                      setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
                     }}
                     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -929,10 +932,10 @@ export function EmpresasClient({
                   <select
                     id="municipio"
                     title="Municipio"
-                    value={form.municipio}
+                    value={form.direccion_municipio}
                     disabled={!deptoCodigo}
                     onChange={(e) => {
-                      setForm((prev) => ({ ...prev, municipio: e.target.value }))
+                      setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
                     }}
                     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -959,8 +962,10 @@ export function EmpresasClient({
                     value={String(form.regimen_isr)}
                     onValueChange={(v) => f('regimen_isr', Number(v))}
                   >
-                    <SelectTrigger id="regimen_isr">
-                      <SelectValue />
+                    <SelectTrigger id="regimen_isr" className="w-full">
+                      <SelectValue>
+                        {(v: string) => v !== '' ? (REGIMENES_ISR[Number(v)] ?? v) : null}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(REGIMENES_ISR).map(([k, v]) => (
@@ -1011,19 +1016,17 @@ export function EmpresasClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-2">
-                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} empresa
-                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
-                </p>
-                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {similarWarning?.map((e) => (
-                    <li key={e.codigo}>{e.nombre}</li>
-                  ))}
-                </ul>
-                <p>¿Es realmente una empresa diferente y desea continuar?</p>
+            <AlertDialogDescription render={<div />}>
+              <div className="mb-2">
+                Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} empresa
+                {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
               </div>
+              <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                {similarWarning?.map((e) => (
+                  <li key={e.codigo}>{e.nombre}</li>
+                ))}
+              </ul>
+              <div>¿Es realmente una empresa diferente y desea continuar?</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

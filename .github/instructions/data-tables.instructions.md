@@ -35,6 +35,55 @@ const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVi
 
 Header row: `bg-muted/30`. Sticky code cell: `sticky left-0 z-20 w-20 bg-muted/30`  label `Codigo`. Sticky actions cell: `sticky right-0 z-20 w-12 bg-muted/30`.
 
+### Sticky column header text
+
+The sticky "Codigo" (or "Serie") `<TableHead>` must wrap its label in a `<span>` to match the styling of the `<ColumnFilter>` buttons in dynamic columns. Without this, the `<TableHead>` default `font-semibold` makes it visually bold relative to all other headers.
+
+```tsx
+{/* ✅ Correct */}
+<TableHead className="sticky left-0 z-20 w-20 bg-muted/30">
+  <span className="text-xs font-medium text-muted-foreground">Codigo</span>
+</TableHead>
+
+{/* ❌ Wrong — inherits font-semibold from TableHead; appears bold vs other headers */}
+<TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+```
+
+For screens like **Lotes** where some dynamic columns don't use `<ColumnFilter>` (plain label), wrap them the same way:
+
+```tsx
+} : <span className="text-xs font-medium text-muted-foreground">{col.label}</span>}
+```
+
+## Column headers — always use ColumnFilter
+
+**Every** dynamic column in `visibleCols.map(...)` must render a `<ColumnFilter>` — never plain `{col.label}` text. Plain text makes the header visually invisible (no styling) and disables filtering for that column.
+
+```tsx
+{/* ✅ Correct — all columns use ColumnFilter */}
+{visibleCols.map((col) => (
+  <TableHead key={col.key}>
+    <ColumnFilter
+      label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
+      values={
+        col.key === 'empresa'  ? uniqueEmpresaNames  :
+        col.key === 'proyecto' ? uniqueProyectoNames :
+        col.key === 'nombre'   ? uniqueNombreValues  : []
+      }
+      active={colFilters[col.key] ?? new Set()}
+      onChange={(v) => setColFilter(col.key, v)}
+    />
+  </TableHead>
+))}
+
+{/* ❌ Wrong — plain text; header is invisible and not filterable */}
+return <TableHead key={col.key}>{col.label}</TableHead>
+```
+
+When a column has no filterable values (e.g. a free-text field with too many unique values), pass `values={[]}` — `ColumnFilter` still renders the styled label correctly, just without a dropdown.
+
+FK columns (empresa, proyecto, fase…) and enum columns (medida, moneda…) require label↔key translation in both `values` and `active`/`onChange` — see the filter pipeline in `clientes/_client.tsx` for reference.
+
 ---
 
 ## Active row highlight (use module accent color from ui-conventions.instructions.md)

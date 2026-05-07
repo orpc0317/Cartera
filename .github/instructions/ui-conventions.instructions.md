@@ -128,6 +128,7 @@ The `activo` field (smallint 0/1) renders as a badge in every table and as a `Ch
 
 - **Table cell:** `<Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>` when `activo === 1`; `<Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>` when `activo === 0`.
 - **View mode:** `<Checkbox checked={!!record.activo} disabled />` inside a `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5` card (same container as `ViewField`), label above in `text-[10px] font-bold tracking-widest text-muted-foreground/55`.
+- **Edit mode:** For checkboxes that share a grid row with label+input fields, see the **Checkbox vertical alignment** rule in `crud-screens.instructions.md`. In short: add `items-end` to the parent grid and `pb-1` to the checkbox wrapper div.
 
 ---
 
@@ -174,16 +175,21 @@ This app uses **Base UI** (`@base-ui/react/select`). `SelectValue` does **not** 
 
 ## Moneda display rules
 
-**Global rule — applies everywhere: table cells, ViewField cards, Select triggers, Select items, CSV export.**
+**Global rule — two contexts with different verbosity:**
 
-Display format: **flag + ISO code only**. Never show the currency name.
+| Contexto | Formato | Ejemplos |
+|----------|---------|---------|
+| Display (tabla, ViewField, **Select trigger**) | bandera + ISO code only | `🇬🇹 GTQ` ✅ |
+| Selección (**Select dropdown items**) | bandera + ISO — nombre completo | `🇬🇹 GTQ — Guatemalan Quetzal` ✅ |
 
 ```
-🇬🇹 GTQ     ✅
-🇺🇸 USD     ✅
-GTQ — Quetzal guatemalteco  ❌
-USD (US Dollar)             ❌
+🇬🇹 GTQ                         ✅ (trigger, tabla, ViewField)
+🇬🇹 GTQ — Guatemalan Quetzal   ✅ (dropdown items únicamente)
+GTQ — Quetzal guatemalteco      ❌ (sin bandera)
+USD (US Dollar)                 ❌ (sin bandera, mal formato)
 ```
+
+> **Razón:** el trigger es compacto (espacio limitado); el dropdown puede ser verbose para que el usuario identifique monedas por nombre si no conoce el código ISO.
 
 ### Table cells
 

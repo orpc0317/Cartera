@@ -118,7 +118,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)               |
 | proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)               |
 | nombre         | Nombre          | true           | valor directo                                            |
-| medida         | Unidad Medida   | true           | label de `UNIDAD_MEDIDA` (importar de `@/lib/constants`) |
+| medida         | Medida          | true           | label de `UNIDAD_MEDIDA` (importar de `@/lib/constants`) |
 
 ---
 
@@ -128,18 +128,18 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
+|----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
 
 **[GENERAL]**
 
-| Campo  | Label         | Ancho | View      | Nuevo / Edit | Notas |
-|--------|---------------|-------|-----------|--------------|-------|
-| nombre | Nombre        | full  | ViewField | Input; req   |       |
-| medida | Medida        | half  | ViewField | Select; req  |       |
+| Campo  | Label         | Ancho | View      | Nuevo / Edit | Default (Nuevo) | Notas |
+|--------|---------------|-------|-----------|--------------|-----------------|-------|
+| nombre | Nombre        | full  | ViewField | Input; req   | ''              |       |
+| medida | Medida        | half  | ViewField | Select; req  | 'MTS2'          |       |
 
 ---
 

@@ -50,10 +50,10 @@ type ColPref = { key: string; visible: boolean }
 // ─── Column definitions ─────────────────────────────────────────────────────
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: 'empresa',  label: 'Empresa',       defaultVisible: false },
-  { key: 'proyecto', label: 'Proyecto',      defaultVisible: true  },
-  { key: 'nombre',   label: 'Nombre',        defaultVisible: true  },
-  { key: 'medida',   label: 'Unidad Medida', defaultVisible: true  },
+  { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
+  { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
+  { key: 'nombre',   label: 'Nombre',   defaultVisible: true  },
+  { key: 'medida',   label: 'Medida',   defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -111,7 +111,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value ?? '—'}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
     </div>
   )
 }
@@ -243,6 +243,13 @@ export function FasesClient({
     () => proyectos.filter((p) => p.empresa === form.empresa),
     [proyectos, form.empresa],
   )
+
+  // ── Unique filter values ───────────────────────────────────────────────
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort(), [initialData, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((f) => proyectoMap.get(f.proyecto) ?? String(f.proyecto)))].sort(), [initialData, proyectoMap])
+  const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((f) => f.nombre).filter(Boolean))].sort(), [initialData])
+  const uniqueMedidaLabels  = useMemo(() => [...new Set(initialData.map((f) => UNIDAD_MEDIDA[f.medida] ?? f.medida))].sort(), [initialData])
+  const medidaLabelToKey    = useMemo(() => new Map(Object.entries(UNIDAD_MEDIDA).map(([k, v]) => [v, k])), [])
 
   // ── Filter helpers ─────────────────────────────────────────────────────
   function setColFilter(col: string, next: Set<string>) {
@@ -521,40 +528,39 @@ export function FasesClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
-              {visibleCols.map((col) => {
-                if (col.key === 'empresa') {
-                  return (
-                    <TableHead key="empresa">
-                      <ColumnFilter
-                        label="Empresa"
-                        values={[...new Set(initialData.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort()}
-                        active={new Set([...(colFilters['empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? k))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
-                          setColFilter('empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === 'proyecto') {
-                  return (
-                    <TableHead key="proyecto">
-                      <ColumnFilter
-                        label="Proyecto"
-                        values={[...new Set(initialData.map((f) => proyectoMap.get(f.proyecto) ?? String(f.proyecto)))].sort()}
-                        active={new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? k))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
-                          setColFilter('proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                return <TableHead key={col.key}>{col.label}</TableHead>
-              })}
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
+              {visibleCols.map((col) => (
+                <TableHead key={col.key}>
+                  <ColumnFilter
+                    label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
+                    values={
+                      col.key === 'empresa'  ? uniqueEmpresaNames  :
+                      col.key === 'proyecto' ? uniqueProyectoNames :
+                      col.key === 'nombre'   ? uniqueNombreValues  :
+                      col.key === 'medida'   ? uniqueMedidaLabels  : []
+                    }
+                    active={
+                      col.key === 'empresa'  ? new Set([...(colFilters['empresa']  ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? k)) :
+                      col.key === 'proyecto' ? new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? k)) :
+                      col.key === 'medida'   ? new Set([...(colFilters['medida']   ?? new Set())].map((k) => UNIDAD_MEDIDA[k] ?? k)) :
+                      colFilters[col.key] ?? new Set()
+                    }
+                    onChange={(vals) => {
+                      if (col.key === 'empresa') {
+                        const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                        setColFilter('empresa', new Set([...vals].map((l) => byLabel.get(l) ?? l)))
+                      } else if (col.key === 'proyecto') {
+                        const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
+                        setColFilter('proyecto', new Set([...vals].map((l) => byLabel.get(l) ?? l)))
+                      } else if (col.key === 'medida') {
+                        setColFilter('medida', new Set([...vals].map((l) => medidaLabelToKey.get(l) ?? l)))
+                      } else {
+                        setColFilter(col.key, vals)
+                      }
+                    }}
+                  />
+                </TableHead>
+              ))}
               <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
             </TableRow>
           </TableHeader>
@@ -724,7 +730,7 @@ export function FasesClient({
                     onValueChange={(v) => f('empresa', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger id="empresa">
+                    <SelectTrigger id="empresa" className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -747,7 +753,7 @@ export function FasesClient({
                     onValueChange={(v) => f('proyecto', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger id="proyecto">
+                    <SelectTrigger id="proyecto" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -784,7 +790,7 @@ export function FasesClient({
                     value={form.medida}
                     onValueChange={(v) => f('medida', v)}
                   >
-                    <SelectTrigger id="medida">
+                    <SelectTrigger id="medida" className="w-full">
                       <SelectValue placeholder="Selecciona medida">
                         {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
                       </SelectValue>
@@ -827,19 +833,17 @@ export function FasesClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-2">
-                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} fase
-                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
-                </p>
-                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {similarWarning?.map((f) => (
-                    <li key={f.codigo}>{f.nombre}</li>
-                  ))}
-                </ul>
-                <p>¿Es realmente una fase diferente y desea continuar?</p>
+            <AlertDialogDescription render={<div />}>
+              <div className="mb-2">
+                Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} fase
+                {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
               </div>
+              <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                {similarWarning?.map((f) => (
+                  <li key={f.codigo}>{f.nombre}</li>
+                ))}
+              </ul>
+              <div>¿Es realmente una fase diferente y desea continuar?</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

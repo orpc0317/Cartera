@@ -16,10 +16,49 @@ Mutations in `src/app/actions/<entity>.ts`. After mutations: `router.refresh()`.
 
 ---
 
+## Page header
+
+Every CRUD screen `_client.tsx` **must** start its `return` with a `{/* Header */}` block before the toolbar. The outer container uses `gap-6 p-6 md:p-8` (not `gap-4 p-6`).
+
+```tsx
+return (
+  <div className="flex flex-col gap-6 p-6 md:p-8">
+
+    {/* ── Header ── */}
+    <div className="flex items-start justify-between">
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl bg-{accent}-100 p-2.5">
+          <{Icon} className="h-5 w-5 text-{accent}-600" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">{Entidad en plural}</h1>
+          <p className="text-sm text-muted-foreground">{Descripción breve}</p>
+        </div>
+      </div>
+      {puedeAgregar && (
+        <Button onClick={openCreate} className="gap-2 bg-{accent}-600 hover:bg-{accent}-700 text-white">
+          <Plus className="h-4 w-4" />
+          Nuevo {Entidad singular}
+        </Button>
+      )}
+    </div>
+
+    {/* ── Toolbar ── (search + column manager + export — sin el botón "Nuevo") */}
+    ...
+```
+
+- The `<Button>Nuevo…</Button>` lives **only** in the header — do **not** duplicate it in the toolbar.
+- Use the module's accent color (see `ui-conventions.instructions.md`) for the icon badge and the button.
+- The `<Icon>` is the entity icon (same one used in the sidebar and in the modal icon badge).
+- `h1` always has `className="text-xl font-bold tracking-tight text-foreground"` — never accent-colored.
+
+---
+
 ## Modal layout
 
 ```tsx
 <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
+  if (!open && similarWarning) return   // guard: keep dialog open while the duplicate-name AlertDialog is active
   setDialogOpen(open)
   if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
 }}>
@@ -90,6 +129,20 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   )
 }
 ```
+
+### Empty-value rules for ViewField
+
+- **Text fields** — pass the raw value; `ViewField` shows blank when it's `null`, `undefined`, or `''`. Never pass `|| '—'` at the call site.
+- **Numeric fields** — `fmt(0)` returns `"0.00"` which is truthy and would show up. When 0 means "not set", guard at the call site:
+  ```tsx
+  {/* ✅ Correct — 0 renders as blank */}
+  <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
+  <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${medida}` : ''} />
+
+  {/* ❌ Wrong — fmt(0) = "0.00" always shows */}
+  <ViewField label="Valor" value={fmt(viewTarget.valor)} />
+  ```
+  Exception: if 0 is a semantically meaningful value that should always be displayed (e.g. `dias_gracia = 0` is valid and distinct from "not set"), pass `fmt(x)` directly without the guard.
 
 ---
 
@@ -182,6 +235,36 @@ Examples in spec syntax:
 
 - `gap-4` between fields, `gap-1` inside each field wrapper (label  input).
 - All `<Label>`: `className="text-[11px] font-semibold tracking-wider text-muted-foreground"`.
+- **Checkbox vertical alignment in edit mode grids**: A checkbox wrapper is shorter than a `grid gap-1 { label + input }` cell, so it floats to the top. Fix by adding `items-end` to the parent grid container AND `pb-1` to the checkbox wrapper div. This bottom-aligns the checkbox with the baseline of neighboring input fields.
+
+  ```tsx
+  {/* ✅ Correct — parent has items-end; checkbox wrapper has pb-1 */}
+  <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+    <div className="grid gap-1">
+      <Label ...>Moneda *</Label>
+      <Select ...>...</Select>
+    </div>
+    <div className="flex items-center gap-2 pb-1">
+      <Checkbox id="promesa_vencida" ... />
+      <Label htmlFor="promesa_vencida" ...>Promesa Vencida</Label>
+    </div>
+  </div>
+
+  {/* ✅ Also correct for half-width pairs — add items-end to the cols-2 row */}
+  <div className="grid grid-cols-2 gap-4 items-end">
+    <div className="grid gap-1"><Label ...>Tipo</Label><Select .../></div>
+    <div className="flex items-center gap-2 pb-1"><Checkbox .../><Label ...>Activo</Label></div>
+  </div>
+
+  {/* ❌ Wrong — no items-end on parent; checkbox floats to the top of the row */}
+  <div className="col-span-2 grid grid-cols-3 gap-4">
+    <div className="grid gap-1"><Label ...>Moneda *</Label><Select .../></div>
+    <div className="flex items-center gap-2"><Checkbox .../><Label ...>Promesa Vencida</Label></div>
+  </div>
+  ```
+
+  **Exception**: When a checkbox is full-width (`col-span-2`) on its own row, it does not need alignment adjustments.
+- **`<SelectTrigger>` width**: always add `className="w-full"` so the trigger fills its grid column. The base component defaults to `w-fit`, which causes it to shrink/expand with the selected text. This applies to every `<Select>` in edit mode, regardless of field width (full, half, third).
 - Geo cascade: use native `<select>` (not Shadcn `<Select>`) with class:
   `flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50`
 - Phone fields: see **PhoneField pattern** section below for the full implementation.
@@ -190,14 +273,18 @@ Examples in spec syntax:
   - **Sin spin** (`sin-spin: true`): large free-entry numbers where the spinner is useless and confusing (e.g. `correlativo`, monetary amounts, phone numbers). Add `className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"` to the `<Input>`.
   - The spec for each screen must mark each numeric field as `sin-spin: true/false` so the implementer knows which to apply.
 
-- **Hardcoded Select fields**: When a `<Select>` has fixed options (not loaded from DB), define a `const` map or array above the component, use the **numeric code** as `value` in `<SelectItem>`, store the code in the form/DB, and display the label/description everywhere (edit mode `<SelectValue>`, view mode `<ViewField>`). Example:
+- **Hardcoded Select fields**: When a `<Select>` has fixed options (not loaded from DB), define a `const` map or array above the component, use the **numeric code** as `value` in `<SelectItem>`, store the code in the form/DB, and display the label/description everywhere (edit mode `<SelectValue>`, view mode `<ViewField>`). Always use the render-prop on `<SelectValue>` — Base UI renders the raw value string without it, even for hardcoded selects. Example:
   ```tsx
   // definition (outside component)
   const TIPO_ID_LABELS: Record<number, string> = { 0: 'NIT', 1: 'DPI', 2: 'Extranjero' }
 
   // edit mode
   <Select value={String(form.tipo_id)} onValueChange={(v) => f('tipo_id', Number(v))}>
-    <SelectTrigger><SelectValue /></SelectTrigger>
+    <SelectTrigger>
+      <SelectValue>
+        {(v: string) => v !== '' ? (TIPO_ID_LABELS[Number(v)] ?? v) : null}
+      </SelectValue>
+    </SelectTrigger>
     <SelectContent>
       {Object.entries(TIPO_ID_LABELS).map(([k, v]) => (
         <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -218,6 +305,8 @@ Examples in spec syntax:
   ```
   This applies to **every** FK `<Select>`: empresa, proyecto, fase, banco, cuenta bancaria, vendedor, cobrador, etc.
 
+  > **Exception — entities where `codigo` IS the display value:** Some entities have no separate `nombre` field; the `codigo` itself is the human-readable label (e.g. `manzana`, `serie_recibo`, `serie_factura`). For these, `<SelectValue />` clean (no render-prop) is correct — the raw value shown is already the display name. Do **not** add a lookup render-prop for them.
+
   > **❌ Antipatrón — NO usar hijo estático que lee `form.field` directamente:**
   > ```tsx
   > // WRONG — le quita al componente control del estado; el placeholder nunca se muestra correctamente
@@ -225,7 +314,7 @@ Examples in spec syntax:
   >   {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
   > </SelectValue>
   > ```
-  > Usar **siempre** la render function `{(v: string) => v ? (...) : null}` para FK selects, y `<SelectValue />` limpio (sin hijo) para hardcoded selects.
+  > Usar **siempre** la render function `{(v: string) => v ? (...) : null}` para **todos** los selects — tanto FK (DB-loaded) como hardcoded. La diferencia es solo la función de lookup: para FK usar el Map de entidades; para hardcoded usar el Record de constantes con `Number(v)` como key.
 
 - **Auto-select first item on form open**: Every `<Select>` (hardcoded or DB-loaded) **must** pre-select its first available item when the create dialog opens (`openCreate`) and whenever a cascade resets a downstream field. This speeds up data entry.
   - In `openCreate`: compute the first valid value for every dropdown and pass them to `setForm({...EMPTY_FORM, ...})` explicitly.
@@ -361,6 +450,8 @@ if (paisFromProject) {
   </AlertDialogContent>
 </AlertDialog>
 ```
+
+> **Base UI constraint:** `AlertDialogDescription` does NOT support `asChild` (that is a Radix UI pattern). If the description needs to contain block-level content (lists, multiple paragraphs), use the `render` prop to change the root element: `<AlertDialogDescription render={<div />}>`. Never nest `<p>` inside `AlertDialogDescription` — use `<div>` instead to avoid the hydration error `<p> cannot be a descendant of <p>`.
 
 ---
 

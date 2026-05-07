@@ -6,9 +6,9 @@ export type Empresa = {
   nombre: string
   razon_social: string
   identificaion_tributaria: string  // typo original en DB
-  pais: string
-  departamento: string
-  municipio: string
+  direccion_pais: string
+  direccion_departamento: string
+  direccion_municipio: string
   direccion: string
   codigo_postal: string
   regimen_isr: number
@@ -26,9 +26,9 @@ export type Proyecto = {
   codigo: number
   nombre: string
   moneda: string
-  pais: string
-  departamento: string
-  municipio: string
+  direccion_pais: string
+  direccion_departamento: string
+  direccion_municipio: string
   direccion: string
   codigo_postal: string
   telefono1: string
@@ -187,7 +187,6 @@ export type Cliente = {
   identificacion_tributaria?: string
   tipo_identificacion?: number
   regimen_iva: number
-  activo?: number
   agrego_usuario?: string
   agrego_fecha?: string
   modifico_usuario?: string

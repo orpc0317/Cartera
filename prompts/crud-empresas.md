@@ -140,25 +140,25 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Tab: General  (icono: MapPin)
 
-**[IDENTIFICACION]**
+**[IDENTIFICACION]** _(solo en Vista y Edicion — NO se muestra al crear porque el codigo lo asigna la BD)_
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| codigo   | Codigo   | full  | ViewField | —           | —                |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit                 | Default (Nuevo)   | Notas |
+|----------|----------|-------|-----------|-------------|----------------------|-------------------|-------|
+| codigo   | Codigo   | full  | ViewField | —           | ViewField (readonly) | — (auto-asignado) |       |
 
 **[GENERAL]**
 
-| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Notas |
-|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-------|
-| nombre                   | Nombre          | full  | ViewField     | Input; req                                    |       |
-| razon_social             | Razon Social    | full  | ViewField     | Input; req                                    |       |
-| identificacion_tributaria| ID Tributaria   | full  | ViewField     | Input; req                                    |       |
-| direccion                | Direccion       | full  | ViewField     | Input; req                                    |       |
-| direccion_pais           | Pais            | half  | ViewField     | Select; paisesFiltrados; req                  |       |
-| direccion_departamento   | Departamento    | half  | ViewField     | Select; departamentosFiltrados pais           |       |
-| direccion_municipio      | Municipio       | half  | ViewField     | Select; municipiosFiltrados pais+departamento |       |
-| codigo_postal            | Codigo Postal   | half  | ViewField     | Input                                         |       |
-| regimen_isr              | Regimen ISR     | full  | ViewField     | Select                                        |       |
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
+|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
+| nombre                   | Nombre          | full  | ViewField     | Input; req                                    | ''              |       |
+| razon_social             | Razon Social    | full  | ViewField     | Input; req                                    | ''              |       |
+| identificacion_tributaria| ID Tributaria   | full  | ViewField     | Input; req                                    | ''              |       |
+| direccion                | Direccion       | full  | ViewField     | Input; req                                    | ''              |       |
+| direccion_pais           | Pais            | half  | ViewField     | Select; paisesFiltrados; req                  | ''              |       |
+| direccion_departamento   | Departamento    | half  | ViewField     | Select; departamentosFiltrados pais           | ''              |       |
+| direccion_municipio      | Municipio       | half  | ViewField     | Select; municipiosFiltrados pais+departamento | ''              |       |
+| codigo_postal            | Codigo Postal   | half  | ViewField     | Input                                         | ''              |       |
+| regimen_isr              | Regimen ISR     | full  | ViewField     | Select                                        | primer item     |       |
 
 ---
 

@@ -159,7 +159,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | fase                        | Fase            | true           | nombre de la fase (del prop `fases`)                  |
 | manzana                     | Manzana         | true           | valor directo                                         |
 | moneda                      | Moneda          | true           | bandera + ISO (Moneda display rules)                  |
-| valor                       | Monto           | true           | `fmt(valor)` — 2 decimales, locale es-GT              |
+| valor                       | Precio          | true           | `fmt(valor)` — 2 decimales, locale es-GT              |
 | finca                       | Finca           | false          | valor directo                                         |
 | libro                       | Libro           | false          | valor directo                                         |
 | folio                       | Folio           | false          | valor directo                                         |
@@ -179,41 +179,52 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
-| fase     | Fase     | half  | ViewField | Select; req | Select; disabled |       |
-| manzana  | Manzana  | half  | ViewField | Select; req | Select; disabled |       |
-| codigo   | Codigo   | half  | ViewField | —           | —                |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)     | Notas |
+|----------|----------|-------|-----------|-------------|------------------|---------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible  |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa  |       |
+| fase     | Fase     | half  | ViewField | Select; req | Select; disabled | primera de proyecto |       |
+| manzana  | Manzana  | half  | ViewField | Select; req | Select; disabled | primera de fase     |       |
+| codigo   | Codigo   | half  | ViewField | —           | —                | ''                  |       |
 
 **[GENERAL]**
 
-| Campo                    | Label           | Ancho | View           | Nuevo / Edit                                  | Notas                    |
-|--------------------------|-----------------|-------|----------------|-----------------------------------------------|--------------------------|
-| moneda                   | Moneda          | half  | Moneda display | Select desde prop 'monedas'; req              | ver Moneda display rules |
-| valor                    | Valor           | half  | ViewField      | Input numeric; req                            |                          |
-| extension                | Extension       | half  | ViewField: `{extension} {medida}` | Input numeric con sufijo `medida`; req | `medida` = `fases.find(f => f.codigo === form.fase)?.medida ?? ''`. Mostrar como texto no editable a la derecha del input (adornment). En ViewField concatenar: `String(viewTarget.extension) + ' ' + medida`. |
+| Campo                    | Label           | Ancho | View           | Nuevo / Edit                                  | Default (Nuevo)                   | Notas                    |
+|--------------------------|-----------------|-------|----------------|-----------------------------------------------|-----------------------------------|--------------------------|
+| moneda                   | Moneda          | half  | Moneda display | Select desde prop 'monedas'; req              | COUNTRY_CURRENCY_MAP → monedas[0] | ver Moneda display rules |
+| valor                    | Valor           | half  | ViewField      | Input numeric; req                            | 0                                 |                          |
+| extension                | Extension       | half  | ViewField: `{extension} {medida}` | Input numeric con sufijo `medida`; req | 0                      | `medida` = `fases.find(f => f.codigo === form.fase)?.medida ?? ''`. Mostrar como texto no editable a la derecha del input (adornment). En ViewField concatenar: `String(viewTarget.extension) + ' ' + medida`. |
 
 ### Tab: Otros  (icono: Receipt)
 
 **[REGISTRO]**
 
-| Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Notas                                    |
-|--------------------------|-----------------|-------|---------------|----------------------------------------|------------------------------------------|
-| finca                    | Finca           | half  | ViewField     | Input                                  |                                          |
-| folio                    | Folio           | half  | ViewField     | Input                                  |                                          |
-| libro                    | libro           | half  | ViewField     | Input                                  |                                          |
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Default (Nuevo) | Notas                                    |
+|--------------------------|-----------------|-------|---------------|----------------------------------------|-----------------|------------------------------------------|
+| finca                    | Finca           | half  | ViewField     | Input                                  | ''              |                                          |
+| folio                    | Folio           | half  | ViewField     | Input                                  | ''              |                                          |
+| libro                    | libro           | half  | ViewField     | Input                                  | ''              |                                          |
 
 **[COLINDANCIAS]**
 
-| Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Notas                                    |
-|--------------------------|-----------------|-------|---------------|----------------------------------------|------------------------------------------|
-| norte                    | Norte           | half  | ViewField     | Input                                  |                                          |
-| sur                      | Sur             | half  | ViewField     | Input                                  |                                          |
-| este                     | Este            | half  | ViewField     | Input                                  |                                          |
-| oeste                    | Oeste           | half  | ViewField     | Input                                  |                                          |
-| otros                    | Otros           | half  | ViewField     | Input                                  |                                          |
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Default (Nuevo) | Notas                                    |
+|--------------------------|-----------------|-------|---------------|----------------------------------------|-----------------|------------------------------------------|
+| norte                    | Norte           | half  | ViewField     | Input                                  | ''              |                                          |
+| sur                      | Sur             | half  | ViewField     | Input                                  | ''              |                                          |
+| este                     | Este            | half  | ViewField     | Input                                  | ''              |                                          |
+| oeste                    | Oeste           | half  | ViewField     | Input                                  | ''              |                                          |
+| otros                    | Otros           | half  | ViewField     | Input                                  | ''              |                                          |
+
+### Tab: Promesas  (icono: ClipboardList)  — solo en modal Ver
+
+**[RESERVA]**
+
+| Campo                       | Label   | Ancho | View      | Nuevo | Edit | Notas                                                                            |
+|-----------------------------|---------|-------|-----------|-------|------|----------------------------------------------------------------------------------|
+| reserva                     | Reserva | third | ViewField | -     | -    | se llena si `recibo_numero > 0`: `reserva` desde `t_recibo_caja` via `getLoteReservaNumero`   |
+| recibo_serie+recibo_numero  | Recibo | third | ViewField  | -     | -    | se llena si `recibo_numero > 0`: concatenar `recibo_serie` + `recibo_numero` del lote |
+| fecha                       | Fecha  | third | ViewField  | -     | -    | se llena si `recibo_numero > 0`: `fecha` desde `t_recibo_caja` via `getLoteReservaInfo` |
+| cliente_nombre              | Cliente | full | ViewField  | -     | -    | se llena si `recibo_numero > 0`: `nombre` desde `t_cliente` via `getLoteReservaInfo` |
 
 ---
 
@@ -264,4 +275,4 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+ _(sin cambios pendientes)_

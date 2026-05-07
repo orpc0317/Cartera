@@ -153,21 +153,21 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
+|----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
 
 **[GENERAL]**
 
-| Campo  | Label         | Ancho | View           | Nuevo / Edit                               | Notas                    |
-|--------|---------------|-------|----------------|--------------------------------------------|--------------------------|
-| banco  | Banco         | full  | ViewField      | Select; bancosFiltrados empresa+proy; req  |                          |
-| nombre | Nombre Cuenta | full  | ViewField      | Input; req                                 |                          |
-| numero | Numero Cuenta | half  | ViewField      | Input; req                                 |                          |
-| moneda | Moneda        | half  | Moneda display | Select desde prop 'monedas'; req           | ver Moneda display rules |
-| activo | Activo        | full  | Checkbox card  | Checkbox 0/1                               |                          |
+| Campo  | Label         | Ancho | View           | Nuevo / Edit                               | Default (Nuevo)         | Notas                    |
+|--------|---------------|-------|----------------|--------------------------------------------|-----------------------|--------------------------|
+| banco  | Banco         | full  | ViewField      | Select; bancosFiltrados empresa+proy; req  | primer banco disponible |                          |
+| nombre | Nombre Cuenta | full  | ViewField      | Input; req                                 | ''                    |                          |
+| numero | Numero Cuenta | half  | ViewField      | Input; req                                 | ''                    |                          |
+| moneda | Moneda        | half  | Moneda display | Select desde prop 'monedas'; req           | 'GTQ' → monedas[0]    | ver Moneda display rules |
+| activo | Activo        | full  | Checkbox card  | Checkbox 0/1                               | 1                     |                          |
 
 ---
 

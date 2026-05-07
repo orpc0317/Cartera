@@ -1,0 +1,220 @@
+FLUJO DE LA APLICACIÓN — NEXT.JS APP ROUTER
+============================================
+Cartera | Gestión de Lotificaciones
+Fecha: Mayo 2026
+
+Escenario: El usuario ya está logueado y selecciona "Empresas" del menú.
+
+
+─────────────────────────────────────────────────────────────────────
+PASO 1 — PROXY (antes llamado Middleware)
+Archivo: src/proxy.ts
+─────────────────────────────────────────────────────────────────────
+
+NOTA: En Next.js 16 "Middleware" fue renombrado a "Proxy".
+El archivo se llama src/proxy.ts y exporta:  export function proxy(request)
+(El nombre middleware.ts quedó deprecado en esta versión.)
+
+Antes de que Next.js haga CUALQUIER cosa, intercepta la request el proxy.
+
+  Usuario hace clic en "Empresas"
+    → GET /dashboard/proyectos/empresas
+      → src/middleware.ts   ← primero siempre
+
+Aquí updateSession() renueva el token de Supabase. Si el token expiró,
+lo refresca. Si el usuario no tiene sesión, redirige a /login.
+Si todo está bien, deja pasar la request.
+
+
+─────────────────────────────────────────────────────────────────────
+PASO 2 — LAYOUT
+Archivo: src/app/dashboard/layout.tsx
+─────────────────────────────────────────────────────────────────────
+
+Next.js sabe que /dashboard/* tiene un layout padre. Lo ejecuta PRIMERO,
+antes que la página.
+
+  // Corre en el SERVIDOR (Node.js, no en el browser)
+  const { user } = await supabase.auth.getUser()   // verifica sesión
+  const permisos  = await getPermisosUsuario()      // qué menús puede ver
+  // Renderiza el sidebar + el área principal donde irá la página
+
+Esto produce el HTML del sidebar. El contenido del centro (children)
+todavía está vacío — lo llenará la página en el siguiente paso.
+
+
+─────────────────────────────────────────────────────────────────────
+PASO 3 — PÁGINA (SERVER COMPONENT)
+Archivo: src/app/dashboard/proyectos/empresas/page.tsx
+─────────────────────────────────────────────────────────────────────
+
+También corre en el SERVIDOR. Su único trabajo: buscar datos y
+pasárselos al componente cliente.
+
+  // Corre en paralelo — no espera uno para pedir el otro
+  const [data, paises, departamentos, municipios, permisos] = await Promise.all([
+    getEmpresas(),        // → src/app/actions/empresas.ts
+    getPaises(),          // → src/app/actions/geo.ts
+    getDepartamentos(),   // → src/app/actions/geo.ts
+    getMunicipios(),      // → src/app/actions/geo.ts
+    getPermisosDetalle()  // → src/app/actions/permisos.ts
+  ])
+
+  return <EmpresasClient initialData={data} paises={paises} ... />
+
+
+─────────────────────────────────────────────────────────────────────
+PASO 4 — SERVER ACTIONS (QUERIES A LA BD)
+Archivo: src/app/actions/empresas.ts  (y geo.ts, permisos.ts, etc.)
+─────────────────────────────────────────────────────────────────────
+
+Cada getEmpresas() es una función que corre en Node.js y habla directo
+con Supabase/PostgreSQL:
+
+  export async function getEmpresas() {
+    const cuenta = await getCuentaActiva()   // lee cuenta del JWT del usuario
+    const admin  = createAdminClient()
+    const { data } = await admin
+      .schema('cartera')
+      .from('t_empresa')
+      .select('...')
+      .eq('cuenta', cuenta)   // siempre filtra por cuenta — multi-tenant
+    return data
+  }
+
+El resultado viaja de vuelta a page.tsx como un array de objetos TypeScript.
+
+NOTA IMPORTANTE — SEGURIDAD MULTI-TENANT:
+El campo "cuenta" siempre se obtiene del JWT del usuario autenticado
+(app_metadata.cuenta_activa), NUNCA del input del usuario. Esto garantiza
+que un usuario de la Cuenta A jamás pueda ver datos de la Cuenta B.
+
+
+─────────────────────────────────────────────────────────────────────
+PASO 5 — COMPONENTE CLIENTE (BROWSER)
+Archivo: src/app/dashboard/proyectos/empresas/_client.tsx
+─────────────────────────────────────────────────────────────────────
+
+Recibe los datos ya listos como props. A partir de aquí ya estamos
+en el BROWSER (JavaScript del lado del cliente):
+
+  'use client'  // ← esta línea marca el cambio: de servidor a browser
+
+  export function EmpresasClient({ initialData, paises, ... }) {
+    const [search, setSearch]     = useState('')      // búsqueda local
+    const [dialogOpen, setDialog] = useState(false)   // modal abierto/cerrado
+    // ... toda la interactividad: filtros, tabla, modales, formularios
+  }
+
+Cuando el usuario hace una mutación (crear, editar, eliminar), el cliente
+llama directamente a una Server Action:
+
+  const result = await createEmpresa(form)   // viaje al servidor y regresa
+  router.refresh()                           // refresca los datos del servidor
+
+
+─────────────────────────────────────────────────────────────────────
+MAPA VISUAL COMPLETO
+─────────────────────────────────────────────────────────────────────
+
+BROWSER                     SERVIDOR (Node.js)              BASE DE DATOS
+───────                     ──────────────────              ─────────────
+Clic en "Empresas"
+  │
+  ▼
+  GET /dashboard/proyectos/empresas
+                              │
+                              ▼
+                         middleware.ts
+                         (renueva token)
+                              │
+                              ▼
+                     dashboard/layout.tsx
+                     (sidebar, auth check)
+                              │
+                              ▼
+              proyectos/empresas/page.tsx
+              (Promise.all de datos)
+                              │
+                     ┌────────┼────────┐
+                     ▼        ▼        ▼
+               actions/   actions/  actions/
+               empresas   geo.ts    permisos
+                     │        │        │
+                     └────────┴────────┘
+                              │
+                              ▼              Supabase/PostgreSQL
+                         Queries SQL  ──────► schema cartera
+                              │              t_empresa, etc.
+                              ▼
+                  <EmpresasClient data={...} />
+                  (HTML inicial generado en servidor)
+  │
+  ▼
+Browser recibe HTML + JS
+  │
+  ▼
+_client.tsx "hidrata"
+(React toma control,
+ya con los datos listos)
+
+
+─────────────────────────────────────────────────────────────────────
+CONVENCIÓN DE ARCHIVOS EN ESTE PROYECTO
+─────────────────────────────────────────────────────────────────────
+
+  src/
+  ├── proxy.ts                          ← intercepta todas las requests (Next.js 16: renombrado de middleware.ts)
+  ├── app/
+  │   ├── dashboard/
+  │   │   ├── layout.tsx                ← layout compartido (sidebar, auth)
+  │   │   └── proyectos/
+  │   │       └── empresas/
+  │   │           ├── page.tsx          ← Server Component (fetch de datos)
+  │   │           └── _client.tsx       ← Client Component (toda la UI)
+  │   └── actions/
+  │       ├── empresas.ts               ← Server Actions (CRUD de empresas)
+  │       ├── geo.ts                    ← Server Actions (países, deptos, municipios)
+  │       └── permisos.ts              ← Server Actions (permisos por usuario)
+  ├── components/
+  │   ├── layout/
+  │   │   └── app-sidebar.tsx           ← sidebar de navegación
+  │   └── ui/                           ← componentes reutilizables (shadcn/ui)
+  └── lib/
+      ├── types/                        ← tipos TypeScript de cada entidad
+      ├── permisos.ts                   ← constantes de permisos (PERMISOS.EMP_CAT, etc.)
+      └── supabase/
+          ├── server.ts                 ← cliente Supabase para Server Components
+          ├── client.ts                 ← cliente Supabase para Client Components
+          ├── admin.ts                  ← cliente admin (service role, para mutaciones)
+          └── middleware.ts             ← lógica de renovación de sesión
+
+
+─────────────────────────────────────────────────────────────────────
+LA DIFERENCIA CLAVE CON HERRAMIENTAS "VIEJAS"
+─────────────────────────────────────────────────────────────────────
+
+ARQUITECTURA ANTIGUA (ASP.NET WebForms, PHP clásico):
+  Todo corría en el servidor → se mandaba HTML plano al browser.
+  Interactividad = postback o página nueva completa.
+
+ARQUITECTURA SPA (Angular, React puro):
+  Todo corría en el browser → los datos llegaban por AJAX después.
+  El servidor era solo una API REST.
+
+NEXT.JS APP ROUTER (arquitectura actual):
+  Hace AMBAS cosas estratégicamente:
+  ✓ Lo que necesita datos o seguridad  → SERVIDOR (más rápido, más seguro)
+  ✓ Lo que necesita interactividad     → BROWSER (clicks, estados, animaciones)
+
+  La línea 'use client' al inicio de _client.tsx es literalmente
+  la frontera entre ambos mundos.
+
+
+─────────────────────────────────────────────────────────────────────
+RESUMEN EN UNA FRASE
+─────────────────────────────────────────────────────────────────────
+
+  middleware.ts → layout.tsx → page.tsx → actions/*.ts → BD
+                                    ↓
+                              _client.tsx (browser)

@@ -57,7 +57,6 @@ Cliente {
   nombre_factura:           string        -- nombre a facturar
   identificacion_tributaria:string        -- identificacion tributaria (NIT)
   regimen_iva:              smallint      -- regimen iva (0 No Aplica, 1 General, 2 Pequeño Contribuyente, 3 Exento)
-  activo:                   smallint      -- 1 = activo, 0 = inactivo
   agrego_usuario:           uuid          -- gestionado por sistema
   agrego_fecha:             timestamptz   -- gestionado por sistema
   modifico_usuario:         uuid          -- gestionado por sistema
@@ -80,7 +79,6 @@ ClienteForm {          	-- campos editables por el usuario
   nombre_factura:             string
   identificacion_tributaria:  string
   regimen_iva:                smallint
-  activo:                     smallint
 }
 
 ```
@@ -171,35 +169,34 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
+|----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
 
 **[GENERAL]**
 
-| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Notas |
-|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-------|
-| nombre                   | Nombre          | full  | ViewField     | Input; req                                    |       |
-| direccion                | Direccion       | full  | ViewField     | Input; req                                    |       |
-| direccion_pais           | Pais            | half  | ViewField     | Select; paisesFiltrados; req                  |       |
-| direccion_departamento   | Departamento    | half  | ViewField     | Select; departamentosFiltrados pais           |       |
-| direccion_municipio      | Municipio       | half  | ViewField     | Select; municipiosFiltrados pais+departamento |       |
-| codigo_postal            | Codigo Postal   | half  | ViewField     | Input                                         |       |
-| telefono1                | Telefono 1      | full  | ViewField     | PhoneField; req                               |       |
-| telefono2                | Telefono 2      | full  | ViewField     | PhoneField                                    |       |
-| correo                   | Correo          | full  | ViewField     | Input                                         |       |
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo)              | Notas |
+|--------------------------|-----------------|-------|---------------|-----------------------------------------------|------------------------------|-------|
+| nombre                   | Nombre          | full  | ViewField     | Input; req                                    | ''                           |       |
+| direccion                | Direccion       | full  | ViewField     | Input; req                                    | ''                           |       |
+| direccion_pais           | Pais            | half  | ViewField     | Select; paisesFiltrados; req                  | proyecto.pais → empresa.pais → IP geo |       |
+| direccion_departamento   | Departamento    | half  | ViewField     | Select; departamentosFiltrados pais           | por pais                     |       |
+| direccion_municipio      | Municipio       | half  | ViewField     | Select; municipiosFiltrados pais+departamento | por depto                    |       |
+| codigo_postal            | Codigo Postal   | half  | ViewField     | Input                                         | ''                           |       |
+| telefono1                | Telefono 1      | full  | ViewField     | PhoneField; req                               | ''                           |       |
+| telefono2                | Telefono 2      | full  | ViewField     | PhoneField                                    | ''                           |       |
+| correo                   | Correo          | full  | ViewField     | Input                                         | ''                           |       |
 
 **[FACTURACION]**
 
-| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Notas |
-|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-------|
-| tipo_identificacion      | Identificacion  | half  | ViewField     | Select                                        |       |
-| identificacion_tributaria| ID Tributaria   | half  | ViewField     | Input; req si tipo_identificacion es diferente de 0                     |       |
-| nombre_factura           | Nombre Factura  | full  | ViewField     | Input; req si tipo_identificacion es diferente de 0                     |       |
-| regimen_iva              | Regimen IVA     | half  | ViewField     | Select                                        |       |
-| activo                   | Activo          | half  | Checkbox card | Checkbox 0/1                                  |       |
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
+|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
+| tipo_identificacion      | Identificacion  | half  | ViewField     | Select                                        | 0               |       |
+| identificacion_tributaria| ID Tributaria   | half  | ViewField     | Input; req si tipo_identificacion es diferente de 0                     | ''              |       |
+| nombre_factura           | Nombre Factura  | full  | ViewField     | Input; req si tipo_identificacion es diferente de 0                     | ''              |       |
+| regimen_iva              | Regimen IVA     | half  | ViewField     | Select                                        | 0               |       |
 
 ---
 
@@ -247,4 +244,4 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+> _(sin cambios pendientes)_

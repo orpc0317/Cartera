@@ -74,7 +74,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
     </div>
   )
 }
@@ -462,7 +462,7 @@ export function VendedoresClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => {
                 if (col.key === '__proyecto') {
                   return (
@@ -801,19 +801,17 @@ export function VendedoresClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-2">
-                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} vendedor
-                  {similarWarning && similarWarning.length > 1 ? 'es' : ''} con un nombre muy parecido:
-                </p>
-                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {similarWarning?.map((v) => (
-                    <li key={v.codigo}>{v.nombre}</li>
-                  ))}
-                </ul>
-                <p>¿Es realmente un vendedor diferente y desea continuar?</p>
+            <AlertDialogDescription render={<div />}>
+              <div className="mb-2">
+                Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} vendedor
+                {similarWarning && similarWarning.length > 1 ? 'es' : ''} con un nombre muy parecido:
               </div>
+              <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                {similarWarning?.map((v) => (
+                  <li key={v.codigo}>{v.nombre}</li>
+                ))}
+              </ul>
+              <div>¿Es realmente un vendedor diferente y desea continuar?</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

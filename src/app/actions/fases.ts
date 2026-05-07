@@ -89,6 +89,18 @@ export async function createFase(form: FaseForm): Promise<{ error?: string }> {
   const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
+  // Validar límite de negocio: máximo 2 fases por proyecto
+  const { count: faseCount } = await admin
+    .schema('cartera')
+    .from('t_fase')
+    .select('codigo', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+  if (faseCount !== null && faseCount >= 2) {
+    return { error: 'Este proyecto ya tiene 2 fases. Para agregar más fases, cree un nuevo proyecto.' }
+  }
+
   // Validar nombre duplicado dentro del mismo proyecto
   const { data: existente } = await admin
     .schema('cartera')

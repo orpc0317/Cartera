@@ -1,11 +1,11 @@
 ﻿'use client'
 
-import { useState, useTransition, useMemo, useCallback, useEffect } from 'react'
+import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Trash2, Plus, MapPin, Search, History,
-  Settings2, ChevronDown, ChevronUp, X, Receipt,
+  Settings2, ChevronDown, ChevronUp, X, Receipt, ClipboardList,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,7 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { createLote, updateLote, deleteLote } from '@/app/actions/lotes'
+import { createLote, updateLote, deleteLote, getLoteReservaInfo, type LoteReservaInfo } from '@/app/actions/lotes'
 import { getLoteEstado, LOTE_ESTADO_BADGE, COUNTRY_CURRENCY_MAP } from '@/lib/constants'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm, Moneda } from '@/lib/types/proyectos'
 
@@ -57,7 +57,7 @@ const SKIP_KEYS = new Set(['moneda', 'manzana'])
 const fmt = (n: number) =>
   n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-type ColDef = { key: string; label: string; defaultVisible: boolean }
+type ColDef = { key: string; label: string; defaultVisible: boolean; numeric?: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
@@ -66,11 +66,11 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'fase',      label: 'Fase',      defaultVisible: true  },
   { key: 'manzana',   label: 'Manzana',   defaultVisible: true  },
   { key: 'moneda',    label: 'Moneda',    defaultVisible: true  },
-  { key: 'valor',     label: 'Monto',     defaultVisible: true  },
+  { key: 'valor',     label: 'Precio',    defaultVisible: true,  numeric: true },
   { key: 'finca',     label: 'Finca',     defaultVisible: false },
   { key: 'libro',     label: 'Libro',     defaultVisible: false },
   { key: 'folio',     label: 'Folio',     defaultVisible: false },
-  { key: 'extension', label: 'Extension', defaultVisible: true  },
+  { key: 'extension', label: 'Extension', defaultVisible: true,  numeric: true },
   { key: 'norte',     label: 'Norte',     defaultVisible: false },
   { key: 'sur',       label: 'Sur',       defaultVisible: false },
   { key: 'este',      label: 'Este',      defaultVisible: false },
@@ -106,7 +106,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || 'u2014'}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
     </div>
   )
 }
@@ -222,6 +222,7 @@ export function LotesClient({
   const [isPending, startTransition] = useTransition()
 
   const [search, setSearch] = useState('')
+  const [reservaInfo, setReservaInfo] = useState<LoteReservaInfo | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
@@ -323,6 +324,36 @@ export function LotesClient({
   }, [initialData, search, colFilters, empresaMap, proyectoMap, faseMap])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
+
+  // ── Keyboard cursor ────────────────────────────────────────────────────
+  const tableRef = useRef<HTMLDivElement>(null)
+  const [cursorIdx, setCursorIdx] = useState<number | null>(null)
+
+  const handleTableKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (filtered.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setCursorIdx((prev) => prev === null ? 0 : Math.min(prev + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setCursorIdx((prev) => prev === null ? 0 : Math.max(prev - 1, 0))
+    } else if (e.key === 'Enter' && cursorIdx !== null) {
+      e.preventDefault()
+      openView(filtered[cursorIdx])
+    } else if (e.key === 'Escape') {
+      setCursorIdx(null)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, cursorIdx])
+
+  useEffect(() => { setCursorIdx(null) }, [search, colFilters])
+
+  useEffect(() => {
+    if (!viewTarget || viewTarget.recibo_numero === 0) { setReservaInfo(null); return }
+    getLoteReservaInfo(viewTarget.empresa, viewTarget.proyecto, viewTarget.fase, viewTarget.manzana, viewTarget.codigo)
+      .then(setReservaInfo)
+      .catch(() => setReservaInfo(null))
+  }, [viewTarget])
 
   // --- form helper ---
 
@@ -544,8 +575,28 @@ export function LotesClient({
   // --- Render ---
 
   return (
-    <div className="flex flex-col gap-4 p-6">
-      {/* Toolbar */}
+    <div className="flex flex-col gap-6 p-6 md:p-8">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-rose-100 p-2.5">
+            <MapPin className="h-5 w-5 text-rose-600" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Lotes</h1>
+            <p className="text-sm text-muted-foreground">Administra los lotes dentro de las manzanas de cada proyecto</p>
+          </div>
+        </div>
+        {puedeAgregar && (
+          <Button onClick={openCreate} className="gap-2 bg-rose-600 hover:bg-rose-700 text-white">
+            <Plus className="h-4 w-4" />
+            Nuevo Lote
+          </Button>
+        )}
+      </div>
+
+      {/* ── Toolbar ── */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="relative max-w-xs flex-1">
@@ -566,21 +617,22 @@ export function LotesClient({
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCsv}>Exportar CSV</Button>
           <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={resetCols} />
-          {puedeAgregar && (
-            <Button size="sm" onClick={openCreate} className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white">
-              <Plus className="h-4 w-4" /> Nuevo Lote
-            </Button>
-          )}
         </div>
       </div>
 
       {/* Tabla */}
-      <div className="rounded-lg border overflow-x-auto">
+      <div
+        ref={tableRef}
+        className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+      >
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-10 bg-muted/30 whitespace-nowrap border-r border-rose-200 text-rose-700 font-semibold w-[90px]">
-                Codigo
+              <TableHead className="sticky left-0 z-10 bg-muted/30 whitespace-nowrap w-[90px]">
+                <span className="text-xs font-medium text-muted-foreground">Codigo</span>
               </TableHead>
               {colPrefs.filter((p) => p.visible).map((pref) => {
                 const col = ALL_COLUMNS.find((c) => c.key === pref.key)!
@@ -592,7 +644,7 @@ export function LotesClient({
                   pref.key === 'moneda'   ? uniqueMonedaVals    :
                   pref.key === '__estado' ? uniqueEstadoVals    : null
                 return (
-                  <TableHead key={pref.key} className="whitespace-nowrap">
+                  <TableHead key={pref.key} className={`whitespace-nowrap${col.numeric ? ' text-right' : ''}`}>
                     {filterValues ? (
                       <ColumnFilter
                         label={col.label}
@@ -600,7 +652,7 @@ export function LotesClient({
                         active={colFilters[pref.key] ?? new Set()}
                         onChange={(next) => setColFilter(pref.key, next)}
                       />
-                    ) : col.label}
+                    ) : <span className="text-xs font-medium text-muted-foreground">{col.label}</span>}
                   </TableHead>
                 )
               })}
@@ -615,12 +667,22 @@ export function LotesClient({
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((lote) => {
+              filtered.map((lote, rowIdx) => {
                 const estado = getLoteEstado(lote.promesa, lote.recibo_numero)
                 const estadoBadge = LOTE_ESTADO_BADGE[estado]
+                const isActive = cursorIdx === rowIdx
                 return (
-                  <TableRow key={`${lote.empresa}-${lote.proyecto}-${lote.fase}-${lote.manzana}-${lote.codigo}`} className="hover:bg-rose-50/30">
-                    <TableCell className="sticky left-0 z-10 bg-background border-r border-rose-100 font-mono text-rose-700 font-semibold text-xs whitespace-nowrap">
+                  <TableRow
+                    key={`${lote.empresa}-${lote.proyecto}-${lote.fase}-${lote.manzana}-${lote.codigo}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-rose-50 dark:bg-rose-950/30' : 'hover:bg-muted/40'}`}
+                    onClick={() => setCursorIdx(rowIdx)}
+                    onDoubleClick={() => openView(lote)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-mono text-xs whitespace-nowrap transition-colors ${
+                      isActive
+                        ? 'bg-rose-50 dark:bg-rose-950/30 border-l-[3px] border-l-rose-600 text-rose-700 dark:text-rose-400 font-semibold'
+                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
+                    }`}>
                       {lote.codigo}
                     </TableCell>
                     {colPrefs.filter((p) => p.visible).map((pref) => {
@@ -642,7 +704,7 @@ export function LotesClient({
                                   <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                                   {lote.moneda}
                                 </span>
-                              ) : lote.moneda || 'u2014'}
+                              ) : lote.moneda || '\u2014'}
                             </TableCell>
                           )
                         }
@@ -658,16 +720,14 @@ export function LotesClient({
                           )
                         default: {
                           const v = (lote as Record<string, unknown>)[pref.key]
-                          return <TableCell key={pref.key}>{v != null ? String(v) : 'u2014'}</TableCell>
+                          return <TableCell key={pref.key}>{v != null ? String(v) : '\u2014'}</TableCell>
                         }
                       }
                     })}
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none">
                             <MoreHorizontal className="h-4 w-4" />
-                          </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openView(lote)}>
@@ -715,12 +775,12 @@ export function LotesClient({
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Lote' : isEditing ? 'Editar Lote' : viewTarget?.codigo}
+                  {isEditing && !viewTarget ? 'Nuevo Lote' : isEditing ? 'Editar Lote' : `Lote ${viewTarget?.codigo}`}
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? ''} u00b7 {faseMap.get(viewTarget.fase) ?? ''} u00b7 {viewTarget.manzana}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">u00b7 {viewTarget.codigo}</span>
+                    {proyectoMap.get(viewTarget.proyecto) ?? ''} · {faseMap.get(viewTarget.fase) ?? ''} · {viewTarget.manzana}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
               </div>
@@ -735,6 +795,11 @@ export function LotesClient({
               <TabsTrigger value="otros" className="gap-1.5">
                 <Receipt className="h-3.5 w-3.5" /> Otros
               </TabsTrigger>
+              {!isEditing && viewTarget && (
+                <TabsTrigger value="promesas" className="gap-1.5">
+                  <ClipboardList className="h-3.5 w-3.5" /> Promesas
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Tab General */}
@@ -757,11 +822,11 @@ export function LotesClient({
                           <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                           {viewTarget.moneda}
                         </span>
-                      ) : <span className="text-sm font-medium">{viewTarget.moneda || 'u2014'}</span>
+                      ) : <span className="text-sm font-medium">{viewTarget.moneda}</span>
                     })()}
                   </div>
-                  <ViewField label="Valor"     value={fmt(viewTarget.valor)} />
-                  <ViewField label="Extension" value={`${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}`} />
+                  <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
+                  <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -769,7 +834,7 @@ export function LotesClient({
                   <div className="col-span-2 space-y-1.5">
                     <Label>Empresa</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -782,7 +847,7 @@ export function LotesClient({
                   <div className="col-span-2 space-y-1.5">
                     <Label>Proyecto</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v && v !== '0' ? (proyectoMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -795,7 +860,7 @@ export function LotesClient({
                   <div className="space-y-1.5">
                     <Label>Fase</Label>
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona fase">
                           {(v: string) => v && v !== '0' ? (faseMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -808,7 +873,7 @@ export function LotesClient({
                   <div className="space-y-1.5">
                     <Label>Manzana</Label>
                     <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona manzana">
                           {(v: string) => v || null}
                         </SelectValue>
@@ -830,7 +895,7 @@ export function LotesClient({
                   <div className="space-y-1.5">
                     <Label>Moneda</Label>
                     <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona moneda">
                           {(v: string) => {
                             const flag = CURRENCY_FLAG_MAP.get(v)
@@ -929,6 +994,33 @@ export function LotesClient({
                 </div>
               )}
             </TabsContent>
+
+            {/* Tab Promesas — solo en modo Ver */}
+            {!isEditing && viewTarget && (
+              <TabsContent value="promesas" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-3"><SectionDivider label="RESERVA" /></div>
+                  <ViewField
+                    label="Reserva"
+                    value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}
+                  />
+                  <ViewField
+                    label="Recibo"
+                    value={viewTarget.recibo_numero > 0 ? `${viewTarget.recibo_serie ?? ''}${viewTarget.recibo_numero}` : ''}
+                  />
+                  <ViewField
+                    label="Fecha"
+                    value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
+                  />
+                  <div className="col-span-3">
+                    <ViewField
+                      label="Cliente"
+                      value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
 
           <DialogFooter className="mt-4 shrink-0">

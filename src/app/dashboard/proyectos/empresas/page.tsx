@@ -14,7 +14,7 @@ export default async function EmpresasPage() {
     getPaises().catch((e: Error) => { console.error('getPaises:', e.message); return [] }),
     getDepartamentos().catch((e: Error) => { console.error('getDepartamentos:', e.message); return [] }),
     getMunicipios().catch((e: Error) => { console.error('getMunicipios:', e.message); return [] }),
-    getPermisosDetalle(PERMISOS.EMP_CAT),
+    getPermisosDetalle(PERMISOS.EMP_CAT).catch((e: Error) => { console.error('getPermisosDetalle:', e.message); return { consultar: false, agregar: false, modificar: false, eliminar: false } }),
   ])
 
   return (

@@ -106,7 +106,7 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
     </div>
   )
 }
@@ -231,9 +231,9 @@ type ColPref = { key: string; visible: boolean }
 const ALL_COLUMNS: ColDef[] = [
   { key: 'empresa',      label: 'Empresa',     defaultVisible: true  },
   { key: 'nombre',       label: 'Nombre',      defaultVisible: true  },
-  { key: 'pais',         label: 'Pais',        defaultVisible: true  },
-  { key: 'departamento', label: 'Departamento', defaultVisible: false },
-  { key: 'municipio',    label: 'Municipio',   defaultVisible: false },
+  { key: 'direccion_pais',         label: 'Pais',        defaultVisible: true  },
+  { key: 'direccion_departamento', label: 'Departamento', defaultVisible: false },
+  { key: 'direccion_municipio',    label: 'Municipio',   defaultVisible: false },
   { key: 'telefono1',    label: 'Telefono',    defaultVisible: false },
 ]
 
@@ -305,9 +305,9 @@ const EMPTY_FORM: ProyectoForm = {
   codigo: 0,
   nombre: '',
   moneda: 'GTQ',
-  pais: '',
-  departamento: '',
-  municipio: '',
+  direccion_pais: '',
+  direccion_departamento: '',
+  direccion_municipio: '',
   direccion: '',
   codigo_postal: '',
   telefono1: '',
@@ -530,8 +530,8 @@ export function ProyectosClient({
     return !q ||
       p.nombre?.toLowerCase().includes(q) ||
       (empresaMap.get(p.empresa) ?? '').toLowerCase().includes(q) ||
-      p.pais?.toLowerCase().includes(q) ||
-      p.departamento?.toLowerCase().includes(q) ||
+      p.direccion_pais?.toLowerCase().includes(q) ||
+      p.direccion_departamento?.toLowerCase().includes(q) ||
       String(p.codigo).includes(q)
   })
 
@@ -607,8 +607,8 @@ export function ProyectosClient({
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
   function buildFormFromProyecto(proyecto: Proyecto) {
-    const pCode = proyecto.pais ?? ''
-    const dCode = proyecto.departamento ?? ''
+    const pCode = proyecto.direccion_pais ?? ''
+    const dCode = proyecto.direccion_departamento ?? ''
     return {
       paisCodigo: pCode,
       deptoCodigo: dCode,
@@ -617,9 +617,9 @@ export function ProyectosClient({
         codigo: proyecto.codigo,
         nombre: proyecto.nombre,
         moneda: proyecto.moneda ?? 'GTQ',
-        pais: pCode,
-        departamento: dCode,
-        municipio: proyecto.municipio ?? '',
+        direccion_pais: pCode,
+        direccion_departamento: dCode,
+        direccion_municipio: proyecto.direccion_municipio ?? '',
         direccion: proyecto.direccion ?? '',
         codigo_postal: proyecto.codigo_postal ?? '',
         telefono1: proyecto.telefono1 ?? '',
@@ -646,9 +646,9 @@ export function ProyectosClient({
   function openCreate() {
     setViewTarget(null)
     setIsEditing(true)
-    const defIso = empresas[0]?.pais ?? ''
+    const defIso = empresas[0]?.direccion_pais ?? ''
     const defMoneda = countryToCurrency[defIso] ?? 'GTQ'
-    setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, moneda: defMoneda, pais: defIso })
+    setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, moneda: defMoneda, direccion_pais: defIso })
     setPaisCodigo(defIso)
     setDeptoCodigo('')
     setTel1Iso(defIso); setTel1Local('')
@@ -700,15 +700,15 @@ export function ProyectosClient({
   }
 
   function f(key: keyof ProyectoForm, value: string | number) {
-    const v = typeof value === 'string' && key !== 'pais' && key !== 'departamento' && key !== 'municipio' && key !== 'moneda'
+    const v = typeof value === 'string' && key !== 'direccion_pais' && key !== 'direccion_departamento' && key !== 'direccion_municipio' && key !== 'moneda'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
     setForm((prev) => {
       const next = { ...prev, [key]: v }
       if (key === 'empresa') {
         const emp = empresas.find((e) => e.codigo === Number(value))
-        const iso = emp?.pais ?? ''
-        next.pais = iso; next.departamento = ''; next.municipio = ''
+        const iso = emp?.direccion_pais ?? ''
+        next.direccion_pais = iso; next.direccion_departamento = ''; next.direccion_municipio = ''
         next.moneda = countryToCurrency[iso] ?? 'GTQ'
         setPaisCodigo(iso); setDeptoCodigo('')
         if (!next.telefono1) { setTel1Iso(iso); setTel1Local('') }
@@ -740,14 +740,14 @@ export function ProyectosClient({
     if (!form.nombre.trim()) { toast.error('El nombre del proyecto es requerido.'); return }
     if (!form.moneda.trim()) { toast.error('La moneda es requerida.'); return }
     if (!form.direccion.trim()) { toast.error('La dirección es requerida.'); return }
-    if (!form.pais.trim()) { toast.error('El país es requerido.'); return }
-    if (!form.departamento.trim()) { toast.error('El departamento es requerido.'); return }
-    if (!form.municipio.trim()) { toast.error('El municipio es requerido.'); return }
+    if (!form.direccion_pais.trim()) { toast.error('El país es requerido.'); return }
+    if (!form.direccion_departamento.trim()) { toast.error('El departamento es requerido.'); return }
+    if (!form.direccion_municipio.trim()) { toast.error('El municipio es requerido.'); return }
     if (!tel1Local.trim()) { toast.error('El teléfono 1 es requerido.'); return }
     if (form.mora_automatica === 1) {
       if (tipoCalculo === 0 && !form.interes_mora) { toast.error('El porcentaje de mora es requerido.'); return }
       if (tipoCalculo === 1 && !form.fijo_mora) { toast.error('El monto de mora es requerido.'); return }
-      if (!form.dias_gracia) { toast.error('Los días de gracia son requeridos.'); return }
+      if (form.dias_gracia < 0) { toast.error('Los días de gracia deben ser 0 o mayor.'); return }
     }
     if (logoError) { toast.error('Corrige el error en el logo antes de guardar.'); return }
 
@@ -816,9 +816,9 @@ export function ProyectosClient({
       ...filtered.map((p) => keys.map((k) => {
         switch (k) {
           case 'empresa': return formatCsvCell(empresaMap.get(p.empresa) ?? '')
-          case 'pais': return formatCsvCell(paises.find((x) => x.codigo === p.pais)?.nombre ?? p.pais ?? '')
-          case 'departamento': return formatCsvCell(departamentos.find((d) => d.codigo === p.departamento)?.nombre ?? p.departamento ?? '')
-          case 'municipio': return formatCsvCell(municipios.find((m) => m.codigo === p.municipio)?.nombre ?? p.municipio ?? '')
+          case 'direccion_pais': return formatCsvCell(paises.find((x) => x.codigo === p.direccion_pais)?.nombre ?? p.direccion_pais ?? '')
+          case 'direccion_departamento': return formatCsvCell(departamentos.find((d) => d.codigo === p.direccion_departamento)?.nombre ?? p.direccion_departamento ?? '')
+          case 'direccion_municipio': return formatCsvCell(municipios.find((m) => m.codigo === p.direccion_municipio)?.nombre ?? p.direccion_municipio ?? '')
           default: return formatCsvCell(p[k as keyof Proyecto])
         }
       }).join(',')),
@@ -901,7 +901,7 @@ export function ProyectosClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key}>
                   <ColumnFilter
@@ -949,23 +949,23 @@ export function ProyectosClient({
                           return <TableCell key="nombre" className="font-medium">{proyecto.nombre}</TableCell>
                         case 'empresa':
                           return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(proyecto.empresa) ?? `#${proyecto.empresa}`}</TableCell>
-                        case 'pais': {
-                          const p = paises.find((x) => x.codigo === proyecto.pais)
+                        case 'direccion_pais': {
+                          const p = paises.find((x) => x.codigo === proyecto.direccion_pais)
                           return (
-                            <TableCell key="pais" className="text-muted-foreground">
+                            <TableCell key="direccion_pais" className="text-muted-foreground">
                               {p ? (
                                 <span className="flex items-center gap-1.5">
                                   <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                                   {p.nombre}
                                 </span>
-                              ) : (proyecto.pais ?? '—')}
+                              ) : (proyecto.direccion_pais ?? '—')}
                             </TableCell>
                           )
                         }
-                        case 'departamento':
-                          return <TableCell key="departamento" className="text-muted-foreground">{departamentos.find((d) => d.codigo === proyecto.departamento)?.nombre ?? proyecto.departamento ?? '—'}</TableCell>
-                        case 'municipio':
-                          return <TableCell key="municipio" className="text-muted-foreground">{municipios.find((m) => m.codigo === proyecto.municipio)?.nombre ?? proyecto.municipio ?? '—'}</TableCell>
+                        case 'direccion_departamento':
+                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{departamentos.find((d) => d.codigo === proyecto.direccion_departamento)?.nombre ?? proyecto.direccion_departamento ?? '—'}</TableCell>
+                        case 'direccion_municipio':
+                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{municipios.find((m) => m.codigo === proyecto.direccion_municipio)?.nombre ?? proyecto.direccion_municipio ?? '—'}</TableCell>
                         default:
                           return <TableCell key={col.key} className="text-muted-foreground">{(proyecto[col.key as keyof Proyecto] as string) || '—'}</TableCell>
                       }
@@ -1015,6 +1015,7 @@ export function ProyectosClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares está activo
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -1065,11 +1066,22 @@ export function ProyectosClient({
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
+                  <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
                   <div className="col-span-2"><ViewField label="Direccion" value={viewTarget.direccion} /></div>
                   {(() => {
-                    const p = paises.find((x) => x.codigo === viewTarget.pais)
+                    const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                     return (
                       <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
                         <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
@@ -1078,18 +1090,23 @@ export function ProyectosClient({
                             <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                             {p.nombre}
                           </span>
-                        ) : <span className="text-sm font-medium">{viewTarget.pais ?? '—'}</span>}
+                        ) : <span className="text-sm font-medium">{viewTarget.direccion_pais ?? '—'}</span>}
                       </div>
                     )
                   })()}
-                  <ViewField label="Departamento" value={departamentos.find((d) => d.codigo === viewTarget.departamento)?.nombre ?? viewTarget.departamento} />
-                  <ViewField label="Municipio" value={municipios.find((m) => m.codigo === viewTarget.municipio)?.nombre ?? viewTarget.municipio} />
+                  <ViewField label="Departamento" value={departamentos.find((d) => d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento} />
+                  <ViewField label="Municipio" value={municipios.find((m) => m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio} />
                   <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
                   <ViewField label="Telefono 1" value={viewTarget.telefono1} />
                   <ViewField label="Telefono 2" value={viewTarget.telefono2} />
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
@@ -1102,6 +1119,14 @@ export function ProyectosClient({
                         {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                  </div>
+                  {viewTarget && (
+                    <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
+                  )}
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
+                    <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Proyecto *</Label>
@@ -1116,15 +1141,15 @@ export function ProyectosClient({
                     <CountrySelect paises={paises} value={paisCodigo}
                       onChange={(codigo, _nombre) => {
                         setPaisCodigo(codigo); setDeptoCodigo('')
-                        const autoMoneda = COUNTRY_TO_CURRENCY[codigo] ?? form.moneda
-                        setForm((prev) => ({ ...prev, pais: codigo, departamento: '', municipio: '', moneda: autoMoneda }))
+                        const autoMoneda = countryToCurrency[codigo] ?? form.moneda
+                        setForm((prev) => ({ ...prev, direccion_pais: codigo, direccion_departamento: '', direccion_municipio: '', moneda: autoMoneda }))
                       }}
                     />
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="departamento_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento *</Label>
                     <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo}
-                      onChange={(e) => { const v = e.target.value; setDeptoCodigo(v); setForm((prev) => ({ ...prev, departamento: v, municipio: '' })) }}
+                      onChange={(e) => { const v = e.target.value; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: '' })) }}
                       className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
                       <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un país'}</option>
                       {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
@@ -1133,9 +1158,9 @@ export function ProyectosClient({
                   <div className="grid gap-1">
                     <Label htmlFor="municipio_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio *</Label>
                     <select id="municipio_p" title="Municipio"
-                      value={form.municipio}
+                      value={form.direccion_municipio}
                       disabled={!deptoCodigo}
-                      onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, municipio: v })) }}
+                      onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
                       className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
                       <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                       {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
@@ -1173,6 +1198,11 @@ export function ProyectosClient({
             <TabsContent value="mora" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Mora</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   {/* Mora Automática — checkbox deshabilitado */}
                   <div className="col-span-2 flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
                     <Checkbox checked={!!viewTarget.mora_automatica} disabled />
@@ -1204,23 +1234,25 @@ export function ProyectosClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  {(() => {
-                    const c = CURRENCY_MAP.get(viewTarget.moneda ?? '')
-                    return (
-                      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                        <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
-                        {c ? (
-                          <span className="flex items-center gap-1.5 text-sm font-medium">
-                            <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                            {c.iso} — {c.name}
-                          </span>
-                        ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
-                      </div>
-                    )
-                  })()}
-                  <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
-                    <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
-                    <span className="text-sm font-medium">Promesa Vencida</span>
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    {(() => {
+                      const c = CURRENCY_MAP.get(viewTarget.moneda ?? '')
+                      return (
+                        <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
+                          <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
+                          {c ? (
+                            <span className="flex items-center gap-1.5 text-sm font-medium">
+                              <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                              {c.iso}
+                            </span>
+                          ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
+                        </div>
+                      )
+                    })()}
+                    <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                      <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
+                      <span className="text-sm font-medium">Promesa Vencida</span>
+                    </div>
                   </div>
                   {viewTarget.logo_url ? (
                     <div className="col-span-2 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-2">
@@ -1234,6 +1266,11 @@ export function ProyectosClient({
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 flex items-center gap-2 pt-1">
+                    <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Mora</span>
+                    <div className="flex-1 border-t border-primary/30" />
+                  </div>
                   <div className="col-span-2 flex items-center gap-2 py-1">
                     <Checkbox
                       id="mora_automatica"
@@ -1350,18 +1387,18 @@ export function ProyectosClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  <div className="col-span-2 flex items-end gap-4">
-                    <div className="grid gap-1 w-72">
+                  <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+                    <div className="grid gap-1">
                       <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? 'GTQ')}>
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Seleccionar moneda">
                             {(v: string) => {
                               const c = CURRENCY_MAP.get(v)
                               return c ? (
                                 <span className="flex items-center gap-2">
                                   <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  <span>{c.iso} — {c.name}</span>
+                                  <span>{c.iso}</span>
                                 </span>
                               ) : null
                             }}
@@ -1372,7 +1409,7 @@ export function ProyectosClient({
                             <SelectItem key={c.iso} value={c.iso}>
                               <span className="flex items-center gap-2">
                                 <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                {c.iso} — {c.name}
+                                {c.iso}
                               </span>
                             </SelectItem>
                           ))}
@@ -1427,19 +1464,17 @@ export function ProyectosClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-2">
-                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} proyecto
-                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
-                </p>
-                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {similarWarning?.map((p) => (
-                    <li key={p.codigo}>{p.nombre}</li>
-                  ))}
-                </ul>
-                <p>¿Es realmente un proyecto diferente y desea continuar?</p>
+            <AlertDialogDescription render={<div />}>
+              <div className="mb-2">
+                Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} proyecto
+                {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
               </div>
+              <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                {similarWarning?.map((p) => (
+                  <li key={p.codigo}>{p.nombre}</li>
+                ))}
+              </ul>
+              <div>¿Es realmente un proyecto diferente y desea continuar?</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

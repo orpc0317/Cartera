@@ -68,7 +68,6 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'identificacion_tributaria', label: 'ID Tributaria',   defaultVisible: true  },
   { key: 'nombre_factura',            label: 'Nombre Factura',  defaultVisible: false },
   { key: 'regimen_iva',               label: 'Regimen IVA',     defaultVisible: false },
-  { key: 'activo',                    label: 'Activo',          defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -87,7 +86,6 @@ const EMPTY_FORM: ClienteForm = {
   identificacion_tributaria: '',
   tipo_identificacion: 0,
   regimen_iva: 0,
-  activo: 1,
   direccion: '',
   direccion_pais: '',
   direccion_departamento: '',
@@ -129,7 +127,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
       <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || '—'}</span>
+      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
     </div>
   )
 }
@@ -318,7 +316,6 @@ export function ClientesClient({
       if (col === 'proyecto') return vals.has(String(c.proyecto))
       if (col === 'tipo_identificacion') return vals.has(String(c.tipo_identificacion ?? 0))
       if (col === 'regimen_iva') return vals.has(String(c.regimen_iva))
-      if (col === 'activo') return vals.has(String(c.activo ?? 1))
       if (col === 'direccion_departamento') {
         const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
         return vals.has(d?.nombre ?? c.direccion_departamento ?? '')
@@ -485,7 +482,6 @@ export function ClientesClient({
       proyecto: firstProyectoCodigo,
       tipo_identificacion: 0,
       regimen_iva: 0,
-      activo: 1,
     })
     setPaisCodigo('')
     setDeptoCodigo('')
@@ -624,7 +620,7 @@ export function ClientesClient({
         </div>
       )}
 
-      {/* ── Búsqueda + ColumnManager ── */}}
+      {/* ── Búsqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -659,7 +655,7 @@ export function ClientesClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => {
                 if (col.key === 'empresa') {
                   return (
@@ -716,20 +712,6 @@ export function ClientesClient({
                         onChange={(labels) => {
                           const byLabel = Object.fromEntries(Object.entries(REGIMENES_IVA).map(([k, v]) => [v, k]))
                           setColFilter('regimen_iva', new Set([...labels].map((l) => byLabel[l] ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === 'activo') {
-                  return (
-                    <TableHead key="activo">
-                      <ColumnFilter
-                        label="Activo"
-                        values={['Activo', 'Inactivo']}
-                        active={new Set([...(colFilters['activo'] ?? new Set())].map((k) => k === '1' ? 'Activo' : 'Inactivo'))}
-                        onChange={(labels) => {
-                          setColFilter('activo', new Set([...labels].map((l) => l === 'Activo' ? '1' : '0')))
                         }}
                       />
                     </TableHead>
@@ -874,15 +856,6 @@ export function ClientesClient({
                             </TableCell>
                           )
                         }
-
-                        case 'activo':
-                          return (
-                            <TableCell key="activo">
-                              {cliente.activo === 1
-                                ? <Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>
-                                : <Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>}
-                            </TableCell>
-                          )
 
                         default:
                           return (
@@ -1179,10 +1152,6 @@ export function ClientesClient({
                   <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
                   <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                   <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
-                    <Checkbox checked={!!viewTarget.activo} disabled />
-                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
@@ -1195,7 +1164,9 @@ export function ClientesClient({
                     <Label htmlFor="tipo_id" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Identificacion</Label>
                     <Select value={String(form.tipo_identificacion)} onValueChange={(v) => f('tipo_identificacion', Number(v))}>
                       <SelectTrigger id="tipo_id" className="w-full">
-                        <SelectValue />
+                        <SelectValue>
+                          {(v: string) => v !== '' ? (TIPO_IDENTIFICACION[Number(v)] ?? v) : null}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(TIPO_IDENTIFICACION).map(([k, v]) => (
@@ -1214,7 +1185,9 @@ export function ClientesClient({
                     <Label htmlFor="regimen_iva" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen IVA</Label>
                     <Select value={String(form.regimen_iva)} onValueChange={(v) => f('regimen_iva', Number(v))}>
                       <SelectTrigger id="regimen_iva" className="w-full">
-                        <SelectValue />
+                        <SelectValue>
+                          {(v: string) => v !== '' ? (REGIMENES_IVA[Number(v)] ?? v) : null}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(REGIMENES_IVA).map(([k, v]) => (
@@ -1222,16 +1195,6 @@ export function ClientesClient({
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
-                    <div className="flex h-8 items-center">
-                      <Checkbox
-                        checked={!!form.activo}
-                        onCheckedChange={(checked: boolean) => setForm((p) => ({ ...p, activo: checked ? 1 : 0 }))}
-                      />
-                    </div>
                   </div>
                 </div>
               )}
@@ -1264,19 +1227,17 @@ export function ClientesClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Nombres similares encontrados</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div>
-                <p className="mb-2">
-                  Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} cliente
-                  {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
-                </p>
-                <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
-                  {similarWarning?.map((cl) => (
-                    <li key={cl.codigo}>{cl.nombre}</li>
-                  ))}
-                </ul>
-                <p>¿Es realmente un cliente diferente y desea continuar?</p>
+            <AlertDialogDescription render={<div />}>
+              <div className="mb-2">
+                Ya existe{similarWarning && similarWarning.length > 1 ? 'n' : ''} {similarWarning?.length} cliente
+                {similarWarning && similarWarning.length > 1 ? 's' : ''} con un nombre muy parecido:
               </div>
+              <ul className="mb-3 space-y-1 rounded-md border bg-muted/50 px-3 py-2 text-sm font-medium">
+                {similarWarning?.map((cl) => (
+                  <li key={cl.codigo}>{cl.nombre}</li>
+                ))}
+              </ul>
+              <div>¿Es realmente un cliente diferente y desea continuar?</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

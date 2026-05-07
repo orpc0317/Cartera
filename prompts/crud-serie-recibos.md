@@ -146,23 +146,23 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
-| serie    | Serie    | full  | ViewField | Input; req  | Input; disabled  |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
+|----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
+| serie    | Serie    | full  | ViewField | Input; req  | Input; disabled  | ''                 |       |
 
 **[CONFIGURACION]**
 
-| Campo             | Label          | Ancho | View          | Nuevo / Edit                                | Notas        |
-|-------------------|----------------|-------|---------------|---------------------------------------------|--------------|
-| recibo_automatico | Automatico     | third | Checkbox card | Checkbox 0/1                                |              |
-| correlativo       | Correlativo    | third | ViewField     | Input number ≥ 0; vacío si automatico=1     | ver REGLA #9 |
-| formato           | Formato        | third | ViewField     | Input number ≥ 0                            | ver REGLA #4 |
-| dias_fecha        | Dias Fecha     | half  | ViewField     | Input number ≥ 0                            |              |
-| serie_factura     | Serie Factura  | half  | ViewField     | Select nullable; filtrado empresa+proyecto  | ver REGLA #3 |
-| predeterminado    | Predeterminado | half  | Checkbox card | Checkbox 0/1                                | ver REGLA #8 |
-| activo            | Activo         | half  | Checkbox card | Checkbox 0/1                                |              |
+| Campo             | Label          | Ancho | View          | Nuevo / Edit                                | Default (Nuevo) | Notas        |
+|-------------------|----------------|-------|---------------|---------------------------------------------|-----------------|--------------|
+| recibo_automatico | Automatico     | third | Checkbox card | Checkbox 0/1                                | 0               |              |
+| correlativo       | Correlativo    | third | ViewField     | Input number ≥ 0; vacío si automatico=1     | 0               | ver REGLA #9 |
+| formato           | Formato        | third | ViewField     | Input number ≥ 0                            | 0               | ver REGLA #4 |
+| dias_fecha        | Dias Fecha     | half  | ViewField     | Input number ≥ 0                            | 0               |              |
+| serie_factura     | Serie Factura  | half  | ViewField     | Select nullable; filtrado empresa+proyecto  | null            | ver REGLA #3 |
+| predeterminado    | Predeterminado | half  | Checkbox card | Checkbox 0/1                                | 0               | ver REGLA #8 |
+| activo            | Activo         | half  | Checkbox card | Checkbox 0/1                                | 1               |              |
 
 ---
 

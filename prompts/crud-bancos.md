@@ -125,17 +125,17 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Notas |
-|----------|----------|-------|-----------|-------------|------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                |       |
+| Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
+|----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
+| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
+| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
 
 **[GENERAL]**
 
-| Campo  | Label  | Ancho | View      | Nuevo / Edit | Notas |
-|--------|--------|-------|-----------|--------------|-------|
-| nombre | Nombre | full  | ViewField | Input; req   |       |
+| Campo  | Label  | Ancho | View      | Nuevo / Edit | Default (Nuevo) | Notas |
+|--------|--------|-------|-----------|--------------|-----------------|-------|
+| nombre | Nombre | full  | ViewField | Input; req   | ''              |       |
 
 ---
 

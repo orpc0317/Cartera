@@ -89,7 +89,7 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
   const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
-  const STR_FIELDS = ['nombre', 'pais', 'departamento', 'municipio', 'direccion', 'codigo_postal'] as const
+  const STR_FIELDS = ['nombre', 'direccion_pais', 'direccion_departamento', 'direccion_municipio', 'direccion', 'codigo_postal'] as const
   const normalized: ProyectoForm = { ...form }
   for (const key of STR_FIELDS) {
     if (typeof normalized[key] === 'string') {
@@ -158,7 +158,7 @@ export async function updateProyecto(
 
   const now = new Date().toISOString()
 
-  const STR_FIELDS = ['nombre', 'pais', 'departamento', 'municipio', 'direccion', 'codigo_postal'] as const
+  const STR_FIELDS = ['nombre', 'direccion_pais', 'direccion_departamento', 'direccion_municipio', 'direccion', 'codigo_postal'] as const
   const normalized: Partial<ProyectoForm> = { ...form }
   for (const key of STR_FIELDS) {
     if (typeof normalized[key] === 'string') {
