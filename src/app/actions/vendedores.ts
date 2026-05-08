@@ -63,7 +63,7 @@ export async function getVendedores(): Promise<Vendedor[]> {
   const { data, error } = await admin
     .schema('cartera')
     .from('t_vendedor')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .order('empresa').order('proyecto').order('nombre')
   if (error) throw new Error(error.message)
@@ -197,6 +197,32 @@ export async function deleteVendedor(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  // Restricción: no eliminar si tiene promesas asociadas
+  const { count: promesaCount } = await admin
+    .schema('cartera')
+    .from('t_promesa')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('vendedor', codigo)
+  if (promesaCount && promesaCount > 0) {
+    return { error: 'No se puede eliminar este vendedor porque tiene promesas asociadas.' }
+  }
+
+  // Restricción: no eliminar si tiene reservas asociadas
+  const { count: reservaCount } = await admin
+    .schema('cartera')
+    .from('t_reserva')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('vendedor', codigo)
+  if (reservaCount && reservaCount > 0) {
+    return { error: 'No se puede eliminar este vendedor porque tiene reservas asociadas.' }
+  }
 
   const { data: oldRow } = await admin
     .schema('cartera')

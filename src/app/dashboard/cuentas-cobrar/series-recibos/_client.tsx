@@ -642,22 +642,22 @@ export function SeriesRecibosClient({
                   <div className="col-span-2"><ViewField label="Serie"    value={viewTarget.serie} /></div>
                   <SectionDivider label="CONFIGURACION" />
                   <div className="col-span-2 grid grid-cols-3 gap-3">
-                    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Recibo Automatico</span>
+                    <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={viewTarget.recibo_automatico === 1} disabled />
+                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Recibo Automatico</span>
                     </div>
                     <ViewField label="Correlativo" value={viewTarget.correlativo ? String(viewTarget.correlativo) : ''} />
                     <ViewField label="Formato" value={String(viewTarget.formato)} />
                   </div>
                   <ViewField label="Dias Fecha" value={String(viewTarget.dias_fecha)} />
                   <ViewField label="Serie Factura" value={viewTarget.serie_factura || '—'} />
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Predeterminado</span>
+                  <div className="flex items-center gap-2 py-1">
                     <Checkbox checked={viewTarget.predeterminado === 1} disabled />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Predeterminado</span>
                   </div>
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
+                  <div className="flex items-center gap-2 py-1">
                     <Checkbox checked={viewTarget.activo === 1} disabled />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
                   </div>
                 </div>
               ) : (
@@ -761,7 +761,7 @@ export function SeriesRecibosClient({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                  <div className="flex items-center gap-2 py-1">
                     <Checkbox
                       id="predeterminado"
                       checked={form.predeterminado === 1}
@@ -769,7 +769,7 @@ export function SeriesRecibosClient({
                     />
                     <Label htmlFor="predeterminado" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Predeterminado</Label>
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
+                  <div className="flex items-center gap-2 py-1">
                     <Checkbox
                       id="activo"
                       checked={form.activo === 1}

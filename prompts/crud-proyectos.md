@@ -201,7 +201,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo           | Label           | Ancho | View                          | Nuevo / Edit                                                                                                  | Default (Nuevo) | Notas |
 |-----------------|-----------------|-------|-------------------------------|---------------------------------------------------------------------------------------------------------------|-----------------|-------|
-| mora_automatica | Mora Automatica | full  | Checkbox card (disabled)      | Checkbox 0/1; **habilita/deshabilita** todos los campos de calculo de mora abajo                              | 0               |       |
+| mora_automatica | Mora Automatica | full  | Checkbox (disabled)           | Checkbox 0/1; **habilita/deshabilita** todos los campos de calculo de mora abajo                              | 0               |       |
 | forma_mora      | Forma Calculo   | 1/4   | ViewField: Diario/Mensual     | Select: Mensual=0, Diario=1; **disabled si `mora_automatica !== 1`**                                          | 0 (Mensual)     |       |
 | tipoCalculo     | Tipo Calculo    | 1/4   | ViewField: Tasa/Valor Fijo    | Select UI-only: Tasa=0, Valor Fijo=1; **disabled si `mora_automatica !== 1`**; al cambiar a Tasa: zeroes `fijo_mora`; al cambiar a Valor Fijo: zeroes `interes_mora` | 0 (Tasa) | **Estado local, NO es campo de BD.** Init openView: `fijo_mora > 0 ? 1 : 0` |
 | interes_mora    | % Mora          | 1/4   | ViewField (si tipoCalculo=0)  | Input number step=0.01; **visible solo si `tipoCalculo === 0`**; **disabled si `mora_automatica !== 1`**; req* si mora_automatica=1 y tipoCalculo=0 | 0 | Mutuamente exclusivo con `fijo_mora` |
@@ -212,7 +212,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | dias_afectos    | Dias Afectos    | 1/3   | ViewField: Un Mes/Todos         | Select: Todos Los Dias=0, Un Mes=1; siempre habilitado                                                | 0 (Todos Los Dias)    |       |
 | minimo_mora     | Mora Minima     | 1/3   | ViewField (2 decimales)         | Input text (inputMode=decimal); estado auxiliar `minMoraStr`; onBlur reformatea a 2 decimales (`es-GT`); siempre habilitado | 0.00 | `minMoraStr` sincroniza display ↔ `form.minimo_mora` |
-| mora_enganche   | Mora Enganche   | 1/3   | Checkbox card (disabled)        | Checkbox 0/1; siempre habilitado                                                                      | 0 |       |
+| mora_enganche   | Mora Enganche   | 1/3   | Checkbox (disabled)             | Checkbox 0/1; siempre habilitado                                                                      | 0 |       |
 
 **[ABONO CAPITAL]**
 
@@ -225,7 +225,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | Campo           | Label           | Ancho | View                                  | Nuevo / Edit                                                                                               | Default (Nuevo)                        | Notas |
 |-----------------|-----------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------|-------|
 | moneda          | Moneda          | third  | bandera + ISO + nombre de moneda      | Select con banderas de `CURRENCIES` (lista hardcoded en cliente); req; **auto-set al cambiar pais/empresa** via `COUNTRY_TO_CURRENCY` | COUNTRY_TO_CURRENCY[empresa.pais] → 'GTQ' | No usa prop `monedas` del server; lista embebida en `_client.tsx` |
-| promesa_vencida | Promesa Vencida | third  | Checkbox card (disabled)              | Checkbox 0/1; siempre habilitado                                                                           | 0                                      |       |
+| promesa_vencida | Promesa Vencida | third  | Checkbox (disabled)                   | Checkbox 0/1; siempre habilitado                                                                           | 0                                      |       |
 | logo_url        | Logo            | full  | `<img>` si existe, ViewField si no   | `LogoUploadField`; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | ''                                     | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
 
 ---

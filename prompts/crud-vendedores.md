@@ -1,4 +1,4 @@
-# CRUD: Cobradores
+# CRUD: Vendedores
 
 ---
 
@@ -6,21 +6,21 @@
 
 | Campo          | Valor                                                        |
 |----------------|--------------------------------------------------------------|
-| NOMBRE         | Cobradores                                                   |
+| NOMBRE         | Vendedores                                                   |
 | MODULO         | Promesas                                                     |
-| TABLA_BD       | `cartera.t_cobrador`                                         |
-| RUTA           | `/dashboard/promesas/cobradores`                             |
-| PERMISO        | `COB_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
+| TABLA_BD       | `cartera.t_vendedor`                                         |
+| RUTA           | `/dashboard/promesas/vendedores`                             |
+| PERMISO        | `VEN_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
-| ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
-| MODO           | actualizar                                                   |
+| ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota_   |
+| MODO           | nuevo                                                        |
 
 ---
 
 ## MODO_GUARD
 
 > [!CAUTION]
-> **Antes de generar cualquier archivo:** verificar si `src/app/dashboard/promesas/cobradores/page.tsx` ya existe en el repositorio.
+> **Antes de generar cualquier archivo:** verificar si `src/app/dashboard/promesas/vendedores/page.tsx` ya existe en el repositorio.
 > - **Si existe** → **DETENER. Preguntar al desarrollador** si desea sobrescribir. No continuar hasta recibir confirmación explícita de que sí.
 > - **Si no existe** → continuar con el procedimiento normal.
 >
@@ -30,20 +30,21 @@
 
 ## DESCRIPCION
 
-Pantalla para dar mantenimiento al catalogo de Cobradores.
-Cada proyecto puede trabajar con varios cobradores, estos seran asociados al momento de registrar pagos.
+Pantalla para dar mantenimiento al catalogo de vendedores.
+Cada proyecto puede trabajar con varios vendedores.
 
 ---
 
 ## ENTIDAD
 
-Mapeo exacto del schema `cartera.t_cobrador`. Los tipos deben coincidir con la BD.
+Mapeo exacto del schema `cartera.t_vendedor`. Los tipos deben coincidir con la BD.
 
 ```
-Cobrador {
+Vendedor {
   cuenta:           varchar       -- gestionado por sistema (cuenta activa del usuario)
   empresa:          number        -- FK -> cartera.t_empresa.codigo
   proyecto:         number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
+  coordinador:      number        -- FK -> cartera.t_coordinador.codigo, filtrado por empresa+proyecto
   codigo:           number        -- parte del PK, gestionado por la base de datos.
   nombre:           string
   activo:           smallint      -- 1 = activo, 0 = inactivo
@@ -53,10 +54,11 @@ Cobrador {
   modifico_fecha:   timestamptz   -- token de concurrencia optimista
 }
 
-CobradorForm {              	-- campos editables por el usuario
+VendedorForm {          	-- campos editables por el usuario
   empresa:        number
   proyecto:       number
   nombre:         string
+  coordinador:    number
   activo:         smallint
 }
 
@@ -76,13 +78,14 @@ FK que deben cargarse en `page.tsx` y pasarse como props al client component:
 ```
 getEmpresas()       -> prop 'empresas'       -> alimenta el Select de empresa
 getProyectos()      -> prop 'proyectos'      -> alimenta el Select de proyecto (filtrado por empresa)
+getCoordinador()    -> prop 'coordinadores'  -> alimenta el Select de coordinadores (filtrado por empresa+proyecto)
 
-Cascade doble: empresa → proyecto.
-- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+Cascade triple: empresa → proyecto → coordinador.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0, resetear coordinador al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Al cambiar proyecto: resetear coordinador al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
 
 ```
-
-> `getEmpresas` y `getProyectos` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
+> `getEmpresas`, `getProyectos` y `getCoordinadores` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
 
 ---
 
@@ -90,14 +93,14 @@ Cascade doble: empresa → proyecto.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `nombre`, `activo`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `nombre`, `coordinador`, `activo`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
 
 ## EXPORTACION
 
-**Nombre de archivo:** `cobradores-YYYY-MM-DD.csv`
+**Nombre de archivo:** `vendedores-YYYY-MM-DD.csv`
 
 **Columna sticky izquierda a incluir siempre:** `codigo` (label: `"Codigo"`).
 
@@ -108,16 +111,18 @@ Cascade doble: empresa → proyecto.
 ## COLUMNAS_TABLA
 
 Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del PK).
-`STORAGE_KEY = 'cobradores_cols_v1_${userId}'`
+`STORAGE_KEY = 'vendedores_cols_v1_${userId}'`
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
-> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
+> `coordinador` → nombre del coordinador (prop `coordinadores`).
 
 | key            | label           | defaultVisible | render                                                |
 |----------------|-----------------|----------------|-------------------------------------------------------|
 | empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
 | proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
 | nombre         | Nombre          | true           | valor directo                                         |
+| coordinador    | Coordinador     | false          | nombre del coordinador (del prop `coordinadores`)     |
 | activo         | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
 
 ---
@@ -136,10 +141,11 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[GENERAL]**
 
-| Campo  | Label  | Ancho | View          | Nuevo / Edit | Default (Nuevo) | Notas |
-|--------|--------|-------|---------------|--------------|-----------------|-------|
-| nombre | Nombre | full  | ViewField     | Input; req   | ''              |       |
-| activo | Activo | full  | Checkbox      | Checkbox 0/1 | 1               |       |
+| Campo      | Label      | Ancho | View          | Nuevo / Edit                                | Default (Nuevo)    | Notas |
+|------------|------------|-------|---------------|---------------------------------------------|--------------------| ------|
+| coordinador| Coordinador| full  | ViewField     | Select; coordinadoresFiltrados empresa+proy | primero disponible |       |
+| nombre     | Nombre     | full  | ViewField     | Input; req                                  | ''                 |       |
+| activo     | Activo     | full  | Checkbox      | Checkbox 0/1                                | 1                  |       |
 
 ---
 
@@ -147,24 +153,24 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
 2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('nombre', ...)`.
-3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado
-   contra todos los cobradores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
-4. Mostrar advertencia si `proyectos.length === 0` y deshabilitar el boton "Nuevo Cobrador".
+3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado contra todos los vendedores del mismo `(empresa, proyecto)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
+4. Mostrar advertencia si `proyectos.length === 0` deshabilitar el boton "Nuevo Vendedor".
 
 ---
 
 ## VALIDACIONES_BACKEND
 
-- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un cobrador con ese nombre en este proyecto.'`
+- Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe un vendedor con ese nombre en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
-- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_recibo_caja` con el mismo `(cuenta, empresa, proyecto, cobrador)`. Si existen -> `'No se puede eliminar este cobrador porque tiene recibos de caja asociados.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_promesa` con el mismo `(cuenta, empresa, proyecto, vendedor)`. Si existen -> `'No se puede eliminar este vendedor porque tiene promesas asociadas.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
+- **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en `cartera.t_reserva` con el mismo `(cuenta, empresa, proyecto, vendedor)`. Si existen -> `'No se puede eliminar este vendedor porque tiene reservas asociadas.'`. La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
 
 ---
 
 ## LOGIC_ESPECIFICO
 
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
+- `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa y primer coordinador de ese proyecto.
 
 ---
 
@@ -183,6 +189,4 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-[TABS_MODAL / General / GENERAL] cambiar el ancho del campo `activo` a third en todos los modals
-
-> _(sin cambios pendientes)_
+_(sin cambios pendientes)_

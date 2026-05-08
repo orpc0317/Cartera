@@ -138,7 +138,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | Campo  | Label  | Ancho | View          | Nuevo / Edit | Default (Nuevo) | Notas |
 |--------|--------|-------|---------------|--------------|-----------------|-------|
 | nombre | Nombre | full  | ViewField     | Input; req   | ''              |       |
-| activo | Activo | full  | Checkbox card | Checkbox 0/1 | 1               |       |
+| activo | Activo | full  | Checkbox      | Checkbox 0/1 | 1               |       |
 
 ---
 

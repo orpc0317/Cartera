@@ -167,7 +167,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | nombre | Nombre Cuenta | full  | ViewField      | Input; req                                 | ''                    |                          |
 | numero | Numero Cuenta | half  | ViewField      | Input; req                                 | ''                    |                          |
 | moneda | Moneda        | half  | Moneda display | Select desde prop 'monedas'; req           | 'GTQ' → monedas[0]    | ver Moneda display rules |
-| activo | Activo        | full  | Checkbox card  | Checkbox 0/1                               | 1                     |                          |
+| activo | Activo        | full  | Checkbox       | Checkbox 0/1                               | 1                     |                          |
 
 ---
 

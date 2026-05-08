@@ -156,13 +156,13 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 
 | Campo             | Label          | Ancho | View          | Nuevo / Edit                                | Default (Nuevo) | Notas        |
 |-------------------|----------------|-------|---------------|---------------------------------------------|-----------------|--------------|
-| recibo_automatico | Automatico     | third | Checkbox card | Checkbox 0/1                                | 0               |              |
+| recibo_automatico | Automatico     | third | Checkbox      | Checkbox 0/1                                | 0               |              |
 | correlativo       | Correlativo    | third | ViewField     | Input number ≥ 0; vacío si automatico=1     | 0               | ver REGLA #9 |
 | formato           | Formato        | third | ViewField     | Input number ≥ 0                            | 0               | ver REGLA #4 |
 | dias_fecha        | Dias Fecha     | half  | ViewField     | Input number ≥ 0                            | 0               |              |
 | serie_factura     | Serie Factura  | half  | ViewField     | Select nullable; filtrado empresa+proyecto  | null            | ver REGLA #3 |
-| predeterminado    | Predeterminado | half  | Checkbox card | Checkbox 0/1                                | 0               | ver REGLA #8 |
-| activo            | Activo         | half  | Checkbox card | Checkbox 0/1                                | 1               |              |
+| predeterminado    | Predeterminado | half  | Checkbox      | Checkbox 0/1                                | 0               | ver REGLA #8 |
+| activo            | Activo         | half  | Checkbox      | Checkbox 0/1                                | 1               |              |
 
 ---
 

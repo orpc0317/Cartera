@@ -175,7 +175,7 @@ function SectionDivider({ label }: { label: string }) {
 
 - `gap-3` between cards. Full-width: wrap in `<div className="col-span-2">`. Half-width: no wrapper.
 - País: show flag + nombre in a custom div (see ui-conventions.instructions.md geo rules).
-- Boolean: `<Checkbox checked={!!record.field} disabled />` inside a `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5` card.
+- Boolean: `<Checkbox>` free-floating — **no card container**. Use `<div className="flex items-center gap-2 py-1"><Checkbox checked={!!record.field} disabled /><span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Label</span></div>`. Same rule in edit mode: `<div className="flex items-center gap-2 py-1"><Checkbox id="..." .../><Label htmlFor="...">Label</Label></div>` — never wrap in `rounded-lg bg-muted/50 border` containers.
 - Logo: `<img>` inside a `col-span-2` muted card.
 
 ### Field width annotations in TABS_MODAL

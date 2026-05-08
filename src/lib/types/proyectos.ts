@@ -217,7 +217,7 @@ export type Vendedor = {
   proyecto: number
   codigo: number
   nombre: string
-  supervisor?: number | null
+  coordinador?: number | null
   userid?: string
   activo: number
   agrego_usuario?: string
@@ -226,7 +226,13 @@ export type Vendedor = {
   modifico_fecha?: string
 }
 
-export type VendedorForm = Omit<Vendedor, 'cuenta' | 'userid' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+export type VendedorForm = {
+  empresa: number
+  proyecto: number
+  nombre: string
+  coordinador: number | null
+  activo: number
+}
 
 export type Cobrador = {
   cuenta: string

@@ -36,7 +36,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import {
   createVendedor, updateVendedor, deleteVendedor,
 } from '@/app/actions/vendedores'
-import type { Empresa, Proyecto, Supervisor, Vendedor, VendedorForm } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, Coordinador, Vendedor, VendedorForm } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
@@ -62,9 +62,8 @@ const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: 
 const EMPTY_FORM: VendedorForm = {
   empresa: 0,
   proyecto: 0,
-  codigo: 0,
   nombre: '',
-  supervisor: null,
+  coordinador: null,
   activo: 1,
 }
 
@@ -157,7 +156,7 @@ interface Props {
   initialData: Vendedor[]
   empresas: Empresa[]
   proyectos: Proyecto[]
-  supervisores: Supervisor[]
+  coordinadores: Coordinador[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -167,7 +166,7 @@ interface Props {
 // ─── Componente principal ──────────────────────────────────────────────────
 
 export function VendedoresClient({
-  initialData, empresas, proyectos, supervisores,
+  initialData, empresas, proyectos, coordinadores,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
   const router = useRouter()
@@ -195,14 +194,14 @@ export function VendedoresClient({
     [proyectos, form.empresa],
   )
 
-  const supervisorMap = useMemo(
-    () => new Map(supervisores.map((s) => [s.codigo, s.nombre])),
-    [supervisores],
+  const coordinadorMap = useMemo(
+    () => new Map(coordinadores.map((c) => [c.codigo, c.nombre])),
+    [coordinadores],
   )
 
-  const supervisoresPorProyecto = useMemo(
-    () => supervisores.filter((s) => s.empresa === form.empresa && s.proyecto === form.proyecto && s.activo === 1),
-    [supervisores, form.empresa, form.proyecto],
+  const coordinadoresFiltrados = useMemo(
+    () => coordinadores.filter((c) => c.empresa === form.empresa && c.proyecto === form.proyecto && c.activo === 1),
+    [coordinadores, form.empresa, form.proyecto],
   )
 
   // ── Filtrado ──────────────────────────────────────────────────────────
@@ -303,6 +302,10 @@ export function VendedoresClient({
       if (key === 'empresa') {
         const fp = proyectos.find((p) => p.empresa === Number(value))
         next.proyecto = fp?.codigo ?? 0
+        next.coordinador = null
+      }
+      if (key === 'proyecto') {
+        next.coordinador = null
       }
       return next
     })
@@ -312,9 +315,8 @@ export function VendedoresClient({
     return {
       empresa: v.empresa,
       proyecto: v.proyecto,
-      codigo: v.codigo,
       nombre: v.nombre,
-      supervisor: v.supervisor ?? null,
+      coordinador: v.coordinador ?? null,
       activo: v.activo,
     }
   }
@@ -324,7 +326,7 @@ export function VendedoresClient({
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto?.codigo ?? 0 })
+    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto?.codigo ?? 0, coordinador: null })
     setDialogOpen(true)
   }
 
@@ -406,8 +408,8 @@ export function VendedoresClient({
       {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-sky-100 p-2.5">
-            <UserCheck className="h-5 w-5 text-sky-700" />
+          <div className="rounded-xl bg-lime-100 p-2.5">
+            <UserCheck className="h-5 w-5 text-lime-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Vendedores</h1>
@@ -524,14 +526,14 @@ export function VendedoresClient({
                   <TableRow
                     key={`${vendedor.empresa}-${vendedor.proyecto}-${vendedor.codigo}`}
                     className={`group cursor-pointer transition-colors ${
-                      isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'hover:bg-muted/40'
+                      isActive ? 'bg-lime-50 dark:bg-lime-950/30' : 'hover:bg-muted/40'
                     }`}
                     onClick={() => setCursorIdx(rowIdx)}
                     onDoubleClick={() => openView(vendedor)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
                       isActive
-                        ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold'
+                        ? 'bg-lime-50 dark:bg-lime-950/30 border-l-[3px] border-l-lime-600 text-lime-700 dark:text-lime-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
                       {vendedor.codigo}
@@ -574,7 +576,7 @@ export function VendedoresClient({
                     })}
 
                     <TableCell className={`sticky right-0 z-10 transition-colors ${
-                      isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'
+                      isActive ? 'bg-lime-50 dark:bg-lime-950/30' : 'bg-card group-hover:bg-muted/40'
                     }`}>
                       <DropdownMenu>
                         <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
@@ -628,14 +630,14 @@ export function VendedoresClient({
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[32rem] max-h-[90vh] overflow-hidden">
 
           {/* Header */}
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-lime-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-sky-100' : isEditing ? 'bg-amber-100' : 'bg-sky-100'}`}>
+              <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-lime-100' : isEditing ? 'bg-amber-100' : 'bg-lime-100'}`}>
                 {isEditing && !viewTarget
-                  ? <Plus className="h-5 w-5 text-sky-600" />
+                  ? <Plus className="h-5 w-5 text-lime-600" />
                   : isEditing
                   ? <Pencil className="h-5 w-5 text-amber-600" />
-                  : <UserCheck className="h-5 w-5 text-sky-600" />}
+                  : <UserCheck className="h-5 w-5 text-lime-600" />}
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
@@ -675,23 +677,13 @@ export function VendedoresClient({
                   </div>
                   <div className="col-span-2">
                     <ViewField
-                      label="Supervisor"
-                      value={viewTarget.supervisor ? (supervisorMap.get(viewTarget.supervisor) ?? `#${viewTarget.supervisor}`) : '—'}
+                      label="Coordinador"
+                      value={viewTarget.coordinador ? (coordinadorMap.get(viewTarget.coordinador) ?? `#${viewTarget.coordinador}`) : '—'}
                     />
                   </div>
-                  <div className="col-span-2">
-                    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
-                      <Badge
-                        variant={viewTarget.activo === 1 ? 'default' : 'secondary'}
-                        className={viewTarget.activo === 1
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-normal border-0'
-                          : 'font-normal'
-                        }
-                      >
-                        {ACTIVO_LABELS[viewTarget.activo] ?? `#${viewTarget.activo}`}
-                      </Badge>
-                    </div>
+                  <div className="col-span-2 flex items-center gap-2 py-1">
+                    <Checkbox checked={viewTarget.activo === 1} disabled />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
                   </div>
                 </div>
 
@@ -733,39 +725,35 @@ export function VendedoresClient({
                 </div>
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Supervisor</Label>
+                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Coordinador</Label>
                   <Select
-                    value={form.supervisor != null ? String(form.supervisor) : '__none__'}
-                    onValueChange={(v) => setForm((prev) => ({ ...prev, supervisor: v === '__none__' ? null : Number(v) }))}
+                    value={form.coordinador != null ? String(form.coordinador) : '__none__'}
+                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? null : Number(v) }))}
+                    disabled={!form.proyecto}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue>
-                        {form.supervisor != null
-                          ? (supervisorMap.get(form.supervisor) ?? `#${form.supervisor}`)
-                          : <span className="text-muted-foreground">Sin supervisor</span>}
+                        {form.coordinador != null
+                          ? (coordinadorMap.get(form.coordinador) ?? `#${form.coordinador}`)
+                          : <span className="text-muted-foreground">Sin coordinador</span>}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Sin supervisor</SelectItem>
-                      {supervisoresPorProyecto.map((s) => (
-                        <SelectItem key={s.codigo} value={String(s.codigo)}>{s.nombre}</SelectItem>
+                      <SelectItem value="__none__">Sin coordinador</SelectItem>
+                      {coordinadoresFiltrados.map((c) => (
+                        <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nombre}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="col-span-2 grid gap-1">
+                <div className="col-span-2 flex items-center gap-2 pb-1">
+                  <Checkbox
+                    id="activo"
+                    checked={form.activo === 1}
+                    onCheckedChange={(checked) => setForm((prev) => ({ ...prev, activo: checked ? 1 : 0 }))}
+                  />
                   <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
-                  <Select value={String(form.activo)} onValueChange={(v) => f('activo', Number(v))}>
-                    <SelectTrigger id="activo" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ACTIVO_LABELS).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
 
               </div>

@@ -27,6 +27,7 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Cuentas Bancarias | `cyan-100 / cyan-600`        |
 | Serie Recibos    | `green-100 / gree-600`        |
 | Coordinadores    | `blue-100 / blue-600`         |
+| Vendedores       | `lime-100 / lime-600`         |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
@@ -57,6 +58,7 @@ Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table act
 | Cuentas Bancarias | `CreditCard`     |
 | Serie Recibos     | `Receipt`        |
 | Coordinadores    | `Network`        |
+| Vendedores       | `UserCheck`      |
 
 ---
 

@@ -465,7 +465,7 @@ export function CobradoresClient({
         </div>
       )}
 
-      {/* ── Búsqueda + ColumnManager ── */
+      {/* ── Búsqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -748,9 +748,11 @@ export function CobradoresClient({
                   <div className="col-span-2">
                     <ViewField label="Nombre" value={viewTarget.nombre} />
                   </div>
-                  <div className="col-span-2 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
-                    <Checkbox checked={!!viewTarget.activo} disabled />
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2 py-1">
+                      <Checkbox checked={!!viewTarget.activo} disabled />
+                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
+                    </div>
                   </div>
                 </div>
 
@@ -795,13 +797,15 @@ export function CobradoresClient({
                   <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del cobrador" />
                 </div>
 
-                <div className="col-span-2 flex items-center gap-2 rounded-lg border border-border/40 bg-muted/50 px-3 py-2.5">
-                  <Checkbox
-                    id="activo"
-                    checked={form.activo === 1}
-                    onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
-                  />
-                  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
+                <div className="col-span-2 grid grid-cols-3 gap-4">
+                  <div className="flex items-center gap-2 py-1">
+                    <Checkbox
+                      id="activo"
+                      checked={form.activo === 1}
+                      onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
+                    />
+                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
+                  </div>
                 </div>
 
               </div>

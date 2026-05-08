@@ -1203,10 +1203,10 @@ export function ProyectosClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Mora</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  {/* Mora Automática — checkbox deshabilitado */}
-                  <div className="col-span-2 flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                  {/* Mora Automática — checkbox */}
+                  <div className="col-span-2 flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.mora_automatica} disabled />
-                    <span className="text-sm font-medium">Mora Automática</span>
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Automática</span>
                   </div>
                   {/* Forma Cálculo + Tipo Cálculo + % Mora|Monto Mora + Días Gracia */}
                   <div className="col-span-2 grid grid-cols-4 gap-3">
@@ -1219,9 +1219,9 @@ export function ProyectosClient({
                   </div>
                   <ViewField label="Dias Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Dias'} />
                   <ViewField label="Mora Minima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
-                  <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                  <div className="flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.mora_enganche} disabled />
-                    <span className="text-sm font-medium">Mora Enganche</span>
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Enganche</span>
                   </div>
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
@@ -1249,9 +1249,9 @@ export function ProyectosClient({
                         </div>
                       )
                     })()}
-                    <div className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+                    <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
-                      <span className="text-sm font-medium">Promesa Vencida</span>
+                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Promesa Vencida</span>
                     </div>
                   </div>
                   {viewTarget.logo_url ? (

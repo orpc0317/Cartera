@@ -679,9 +679,9 @@ export function CuentasBancariasClient({
                     )
                   })()}
                   </div>
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Activo</span>
+                  <div className="flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.activo} disabled />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
                   </div>
                 </div>
               ) : (
