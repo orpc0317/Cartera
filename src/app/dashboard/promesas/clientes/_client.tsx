@@ -58,6 +58,7 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'proyecto',                  label: 'Proyecto',        defaultVisible: true  },
   { key: 'nombre',                    label: 'Nombre',          defaultVisible: true  },
   { key: 'direccion',                 label: 'Direccion',       defaultVisible: false },
+  { key: 'direccion_pais',             label: 'Pais',            defaultVisible: false },
   { key: 'direccion_departamento',    label: 'Departamento',    defaultVisible: false },
   { key: 'direccion_municipio',       label: 'Municipio',       defaultVisible: false },
   { key: 'codigo_postal',             label: 'Codigo Postal',   defaultVisible: false },
@@ -68,6 +69,7 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'identificacion_tributaria', label: 'ID Tributaria',   defaultVisible: true  },
   { key: 'nombre_factura',            label: 'Nombre Factura',  defaultVisible: false },
   { key: 'regimen_iva',               label: 'Regimen IVA',     defaultVisible: false },
+  { key: '__activo',                  label: 'Activo',           defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -91,6 +93,7 @@ const EMPTY_FORM: ClienteForm = {
   direccion_departamento: '',
   direccion_municipio: '',
   codigo_postal: '',
+  activo: 1,
 }
 
 // ─── CSV Export ──────────────────────────────────────────────────────────────
@@ -110,7 +113,10 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
   const lines = [
     headers.join(','),
-    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Cliente])).join(',')),
+    ...rows.map((r) => keys.map((k) => {
+      if (k === '__activo') return formatCsvCell(ACTIVO_LABELS[(r.activo as number)] ?? r.activo)
+      return formatCsvCell(r[k as keyof Cliente])
+    }).join(',')),
   ]
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -316,6 +322,11 @@ export function ClientesClient({
       if (col === 'proyecto') return vals.has(String(c.proyecto))
       if (col === 'tipo_identificacion') return vals.has(String(c.tipo_identificacion ?? 0))
       if (col === 'regimen_iva') return vals.has(String(c.regimen_iva))
+      if (col === '__activo') return vals.has(String(c.activo))
+      if (col === 'direccion_pais') {
+        const p = paises.find((x) => x.codigo === c.direccion_pais)
+        return vals.has(p?.nombre ?? c.direccion_pais ?? '')
+      }
       if (col === 'direccion_departamento') {
         const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
         return vals.has(d?.nombre ?? c.direccion_departamento ?? '')
@@ -445,6 +456,7 @@ export function ClientesClient({
         direccion_departamento: dCode,
         direccion_municipio: c.direccion_municipio ?? '',
         codigo_postal: c.codigo_postal ?? '',
+        activo: c.activo ?? 1,
       } satisfies ClienteForm,
     }
   }
@@ -717,6 +729,21 @@ export function ClientesClient({
                     </TableHead>
                   )
                 }
+                if (col.key === 'direccion_pais') {
+                  return (
+                    <TableHead key="direccion_pais">
+                      <ColumnFilter
+                        label="Pais"
+                        values={[...new Set(initialData.map((c) => {
+                          const p = paises.find((x) => x.codigo === c.direccion_pais)
+                          return c.direccion_pais ? (p?.nombre ?? c.direccion_pais) : ''
+                        }))].filter(Boolean).sort()}
+                        active={colFilters['direccion_pais'] ?? new Set()}
+                        onChange={(v) => setColFilter('direccion_pais', v)}
+                      />
+                    </TableHead>
+                  )
+                }
                 if (col.key === 'direccion_departamento') {
                   return (
                     <TableHead key="direccion_departamento">
@@ -743,6 +770,21 @@ export function ClientesClient({
                         }))].filter(Boolean).sort()}
                         active={colFilters['direccion_municipio'] ?? new Set()}
                         onChange={(v) => setColFilter('direccion_municipio', v)}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__activo') {
+                  return (
+                    <TableHead key="__activo">
+                      <ColumnFilter
+                        label="Activo"
+                        values={Object.values(ACTIVO_LABELS)}
+                        active={new Set([...(colFilters['__activo'] ?? new Set())].map((k) => ACTIVO_LABELS[Number(k)] ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = Object.fromEntries(Object.entries(ACTIVO_LABELS).map(([k, v]) => [v, k]))
+                          setColFilter('__activo', new Set([...labels].map((l) => byLabel[l] ?? l)))
+                        }}
                       />
                     </TableHead>
                   )
@@ -824,7 +866,7 @@ export function ClientesClient({
                         case 'tipo_identificacion':
                           return (
                             <TableCell key="tipo_identificacion">
-                              <Badge variant="outline" className="font-normal">
+                              <Badge variant="secondary" className="font-normal">
                                 {TIPO_IDENTIFICACION[cliente.tipo_identificacion ?? 0] ?? `#${cliente.tipo_identificacion}`}
                               </Badge>
                             </TableCell>
@@ -838,6 +880,26 @@ export function ClientesClient({
                               </Badge>
                             </TableCell>
                           )
+
+                        case 'direccion_pais': {
+                          const p = paises.find((x) => x.codigo === cliente.direccion_pais)
+                          return (
+                            <TableCell key="direccion_pais" className="text-muted-foreground">
+                              {cliente.direccion_pais ? (
+                                <span className="flex items-center gap-1.5">
+                                  <img
+                                    src={`https://flagcdn.com/w20/${cliente.direccion_pais.toLowerCase()}.png`}
+                                    alt={cliente.direccion_pais}
+                                    width={20}
+                                    height={14}
+                                    className="object-cover rounded-sm shrink-0"
+                                  />
+                                  {p?.nombre ?? cliente.direccion_pais}
+                                </span>
+                              ) : '\u2014'}
+                            </TableCell>
+                          )
+                        }
 
                         case 'direccion_departamento': {
                           const d = departamentos.find((x) => x.pais === cliente.direccion_pais && x.codigo === cliente.direccion_departamento)
@@ -857,10 +919,25 @@ export function ClientesClient({
                           )
                         }
 
+                        case '__activo':
+                          return (
+                            <TableCell key="__activo">
+                              <Badge
+                                variant="secondary"
+                                className={cliente.activo === 1
+                                  ? 'font-normal bg-emerald-100 text-emerald-700'
+                                  : 'font-normal bg-muted text-muted-foreground'
+                                }
+                              >
+                                {ACTIVO_LABELS[cliente.activo] ?? `#${cliente.activo}`}
+                              </Badge>
+                            </TableCell>
+                          )
+
                         default:
                           return (
                             <TableCell key={col.key} className="text-muted-foreground">
-                              {(cliente[col.key as keyof Cliente] as string) || '—'}
+                              {(cliente[col.key as keyof Cliente] as string) || '—'}}
                             </TableCell>
                           )
                       }
@@ -910,6 +987,7 @@ export function ClientesClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -1152,6 +1230,10 @@ export function ClientesClient({
                   <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
                   <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                   <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
+                  <div className="col-span-2 flex items-center gap-2 py-1">
+                    <Checkbox checked={viewTarget.activo === 1} disabled />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
@@ -1195,6 +1277,15 @@ export function ClientesClient({
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="col-span-2 flex items-center gap-2 pb-1">
+                    <Checkbox
+                      id="activo"
+                      checked={form.activo === 1}
+                      onCheckedChange={(checked) => setForm((prev) => ({ ...prev, activo: checked ? 1 : 0 }))}
+                    />
+                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
                   </div>
                 </div>
               )}
@@ -1254,7 +1345,7 @@ export function ClientesClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente a{' '}
               <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>

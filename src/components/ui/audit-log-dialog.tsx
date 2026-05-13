@@ -17,7 +17,7 @@ const SKIP_FIELDS = new Set([
 const FIELD_LABELS: Record<string, string> = {
   nombre:                        'Nombre',
   razon_social:                  'Razón Social',
-  identificaion_tributaria:      'ID Tributaria',
+  identificacion_tributaria:      'ID Tributaria',
   regimen_isr:                   'Régimen ISR',
   direccion:                     'Dirección',
   pais:                          'País',

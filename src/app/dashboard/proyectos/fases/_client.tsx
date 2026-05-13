@@ -661,6 +661,7 @@ export function FasesClient({
         modal={false}
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return
           setDialogOpen(open)
           if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
         }}
@@ -860,7 +861,7 @@ export function FasesClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar fase?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente la fase{' '}
               <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>

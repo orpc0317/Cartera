@@ -27,6 +27,8 @@ Before writing any code, load these instruction files **in parallel**:
 | `.github/instructions/crud-screens.instructions.md` | Modal layout, ViewField, SectionDivider, icon badge |
 | `.github/instructions/ui-conventions.instructions.md` | Accent colors, Lucide icons, label rules |
 | `.github/instructions/data-tables.instructions.md` | Column defs, ColumnFilter, ColumnManager, keyboard nav |
+| `.github/instructions/base-ui-gotchas.instructions.md` | Base UI vs Radix API differences (SelectValue, SelectTrigger, AlertDialog, DropdownMenu) |
+| `.github/instructions/components.instructions.md` | **Copy-verbatim snippets** — modal state/functions, iconBadgeBg, subtitle, form inputs, selects, checkboxes, AlertDialog delete, row dropdown, ColumnFilter, ColumnManager, handleTableKeyDown |
 
 > **Si el spec contiene algún campo de tipo imagen** (p.ej. `logo_url`), cargar también:
 > `.github/instructions/image-upload.instructions.md` — magic bytes, SVG risk, cleanup de archivo anterior, patrón `LogoUploadField`.
@@ -156,16 +158,60 @@ const [isPending, startTransition] = useTransition()
 const [hadConflict, setHadConflict] = useState(false)
 const [cursorIdx, setCursorIdx]   = useState<number | null>(null)
 const [colPrefs, setColPrefs]     = useState<ColPref[]>(DEFAULT_PREFS)
-const [filter, setFilter]         = useState('')
+const [search, setSearch]         = useState('')
 ```
+
+> **Full modal state block** (dialogOpen, isEditing, viewTarget, form, isPending, hadConflict, similarWarning, deleteTarget, auditTarget, auditOpen) — copy from `components.instructions.md § A`.
 
 **Data table** (per `data-tables.instructions.md`):
 - Define `ALL_COLUMNS`, `DEFAULT_PREFS`, `STORAGE_KEY = '<entity>_cols_v1_${userId}'`
-- Include `ColumnFilter` and `ColumnManager` components
+- Copy `ColumnFilter`, `ColumnManager`, `handleTableKeyDown` verbatim from `components.instructions.md § M`
 - Active row highlight with module accent color from `ui-conventions.instructions.md`
 - Sticky `Codigo` column (left) + sticky actions column (right)
 - Keyboard nav: `ArrowUp` / `ArrowDown` → move cursor; `Enter` → open view; `Escape` → close dialog
 - Row `onClick` → `setCursorIdx(idx)`; `onDoubleClick` → `openView(row)`
+
+---
+
+### Step 7 — Post-Generation Checklist
+
+**Before declaring the screen finished, verify every item below.** This is not optional — these are the most common generation errors. Fix any violation before responding to the user.
+
+#### Selects
+
+- [ ] **Every `<SelectTrigger>` has `className="w-full"`** — the base component defaults to `w-fit` and shrinks to its content without it. No exceptions: full-width, half-width, and third-width fields all need it.
+- [ ] **Every `<SelectValue>` that resolves a label uses the `(v: string) =>` render-prop signature** — never `({ value }: { value: string }) =>`. Base UI passes the value as a plain string argument, not as an object property. Using the destructured form means `value` is always `undefined` and the placeholder shows permanently.
+- [ ] **No `<SelectValue>` reads `form.field` directly as a static child** — e.g. `{empresaMap.get(form.empresa) ?? 'Selecciona'}` is wrong. Always use the render function `{(v: string) => v ? (...) : null}`.
+- [ ] **Every FK `<Select>` (empresa, proyecto, fase, banco, cobrador, vendedor, etc.) has a render-prop child on `<SelectValue>`** — without it, Base UI shows the raw numeric code after selection instead of the name.
+- [ ] **Every `openCreate()` call pre-selects the first available item for each dropdown** — hardcoded and DB-loaded alike. See the auto-select rule in `crud-screens.instructions.md`.
+
+#### Checkboxes in mixed rows
+
+- [ ] **Any row that mixes `<Input>`/`<Select>` cells with a `<Checkbox>` cell** has `items-end` on the parent grid div **and** `pb-1` on the checkbox wrapper div — otherwise the checkbox floats to the top of the row.
+
+#### Labels & Layout
+
+- [ ] **`f()` helper exists and is used for every text `<Input>`** — no `setForm` inline on text fields. Verify `SKIP_KEYS` is declared and includes all non-uppercased fields (`correo`, `moneda`, and any field the spec marks as "NO normalizar a mayúsculas").
+- [ ] **Spec-exception fields (only remove accents, no uppercase)** are in `SKIP_KEYS` AND have the accent-removal applied inline in their `onChange`: `e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')`.
+- [ ] **Every `<Label>` has** `className="text-[11px] font-semibold tracking-wider text-muted-foreground"`.
+- [ ] **Field widths match the spec's `Ancho` column exactly** — `full` → `col-span-2`, `half` → no wrapper, `third` → inner `grid-cols-3` wrapper inside a `col-span-2` div.
+
+#### AlertDialog
+
+- [ ] **`<AlertDialogDescription>` uses `render={<div />}`** when its content includes block-level elements — never `asChild` (Base UI does not support it). Never nest `<p>` inside it; use `<div>` to avoid hydration errors.
+
+#### Table & Export
+
+- [ ] **`STORAGE_KEY` includes `${userId}`** so column preferences are per-user.
+- [ ] **Export filename matches the spec's `EXPORTACION` section** exactly (e.g. `tipos-ingresos-YYYY-MM-DD.csv`).
+- [ ] **Sticky left column is `codigo`; sticky right column is the actions dropdown** — both have `z-10` and mirror their background class to the active-row highlight class.
+- [ ] **Toolbar structure** — copy the exact block from `data-tables.instructions.md § Toolbar layout`. Violations to catch:
+  - Search input has `max-w-xs` (fixed), **not** `flex-1`.
+  - `hasActiveFilters = Object.keys(colFilters).length > 0` is declared near other derived constants.
+  - "Limpiar filtros" button is present and conditionally rendered on `hasActiveFilters`.
+  - Exportar CSV and ColumnManager are wrapped together in `<div className="ml-auto flex items-center gap-2">`.
+  - Order inside that wrapper: **Exportar CSV first, then ColumnManager** — never reversed.
+  - Button label is **"Exportar CSV"**, never just "Exportar".
 
 **Modal** (per `crud-screens.instructions.md`):
 - Header gradient with module accent color
@@ -183,7 +229,7 @@ const [filter, setFilter]         = useState('')
 
 ---
 
-### Step 7 — Register in sidebar
+### Step 8 — Register in sidebar
 
 In `src/components/layout/app-sidebar.tsx`:
 
@@ -210,7 +256,7 @@ In `src/components/layout/app-sidebar.tsx`:
 
 ---
 
-### Step 8 — Post-generation checklist
+### Step 9 — Post-generation checklist
 
 Run `get_errors` after all files are created and fix any TypeScript issues before reporting completion.
 

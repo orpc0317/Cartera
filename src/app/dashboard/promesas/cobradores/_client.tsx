@@ -257,11 +257,11 @@ export function CobradoresClient({
     Object.entries(colFilters).every(([col, vals]) => {
       if (vals.size === 0) return true
       if (col === '__activo')   return vals.has(String(c.activo))
-      if (col === '__empresa')  return vals.has(empresaMap.get(c.empresa) ?? '')
-      if (col === '__proyecto') return vals.has(proyectoMap.get(c.proyecto) ?? '')
+      if (col === '__empresa')  return vals.has(String(c.empresa))
+      if (col === '__proyecto') return vals.has(String(c.proyecto))
       return vals.has(String(c[col as keyof Cobrador] ?? ''))
     })
-  ), [afterSearch, colFilters, proyectoMap])
+  ), [afterSearch, colFilters])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -687,6 +687,7 @@ export function CobradoresClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -868,7 +869,7 @@ export function CobradoresClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cobrador?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>

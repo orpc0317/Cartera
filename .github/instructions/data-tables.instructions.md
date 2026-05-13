@@ -21,7 +21,7 @@ const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVi
 - Use `__prefix` for virtual columns that don't map 1:1 to a DB field (e.g. `__regimen_iva`).
 - `STORAGE_KEY = '<entity>_cols_v1_${userId}'`
 - Label naming: no accents, Title Case (see ui-conventions.instructions.md).
-- For full **ColumnFilter**, **ColumnManager**, **localStorage persistence**, and **filtering pipeline** implementations, copy from `src/app/dashboard/promesas/clientes/_client.tsx`.
+- Copy `ColumnFilter`, `ColumnManager`, and `handleTableKeyDown` verbatim from `components.instructions.md § M` — do **not** read `clientes/_client.tsx`.
 
 ---
 
@@ -161,7 +161,7 @@ useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 ## Checklist for a new table
 
 1. `ALL_COLUMNS` / `DEFAULT_PREFS` / `STORAGE_KEY`
-2. Copy `ColumnFilter`, `ColumnManager`, `handleTableKeyDown`, localStorage effect from `clientes/_client.tsx`
+2. Copy `ColumnFilter`, `ColumnManager`, `handleTableKeyDown` from `components.instructions.md § M`
 3. Sticky left `Codigo` (w-20), sticky right actions (w-12)
 4. Active row: module accent color (see ui-conventions.instructions.md)
 5. Cell `switch`: explicit cases for nombre, pais, FK lookups, enums; geo codes  resolve to name
@@ -171,9 +171,21 @@ useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
 ---
 
+## Toolbar layout
+
+→ **Copiar verbatim de `components.instructions.md § S · Toolbar`**
+
+**Reglas:**
+- `hasActiveFilters = Object.keys(colFilters).length > 0` — declarar cerca de los computed values.
+- Search usa `max-w-xs` (fijo), **no** `flex-1`.
+- Label siempre **"Exportar CSV"**, nunca "Exportar".
+- El wrapper `ml-auto` es obligatorio.
+
+---
+
 ## CSV Export
 
-Every CRUD table must include a **"Exportar CSV"** button (icon `Download`) in the toolbar, to the left of `ColumnManager`. It exports the **currently filtered rows** with **currently visible columns**.
+Every CRUD table must include a **"Exportar CSV"** button in the toolbar (see layout above). It exports the **currently filtered rows** with **currently visible columns**.
 
 ### What to export
 
@@ -189,46 +201,8 @@ Every CRUD table must include a **"Exportar CSV"** button (icon `Download`) in t
 
 `<entity-slug>-YYYY-MM-DD.csv` — defined per screen in its spec. Example: `series-recibos-2026-01-15.csv`.
 
-### Implementation (copy verbatim, replace `Entity` and sticky column name)
+### Implementación
 
-```ts
-// ── Module-level constants (outside component) ───────────────────────────
-const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+→ **Copiar verbatim de `components.instructions.md § T · Función exportCsv`**
 
-// COL_LABELS = { [key]: label } — built from ALL_COLUMNS + sticky column
-const COL_LABELS: Record<string, string> = Object.fromEntries(
-  [{ key: '<sticky-key>', label: '<Sticky Label>' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
-)
-
-function formatCsvCell(value: unknown): string {
-  const str = value == null ? '' : String(value)
-  return str.includes(',') || str.includes('\n') || str.includes('"')
-    ? `"${str.replace(/"/g, '""')}"`
-    : str
-}
-
-function exportCsv(rows: Entity[], colPrefs: ColPref[]) {
-  const keys = ['<sticky-key>', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
-    .filter((k) => !NEVER_EXPORT.has(k))
-  const headers = keys.map((k) => COL_LABELS[k] ?? k)
-  const lines = [
-    headers.join(','),
-    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Entity])).join(',')),
-  ]
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `<entity-slug>-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-// ── In the toolbar (JSX) ─────────────────────────────────────────────────
-// Place to the LEFT of <ColumnManager />, inside the same flex container:
-<Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
-  <Download className="h-3.5 w-3.5" /> Exportar CSV
-</Button>
-```
-
-> `formatCsvCell` wraps values in double-quotes when they contain commas, newlines, or quotes — no external CSV library needed.
+> `formatCsvCell` envuelve valores en comillas dobles cuando contienen comas, saltos de línea o comillas — no se necesita librería externa.

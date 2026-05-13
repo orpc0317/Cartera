@@ -1,12 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
-import type { CuentaBancaria, CuentaBancariaForm } from '@/lib/types/proyectos'
+import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 
-// ─── Helpers (mirrored from bancos.ts) ────────────────────────────────────
+// ─── Helpers privados ─────────────────────────────────────────────────────
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -34,7 +33,6 @@ async function getAuditUser() {
 async function writeAudit(
   admin: ReturnType<typeof createAdminClient>,
   opts: {
-    tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
     cuenta: string
     registroId: Record<string, unknown>
@@ -46,7 +44,7 @@ async function writeAudit(
   },
 ) {
   await admin.schema('cartera').from('t_audit_log').insert({
-    tabla: opts.tabla,
+    tabla: 't_tipo_ingreso',
     operacion: opts.operacion,
     cuenta: opts.cuenta,
     registro_id: opts.registroId,
@@ -60,147 +58,125 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getCuentasBancarias(
-  empresa?: number,
-  proyecto?: number,
-): Promise<CuentaBancaria[]> {
+export async function getTiposIngresos(): Promise<TipoIngreso[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  let query = admin
+  const { data, error } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_tipo_ingreso')
     .select('*')
     .eq('cuenta', cuenta)
+    .order('empresa')
+    .order('proyecto')
     .order('nombre')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
-  const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as CuentaBancaria[]
+  return (data ?? []) as TipoIngreso[]
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────
 
-export async function createCuentaBancaria(
-  form: CuentaBancariaForm,
+export async function createTipoIngreso(
+  form: TipoIngresoForm,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
-  const { data: max } = await admin
+  // Verificar duplicado de nombre
+  const { data: dup } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_tipo_ingreso')
     .select('codigo')
     .eq('cuenta', cuenta)
     .eq('empresa', form.empresa)
     .eq('proyecto', form.proyecto)
-    .order('codigo', { ascending: false })
-    .limit(1)
+    .eq('nombre', toDbString(form.nombre))
     .maybeSingle()
+  if (dup) return { error: 'Ya existe un tipo ingreso con ese nombre en este proyecto.' }
 
-  const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
-
-  // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto
-  const { data: existente } = await admin
-    .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('codigo')
-    .eq('cuenta', cuenta)
-    .eq('empresa', form.empresa)
-    .eq('proyecto', form.proyecto)
-    .eq('banco', form.banco)
-    .eq('numero', toDbString(form.numero))
-    .maybeSingle()
-  if (existente) return { error: 'Ya existe una cuenta bancaria con ese banco y número en este proyecto.' }
+  const normalized: TipoIngresoForm & { cuenta: string; fijo: number; agrego_usuario: string | null; agrego_fecha: string; modifico_usuario: string | null; modifico_fecha: string } = {
+    ...form,
+    nombre: toDbString(form.nombre),
+    etiqueta: stripAccents(form.etiqueta),
+    factura_item: form.factura_item ? toDbString(form.factura_item) : '',
+    factura_descripcion: form.factura_descripcion ? toDbString(form.factura_descripcion) : '',
+    cuenta,
+    fijo: 0,
+    agrego_usuario: auditUser.userId,
+    agrego_fecha: now,
+    modifico_usuario: auditUser.userId,
+    modifico_fecha: now,
+  }
 
   const { data, error } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .insert({
-      cuenta,
-      empresa: form.empresa,
-      proyecto: form.proyecto,
-      codigo,
-      numero: toDbString(form.numero),
-      nombre: toDbString(form.nombre),
-      banco: form.banco,
-      moneda: form.moneda,
-      activo: form.activo,
-      agrego_usuario: auditUser.userId,
-      agrego_fecha: now,
-      modifico_usuario: auditUser.userId,
-      modifico_fecha: now,
-    })
+    .from('t_tipo_ingreso')
+    .insert(normalized)
     .select()
     .single()
 
   if (error) return { error: error.message }
 
   await writeAudit(admin, {
-    tabla: 't_cuenta_bancaria', operacion: 'INSERT', cuenta,
-    registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo },
-    datoAntes: null, datoDespues: data as Record<string, unknown>,
+    operacion: 'INSERT',
+    cuenta,
+    registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo: (data as TipoIngreso).codigo },
+    datoAntes: null,
+    datoDespues: data as Record<string, unknown>,
     ...auditUser,
   })
 
-  revalidatePath('/dashboard/bancos/cuentas-bancarias')
   return {}
 }
 
-export async function updateCuentaBancaria(
+export async function updateTipoIngreso(
   empresa: number,
   proyecto: number,
   codigo: number,
-  form: Partial<CuentaBancariaForm>,
+  form: TipoIngresoForm,
   lastModified?: string,
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
-  const { data: oldRow } = await admin
+  // Verificar duplicado de nombre excluyendo el registro actual
+  const { data: dup } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('*')
+    .from('t_tipo_ingreso')
+    .select('codigo')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
-    .eq('codigo', codigo)
-    .single()
+    .eq('nombre', toDbString(form.nombre))
+    .neq('codigo', codigo)
+    .maybeSingle()
+  if (dup) return { error: 'Ya existe un tipo ingreso con ese nombre en este proyecto.' }
 
   const now = new Date().toISOString()
-  const normalized = {
-    ...form,
-    numero: form.numero ? toDbString(form.numero) : undefined,
-    nombre: form.nombre ? toDbString(form.nombre) : undefined,
-  }
-
-  // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto (excluyendo el registro actual)
-  if (form.banco !== undefined || normalized.numero) {
-    const bancoVal = form.banco ?? oldRow?.banco
-    const numeroVal = normalized.numero ?? oldRow?.numero
-    if (bancoVal && numeroVal) {
-      const { data: existente } = await admin
-        .schema('cartera')
-        .from('t_cuenta_bancaria')
-        .select('codigo')
-        .eq('cuenta', cuenta)
-        .eq('empresa', empresa)
-        .eq('proyecto', proyecto)
-        .eq('banco', bancoVal)
-        .eq('numero', numeroVal)
-        .neq('codigo', codigo)
-        .maybeSingle()
-      if (existente) return { error: 'Ya existe una cuenta bancaria con ese banco y número en este proyecto.' }
-    }
+  // empresa y proyecto son readonly tras creación — no se incluyen en el payload
+  const payload: Omit<TipoIngresoForm, 'empresa' | 'proyecto'> & { modifico_usuario: string | null; modifico_fecha: string } = {
+    nombre: toDbString(form.nombre),
+    etiqueta: stripAccents(form.etiqueta),
+    forma_pago: form.forma_pago,
+    moneda: form.moneda,
+    monto: form.monto,
+    hasta_monto: form.hasta_monto,
+    factura_item: form.factura_item ? toDbString(form.factura_item) : '',
+    factura_descripcion: form.factura_descripcion ? toDbString(form.factura_descripcion) : '',
+    mora: form.mora,
+    impuesto: form.impuesto,
+    editable: form.editable,
+    activo: form.activo,
+    modifico_usuario: auditUser.userId,
+    modifico_fecha: now,
   }
 
   let query = admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .update({ ...normalized, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .from('t_tipo_ingreso')
+    .update(payload)
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -210,23 +186,22 @@ export async function updateCuentaBancaria(
 
   const { error, data } = await query.select()
   if (error) return { error: error.message }
-  if (lastModified && (!data || data.length === 0)) {
+  if (lastModified && (!data || data.length === 0))
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
-  }
 
   await writeAudit(admin, {
-    tabla: 't_cuenta_bancaria', operacion: 'UPDATE', cuenta,
+    operacion: 'UPDATE',
+    cuenta,
     registroId: { empresa, proyecto, codigo },
-    datoAntes: oldRow as Record<string, unknown> | null,
-    datoDespues: data?.[0] as Record<string, unknown> | null,
+    datoAntes: null,
+    datoDespues: payload as Record<string, unknown>,
     ...auditUser,
   })
 
-  revalidatePath('/dashboard/bancos/cuentas-bancarias')
   return {}
 }
 
-export async function deleteCuentaBancaria(
+export async function deleteTipoIngreso(
   empresa: number,
   proyecto: number,
   codigo: number,
@@ -235,31 +210,35 @@ export async function deleteCuentaBancaria(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
-  // Guard: no se puede eliminar si tiene transacciones bancarias asociadas
-  const { count } = await admin
+  // Restricción: verificar recibos asociados
+  const { count: countRecibos } = await admin
     .schema('cartera')
-    .from('t_transaccion_bancaria')
+    .from('t_recibo_caja')
     .select('*', { count: 'exact', head: true })
-    .eq('empresa', empresa)
-    .eq('cuenta_bancaria', codigo)
-
-  if ((count ?? 0) > 0) {
-    return { error: `No se puede eliminar: la cuenta tiene ${count} transaccion(es) registrada(s).` }
-  }
-
-  const { data: oldRow } = await admin
-    .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('*')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
-    .eq('codigo', codigo)
-    .single()
+    .eq('tipo_ingreso', codigo)
+
+  if (countRecibos && countRecibos > 0)
+    return { error: 'No se puede eliminar este tipo ingreso porque tiene recibos asociados.' }
+
+  // Restricción: verificar promesas asociadas
+  const { count: countPromesas } = await admin
+    .schema('cartera')
+    .from('t_promesa_otros')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('tipo_otros', codigo)
+
+  if (countPromesas && countPromesas > 0)
+    return { error: 'No se puede eliminar este tipo ingreso porque tiene promesas asociadas.' }
 
   const { error } = await admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
+    .from('t_tipo_ingreso')
     .delete()
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
@@ -269,12 +248,26 @@ export async function deleteCuentaBancaria(
   if (error) return { error: error.message }
 
   await writeAudit(admin, {
-    tabla: 't_cuenta_bancaria', operacion: 'DELETE', cuenta,
+    operacion: 'DELETE',
+    cuenta,
     registroId: { empresa, proyecto, codigo },
-    datoAntes: oldRow as Record<string, unknown> | null, datoDespues: null,
+    datoAntes: { empresa, proyecto, codigo },
+    datoDespues: null,
     ...auditUser,
   })
 
-  revalidatePath('/dashboard/bancos/cuentas-bancarias')
   return {}
+}
+
+// ─── Utilidades ────────────────────────────────────────────────────────────
+
+/** Quita tildes pero NO convierte a mayúsculas (para el campo etiqueta). */
+function stripAccents(s: string): string {
+  return s
+    .trim()
+    .replace(/[áà]/gi, (m) => m === m.toUpperCase() ? 'A' : 'a')
+    .replace(/[éè]/gi, (m) => m === m.toUpperCase() ? 'E' : 'e')
+    .replace(/[íì]/gi, (m) => m === m.toUpperCase() ? 'I' : 'i')
+    .replace(/[óò]/gi, (m) => m === m.toUpperCase() ? 'O' : 'o')
+    .replace(/[úùü]/gi, (m) => m === m.toUpperCase() ? 'U' : 'u')
 }

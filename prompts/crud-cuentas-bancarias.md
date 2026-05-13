@@ -137,13 +137,13 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | key      | label    | defaultVisible | render                                                |
 |----------|----------|----------------|-------------------------------------------------------|
-| empresa  | Empresa  | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto | Proyecto | false          | nombre del proyecto (del prop `proyectos`)            |
-| banco    | Banco    | true           | nombre del banco (del prop `bancos`)                  |
+| empresa  | Empresa  | false          | nombre FK (prop `empresas`)                           |
+| proyecto | Proyecto | false          | nombre FK (prop `proyectos`)                          |
+| banco    | Banco    | true           | nombre FK (prop `bancos`)                             |
 | nombre   | Nombre   | true           | valor directo                                         |
 | numero   | Numero   | true           | valor directo                                         |
-| moneda   | Moneda   | true           | bandera + ISO (Moneda display rules)                  |
-| activo   | Activo   | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
+| moneda   | Moneda   | true           | Moneda display [§W]                                   |
+| activo   | Activo   | true           | Badge activo [§Y]                                    |
 
 ---
 
@@ -155,19 +155,19 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
 |----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa | prop `proyectos` |
+| codigo   | Codigo   | full  | ViewField | —                   | —                        | — (auto-asignado)  |                 |
 
 **[GENERAL]**
 
 | Campo  | Label         | Ancho | View           | Nuevo / Edit                               | Default (Nuevo)         | Notas                    |
 |--------|---------------|-------|----------------|--------------------------------------------|-----------------------|--------------------------|
-| banco  | Banco         | full  | ViewField      | Select; bancosFiltrados empresa+proy; req  | primer banco disponible |                          |
-| nombre | Nombre Cuenta | full  | ViewField      | Input; req                                 | ''                    |                          |
-| numero | Numero Cuenta | half  | ViewField      | Input; req                                 | ''                    |                          |
-| moneda | Moneda        | half  | Moneda display | Select desde prop 'monedas'; req           | 'GTQ' → monedas[0]    | ver Moneda display rules |
-| activo | Activo        | full  | Checkbox       | Checkbox 0/1                               | 1                     |                          |
+| banco  | Banco         | full  | ViewField         | Select FK [§F]; req                | primer banco disponible | prop `bancos`; filtrado por empresa+proyecto |
+| nombre | Nombre Cuenta | full  | ViewField         | Input [§D]; req                    | ''                      |                                              |
+| numero | Numero Cuenta | half  | ViewField         | Input [§D]; req                    | ''                      |                                              |
+| moneda | Moneda        | half  | Moneda display [§W] | Select moneda [§W]; req          | 'GTQ' → monedas[0]       | prop `monedas`                               |
+| activo | Activo        | full  | Badge activo [§Y] | Checkbox [§I]                     | 1                       |                                              |
 
 ---
 

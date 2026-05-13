@@ -154,22 +154,22 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | key                         | label           | defaultVisible | render                                                |
 |-----------------------------|-----------------|----------------|-------------------------------------------------------|
-| empresa                     | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto                    | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
-| fase                        | Fase            | true           | nombre de la fase (del prop `fases`)                  |
+| empresa                     | Empresa         | false          | nombre FK (prop `empresas`)                           |
+| proyecto                    | Proyecto        | true           | nombre FK (prop `proyectos`)                          |
+| fase                        | Fase            | true           | nombre FK (prop `fases`)                              |
 | manzana                     | Manzana         | true           | valor directo                                         |
-| moneda                      | Moneda          | true           | bandera + ISO (Moneda display rules)                  |
-| valor                       | Precio          | true           | `fmt(valor)` — 2 decimales, locale es-GT              |
+| moneda                      | Moneda          | true           | Moneda display [§W]                                   |
+| valor                       | Precio          | true           | fmt(valor)                                            |
 | finca                       | Finca           | false          | valor directo                                         |
 | libro                       | Libro           | false          | valor directo                                         |
 | folio                       | Folio           | false          | valor directo                                         |
-| extension                   | Extension       | true           | `fmt(extension, 2) + ' ' + fases.find(f=>f.codigo===lote.fase)?.medida` |
+| extension                   | Extension       | true           | fmt(extension)+sufijo (medida de fases.find(f=>f.codigo===lote.fase)?.medida) |
 | norte                       | Norte           | false          | valor directo                                         |
 | sur                         | Sur             | false          | valor directo                                         |
 | este                        | Este            | false          | valor directo                                         |
 | oeste                       | Oeste           | false          | valor directo                                         |
 | otro                        | Otro            | false          | valor directo                                         |
-| estado                      | Estado          | true           | `getLoteEstado(lote.promesa, lote.recibo_numero)` — `<Badge variant={LOTE_ESTADO_BADGE[estado].variant} className={LOTE_ESTADO_BADGE[estado].className}>` (importar `getLoteEstado, LOTE_ESTADO_BADGE` de `@/lib/constants`) |
+| estado                      | Estado          | true           | Badge custom (`getLoteEstado(lote.promesa, lote.recibo_numero)` con `LOTE_ESTADO_BADGE`) |
 
 ---
 
@@ -181,19 +181,19 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)     | Notas |
 |----------|----------|-------|-----------|-------------|------------------|---------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible  |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa  |       |
-| fase     | Fase     | half  | ViewField | Select; req | Select; disabled | primera de proyecto |       |
-| manzana  | Manzana  | half  | ViewField | Select; req | Select; disabled | primera de fase     |       |
-| codigo   | Codigo   | half  | ViewField | —           | —                | ''                  |       |
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible  | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa  | prop `proyectos` |
+| fase     | Fase     | half  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera de proyecto | prop `fases`; filtrado por proyecto |
+| manzana  | Manzana  | half  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera de fase     | prop `manzanas`; filtrado por empresa+proyecto+fase |
+| codigo   | Codigo   | half  | ViewField | —                   | —                        | ''                  |                 |
 
 **[GENERAL]**
 
 | Campo                    | Label           | Ancho | View           | Nuevo / Edit                                  | Default (Nuevo)                   | Notas                    |
 |--------------------------|-----------------|-------|----------------|-----------------------------------------------|-----------------------------------|--------------------------|
-| moneda                   | Moneda          | half  | Moneda display | Select desde prop 'monedas'; req              | COUNTRY_CURRENCY_MAP → monedas[0] | ver Moneda display rules |
-| valor                    | Valor           | half  | ViewField      | Input numeric; req                            | 0                                 |                          |
-| extension                | Extension       | half  | ViewField: `{extension} {medida}` | Input numeric con sufijo `medida`; req | 0                      | `medida` = `fases.find(f => f.codigo === form.fase)?.medida ?? ''`. Mostrar como texto no editable a la derecha del input (adornment). En ViewField concatenar: `String(viewTarget.extension) + ' ' + medida`. |
+| moneda    | Moneda    | half  | Moneda display [§W] | Select moneda [§W]; req              | COUNTRY_CURRENCY_MAP → monedas[0] | ver Moneda display rules |
+| valor     | Valor     | half  | ViewField          | Input number [§E]; req               | 0                                  |                          |
+| extension | Extension | half  | ViewField: `{extension} {medida}` | Input number+sufijo [§AD]; req | 0                             | `medida` = `fases.find(f => f.codigo === form.fase)?.medida ?? ''`. Sufijo no editable a la derecha del input. En ViewField concatenar: `String(viewTarget.extension) + ' ' + medida`. |
 
 ### Tab: Otros  (icono: Receipt)
 
@@ -201,19 +201,19 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Default (Nuevo) | Notas                                    |
 |--------------------------|-----------------|-------|---------------|----------------------------------------|-----------------|------------------------------------------|
-| finca                    | Finca           | half  | ViewField     | Input                                  | ''              |                                          |
-| folio                    | Folio           | half  | ViewField     | Input                                  | ''              |                                          |
-| libro                    | libro           | half  | ViewField     | Input                                  | ''              |                                          |
+| finca  | Finca | half | ViewField | Input [§D] | '' |  |
+| folio  | Folio | half | ViewField | Input [§D] | '' |  |
+| libro  | libro | half | ViewField | Input [§D] | '' |  |
 
 **[COLINDANCIAS]**
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Default (Nuevo) | Notas                                    |
 |--------------------------|-----------------|-------|---------------|----------------------------------------|-----------------|------------------------------------------|
-| norte                    | Norte           | half  | ViewField     | Input                                  | ''              |                                          |
-| sur                      | Sur             | half  | ViewField     | Input                                  | ''              |                                          |
-| este                     | Este            | half  | ViewField     | Input                                  | ''              |                                          |
-| oeste                    | Oeste           | half  | ViewField     | Input                                  | ''              |                                          |
-| otros                    | Otros           | half  | ViewField     | Input                                  | ''              |                                          |
+| norte  | Norte | half | ViewField | Input [§D] | '' |  |
+| sur    | Sur   | half | ViewField | Input [§D] | '' |  |
+| este   | Este  | half | ViewField | Input [§D] | '' |  |
+| oeste  | Oeste | half | ViewField | Input [§D] | '' |  |
+| otros  | Otros | half | ViewField | Input [§D] | '' |  |
 
 ### Tab: Promesas  (icono: ClipboardList)  — solo en modal Ver
 

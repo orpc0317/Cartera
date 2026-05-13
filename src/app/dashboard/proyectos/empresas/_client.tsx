@@ -139,7 +139,7 @@ type ColPref = { key: string; visible: boolean }
 const ALL_COLUMNS: ColDef[] = [
   { key: 'nombre',                   label: 'Nombre',        defaultVisible: true  },
   { key: 'razon_social',             label: 'Razon Social',  defaultVisible: true  },
-  { key: 'identificaion_tributaria', label: 'ID Tributaria', defaultVisible: true  },
+  { key: 'identificacion_tributaria', label: 'ID Tributaria', defaultVisible: true  },
   { key: 'direccion',                label: 'Direccion',     defaultVisible: false },
   { key: 'direccion_pais',           label: 'Pais',          defaultVisible: false },
   { key: 'direccion_departamento',   label: 'Departamento',  defaultVisible: false },
@@ -204,7 +204,7 @@ const EMPTY_FORM: EmpresaForm = {
   codigo: 0,
   nombre: '',
   razon_social: '',
-  identificaion_tributaria: '',
+  identificacion_tributaria: ''
   direccion_pais: '',
   direccion_departamento: '',
   direccion_municipio: '',
@@ -274,7 +274,7 @@ export function EmpresasClient({
     return !q ||
       e.nombre?.toLowerCase().includes(q) ||
       e.razon_social?.toLowerCase().includes(q) ||
-      e.identificaion_tributaria?.toLowerCase().includes(q) ||
+      e.identificacion_tributaria?.toLowerCase().includes(q) ||
       e.direccion_pais?.toLowerCase().includes(q) ||
       e.direccion_departamento?.toLowerCase().includes(q) ||
       e.direccion_municipio?.toLowerCase().includes(q) ||
@@ -366,7 +366,7 @@ export function EmpresasClient({
         codigo:                    empresa.codigo,
         nombre:                    empresa.nombre,
         razon_social:              empresa.razon_social ?? '',
-        identificaion_tributaria:  empresa.identificaion_tributaria ?? '',
+        identificacion_tributaria:  empresa.identificacion_tributaria ?? ''
         direccion_pais:            pCode,
         direccion_departamento:    dCode,
         direccion_municipio:       empresa.direccion_municipio ?? '',
@@ -436,8 +436,8 @@ export function EmpresasClient({
   function handleSave() {
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
     if (!form.razon_social.trim()) { toast.error('La razon social es requerida.'); return }
-    if (!form.identificaion_tributaria.trim()) { toast.error('La identificacion tributaria es requerida.'); return }
-    if (form.direccion_pais === 'GT' && form.identificaion_tributaria && !validarNIT(form.identificaion_tributaria)) {
+    if (!form.identificacion_tributaria.trim()) { toast.error('La identificacion tributaria es requerida.'); return }
+    if (form.direccion_pais === 'GT' && form.identificacion_tributaria && !validarNIT(form.identificacion_tributaria)) {
       toast.error('El NIT no tiene una estructura valida.')
       return
     }
@@ -484,7 +484,7 @@ export function EmpresasClient({
       e.codigo,
       e.nombre,
       e.razon_social,
-      e.identificaion_tributaria,
+      e.identificacion_tributaria,
       e.direccion,
       paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais,
       departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento,
@@ -652,8 +652,8 @@ export function EmpresasClient({
                           return <TableCell key="nombre" className="font-medium">{empresa.nombre}</TableCell>
                         case 'razon_social':
                           return <TableCell key="razon_social" className="text-muted-foreground">{empresa.razon_social || '—'}</TableCell>
-                        case 'identificaion_tributaria':
-                          return <TableCell key="identificaion_tributaria" className="font-mono text-xs text-muted-foreground">{empresa.identificaion_tributaria || '—'}</TableCell>
+                        case 'identificacion_tributaria':
+                          return <TableCell key="identificacion_tributaria" className="font-mono text-xs text-muted-foreground">{empresa.identificacion_tributaria || '—'}</TableCell>
                         case 'direccion':
                           return <TableCell key="direccion" className="text-muted-foreground">{empresa.direccion || '—'}</TableCell>
                         case 'direccion_pais': {
@@ -792,7 +792,7 @@ export function EmpresasClient({
                     <ViewField label="Razon Social" value={viewTarget.razon_social} />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="ID Tributaria" value={viewTarget.identificaion_tributaria} />
+                    <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                   </div>
                   <div className="col-span-2">
                     <ViewField label="Direccion" value={viewTarget.direccion} />
@@ -867,8 +867,8 @@ export function EmpresasClient({
                   <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria *</Label>
                   <Input
                     id="id_trib"
-                    value={form.identificaion_tributaria}
-                    onChange={(e) => f('identificaion_tributaria', e.target.value)}
+                    value={form.identificacion_tributaria}
+                    onChange={(e) => f('identificacion_tributaria', e.target.value)}
                     placeholder="NIT o equivalente"
                   />
                 </div>
@@ -1043,7 +1043,7 @@ export function EmpresasClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar empresa?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Se eliminará <strong>{deleteTarget?.nombre}</strong>. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>

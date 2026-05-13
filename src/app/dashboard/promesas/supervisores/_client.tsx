@@ -256,8 +256,8 @@ export function SupervisoresClient({
     Object.entries(colFilters).every(([col, vals]) => {
       if (vals.size === 0) return true
       if (col === '__activo') return vals.has(String(s.activo))
-      if (col === '__empresa') return vals.has(empresaMap.get(s.empresa) ?? '')
-      if (col === '__proyecto') return vals.has(proyectoMap.get(s.proyecto) ?? '')
+      if (col === '__empresa') return vals.has(String(s.empresa))
+      if (col === '__proyecto') return vals.has(String(s.proyecto))
       return vals.has(String(s[col as keyof Supervisor] ?? ''))
     })
   ), [afterSearch, colFilters])
@@ -690,6 +690,7 @@ export function SupervisoresClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -867,7 +868,7 @@ export function SupervisoresClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar supervisor?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>

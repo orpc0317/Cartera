@@ -44,7 +44,7 @@ Empresa {
   codigo:                   number        -- parte del PK, gestionado por la base de datos.
   nombre:                   string        -- nombre de la empresa (nombre comercial)
   razon_social:             string        -- razon social
-  identificaion_tributaria: string        -- identificacion tributaria
+  identificacion_tributaria: string        -- identificacion tributaria
   direccion:                string        -- direccion de la empresa
   direccion_pais:           string        -- FK -> cartera.t_pais.codigo, (codigo ISO)
   direccion_departamento:   string        -- FK -> cartera.t_departamento.codigo, filtrado por pais
@@ -128,11 +128,11 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | razon_social                | Razon Social    | true           | valor directo                                         |
 | identificacion_tributaria   | ID Tributaria   | true           | valor directo                                         |
 | direccion                   | Direccion       | false          | valor directo                                         |
-| direccion_pais              | Pais            | false          | bandera + ISO del pais (Country flag rules)           |
-| direccion_departamento      | Departamento    | false          | nombre del departamento (del prop `departamentos`)    |
-| direccion_municipio         | Municipio       | false          | nombre del municipio (del prop `municipios`)          |
+| direccion_pais              | Pais            | false          | Flag+nombre                                           |
+| direccion_departamento      | Departamento    | false          | nombre FK (prop `departamentos`)                      |
+| direccion_municipio         | Municipio       | false          | nombre FK (prop `municipios`)                         |
 | codigo_postal               | Codigo Postal   | false          | valor directo                                         |
-| regimen_isr                 | Regimen ISR     | false          | label de `REGIMENES_ISR` (importar de `@/lib/constants`) |
+| regimen_isr                 | Regimen ISR     | false          | label cat (REGIMENES_ISR)                             |
 
 ---
 
@@ -150,15 +150,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
 |--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
-| nombre                   | Nombre          | full  | ViewField     | Input; req                                    | ''              |       |
-| razon_social             | Razon Social    | full  | ViewField     | Input; req                                    | ''              |       |
-| identificacion_tributaria| ID Tributaria   | full  | ViewField     | Input; req                                    | ''              |       |
-| direccion                | Direccion       | full  | ViewField     | Input; req                                    | ''              |       |
-| direccion_pais           | Pais            | half  | ViewField     | Select; paisesFiltrados; req                  | ''              |       |
-| direccion_departamento   | Departamento    | half  | ViewField     | Select; departamentosFiltrados pais           | ''              |       |
-| direccion_municipio      | Municipio       | half  | ViewField     | Select; municipiosFiltrados pais+departamento | ''              |       |
-| codigo_postal            | Codigo Postal   | half  | ViewField     | Input                                         | ''              |       |
-| regimen_isr              | Regimen ISR     | full  | ViewField     | Select                                        | primer item     |       |
+| nombre                   | Nombre          | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
+| razon_social             | Razon Social    | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
+| identificacion_tributaria| ID Tributaria   | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
+| direccion                | Direccion       | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
+| direccion_pais           | Pais            | half  | ViewField     | Select geo [§X]; req                   | ''          | filtrado por paises disponibles               |
+| direccion_departamento   | Departamento    | half  | ViewField     | Select geo [§X]; disabled si no hay pais | ''        | filtrado por pais                             |
+| direccion_municipio      | Municipio       | half  | ViewField     | Select geo [§X]; disabled si no hay departamento | '' | filtrado por pais+departamento         |
+| codigo_postal            | Codigo Postal   | half  | ViewField     | Input [§D]                             | ''          |                                               |
+| regimen_isr              | Regimen ISR     | full  | ViewField     | Select cat [§G]                        | primer item | opciones: `REGIMENES_ISR` de `@/lib/constants` |
 
 ---
 

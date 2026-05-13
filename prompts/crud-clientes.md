@@ -144,22 +144,22 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | key                         | label           | defaultVisible | render                                                |
 |-----------------------------|-----------------|----------------|-------------------------------------------------------|
-| empresa                     | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto                    | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
+| empresa                     | Empresa         | false          | nombre FK (prop `empresas`)                           |
+| proyecto                    | Proyecto        | true           | nombre FK (prop `proyectos`)                          |
 | nombre                      | Nombre          | true           | valor directo                                         |
 | direccion                   | Direccion       | false          | valor directo                                         |
-| direccion_pais              | Pais            | false          | bandera + ISO del pais (Country flag rules)            |
-| direccion_departamento      | Departamento    | false          | nombre del departamento (del prop `departamentos`)    |
-| direccion_municipio         | Municipio       | false          | nombre del municipio (del prop `municipios`)          |
+| direccion_pais              | Pais            | false          | Flag+nombre                                           |
+| direccion_departamento      | Departamento    | false          | nombre FK (prop `departamentos`)                      |
+| direccion_municipio         | Municipio       | false          | nombre FK (prop `municipios`)                         |
 | codigo_postal               | Codigo Postal   | false          | valor directo                                         |
 | telefono1                   | Telefono        | true           | valor directo                                         |
 | telefono2                   | Telefono2       | false          | valor directo                                         |
 | correo                      | Correo          | true           | valor directo                                         |
-| tipo_identificacion         | Identificacion  | false          | label de `TIPO_IDENTIFICACION` (importar de `@/lib/constants`) |
+| tipo_identificacion         | Identificacion  | false          | label cat (TIPO_IDENTIFICACION)                       |
 | identificacion_tributaria   | ID Tributaria   | true           | valor directo                                         |
 | nombre_factura              | Nombre Factura  | false          | valor directo                                         |
-| regimen_iva                 | Regimen IVA     | false          | label de `REGIMENES_IVA` (importar de `@/lib/constants`) |
-| activo                      | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
+| regimen_iva                 | Regimen IVA     | false          | label cat (REGIMENES_IVA)                             |
+| activo                      | Activo          | true           | Badge activo [§Y]                                    |
 
 ---
 
@@ -171,32 +171,32 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
 |----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa | prop `proyectos` |
+| codigo   | Codigo   | full  | ViewField | —                   | —                        | — (auto-asignado)  |                 |
 
 **[GENERAL]**
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo)              | Notas |
 |--------------------------|-----------------|-------|---------------|-----------------------------------------------|------------------------------|-------|
-| nombre                   | Nombre          | full  | ViewField     | Input; req                                    | ''                           |       |
-| direccion                | Direccion       | full  | ViewField     | Input; req                                    | ''                           |       |
-| direccion_pais           | Pais            | half  | ViewField     | Select; paisesFiltrados; req                  | proyecto.pais → empresa.pais → IP geo |       |
-| direccion_departamento   | Departamento    | half  | ViewField     | Select; departamentosFiltrados pais           | por pais                     |       |
-| direccion_municipio      | Municipio       | half  | ViewField     | Select; municipiosFiltrados pais+departamento | por depto                    |       |
-| codigo_postal            | Codigo Postal   | half  | ViewField     | Input                                         | ''                           |       |
-| telefono1                | Telefono 1      | full  | ViewField     | PhoneField; req                               | ''                           |       |
-| telefono2                | Telefono 2      | full  | ViewField     | PhoneField                                    | ''                           |       |
-| correo                   | Correo          | full  | ViewField     | Input                                         | ''                           |       |
+| nombre                   | Nombre          | full  | ViewField     | Input [§D]; req                             | ''                                    |                                               |
+| direccion                | Direccion       | full  | ViewField     | Input [§D]; req                             | ''                                    |                                               |
+| direccion_pais           | Pais            | half  | ViewField     | Select geo [§X]; req                        | proyecto.pais → empresa.pais → IP geo |                                               |
+| direccion_departamento   | Departamento    | half  | ViewField     | Select geo [§X]; disabled si no hay pais    | por pais                              |                                               |
+| direccion_municipio      | Municipio       | half  | ViewField     | Select geo [§X]; disabled si no hay departamento | por depto                         |                                               |
+| codigo_postal            | Codigo Postal   | half  | ViewField     | Input [§D]                                  | ''                                    |                                               |
+| telefono1                | Telefono 1      | full  | ViewField     | PhoneField [crud-screens§PhoneField]; req    | ''                                    |                                               |
+| telefono2                | Telefono 2      | full  | ViewField     | PhoneField [crud-screens§PhoneField]        | ''                                    | Opcional                                      |
+| correo                   | Correo          | full  | ViewField     | Input [§D]                                  | ''                                    |                                               |
 
 **[FACTURACION]**
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
 |--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
-| tipo_identificacion      | Identificacion  | half  | ViewField     | Select                                        | 0               |       |
-| identificacion_tributaria| ID Tributaria   | half  | ViewField     | Input; req si tipo_identificacion es diferente de 0                     | ''              |       |
-| nombre_factura           | Nombre Factura  | full  | ViewField     | Input; req si tipo_identificacion es diferente de 0                     | ''              |       |
-| regimen_iva              | Regimen IVA     | half  | ViewField     | Select                                        | 0               |       |
+| tipo_identificacion      | Identificacion  | half  | ViewField     | Select cat [§G]                             | 0               | opciones: `TIPO_IDENTIFICACION` de `@/lib/constants` |
+| identificacion_tributaria| ID Tributaria   | half  | ViewField     | Input [§D]; req si tipo_identificacion ≠ 0  | ''              |                                                     |
+| nombre_factura           | Nombre Factura  | full  | ViewField     | Input [§D]; req si tipo_identificacion ≠ 0  | ''              |                                                     |
+| regimen_iva              | Regimen IVA     | half  | ViewField     | Select cat [§G]                             | 0               | opciones: `REGIMENES_IVA` de `@/lib/constants`      |
 
 ---
 

@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_empresa (
   codigo                    integer     NOT NULL DEFAULT 0,
   nombre                    varchar     NOT NULL,
   razon_social              varchar     NOT NULL,
-  identificaion_tributaria  varchar     NOT NULL,   -- typo original en DB (falta c)
+  identificacion_tributaria  varchar     NOT NULL,
   pais                      varchar     NOT NULL,
   departamento              varchar     NOT NULL,
   municipio                 varchar     NOT NULL,
@@ -846,7 +846,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 -- =============================================================
 -- NOTAS IMPORTANTES
 -- =============================================================
--- * La columna "identificaion_tributaria" en t_empresa tiene un
+-- * La columna fue renombrada de "identificaion_tributaria" a "identificacion_tributaria"
 --   typo (falta 'c') — es así en la DB real, no corregir.
 -- * t_lote.agrego_fecha / modifico_fecha son "timestamp" (sin
 --   zona horaria), a diferencia del resto de tablas que usan

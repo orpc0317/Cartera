@@ -57,11 +57,26 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
 
 ## 4. Instrucciones de arquitectura específicas del proyecto
 
-- Leer los archivos de instrucciones en `.github/instructions/` antes de generar código:
-  - `business-context.instructions.md` — quién es el cliente, jerarquía cuenta→empresa→proyecto→fase→manzana→lote, modelo SaaS, reglas de negocio críticas.
-  - `crud-screens.instructions.md` — layout de modales, formularios, ViewField, SectionDivider.
-  - `server-actions.instructions.md` — patrón `getCuentaActiva`, concurrencia optimista con `modifico_fecha`.
-  - `ui-conventions.instructions.md` — colores de acento por módulo, iconos Lucide, etiquetas, formatos numéricos.
-  - `data-tables.instructions.md` — patrón de tablas de datos.
-  - `image-upload.instructions.md` — seguridad y validación para carga de imágenes (magic bytes, SVG, cleanup). Cargar cuando la pantalla incluya un campo de tipo imagen.
-- Los prompts en `prompts/crud-*.md` son la especificación de cada pantalla; seguirlos al pie de la letra.
+### REGLA OBLIGATORIA — Sin excepción
+
+**Antes de escribir cualquier `_client.tsx` (nuevo o modificado), cargar y leer `components.instructions.md` completo.**
+No usar ningún patrón de UI — ningún input, select, checkbox, modal, tabla, toolbar, ni campo especial — que no esté documentado en ese archivo.
+Si un campo de la spec no coincide con ningún § de `components.instructions.md`, detener y preguntar antes de inventar.
+
+**Al leer cualquier spec (`prompts/crud-*.md`) para generar código**, cargar `spec-field-tokens.instructions.md` y verificar que cada token en `TABS_MODAL` y `COLUMNAS_TABLA` sea reconocido. Si hay un token desconocido → **PARADA OBLIGATORIA** (ver regla de parada en ese archivo).
+
+### Archivos de instrucciones — cuándo cargar cada uno
+
+| Archivo | Cargar cuando… |
+|---------|----------------|
+| `components.instructions.md` | **SIEMPRE** — toda `_client.tsx`, sin excepción. Fuente única de verdad para todos los snippets de UI (§§ A–AE). |
+| `spec-field-tokens.instructions.md` | **SIEMPRE** al leer un spec para generar código. Define los tokens canónicos y la regla de parada si hay un token no reconocido. |
+| `base-ui-gotchas.instructions.md` | **SIEMPRE** junto con `components.instructions.md`. Diferencias críticas Base UI vs Radix: `SelectValue` render prop, `SelectTrigger w-full`, `AlertDialogDescription render={<div />}`, `DropdownMenuTrigger`. |
+| `crud-screens.instructions.md` | Toda pantalla CRUD — modal layout, icon badge, ViewField, SectionDivider, PhoneField pattern, geo pre-selection. |
+| `server-actions.instructions.md` | Todo `page.tsx` y todo `actions/*.ts` — patrón `getCuentaActiva`, `Promise.all` con `.catch()` por llamada, concurrencia optimista con `modifico_fecha`. |
+| `ui-conventions.instructions.md` | Toda `_client.tsx` — color de acento del módulo, iconos Lucide, reglas de labels, formatos numéricos, COUNTRY_CURRENCY_MAP. |
+| `data-tables.instructions.md` | Toda pantalla con tabla — columnas, ColumnFilter, ColumnManager, keyboard nav. |
+| `business-context.instructions.md` | Toda pantalla nueva — jerarquía cuenta→empresa→proyecto, modelo SaaS, reglas de negocio. |
+| `image-upload.instructions.md` | Solo cuando el spec incluya un campo de tipo imagen (`logo_url` u otro) — magic bytes, SVG risk, cleanup, patrón `LogoUploadField` (§ AC). |
+
+### Los prompts en `prompts/crud-*.md` son la especificación de cada pantalla; seguirlos al pie de la letra.

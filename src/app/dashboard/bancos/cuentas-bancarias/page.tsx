@@ -1,4 +1,5 @@
-import { getCuentasBancarias, getMonedas } from '@/app/actions/cuentas-bancarias'
+import { getCuentasBancarias } from '@/app/actions/cuentas-bancarias'
+import { getMonedas } from '@/app/actions/geo'
 import { getEmpresas } from '@/app/actions/empresas'
 import { getProyectos } from '@/app/actions/proyectos'
 import { getBancos } from '@/app/actions/bancos'

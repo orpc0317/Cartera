@@ -115,9 +115,9 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | key            | label           | defaultVisible | render                                               |
 |----------------|-----------------|----------------|------------------------------------------------------|
-| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)           |
-| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)           |
-| fase           | Fase            | true           | nombre de la fase (del prop `fases`)                 |
+| empresa        | Empresa         | false          | nombre FK (prop `empresas`)                          |
+| proyecto       | Proyecto        | true           | nombre FK (prop `proyectos`)                         |
+| fase           | Fase            | true           | nombre FK (prop `fases`)                             |
 | codigo         | Codigo          | true           | valor directo                                        |
 
 ---
@@ -130,10 +130,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)     | Notas |
 |----------|----------|-------|-----------|-------------|------------------|---------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible  |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa  |       |
-| fase     | Fase     | half  | ViewField | Select; req | Select; disabled | primera de proyecto |       |
-| codigo   | Codigo   | half  | ViewField | Input; req  | -                | ''                  |       |
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible  | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa  | prop `proyectos` |
+| fase     | Fase     | half  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera de proyecto | prop `fases`; filtrado por proyecto |
+| codigo   | Codigo   | half  | ViewField | Input [§D]; req     | —                        | ''                  |                 |
 
 ---
 

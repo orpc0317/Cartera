@@ -28,8 +28,24 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Serie Recibos    | `green-100 / gree-600`        |
 | Coordinadores    | `blue-100 / blue-600`         |
 | Vendedores       | `lime-100 / lime-600`         |
+| Tipos Ingresos   | `yellow-100 / yellow-600`     |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
+
+---
+
+## Module group color buckets
+
+When adding a new entity, pick a tone from the bucket of its parent module group **before** choosing an arbitrary color. Then verify the exact token is not already in use in the master accent table above.
+
+| Module group | Suggested tones |
+|---|---|
+| Cartera (receivables, collections) | sky, cyan, blue, indigo |
+| Catalogos (entities, people, places) | emerald, teal, green, lime |
+| Tesoreria (banks, payments, series) | amber, orange, yellow |
+| Configuracion (system, roles, menus) | violet, purple, fuchsia |
+
+> **Rule:** always verify the chosen tone is not already in the master accent table above before assigning it.
 
 ---
 
@@ -59,6 +75,7 @@ Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table act
 | Serie Recibos     | `Receipt`        |
 | Coordinadores    | `Network`        |
 | Vendedores       | `UserCheck`      |
+| Tipos Ingresos   | `Tags`           |
 
 ---
 
@@ -110,17 +127,39 @@ Numeric `codigo` fields (auto-increment PKs) are displayed as plain `N` **withou
 
 ## Text input normalization
 
-All user-typed text → stored **UPPERCASE, accents removed**. Apply inside `f()` before setting form state:
+**Every `_client.tsx` must declare a `f()` helper** that applies normalization before updating form state. Using `setForm` inline directly on a text `<Input>` is **forbidden** — it bypasses this rule.
 
 ```ts
-const v = typeof value === 'string' && !SKIP_KEYS.has(key)
-  ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
-  : value
+// ── Module-level constant (outside the component) ──────────────────────────
+// List every string key that must NOT be uppercased.
+// Number fields are skipped automatically by the typeof guard.
+const SKIP_KEYS = new Set<keyof MyEntityForm>(['correo', 'moneda', ...])
+
+// ── Inside the component ───────────────────────────────────────────────────
+function f(key: keyof MyEntityForm, value: string | number) {
+  const v = typeof value === 'string' && !SKIP_KEYS.has(key)
+    ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+    : value
+  setForm((p) => ({ ...p, [key]: v }))
+}
 ```
 
-**Keys in SKIP_KEYS (must NOT be sanitized):**
+Usage in JSX:
+```tsx
+<Input onChange={(e) => f('nombre', e.target.value)} />   // ✅ normalized
+<Input onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} />  // ❌ bypasses normalization
+```
+
+**Keys that must always be in SKIP_KEYS** (never uppercased):
 `correo`, `pais` / `direccion_pais`, `departamento` / `direccion_departamento`, `municipio` / `direccion_municipio`, `moneda`, `medida`, `manzana` (in LoteForm).
-Number fields are skipped automatically by the `typeof === 'string'` guard.
+
+**Spec-level exception — "only remove accents, no uppercase":**
+When the spec notes `NO normalizar a mayúsculas; SÍ quitar tildes` for a field, add it to `SKIP_KEYS` **and** apply accent-only removal directly in its `onChange`:
+```tsx
+// Field is in SKIP_KEYS → f() won't uppercase it.
+// Apply accent removal inline so the field still gets sanitized.
+<Input onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} />
+```
 
 ---
 
@@ -128,9 +167,11 @@ Number fields are skipped automatically by the `typeof === 'string'` guard.
 
 The `activo` field (smallint 0/1) renders as a badge in every table and as a `Checkbox card` in every view mode modal. No exceptions unless the spec explicitly overrides.
 
-- **Table cell:** `<Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>` when `activo === 1`; `<Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>` when `activo === 0`.
-- **View mode:** `<Checkbox checked={!!record.activo} disabled />` inside a `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5` card (same container as `ViewField`), label above in `text-[10px] font-bold tracking-widest text-muted-foreground/55`.
-- **Edit mode:** For checkboxes that share a grid row with label+input fields, see the **Checkbox vertical alignment** rule in `crud-screens.instructions.md`. In short: add `items-end` to the parent grid and `pb-1` to the checkbox wrapper div.
+→ **Snippets verbatim en `components.instructions.md § Y · Campo activo`** (tabla, vista y edición).
+
+- **Table cell:** Badge verde `Activo` cuando `activo === 1`, badge muted `Inactivo` cuando `activo === 0`.
+- **View mode:** `<Checkbox>` disabled dentro de card `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5`.
+- **Edit mode:** Para checkboxes que comparten fila con input/select → ver **§ J** en `components.instructions.md`.
 
 ---
 
@@ -144,6 +185,24 @@ const fmt = (n: number) =>
 
 - `fmt()` → mora amounts, minimum amounts, any currency amount.
 - `String(n)` → plain integers only (días, códigos).
+
+---
+
+## Typography scale
+
+Consistent type sizes used across all components. Do not introduce sizes outside this scale without a documented reason.
+
+| Token | Tailwind class | Size | Usage |
+|-------|---------------|------|-------|
+| `xs`   | `text-[11px]`  | 11 px | Labels above inputs (`font-semibold tracking-wider`), table header text, badge text |
+| `sm`   | `text-xs`      | 12 px | Secondary labels, subtitles, `SectionDivider` text |
+| `base` | `text-sm`      | 14 px | Body text, input values, table cell content, `ViewField` values (`text-[13px]` ≈ base) |
+| `lg`   | `text-base`    | 16 px | Modal titles, section headings |
+| `2xl`  | `text-xl`      | 20 px | Page `<h1>` — always paired with `font-bold tracking-tight` |
+
+Font weights in use: `400` (normal), `500` (medium / `font-medium`), `600` (semibold / `font-semibold`), `700` (bold / `font-bold`).
+
+Font family: Inter, system-ui, sans-serif — set globally in `globals.css`; never override per-component.
 
 ---
 
@@ -182,101 +241,18 @@ This app uses **Base UI** (`@base-ui/react/select`). `SelectValue` does **not** 
 | Contexto | Formato | Ejemplos |
 |----------|---------|---------|
 | Display (tabla, ViewField, **Select trigger**) | bandera + ISO code only | `🇬🇹 GTQ` ✅ |
-| Selección (**Select dropdown items**) | bandera + ISO — nombre completo | `🇬🇹 GTQ — Guatemalan Quetzal` ✅ |
+| Selección (**Select dropdown items**) | bandera + ISO | `🇬🇹 GTQ` ✅ |
 
 ```
-🇬🇹 GTQ                         ✅ (trigger, tabla, ViewField)
-🇬🇹 GTQ — Guatemalan Quetzal   ✅ (dropdown items únicamente)
-GTQ — Quetzal guatemalteco      ❌ (sin bandera)
-USD (US Dollar)                 ❌ (sin bandera, mal formato)
+🇬🇹 GTQ           ✅ (trigger, tabla, ViewField, dropdown items)
+GTQ               ❌ (sin bandera)
+USD (US Dollar)   ❌ (sin bandera, mal formato)
 ```
 
-> **Razón:** el trigger es compacto (espacio limitado); el dropdown puede ser verbose para que el usuario identifique monedas por nombre si no conoce el código ISO.
+> **Razón:** el trigger es compacto (espacio limitado); el dropdown también muestra bandera + código ISO para consistencia visual.
 
-### Table cells
-
-```tsx
-case 'moneda': {
-  const flag = CURRENCY_FLAG_MAP.get(cb.moneda)
-  return (
-    <TableCell key="moneda" className="text-muted-foreground">
-      {flag ? (
-        <span className="flex items-center gap-1.5">
-          <img src={`https://flagcdn.com/w20/${flag.toLowerCase()}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-          {cb.moneda}
-        </span>
-      ) : cb.moneda || '—'}
-    </TableCell>
-  )
-}
-```
-
-### ViewField card (view mode)
-
-```tsx
-<div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-  <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-  {(() => {
-    const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-    return flag ? (
-      <span className="flex items-center gap-1.5 text-sm font-medium">
-        <img src={`https://flagcdn.com/w20/${flag.toLowerCase()}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-        {viewTarget.moneda}
-      </span>
-    ) : <span className="text-sm font-medium">{viewTarget.moneda || '—'}</span>
-  })()}
-</div>
-```
-
-### Select trigger (edit / create mode)
-
-```tsx
-<SelectValue placeholder="Selecciona moneda">
-  {(v: string) => {
-    const flag = CURRENCY_FLAG_MAP.get(v)
-    return flag ? (
-      <span className="flex items-center gap-1.5">
-        <img src={`https://flagcdn.com/w20/${flag.toLowerCase()}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-        {v}
-      </span>
-    ) : v || null
-  }}
-</SelectValue>
-```
-
-### Select items
-
-```tsx
-{monedas.map((m) => {
-  const flag = CURRENCY_FLAG_MAP.get(m.codigo)
-  return (
-    <SelectItem key={m.codigo} value={m.codigo}>
-      {flag ? (
-        <span className="flex items-center gap-2">
-          <img src={`https://flagcdn.com/w20/${flag.toLowerCase()}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-          {m.codigo}
-        </span>
-      ) : m.codigo}
-    </SelectItem>
-  )
-})}
-```
-
-### CURRENCY_FLAG_MAP
-
-Local constant in each `_client.tsx` that uses moneda. Maps ISO code → country ISO-2 for `flagcdn.com`.
-Only include the currencies that exist in the app; others fall back to code-only display.
-
-```ts
-const CURRENCY_FLAG_MAP = new Map<string, string>([
-  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
-  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
-  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
-  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
-  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
-  ['UYU', 'uy'], ['VES', 've'],
-])
-```
+→ **Snippets verbatim (CURRENCY_FLAG_MAP, tabla, ViewField, Select trigger, Select items, ColumnFilter):**  
+→ **`components.instructions.md § W · Select moneda con bandera`**
 
 ### Column filter values
 

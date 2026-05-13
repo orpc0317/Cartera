@@ -128,15 +128,15 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 
 | key               | label           | defaultVisible | render                                                |
 |-------------------|-----------------|----------------|-------------------------------------------------------|
-| empresa           | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto          | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
-| recibo_automatico | Automatico      | true           | Sí / No (1=Si, 0=No)                                 |
+| empresa           | Empresa         | false          | nombre FK (prop `empresas`)                           |
+| proyecto          | Proyecto        | true           | nombre FK (prop `proyectos`)                          |
+| recibo_automatico | Automatico      | true           | Sí/No                                                |
 | correlativo       | Correlativo     | false          | valor directo                                         |
-| predeterminado    | Predeterminado  | true           | Sí / No (1=Si, 0=No)                                 |
+| predeterminado    | Predeterminado  | true           | Sí/No                                                |
 | formato           | Formato         | true           | valor directo                                         |
-| serie_factura     | Serie Factura   | true           | valor directo (codigo texto)                          |
+| serie_factura     | Serie Factura   | true           | valor directo                                         |
 | dias_fecha        | Dias Fecha      | false          | valor directo                                         |
-| activo            | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
+| activo            | Activo          | true           | Badge activo [§Y]                                    |
 
 ---
 
@@ -148,21 +148,21 @@ Sticky izquierdo: `serie` (label: `"Serie"`, es el identificador visible del PK)
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
 |----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
-| serie    | Serie    | full  | ViewField | Input; req  | Input; disabled  | ''                 |       |
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req  | Select FK [§F]; disabled | primera disponible | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req  | Select FK [§F]; disabled | primero de empresa | prop `proyectos` |
+| serie    | Serie    | full  | ViewField | Input [§D]; req      | Input [§D]; disabled    | ''                 |                 |
 
 **[CONFIGURACION]**
 
 | Campo             | Label          | Ancho | View          | Nuevo / Edit                                | Default (Nuevo) | Notas        |
 |-------------------|----------------|-------|---------------|---------------------------------------------|-----------------|--------------|
-| recibo_automatico | Automatico     | third | Checkbox      | Checkbox 0/1                                | 0               |              |
-| correlativo       | Correlativo    | third | ViewField     | Input number ≥ 0; vacío si automatico=1     | 0               | ver REGLA #9 |
-| formato           | Formato        | third | ViewField     | Input number ≥ 0                            | 0               | ver REGLA #4 |
-| dias_fecha        | Dias Fecha     | half  | ViewField     | Input number ≥ 0                            | 0               |              |
-| serie_factura     | Serie Factura  | half  | ViewField     | Select nullable; filtrado empresa+proyecto  | null            | ver REGLA #3 |
-| predeterminado    | Predeterminado | half  | Checkbox      | Checkbox 0/1                                | 0               | ver REGLA #8 |
-| activo            | Activo         | half  | Checkbox      | Checkbox 0/1                                | 1               |              |
+| recibo_automatico | Automatico     | third | Checkbox [§I]; disabled | Checkbox [§I]                               | 0               |              |
+| correlativo       | Correlativo    | third | ViewField              | Input number [§E]; ≥0; sin-spin; disabled si recibo_automatico=1 | 0 | ver REGLA #9 |
+| formato           | Formato        | third | ViewField              | Input number [§E]; ≥0                        | 0               | ver REGLA #4 |
+| dias_fecha        | Dias Fecha     | half  | ViewField              | Input number [§E]; ≥0                        | 0               |              |
+| serie_factura     | Serie Factura  | half  | ViewField              | Select FK [§F]                               | null            | ver REGLA #3; nullable; primer item = vacío |
+| predeterminado    | Predeterminado | half  | Checkbox [§I]; disabled | Checkbox [§I]                               | 0               | ver REGLA #8 |
+| activo            | Activo         | half  | Badge activo [§Y]      | Checkbox [§I]                               | 1               |              |
 
 ---
 

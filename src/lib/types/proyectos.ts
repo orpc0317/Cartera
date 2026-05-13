@@ -5,7 +5,7 @@ export type Empresa = {
   codigo: number
   nombre: string
   razon_social: string
-  identificaion_tributaria: string  // typo original en DB
+  identificacion_tributaria: string
   direccion_pais: string
   direccion_departamento: string
   direccion_municipio: string
@@ -187,6 +187,7 @@ export type Cliente = {
   identificacion_tributaria?: string
   tipo_identificacion?: number
   regimen_iva: number
+  activo: number
   agrego_usuario?: string
   agrego_fecha?: string
   modifico_usuario?: string

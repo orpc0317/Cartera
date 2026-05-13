@@ -177,22 +177,22 @@ Sticky izquierdo: `numero` (label: `"Numero"`).
 
 | key               | label            | defaultVisible | render                                                |
 |-------------------|------------------|----------------|-------------------------------------------------------|
-| empresa           | Empresa          | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto          | Proyecto         | true           | nombre del proyecto (del prop `proyectos`)            |
-| fase              | Fase             | true           | nombre de la fase (del prop `fases`)                  |
-| manzana           | Manzana          | true           | codigo de la manzana (valor directo)                  |
-| lote              | Lote             | true           | codigo del lote (valor directo)                       |
-| cliente           | Cliente          | true           | nombre del cliente (del prop `clientes`)              |
-| vendedor          | Vendedor         | false          | nombre del vendedor (del prop `vendedores`)           |
-| fecha             | Fecha            | true           | fecha formateada (DD/MM/YYYY)                         |
-| moneda            | Moneda           | true           | bandera + ISO (Moneda display rules)                  |
-| monto             | Monto            | true           | `fmt(monto)` — 2 decimales, locale es-GT              |
-| forma_pago        | Forma Pago       | false          | label de `FORMAS_PAGO`                                |
-| banco             | Banco            | false          | nombre del banco (del prop `bancos`)                  |
+| empresa           | Empresa          | false          | nombre FK (prop `empresas`)                           |
+| proyecto          | Proyecto         | true           | nombre FK (prop `proyectos`)                          |
+| fase              | Fase             | true           | nombre FK (prop `fases`)                              |
+| manzana           | Manzana          | true           | valor directo                                         |
+| lote              | Lote             | true           | valor directo                                         |
+| cliente           | Cliente          | true           | nombre FK (prop `clientes`)                           |
+| vendedor          | Vendedor         | false          | nombre FK (prop `vendedores`)                         |
+| fecha             | Fecha            | true           | fecha DD/MM/YYYY                                      |
+| moneda            | Moneda           | true           | Moneda display [§W]                                   |
+| monto             | Monto            | true           | fmt(monto)                                            |
+| forma_pago        | Forma Pago       | false          | label cat (FORMAS_PAGO)                               |
+| banco             | Banco            | false          | nombre FK (prop `bancos`)                             |
 | numero_cuenta     | Numero Cuenta    | false          | valor directo                                         |
-| cuenta_bancaria   | Cuenta Bancaria  | false          | nombre de la cuenta (del prop `cuentasBancarias`)     |
+| cuenta_bancaria   | Cuenta Bancaria  | false          | nombre FK (prop `cuentasBancarias`)                   |
 | numero_documento  | Numero Documento | false          | valor directo                                         |
-| estado            | Estado           | true           | `<Badge variant="outline">` con `RESERVA_ESTADOS`     |
+| estado            | Estado           | true           | Badge custom (`RESERVA_ESTADOS`)                      |
 
 ---
 
@@ -243,7 +243,7 @@ El boton de footer dice unicamente **"Cerrar"**.
 | Campo    | Label    | Ancho | View                                     |
 |----------|----------|-------|------------------------------------------|
 | fecha    | Fecha    | half  | ViewField                                |
-| estado   | Estado   | half  | Badge outline con RESERVA_ESTADOS        |
+| estado   | Estado   | half  | Badge custom (RESERVA_ESTADOS)  |
 | fase     | Fase     | third | ViewField; nombre de la fase             |
 | manzana  | Manzana  | third | ViewField;          |
 | lote     | Lote     | third | ViewField                                |
@@ -265,7 +265,7 @@ El boton de footer dice unicamente **"Cerrar"**.
 | recibo_serie   | Serie        | half  | ViewField                                |
 | recibo_numero  | Numero       | half  | ViewField                                |
 | forma_pago     | Forma de Pago| half  | ViewField; FORMAS_PAGO label             |
-| moneda         | Moneda       | half  | Moneda display (bandera + ISO)           |
+| moneda         | Moneda       | half  | Moneda display [§W]                    |
 | monto          | Monto        | half  | ViewField; fmt(monto) con moneda         |
 
 **[FORMA PAGO]**

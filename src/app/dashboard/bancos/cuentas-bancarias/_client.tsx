@@ -812,7 +812,7 @@ export function CuentasBancariasClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cuenta bancaria?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong> ({deleteTarget?.numero}).
             </AlertDialogDescription>
           </AlertDialogHeader>

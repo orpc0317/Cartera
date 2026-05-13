@@ -28,6 +28,7 @@ import {
   Scale,
   Receipt,
   BookOpen,
+  Tags,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -103,9 +104,10 @@ const NAV: NavItem[] = [
     label: 'Cuentas Cobrar',
     icon: BookOpen,
     children: [
-      { label: 'Serie Recibos', href: '/dashboard/cuentas-cobrar/series-recibos', icon: Receipt, separator: 'Catalogo' },
-      { label: 'Operaciones',   href: '#', icon: ClipboardList, separator: 'Operaciones', comingSoon: true },
-      { label: 'Consultas',     href: '#', icon: BarChart3,     separator: 'Consultas',   comingSoon: true },
+      { label: 'Serie Recibos',    href: '/dashboard/cuentas-cobrar/series-recibos',   icon: Receipt,       separator: 'Catalogo' },
+      { label: 'Tipos Ingresos',   href: '/dashboard/cuentas-cobrar/tipos-ingresos',   icon: Tags },
+      { label: 'Operaciones',      href: '#', icon: ClipboardList, separator: 'Operaciones', comingSoon: true },
+      { label: 'Consultas',        href: '#', icon: BarChart3,     separator: 'Consultas',   comingSoon: true },
     ],
   },
   {

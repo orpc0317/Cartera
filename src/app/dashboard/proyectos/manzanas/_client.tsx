@@ -665,7 +665,7 @@ export function ManzanasClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar manzana?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Se eliminara la manzana <strong>{deleteTarget?.codigo}</strong> de la fase{' '}
               <strong>{faseMap.get(deleteTarget?.fase ?? 0) ?? deleteTarget?.fase}</strong>.
               Esta accion es irreversible.

@@ -92,36 +92,41 @@ const EMPTY_FORM: ReservaForm = {
 
 // ─── Catálogo de monedas (ISO → país para bandera) ─────────────────────────
 
-const CURRENCIES: { iso: string; flagIso: string }[] = [
-  { iso: 'ARS', flagIso: 'AR' }, { iso: 'BOB', flagIso: 'BO' }, { iso: 'BRL', flagIso: 'BR' },
-  { iso: 'CAD', flagIso: 'CA' }, { iso: 'CLP', flagIso: 'CL' }, { iso: 'COP', flagIso: 'CO' },
-  { iso: 'CRC', flagIso: 'CR' }, { iso: 'CUP', flagIso: 'CU' }, { iso: 'DOP', flagIso: 'DO' },
-  { iso: 'EUR', flagIso: 'EU' }, { iso: 'GBP', flagIso: 'GB' }, { iso: 'GTQ', flagIso: 'GT' },
-  { iso: 'HNL', flagIso: 'HN' }, { iso: 'MXN', flagIso: 'MX' }, { iso: 'NIO', flagIso: 'NI' },
-  { iso: 'PAB', flagIso: 'PA' }, { iso: 'PEN', flagIso: 'PE' }, { iso: 'PYG', flagIso: 'PY' },
-  { iso: 'SVC', flagIso: 'SV' }, { iso: 'USD', flagIso: 'US' }, { iso: 'UYU', flagIso: 'UY' },
-  { iso: 'VES', flagIso: 'VE' },
-]
+const CURRENCY_FLAG_MAP = new Map<string, string>([
+  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
+  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
+  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
+  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
+  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
+  ['UYU', 'uy'], ['VES', 've'],
+])
 
 const RESERVA_ESTADOS: Record<number, { label: string; cls: string }> = {
-  1:  { label: 'Abierta',    cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100' },
-  2:  { label: 'Promesa',    cls: 'bg-sky-100     text-sky-700     border-sky-200     hover:bg-sky-100'     },
-  3:  { label: 'Devolucion', cls: 'bg-amber-100   text-amber-700   border-amber-200   hover:bg-amber-100'   },
-  99: { label: 'Anulado',    cls: 'bg-red-100     text-red-700     border-red-200     hover:bg-red-100'     },
+  1:  { label: 'Abierta',    cls: 'bg-emerald-100 text-emerald-700' },
+  2:  { label: 'Promesa',    cls: 'bg-sky-100     text-sky-700'     },
+  3:  { label: 'Devolucion', cls: 'bg-amber-100   text-amber-700'   },
+  99: { label: 'Anulado',    cls: 'bg-red-100     text-red-700'     },
 }
 
 // ─── Columnas ──────────────────────────────────────────────────────────────
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: '__proyecto', label: 'Proyecto',    defaultVisible: true  },
-  { key: '__fase',     label: 'Fase',        defaultVisible: true  },
-  { key: '__manzana',  label: 'Manzana',     defaultVisible: true  },
-  { key: 'lote',       label: 'Lote',        defaultVisible: true  },
-  { key: '__cliente',  label: 'Cliente',     defaultVisible: true  },
-  { key: '__vendedor', label: 'Vendedor',    defaultVisible: false },
-  { key: 'fecha',      label: 'Fecha',       defaultVisible: true  },
-  { key: 'monto',      label: 'Monto',       defaultVisible: true  },
-  { key: '__estado',   label: 'Estado',      defaultVisible: true  },
+  { key: '__empresa',          label: 'Empresa',          defaultVisible: false },
+  { key: '__proyecto',         label: 'Proyecto',         defaultVisible: true  },
+  { key: '__fase',             label: 'Fase',             defaultVisible: true  },
+  { key: '__manzana',          label: 'Manzana',          defaultVisible: true  },
+  { key: 'lote',               label: 'Lote',             defaultVisible: true  },
+  { key: '__cliente',          label: 'Cliente',          defaultVisible: true  },
+  { key: '__vendedor',         label: 'Vendedor',         defaultVisible: false },
+  { key: 'fecha',              label: 'Fecha',            defaultVisible: true  },
+  { key: '__moneda',           label: 'Moneda',           defaultVisible: true  },
+  { key: 'monto',              label: 'Monto',            defaultVisible: true  },
+  { key: '__forma_pago',       label: 'Forma Pago',       defaultVisible: false },
+  { key: '__banco',            label: 'Banco',            defaultVisible: false },
+  { key: 'num_cuenta',         label: 'Numero Cuenta',    defaultVisible: false },
+  { key: '__cuenta_bancaria',  label: 'Cuenta Bancaria',  defaultVisible: false },
+  { key: 'num_documento',      label: 'Numero Documento', defaultVisible: false },
+  { key: '__estado',           label: 'Estado',           defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
@@ -649,14 +654,19 @@ export function ReservasClient({
     if (fechaHasta && r.fecha > fechaHasta) return false
     if (vendedorFiltro !== 0 && r.vendedor !== vendedorFiltro) return false
     return Object.entries(colFilters).every(([col, vals]) => {
-      if (col === '__proyecto') return vals.has(String(r.proyecto))
-      if (col === '__fase')     return vals.has(String(r.fase))
-      if (col === '__manzana')  return vals.has(r.manzana)
-      if (col === '__cliente')  return vals.has(String(r.cliente))
-      if (col === '__vendedor') return vals.has(String(r.vendedor))
-      if (col === 'lote')       return vals.has(r.lote)
-      if (col === 'fecha')      return vals.has(r.fecha)
-      return true
+      if (col === '__empresa')         return vals.has(String(r.empresa))
+      if (col === '__proyecto')        return vals.has(String(r.proyecto))
+      if (col === '__fase')            return vals.has(String(r.fase))
+      if (col === '__manzana')         return vals.has(r.manzana)
+      if (col === '__cliente')         return vals.has(String(r.cliente))
+      if (col === '__vendedor')        return vals.has(String(r.vendedor))
+      if (col === 'lote')              return vals.has(r.lote)
+      if (col === 'fecha')             return vals.has(r.fecha)
+      if (col === '__moneda')          return vals.has(r.moneda)
+      if (col === '__forma_pago')      return vals.has(String(r.forma_pago))
+      if (col === '__banco')           return vals.has(String(r.banco))
+      if (col === '__cuenta_bancaria') return vals.has(String(r.cuenta_bancaria))
+      return vals.has(String(r[col as keyof Reserva] ?? ''))
     })
   }), [afterSearch, colFilters, fechaDesde, fechaHasta, vendedorFiltro])
 
@@ -942,6 +952,21 @@ export function ReservasClient({
               <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => {
                 const def = ALL_COLUMNS.find((c) => c.key === col.key)!
+                if (col.key === '__empresa') {
+                  return (
+                    <TableHead key="__empresa">
+                      <ColumnFilter
+                        label="Empresa"
+                        values={[...new Set(reservas.map((r) => empresaMap.get(r.empresa) ?? `#${r.empresa}`))].sort()}
+                        active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                          setColFilter('__empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
                 if (col.key === '__proyecto') {
                   return (
                     <TableHead key="__proyecto">
@@ -972,6 +997,33 @@ export function ReservasClient({
                     </TableHead>
                   )
                 }
+                if (col.key === '__fase') {
+                  return (
+                    <TableHead key="__fase">
+                      <ColumnFilter
+                        label="Fase"
+                        values={[...new Set(reservas.map((r) => faseMap.get(r.fase) ?? `#${r.fase}`))].sort()}
+                        active={new Set([...(colFilters['__fase'] ?? new Set())].map((k) => faseMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(fases.map((f) => [f.nombre, String(f.codigo)]))
+                          setColFilter('__fase', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__manzana') {
+                  return (
+                    <TableHead key="__manzana">
+                      <ColumnFilter
+                        label="Manzana"
+                        values={[...new Set(reservas.map((r) => r.manzana).filter(Boolean))].sort()}
+                        active={colFilters['__manzana'] ?? new Set()}
+                        onChange={(v) => setColFilter('__manzana', v)}
+                      />
+                    </TableHead>
+                  )
+                }
                 if (col.key === '__vendedor') {
                   return (
                     <TableHead key="__vendedor">
@@ -982,6 +1034,63 @@ export function ReservasClient({
                         onChange={(labels) => {
                           const byLabel = new Map(vendedores.map((v) => [v.nombre, String(v.codigo)]))
                           setColFilter('__vendedor', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__moneda') {
+                  return (
+                    <TableHead key="__moneda">
+                      <ColumnFilter
+                        label="Moneda"
+                        values={[...new Set(reservas.map((r) => r.moneda).filter(Boolean))].sort()}
+                        active={colFilters['__moneda'] ?? new Set()}
+                        onChange={(v) => setColFilter('__moneda', v)}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__forma_pago') {
+                  return (
+                    <TableHead key="__forma_pago">
+                      <ColumnFilter
+                        label="Forma Pago"
+                        values={Object.entries(FORMAS_PAGO).map(([, v]) => v)}
+                        active={new Set([...(colFilters['__forma_pago'] ?? new Set())].map((k) => FORMAS_PAGO[Number(k)] ?? k))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(Object.entries(FORMAS_PAGO).map(([k, v]) => [v, k]))
+                          setColFilter('__forma_pago', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__banco') {
+                  return (
+                    <TableHead key="__banco">
+                      <ColumnFilter
+                        label="Banco"
+                        values={[...new Set(reservas.map((r) => bancoMap.get(r.banco) ?? `#${r.banco}`))].sort()}
+                        active={new Set([...(colFilters['__banco'] ?? new Set())].map((k) => bancoMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(bancos.map((b) => [b.nombre, String(b.codigo)]))
+                          setColFilter('__banco', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__cuenta_bancaria') {
+                  return (
+                    <TableHead key="__cuenta_bancaria">
+                      <ColumnFilter
+                        label="Cuenta Bancaria"
+                        values={[...new Set(reservas.map((r) => cuentaBancariaMap.get(r.cuenta_bancaria) ?? `#${r.cuenta_bancaria}`))].sort()}
+                        active={new Set([...(colFilters['__cuenta_bancaria'] ?? new Set())].map((k) => cuentaBancariaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(cuentasBancarias.map((cb) => [cuentaBancariaMap.get(cb.codigo) ?? String(cb.codigo), String(cb.codigo)]))
+                          setColFilter('__cuenta_bancaria', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
                     </TableHead>
@@ -1030,6 +1139,8 @@ export function ReservasClient({
 
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case '__empresa':
+                          return <TableCell key="__empresa" className="text-muted-foreground">{empresaMap.get(r.empresa) ?? `#${r.empresa}`}</TableCell>
                         case '__proyecto':
                           return <TableCell key="__proyecto" className="font-medium">{proyectoMap.get(r.proyecto) ?? `#${r.proyecto}`}</TableCell>
                         case '__fase':
@@ -1044,14 +1155,32 @@ export function ReservasClient({
                           return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(r.vendedor) ?? `#${r.vendedor}`}</TableCell>
                         case 'fecha':
                           return <TableCell key="fecha" className="text-muted-foreground">{r.fecha}</TableCell>
+                        case '__moneda': {
+                          const flag = CURRENCY_FLAG_MAP.get(r.moneda)
+                          return (
+                            <TableCell key="__moneda" className="text-muted-foreground">
+                              <span className="inline-flex items-center gap-1.5">
+                                {flag && (
+                                  <img
+                                    src={`https://flagcdn.com/w20/${flag}.png`}
+                                    width={20} height={14}
+                                    alt={r.moneda}
+                                    className="rounded-[2px] shrink-0"
+                                  />
+                                )}
+                                {r.moneda}
+                              </span>
+                            </TableCell>
+                          )
+                        }
                         case 'monto': {
-                          const curr = CURRENCIES.find((c) => c.iso === r.moneda)
+                          const flag = CURRENCY_FLAG_MAP.get(r.moneda)
                           return (
                             <TableCell key="monto" className="w-32 text-right font-mono text-sm">
                               <span className="inline-flex items-center justify-end gap-1.5">
-                                {curr && (
+                                {flag && (
                                   <img
-                                    src={`https://flagcdn.com/w20/${curr.flagIso.toLowerCase()}.png`}
+                                    src={`https://flagcdn.com/w20/${flag}.png`}
                                     width={20} height={14}
                                     alt={r.moneda}
                                     className="rounded-[2px] shrink-0"
@@ -1062,13 +1191,23 @@ export function ReservasClient({
                             </TableCell>
                           )
                         }
+                        case '__forma_pago':
+                          return <TableCell key="__forma_pago" className="text-muted-foreground">{FORMAS_PAGO[r.forma_pago] ?? `#${r.forma_pago}`}</TableCell>
+                        case '__banco':
+                          return <TableCell key="__banco" className="text-muted-foreground">{bancoMap.get(r.banco) ?? (r.banco ? `#${r.banco}` : '—')}</TableCell>
+                        case 'num_cuenta':
+                          return <TableCell key="num_cuenta" className="font-mono text-xs text-muted-foreground">{r.num_cuenta || '—'}</TableCell>
+                        case '__cuenta_bancaria':
+                          return <TableCell key="__cuenta_bancaria" className="text-muted-foreground">{cuentaBancariaMap.get(r.cuenta_bancaria) ?? (r.cuenta_bancaria ? `#${r.cuenta_bancaria}` : '—')}</TableCell>
+                        case 'num_documento':
+                          return <TableCell key="num_documento" className="font-mono text-xs text-muted-foreground">{r.num_documento || '—'}</TableCell>
                         case '__estado': {
                           const est = RESERVA_ESTADOS[r.estado]
                           return (
                             <TableCell key="__estado">
                               {est
-                                ? <Badge className={est.cls}>{est.label}</Badge>
-                                : <Badge variant="outline">{r.estado}</Badge>}
+                                ? <Badge variant="secondary" className={`font-normal ${est.cls}`}>{est.label}</Badge>
+                                : <Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">{r.estado}</Badge>}
                             </TableCell>
                           )
                         }

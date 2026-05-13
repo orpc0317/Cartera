@@ -106,7 +106,7 @@ type ColPref = { key: string; visible: boolean }
 const ALL_COLUMNS: ColDef[] = [
   { key: 'empresa',          label: 'Empresa',        defaultVisible: false },
   { key: 'proyecto',         label: 'Proyecto',       defaultVisible: true  },
-  { key: 'recibo_automatico',label: 'Recibo Auto',    defaultVisible: true  },
+  { key: 'recibo_automatico',label: 'Automatico',     defaultVisible: true  },
   { key: 'correlativo',      label: 'Correlativo',    defaultVisible: false },
   { key: 'predeterminado',   label: 'Predeterminado', defaultVisible: true  },
   { key: 'formato',          label: 'Formato',        defaultVisible: true  },
@@ -807,7 +807,7 @@ export function SeriesRecibosClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar serie de recibos?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente la serie <strong>{deleteTarget?.serie}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>

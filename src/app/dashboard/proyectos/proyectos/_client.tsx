@@ -112,32 +112,14 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
 }
 
 // ─── Monedas ─────────────────────────────────────────────────────────────
-const CURRENCIES: { iso: string; name: string; flagIso: string }[] = [
-  { iso: 'ARS', name: 'Peso Argentino',       flagIso: 'AR' },
-  { iso: 'BOB', name: 'Boliviano',             flagIso: 'BO' },
-  { iso: 'BRL', name: 'Real Brasileño',        flagIso: 'BR' },
-  { iso: 'CAD', name: 'Dólar Canadiense',      flagIso: 'CA' },
-  { iso: 'CLP', name: 'Peso Chileno',          flagIso: 'CL' },
-  { iso: 'COP', name: 'Peso Colombiano',       flagIso: 'CO' },
-  { iso: 'CRC', name: 'Colón Costarricense',   flagIso: 'CR' },
-  { iso: 'CUP', name: 'Peso Cubano',           flagIso: 'CU' },
-  { iso: 'DOP', name: 'Peso Dominicano',       flagIso: 'DO' },
-  { iso: 'EUR', name: 'Euro',                  flagIso: 'EU' },
-  { iso: 'GBP', name: 'Libra Esterlina',       flagIso: 'GB' },
-  { iso: 'GTQ', name: 'Quetzal Guatemalteco',  flagIso: 'GT' },
-  { iso: 'HNL', name: 'Lempira Hondureño',     flagIso: 'HN' },
-  { iso: 'MXN', name: 'Peso Mexicano',         flagIso: 'MX' },
-  { iso: 'NIO', name: 'Córdoba Nicaragüense',  flagIso: 'NI' },
-  { iso: 'PAB', name: 'Balboa Panameño',       flagIso: 'PA' },
-  { iso: 'PEN', name: 'Sol Peruano',           flagIso: 'PE' },
-  { iso: 'PYG', name: 'Guaraní Paraguayo',     flagIso: 'PY' },
-  { iso: 'SVC', name: 'Colón Salvadoreño',     flagIso: 'SV' },
-  { iso: 'USD', name: 'Dólar Estadounidense',  flagIso: 'US' },
-  { iso: 'UYU', name: 'Peso Uruguayo',         flagIso: 'UY' },
-  { iso: 'VES', name: 'Bolívar Venezolano',    flagIso: 'VE' },
-]
-
-const CURRENCY_MAP = new Map(CURRENCIES.map((c) => [c.iso, c]))
+const CURRENCY_FLAG_MAP = new Map<string, string>([
+  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
+  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
+  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
+  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
+  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
+  ['UYU', 'uy'], ['VES', 've'],
+])
 
 // ─── Códigos de marcación telefónica ─────────────────────────────────────
 const PHONE_COUNTRIES: { iso: string; code: string; name: string }[] = [
@@ -496,17 +478,18 @@ export function ProyectosClient({
     [empresas]
   )
 
-  // Solo las monedas presentes en el catálogo t_moneda
-  const activeCurrencies = useMemo(() => {
-    const set = new Set(monedas.map((m) => m.codigo))
-    return CURRENCIES.filter((c) => set.has(c.iso))
-  }, [monedas])
-
-  // País ISO → moneda ISO, restringido a monedas activas
+  // País ISO → moneda ISO, restringido a monedas en t_moneda
   const countryToCurrency = useMemo(() => ({
-    ...Object.fromEntries(activeCurrencies.filter((c) => c.flagIso !== 'EU').map((c) => [c.flagIso, c.iso])),
-    ...(activeCurrencies.some((c) => c.iso === 'EUR') ? { DE: 'EUR', ES: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR' } : {}),
-  }), [activeCurrencies])
+    ...Object.fromEntries(
+      monedas
+        .filter((m) => m.codigo !== 'EUR')
+        .flatMap((m) => {
+          const flag = CURRENCY_FLAG_MAP.get(m.codigo)
+          return flag ? [[flag.toUpperCase(), m.codigo] as [string, string]] : []
+        })
+    ),
+    ...(monedas.some((m) => m.codigo === 'EUR') ? { DE: 'EUR', ES: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR' } : {}),
+  }), [monedas])
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
@@ -1236,14 +1219,14 @@ export function ProyectosClient({
                   </div>
                   <div className="col-span-2 grid grid-cols-3 gap-3">
                     {(() => {
-                      const c = CURRENCY_MAP.get(viewTarget.moneda ?? '')
+                      const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda ?? '')
                       return (
                         <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
                           <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
-                          {c ? (
+                          {flag ? (
                             <span className="flex items-center gap-1.5 text-sm font-medium">
-                              <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                              {c.iso}
+                              <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                              {viewTarget.moneda}
                             </span>
                           ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
                         </div>
@@ -1394,25 +1377,28 @@ export function ProyectosClient({
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Seleccionar moneda">
                             {(v: string) => {
-                              const c = CURRENCY_MAP.get(v)
-                              return c ? (
+                              const flag = CURRENCY_FLAG_MAP.get(v)
+                              return flag ? (
                                 <span className="flex items-center gap-2">
-                                  <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  <span>{c.iso}</span>
+                                  <img src={`https://flagcdn.com/w20/${flag}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  <span>{v}</span>
                                 </span>
                               ) : null
                             }}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {activeCurrencies.map((c) => (
-                            <SelectItem key={c.iso} value={c.iso}>
-                              <span className="flex items-center gap-2">
-                                <img src={`https://flagcdn.com/w20/${c.flagIso.toLowerCase()}.png`} alt={c.flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                {c.iso}
-                              </span>
-                            </SelectItem>
-                          ))}
+                          {monedas.map((m) => {
+                            const flag = CURRENCY_FLAG_MAP.get(m.codigo)
+                            return (
+                              <SelectItem key={m.codigo} value={m.codigo}>
+                                <span className="flex items-center gap-2">
+                                  {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={m.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                  {m.codigo}
+                                </span>
+                              </SelectItem>
+                            )
+                          })}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1493,7 +1479,7 @@ export function ProyectosClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción eliminará permanentemente{' '}
               <strong>{deleteTarget?.nombre}</strong>. Esta operación no se puede deshacer.
             </AlertDialogDescription>

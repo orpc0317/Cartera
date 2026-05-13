@@ -119,11 +119,11 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | key            | label           | defaultVisible | render                                                |
 |----------------|-----------------|----------------|-------------------------------------------------------|
-| empresa        | Empresa         | false          | nombre de la empresa (del prop `empresas`)            |
-| proyecto       | Proyecto        | true           | nombre del proyecto (del prop `proyectos`)            |
+| empresa        | Empresa         | false          | nombre FK (prop `empresas`)                           |
+| proyecto       | Proyecto        | true           | nombre FK (prop `proyectos`)                          |
 | nombre         | Nombre          | true           | valor directo                                         |
-| coordinador    | Coordinador     | false          | nombre del coordinador (del prop `coordinadores`)     |
-| activo         | Activo          | true           | `<Badge>` emerald si activo=1, muted si activo=0      |
+| coordinador    | Coordinador     | false          | nombre FK (prop `coordinadores`)                      |
+| activo         | Activo          | true           | Badge activo [§Y]                                      |
 
 ---
 
@@ -135,17 +135,17 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
 |----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
-| empresa  | Empresa  | full  | ViewField | Select; req | Select; disabled | primera disponible |       |
-| proyecto | Proyecto | full  | ViewField | Select; req | Select; disabled | primero de empresa |       |
-| codigo   | Codigo   | full  | ViewField | —           | —                | — (auto-asignado)  |       |
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa | prop `proyectos` |
+| codigo   | Codigo   | full  | ViewField | —                   | —                        | — (auto-asignado)  |                 |
 
 **[GENERAL]**
 
 | Campo      | Label      | Ancho | View          | Nuevo / Edit                                | Default (Nuevo)    | Notas |
 |------------|------------|-------|---------------|---------------------------------------------|--------------------| ------|
-| coordinador| Coordinador| full  | ViewField     | Select; coordinadoresFiltrados empresa+proy | primero disponible |       |
-| nombre     | Nombre     | full  | ViewField     | Input; req                                  | ''                 |       |
-| activo     | Activo     | full  | Checkbox      | Checkbox 0/1                                | 1                  |       |
+| coordinador| Coordinador| full  | ViewField         | Select FK [§F]; req | primero disponible | prop `coordinadores`; filtrado por empresa+proyecto |
+| nombre     | Nombre     | full  | ViewField         | Input [§D]; req    | ''                 |                                                     |
+| activo     | Activo     | full  | Badge activo [§Y] | Checkbox [§I]      | 1                  |                                                     |
 
 ---
 

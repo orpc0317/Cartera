@@ -162,11 +162,11 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | key                     | label        | defaultVisible | render                                                         |
 |-------------------------|--------------|----------------|----------------------------------------------------------------|
-| empresa                 | Empresa      | true           | nombre de la empresa (del prop `empresas`)                     |
+| empresa                 | Empresa      | true           | nombre FK (prop `empresas`)                                   |
 | nombre                  | Nombre       | true           | valor directo                                                  |
-| direccion_pais          | Pais         | true           | bandera + nombre del pais (Country flag rules)                 |
-| direccion_departamento  | Departamento | false          | nombre del departamento (del prop `departamentos`)             |
-| direccion_municipio     | Municipio    | false          | nombre del municipio (del prop `municipios`)                   |
+| direccion_pais          | Pais         | true           | Flag+nombre                                                    |
+| direccion_departamento  | Departamento | false          | nombre FK (prop `departamentos`)                               |
+| direccion_municipio     | Municipio    | false          | nombre FK (prop `municipios`)                                  |
 | telefono1               | Telefono     | false          | valor directo                                                  |
 
 ---
@@ -179,8 +179,8 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo   | Label   | Ancho | View      | Nuevo       | Edit                 | Default (Nuevo)    | Notas    |
 |---------|---------|-------|-----------|-------------|----------------------|--------------------|----------|
-| empresa | Empresa | full  | ViewField | Select; req | Select; disabled     | primera disponible |          |
-| codigo  | Codigo  | third | ViewField | -           | ViewField (readonly) | — (auto-asignado)  |          |
+| empresa | Empresa | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible | prop `empresas` |
+| codigo  | Codigo  | third | ViewField | —                   | ViewField (readonly)     | — (auto-asignado)  |                 |
 
 **[GENERAL]**
 
@@ -201,32 +201,32 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | Campo           | Label           | Ancho | View                          | Nuevo / Edit                                                                                                  | Default (Nuevo) | Notas |
 |-----------------|-----------------|-------|-------------------------------|---------------------------------------------------------------------------------------------------------------|-----------------|-------|
-| mora_automatica | Mora Automatica | full  | Checkbox (disabled)           | Checkbox 0/1; **habilita/deshabilita** todos los campos de calculo de mora abajo                              | 0               |       |
-| forma_mora      | Forma Calculo   | 1/4   | ViewField: Diario/Mensual     | Select: Mensual=0, Diario=1; **disabled si `mora_automatica !== 1`**                                          | 0 (Mensual)     |       |
-| tipoCalculo     | Tipo Calculo    | 1/4   | ViewField: Tasa/Valor Fijo    | Select UI-only: Tasa=0, Valor Fijo=1; **disabled si `mora_automatica !== 1`**; al cambiar a Tasa: zeroes `fijo_mora`; al cambiar a Valor Fijo: zeroes `interes_mora` | 0 (Tasa) | **Estado local, NO es campo de BD.** Init openView: `fijo_mora > 0 ? 1 : 0` |
-| interes_mora    | % Mora          | 1/4   | ViewField (si tipoCalculo=0)  | Input number step=0.01; **visible solo si `tipoCalculo === 0`**; **disabled si `mora_automatica !== 1`**; req* si mora_automatica=1 y tipoCalculo=0 | 0 | Mutuamente exclusivo con `fijo_mora` |
-| fijo_mora       | Monto Mora      | 1/4   | ViewField (si tipoCalculo=1)  | Input number step=0.01; **visible solo si `tipoCalculo === 1`**; **disabled si `mora_automatica !== 1`**; req* si mora_automatica=1 y tipoCalculo=1 | 0 | Mutuamente exclusivo con `interes_mora` |
-| dias_gracia     | Dias Gracia     | 1/4   | ViewField                     | Input number; **disabled si `mora_automatica !== 1`**; requerido (>= 0) si mora_automatica=1 — **0 es válido** | 0 |       |
+| mora_automatica | Mora Automatica | full  | Checkbox [§I]; disabled | Checkbox [§I]; **habilita/deshabilita** todos los campos de calculo de mora abajo | 0 | |
+| forma_mora      | Forma Calculo   | 1/4   | ViewField: Diario/Mensual     | Select cat [§G]; disabled si `mora_automatica !== 1` | 0 (Mensual) | |
+| tipoCalculo     | Tipo Calculo    | 1/4   | ViewField: Tasa/Valor Fijo    | Select cat [§G]; disabled si `mora_automatica !== 1`; al cambiar a Tasa: zeroes `fijo_mora`; al cambiar a Valor Fijo: zeroes `interes_mora` | 0 (Tasa) | **Estado local, NO es campo de BD.** Init openView: `fijo_mora > 0 ? 1 : 0` |
+| interes_mora    | % Mora          | 1/4   | ViewField (si tipoCalculo=0)  | Input number [§E]; ≥0; **visible solo si `tipoCalculo === 0`**; disabled si `mora_automatica !== 1`; req si mora_automatica=1 y tipoCalculo=0 | 0 | Mutuamente exclusivo con `fijo_mora` |
+| fijo_mora       | Monto Mora      | 1/4   | ViewField (si tipoCalculo=1)  | Input number [§E]; ≥0; **visible solo si `tipoCalculo === 1`**; disabled si `mora_automatica !== 1`; req si mora_automatica=1 y tipoCalculo=1 | 0 | Mutuamente exclusivo con `interes_mora` |
+| dias_gracia     | Dias Gracia     | 1/4   | ViewField                     | Input number [§E]; ≥0; disabled si `mora_automatica !== 1`; req (≥ 0) si mora_automatica=1 | 0 | |
 
 > Los 4 campos (forma_mora / tipoCalculo / interes_mora o fijo_mora / dias_gracia) se renderizan en una sola fila con `grid-cols-4`.
 
-| dias_afectos    | Dias Afectos    | 1/3   | ViewField: Un Mes/Todos         | Select: Todos Los Dias=0, Un Mes=1; siempre habilitado                                                | 0 (Todos Los Dias)    |       |
-| minimo_mora     | Mora Minima     | 1/3   | ViewField (2 decimales)         | Input text (inputMode=decimal); estado auxiliar `minMoraStr`; onBlur reformatea a 2 decimales (`es-GT`); siempre habilitado | 0.00 | `minMoraStr` sincroniza display ↔ `form.minimo_mora` |
-| mora_enganche   | Mora Enganche   | 1/3   | Checkbox (disabled)             | Checkbox 0/1; siempre habilitado                                                                      | 0 |       |
+| dias_afectos    | Dias Afectos    | 1/3   | ViewField: Un Mes/Todos         | Select cat [§G]; siempre habilitado                                                                | 0 (Todos Los Dias)    |       |
+| minimo_mora     | Mora Minima     | 1/3   | ViewField (2 decimales)         | Input [§D] (inputMode=decimal); estado auxiliar `minMoraStr`; onBlur reformatea a 2 decimales (`es-GT`); siempre habilitado | 0.00 | `minMoraStr` sincroniza display ↔ `form.minimo_mora` |
+| mora_enganche   | Mora Enganche   | 1/3   | Checkbox [§I]; disabled         | Checkbox [§I]; siempre habilitado                                                                  | 0 |       |
 
 **[ABONO CAPITAL]**
 
 | Campo                | Label                | Ancho | View      | Nuevo / Edit                               | Default (Nuevo) | Notas |
 |----------------------|----------------------|-------|-----------|--------------------------------------------|-----------------|-------|
-| minimo_abono_capital | Minimo Abono Capital | 3/4   | ViewField | Input number step=0.01; siempre habilitado | 0               |      |
+| minimo_abono_capital | Minimo Abono Capital | 3/4   | ViewField | Input number [§E]; ≥0; siempre habilitado | 0 | |
 
 **[OTROS PARAMETROS]**
 
 | Campo           | Label           | Ancho | View                                  | Nuevo / Edit                                                                                               | Default (Nuevo)                        | Notas |
 |-----------------|-----------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------|-------|
-| moneda          | Moneda          | third  | bandera + ISO + nombre de moneda      | Select con banderas de `CURRENCIES` (lista hardcoded en cliente); req; **auto-set al cambiar pais/empresa** via `COUNTRY_TO_CURRENCY` | COUNTRY_TO_CURRENCY[empresa.pais] → 'GTQ' | No usa prop `monedas` del server; lista embebida en `_client.tsx` |
-| promesa_vencida | Promesa Vencida | third  | Checkbox (disabled)                   | Checkbox 0/1; siempre habilitado                                                                           | 0                                      |       |
-| logo_url        | Logo            | full  | `<img>` si existe, ViewField si no   | `LogoUploadField`; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | ''                                     | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
+| moneda          | Moneda          | third  | Moneda display [§W]                      | Select moneda [§W]; req; **auto-set al cambiar pais/empresa** via `COUNTRY_TO_CURRENCY` | COUNTRY_TO_CURRENCY[empresa.pais] → 'GTQ' | No usa prop `monedas` del server; lista embebida en `_client.tsx` |
+| promesa_vencida | Promesa Vencida | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0                                      |       |
+| logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
 
 ---
 

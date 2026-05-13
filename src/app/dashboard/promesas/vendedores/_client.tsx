@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Eye, Plus, UserCheck, Search,
-  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2,
+  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,12 +50,54 @@ type ColPref = { key: string; visible: boolean }
 type ColFilters = Record<string, Set<string>>
 
 const ALL_COLUMNS: ColDef[] = [
-  { key: '__proyecto', label: 'Proyecto', defaultVisible: true  },
-  { key: 'nombre',     label: 'Nombre',   defaultVisible: true  },
-  { key: '__activo',   label: 'Activo',   defaultVisible: true  },
+  { key: '__empresa',     label: 'Empresa',     defaultVisible: false },
+  { key: '__proyecto',    label: 'Proyecto',    defaultVisible: true  },
+  { key: 'nombre',        label: 'Nombre',      defaultVisible: true  },
+  { key: '__coordinador', label: 'Coordinador', defaultVisible: false },
+  { key: '__activo',      label: 'Activo',      defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
+
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: 'codigo', label: 'Codigo' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+)
+
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
+
+function exportCsv(
+  rows: Vendedor[], colPrefs: ColPref[],
+  empresaMap: Map<number, string>, proyectoMap: Map<number, string>,
+  coordinadorMap: Map<number, string>
+) {
+  const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+    .filter((k) => !NEVER_EXPORT.has(k))
+  const headers = keys.map((k) => COL_LABELS[k] ?? k)
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => keys.map((k) => {
+      if (k === '__empresa')     return formatCsvCell(empresaMap.get(r.empresa) ?? r.empresa)
+      if (k === '__proyecto')    return formatCsvCell(proyectoMap.get(r.proyecto) ?? r.proyecto)
+      if (k === '__coordinador') return formatCsvCell(r.coordinador ? (coordinadorMap.get(r.coordinador) ?? r.coordinador) : '')
+      if (k === '__activo')      return formatCsvCell(r.activo === 1 ? 'Activo' : 'Inactivo')
+      return formatCsvCell(r[k as keyof Vendedor])
+    }).join(',')),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `vendedores-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 // ─── Formulario vacío ──────────────────────────────────────────────────────
 
@@ -211,18 +253,21 @@ export function VendedoresClient({
     return initialData.filter((v) =>
       v.nombre.toLowerCase().includes(q) ||
       (empresaMap.get(v.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(v.proyecto) ?? '').toLowerCase().includes(q)
+      (proyectoMap.get(v.proyecto) ?? '').toLowerCase().includes(q) ||
+      (v.coordinador ? (coordinadorMap.get(v.coordinador) ?? '') : '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap, proyectoMap])
+  }, [initialData, search, empresaMap, proyectoMap, coordinadorMap])
 
   const filtered = useMemo(() => afterSearch.filter((v) =>
     Object.entries(colFilters).every(([col, vals]) => {
       if (vals.size === 0) return true
-      if (col === '__activo')   return vals.has(String(v.activo))
-      if (col === '__proyecto') return vals.has(proyectoMap.get(v.proyecto) ?? '')
+      if (col === '__activo')      return vals.has(String(v.activo))
+      if (col === '__empresa')     return vals.has(String(v.empresa))
+      if (col === '__proyecto')    return vals.has(String(v.proyecto))
+      if (col === '__coordinador') return vals.has(String(v.coordinador ?? ''))
       return vals.has(String(v[col as keyof Vendedor] ?? ''))
     })
-  ), [afterSearch, colFilters, proyectoMap])
+  ), [afterSearch, colFilters])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -443,7 +488,11 @@ export function VendedoresClient({
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs, empresaMap, proyectoMap, coordinadorMap)} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            Exportar CSV
+          </Button>
           <ColumnManager
             prefs={colPrefs}
             onToggle={toggleCol}
@@ -466,6 +515,21 @@ export function VendedoresClient({
             <TableRow className="bg-muted/30">
               <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => {
+                if (col.key === '__empresa') {
+                  return (
+                    <TableHead key="__empresa">
+                      <ColumnFilter
+                        label="Empresa"
+                        values={[...new Set(initialData.map((v) => empresaMap.get(v.empresa) ?? `#${v.empresa}`))].sort()}
+                        active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                          setColFilter('__empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
                 if (col.key === '__proyecto') {
                   return (
                     <TableHead key="__proyecto">
@@ -476,6 +540,21 @@ export function VendedoresClient({
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
                           setColFilter('__proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__coordinador') {
+                  return (
+                    <TableHead key="__coordinador">
+                      <ColumnFilter
+                        label="Coordinador"
+                        values={[...new Set(initialData.map((v) => v.coordinador ? (coordinadorMap.get(v.coordinador) ?? `#${v.coordinador}`) : '(Sin coordinador)'))].sort()}
+                        active={new Set([...(colFilters['__coordinador'] ?? new Set())].map((k) => k === '' ? '(Sin coordinador)' : (coordinadorMap.get(Number(k)) ?? `#${k}`)))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(coordinadores.map((c) => [c.nombre, String(c.codigo)]))
+                          setColFilter('__coordinador', new Set([...labels].map((l) => l === '(Sin coordinador)' ? '' : (byLabel.get(l) ?? l))))
                         }}
                       />
                     </TableHead>
@@ -541,6 +620,13 @@ export function VendedoresClient({
 
                     {visibleCols.map((col) => {
                       switch (col.key) {
+                        case '__empresa':
+                          return (
+                            <TableCell key="__empresa" className="text-muted-foreground">
+                              {empresaMap.get(vendedor.empresa) ?? `#${vendedor.empresa}`}
+                            </TableCell>
+                          )
+
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
@@ -551,14 +637,21 @@ export function VendedoresClient({
                         case 'nombre':
                           return <TableCell key="nombre" className="font-medium">{vendedor.nombre}</TableCell>
 
+                        case '__coordinador':
+                          return (
+                            <TableCell key="__coordinador" className="text-muted-foreground">
+                              {vendedor.coordinador ? (coordinadorMap.get(vendedor.coordinador) ?? `#${vendedor.coordinador}`) : '—'}
+                            </TableCell>
+                          )
+
                         case '__activo':
                           return (
                             <TableCell key="__activo">
                               <Badge
-                                variant={vendedor.activo === 1 ? 'default' : 'secondary'}
+                                variant="secondary"
                                 className={vendedor.activo === 1
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-normal border-0'
-                                  : 'font-normal'
+                                  ? 'font-normal bg-emerald-100 text-emerald-700'
+                                  : 'font-normal bg-muted text-muted-foreground'
                                 }
                               >
                                 {ACTIVO_LABELS[vendedor.activo] ?? `#${vendedor.activo}`}
@@ -619,6 +712,7 @@ export function VendedoresClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && similarWarning) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -816,7 +910,7 @@ export function VendedoresClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar vendedor?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>

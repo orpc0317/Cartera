@@ -101,7 +101,7 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
     ...form,
     nombre:                   toDbString(form.nombre),
     razon_social:             toDbString(form.razon_social),
-    identificaion_tributaria: toDbString(form.identificaion_tributaria),
+    identificacion_tributaria: toDbString(form.identificacion_tributaria),
     direccion_pais:           toDbString(form.direccion_pais),
     direccion_departamento:   toDbString(form.direccion_departamento),
     direccion_municipio:      toDbString(form.direccion_municipio),
@@ -163,7 +163,7 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
     .single()
 
   const normalized: Partial<EmpresaForm> = { ...form }
-  const strFields = ['nombre', 'razon_social', 'identificaion_tributaria', 'direccion_pais', 'direccion_departamento', 'direccion_municipio', 'direccion', 'codigo_postal'] as const
+  const strFields = ['nombre', 'razon_social', 'identificacion_tributaria', 'direccion_pais', 'direccion_departamento', 'direccion_municipio', 'direccion', 'codigo_postal'] as const
   for (const key of strFields) {
     if (typeof normalized[key] === 'string') {
       (normalized as Record<string, unknown>)[key] = toDbString(normalized[key] as string)

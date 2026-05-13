@@ -56,109 +56,16 @@ return (
 
 ## Modal layout
 
-```tsx
-<Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
-  if (!open && similarWarning) return   // guard: keep dialog open while the duplicate-name AlertDialog is active
-  setDialogOpen(open)
-  if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
-}}>
-  <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
-
-    <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-{accent}-50/70 to-transparent border-b border-border/50 shrink-0">
-      <div className="flex items-center gap-3 pr-8">
-        <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
-        <div className="flex-1 min-w-0">
-          <DialogTitle className="text-base font-semibold leading-tight truncate">
-            {isEditing && !viewTarget ? 'Nueva X' : isEditing ? 'Editar X' : viewTarget?.nombre}
-          </DialogTitle>
-          {viewTarget && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {subtitle}
-              <span className="font-mono ml-1.5 text-muted-foreground/60"> #{viewTarget.codigo}</span>
-            </p>
-          )}
-        </div>
-      </div>
-    </DialogHeader>
-
-    <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-      <TabsList className="shrink-0"><TabsTrigger value="general" className="gap-1.5"><MapPin className="h-3.5 w-3.5" /> General</TabsTrigger></TabsList>
-      <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-        {!isEditing && viewTarget ? <ViewMode /> : <EditMode />}
-      </TabsContent>
-    </Tabs>
-
-    <DialogFooter className="mt-4 shrink-0">
-      {!isEditing && viewTarget ? (
-        <>
-          <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-          {puedeModificar && <Button onClick={startEdit} className="gap-2"><Pencil className="h-3.5 w-3.5" /> Editar</Button>}
-        </>
-      ) : (
-        <>
-          <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
-          <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando' : 'Guardar'}</Button>
-        </>
-      )}
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-```
-
-### Icon badge by mode
-
-| Mode     | Background    | Icon color    |
-|----------|---------------|---------------|
-| Viewing  | `{accent}-100` | `{accent}-600` |
-| Creating | `{accent}-100` | `{accent}-600` |
-| Editing  | `amber-100`   | `amber-600`   |
-
-Icon: entity icon when viewing, `<Plus>` when creating, `<Pencil>` when editing.
+→ **Copiar verbatim de `components.instructions.md § R · Modal JSX completo`**  
+→ Las variables computadas (`iconBadgeBg`, `icon`, `subtitle`) están en **§ B**  
+→ Las funciones (`openCreate`, `openView`, `startEdit`, `cancelEdit`, `handleSave`) están en **§ C**
 
 ---
 
-## ViewField
+## ViewField + SectionDivider
 
-```tsx
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
-  return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
-    </div>
-  )
-}
-```
-
-### Empty-value rules for ViewField
-
-- **Text fields** — pass the raw value; `ViewField` shows blank when it's `null`, `undefined`, or `''`. Never pass `|| '—'` at the call site.
-- **Numeric fields** — `fmt(0)` returns `"0.00"` which is truthy and would show up. When 0 means "not set", guard at the call site:
-  ```tsx
-  {/* ✅ Correct — 0 renders as blank */}
-  <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
-  <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${medida}` : ''} />
-
-  {/* ❌ Wrong — fmt(0) = "0.00" always shows */}
-  <ViewField label="Valor" value={fmt(viewTarget.valor)} />
-  ```
-  Exception: if 0 is a semantically meaningful value that should always be displayed (e.g. `dias_gracia = 0` is valid and distinct from "not set"), pass `fmt(x)` directly without the guard.
-
----
-
-## SectionDivider
-
-```tsx
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
-    </div>
-  )
-}
-```
+→ **Copiar verbatim de `components.instructions.md § N · ViewField + SectionDivider`**  
+Reglas de valores vacíos y numéricos también están en esa sección.
 
 ---
 
@@ -325,7 +232,137 @@ Examples in spec syntax:
 
 ---
 
-## PhoneField pattern
+## Hardcoded dropdown catalog
+
+Catalog of all `Record<number, string>` constants used across the app. When a screen needs one of these, copy the constant definition verbatim — never redefine values differently. When a new constant is added, append it here.
+
+```ts
+// Tipo de identificación tributaria
+const TIPO_ID_LABELS: Record<number, string> = {
+  0: 'NIT',
+  1: 'DPI',
+  2: 'Extranjero',
+}
+
+// Regímenes de ISR (importar de @/lib/constants → REGIMENES_ISR)
+// { 0: 'General', 1: 'Pequeño Contribuyente', ... } — ver constants.ts
+
+// Regímenes de IVA (importar de @/lib/constants → REGIMENES_IVA)
+// { 0: 'General', 1: 'Pequeño Contribuyente', ... } — ver constants.ts
+
+// Formas de pago para reservas/transacciones de cobro
+const FORMAS_PAGO: Record<number, string> = {
+  1: 'Efectivo',
+  2: 'Cheque',
+  3: 'Depósito',
+  4: 'Transferencia',
+}
+
+// Forma de cálculo — método de cálculo en tipos de ingreso (otros cargos)
+const FORMA_CALCULO_OTROS: Record<number, string> = {
+  1: 'Monto Mensual Fijo',
+  2: '% (Anual) Precio Lote',
+  3: '% (Anual) Precio Lote - Enganche',
+  4: '% (Anual) Saldo Capital',
+  5: '% Capital Cuota',
+}
+```
+
+> **Regla:** la clave es siempre un entero (`number`). El primer item del `Record` es el pre-seleccionado por defecto en `openCreate()`. Si el backend almacena el campo como `smallint`, usar `Number(v)` en los handlers del Select.
+
+---
+
+## Moneda — patrón estándar
+
+Toda pantalla que muestre o edite un campo de moneda debe seguir este patrón sin excepción.
+
+### Origen de datos
+
+- **`getMonedas()`** en `src/app/actions/geo.ts` — lee `cartera.t_moneda`. Llamar en `page.tsx` dentro del `Promise.all` y pasar como prop `monedas: Moneda[]` al Client Component.
+- **Nunca** usar la constante `CURRENCIES` hardcodeada ni crear listas locales.
+
+### Bandera
+
+- Declarar `CURRENCY_FLAG_MAP` como constante de módulo en el `_client.tsx` (fuera del componente):
+
+```ts
+const CURRENCY_FLAG_MAP = new Map<string, string>([
+  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
+  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
+  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
+  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
+  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
+  ['UYU', 'uy'], ['VES', 've'],
+])
+```
+
+### Select editable (nuevo / editar)
+
+```tsx
+<Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
+  <SelectTrigger className="w-full">
+    <SelectValue placeholder="Selecciona moneda">
+      {(v: string) => {
+        const flag = CURRENCY_FLAG_MAP.get(v)
+        return flag ? (
+          <span className="flex items-center gap-2">
+            <img src={`https://flagcdn.com/w20/${flag}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+            <span>{v}</span>
+          </span>
+        ) : null
+      }}
+    </SelectValue>
+  </SelectTrigger>
+  <SelectContent>
+    {monedas.map((m) => {
+      const flag = CURRENCY_FLAG_MAP.get(m.codigo)
+      return (
+        <SelectItem key={m.codigo} value={m.codigo}>
+          <span className="flex items-center gap-2">
+            {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={m.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+            {m.codigo}
+          </span>
+        </SelectItem>
+      )
+    })}
+  </SelectContent>
+</Select>
+```
+
+### ViewField (solo lectura)
+
+```tsx
+{(() => {
+  const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda ?? '')
+  return (
+    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
+      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
+      {flag ? (
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+          {viewTarget.moneda}
+        </span>
+      ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
+    </div>
+  )
+})()}
+```
+
+### Display inline (tabla u otro contexto)
+
+```tsx
+{(() => {
+  const flag = CURRENCY_FLAG_MAP.get(row.moneda)
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={row.moneda} width={20} height={14} className="rounded-[2px] shrink-0" />}
+      {row.moneda}
+    </span>
+  )
+})()}
+```
+
+---
 
 Use `<PhoneField>` from `@/components/ui/phone-field` for every telephone field. Import `DIAL_CODES` and `splitPhone` from the same module.
 
@@ -452,6 +489,45 @@ if (paisFromProject) {
 ```
 
 > **Base UI constraint:** `AlertDialogDescription` does NOT support `asChild` (that is a Radix UI pattern). If the description needs to contain block-level content (lists, multiple paragraphs), use the `render` prop to change the root element: `<AlertDialogDescription render={<div />}>`. Never nest `<p>` inside `AlertDialogDescription` — use `<div>` instead to avoid the hydration error `<p> cannot be a descendant of <p>`.
+
+---
+
+## Status badge variants
+
+Use these classes for status/state badges anywhere in the UI (table cells, transaction headers, detail cards). These complement the `activo` badge rule in `ui-conventions.instructions.md`.
+
+```tsx
+// success — confirmed, active, paid
+<Badge variant="secondary" className="font-normal bg-green-100 text-green-700">Confirmado</Badge>
+
+// error — cancelled, rejected, overdue
+<Badge variant="secondary" className="font-normal bg-red-100 text-red-700">Anulado</Badge>
+
+// warning — pending, expiring, draft
+<Badge variant="secondary" className="font-normal bg-amber-100 text-amber-700">Borrador</Badge>
+
+// info — informational, neutral state
+<Badge variant="secondary" className="font-normal bg-blue-100 text-blue-700">En Proceso</Badge>
+
+// default — muted/neutral
+<Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Sin Estado</Badge>
+```
+
+**Rules:**
+- Always use `variant="secondary"` as the base — it disables the default shadcn/ui color.
+- Always include `font-normal` — `variant="secondary"` inherits `font-medium` which is too heavy for status text.
+- Map all status values to one of the five variants above; never use raw accent colors for status badges.
+- Define a `const` map above the component for multi-state entities (avoids inline conditionals):
+  ```tsx
+  const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
+    borrador:   { label: 'Borrador',   className: 'bg-amber-100 text-amber-700' },
+    confirmado: { label: 'Confirmado', className: 'bg-green-100 text-green-700' },
+    anulado:    { label: 'Anulado',    className: 'bg-red-100   text-red-700'   },
+  }
+  // Usage:
+  const badge = ESTADO_BADGE[row.estado] ?? { label: row.estado, className: 'bg-muted text-muted-foreground' }
+  <Badge variant="secondary" className={`font-normal ${badge.className}`}>{badge.label}</Badge>
+  ```
 
 ---
 

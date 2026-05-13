@@ -1048,7 +1048,7 @@ export function LotesClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar lote?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription render={<div />}>
               Esta accion no se puede deshacer. Se eliminara permanentemente el lote{' '}
               <strong>{deleteTarget?.codigo}</strong>.
             </AlertDialogDescription>

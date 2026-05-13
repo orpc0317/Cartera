@@ -1,0 +1,27 @@
+﻿Pestaña,Seccion, Campo    ,Origen Campo, Label    , Ancho ,Ver, Nuevo       ,Editar, Default (Nuevo),Comportamiento, Notas         
+General,Identificacion,empresa  ,Base Datos, Empresa  , full  ,ViewField , Select; req ,Select; disabled     ,primera empresa disponible,,               
+General,Identificacion,proyecto ,Base Datos, Proyecto , full  ,ViewField , Select; req ,Select; disabled     ,primer proyecto disponible para esta empresa empresa,al cambiar proyecto resetear eventual_moneda a la moneda del proyecto,               
+General,Identificacion,codigo   ,Base Datos, Codigo   ,third,ViewField ,             ,ViewField,                    ,,valor asignado por la base de datos al momento de agregar el registro
+General,General,nombre,Base Datos,Nombre,full,ViewField ,Input; req,Input; req,,,
+General,General,etiqueta,Base Datos,Etiqueta,third,ViewField ,Input; req,Input; req,,"este campo es excepcion a la regla de que todo campo debe quedar en mayusculas, pero si quitar las tildes",longitud maxima de 10 caraccteres
+General,General,(spacer),,,third,,,,,,celda vacia
+General,General,(spacer),,,third,,,,,,celda vacia
+General,Forma Pago,eventual,Virtual,Eventual,half,Selecction Button; disabled,Selecction Button,Selecction Button,seleccionado,"si el campo es seleccionado debe habiitar los campos eventual_moneda, eventual_monto",
+General,Forma Pago,(spacer),,,half,,,,,,celda vacia
+General,Forma Pago,eventual_moneda,Virtual,Moneda,third,bandera + ISO moneda; req,Select con banderas de `CURRENCIES`; req,Select con banderas de `CURRENCIES`; req,moneda del proyecto seleccionado,el campo es requerido si el selection button eventual es seleccionado,
+General,Forma Pago,eventual_monto,Virtual,Monto,third,ViewField ,Input; req,Input; req,,el campo es requerido si el selection button eventual es seleccionado,
+General,Forma Pago,(spacer),,,third,,,,,,celda vacia
+General,Forma Pago,estado_cuenta,Virtual,Estado Cuenta,half,Selecction Button; disabled,Selecction Button,Selecction Button,no seleccionado,"si el campo es seleccionado debe habiitar los campos forma_calculo, estado_cuenta_moneda, estado_cuenta_monto, hasta_monto. Si es seleccionada la opcion 1 de la lista, el Label del campo estado_cuenta_monto es ""Monto"", cualquier otra seleccion el Label es ""Porcentaje (%)""",
+General,Forma Pago,(spacer),,,half,,,,,,celda vacia
+General,Forma Pago,forma_calculo,Virtual,Forma Calculo,half,ViewField , Select; req ,Select; disabled     ,primer elemento de la lista,,el select se llena con FORMA_CALCULO_OTROS por nombre
+General,Forma Pago,(spacer),,,half,,,,,,celda vacia
+General,Forma Pago,estado_cuenta_moneda,Virtual,Moneda,third,bandera + ISO moneda,Select con banderas de `CURRENCIES`; req,Select con banderas de `CURRENCIES`; req,moneda del proyecto seleccionado,el campo es requerido si el selection button estado_cuenta es seleccionado,
+General,Forma Pago,estado_cuenta_monto,Virtual,Monto,third,ViewField ,Input; req,Input; req,,el campo es requerido si el selection button estado_cuenta es seleccionado,
+General,Forma Pago,hasta_monto,Virtual,Hasta Monto,third,ViewField ,Input,Input,,,
+General,Facturacion,factura_item,Base Datos,Item,half,ViewField ,Input; req,Input; req,,el campo es requerido si impuesto es seleccionado,
+General,Facturacion,factura_descripcion,Base Datos,Descripcion,half,ViewField ,Input; req,Input; req,,el campo es requerido si impuesto es seleccionado,
+General,Otros Parametros,fijo,Base Datos,Fijo,third,VewField,VewField,VewField,no seleccionado,,"este campo no es editable y no se puede agregar ningun registro como Fijo. Este campo es administrado por la base de datos. Valores 1 - Seleccionado, 0 - No Seleccionado"
+General,Otros Parametros,editable,Base Datos,Editable,third,VewField,CheckBox,CheckBox,no seleccionado,,"valores 1 - Seleccionado, 0 - No Seleccionado"
+General,Otros Parametros,impuesto,Base Datos,Impuestos,third,VewField,CheckBox,CheckBox,no seleccionado,"si el campo es seleccionado habilita los campos de facturacion facturacion_item, facturacion_descripcion","valores 1 - Seleccionado, 0 - No Seleccionado"
+General,Otros Parametros,mora,Base Datos,Mora,third,VewField,CheckBox,CheckBox,no seleccionado,,"valores 1 - Seleccionado, 0 - No Seleccionado"
+General,Otros Parametros,activo,Base Datos,Activo,third,VewField,CheckBox,CheckBox,no seleccionado,,"valores 1 - Seleccionado, 0 - No Seleccionado"
