@@ -104,9 +104,11 @@ type ColFilters = Record<string, Set<string>>
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -264,8 +266,8 @@ export function LotesClient({
 
   // Maps
   const empresaMap  = useMemo(() => new Map(empresas.map((e)  => [e.codigo,  e.nombre])),  [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo,  p.nombre])),  [proyectos])
-  const faseMap     = useMemo(() => new Map(fases.map((f)     => [f.codigo,  f.nombre])),  [fases])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`,  p.nombre])),  [proyectos])
+  const faseMap     = useMemo(() => new Map(fases.map((f)     => [`${f.empresa}-${f.proyecto}-${f.codigo}`,  f.nombre])),  [fases])
 
   // Cascada en formulario
   const proyectosFiltrados = useMemo(
@@ -297,8 +299,8 @@ export function LotesClient({
   }
 
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueFaseNames     = useMemo(() => [...new Set(initialData.map((r) => faseMap.get(r.fase)         ?? ''))].sort(), [initialData, faseMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(initialData.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [initialData, faseMap])
   const uniqueManzanaVals   = useMemo(() => [...new Set(initialData.map((r) => r.manzana))].sort(),                         [initialData])
   const uniqueMonedaVals    = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(),                          [initialData])
   const uniqueEstadoVals    = ['Disponible', 'Reservado', 'Vendido']
@@ -309,12 +311,12 @@ export function LotesClient({
       if (q &&
           !l.codigo.toLowerCase().includes(q) &&
           !l.manzana.toLowerCase().includes(q) &&
-          !(proyectoMap.get(l.proyecto) ?? '').toLowerCase().includes(q) &&
-          !(faseMap.get(l.fase) ?? '').toLowerCase().includes(q)) return false
+          !(proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? '').toLowerCase().includes(q) &&
+          !(faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? '').toLowerCase().includes(q)) return false
       return Object.entries(colFilters).every(([col, vals]) => {
         if (col === 'empresa')  return vals.has(empresaMap.get(l.empresa)   ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(l.proyecto) ?? '')
-        if (col === 'fase')     return vals.has(faseMap.get(l.fase)         ?? '')
+        if (col === 'proyecto') return vals.has(proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? '')
+        if (col === 'fase')     return vals.has(faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? '')
         if (col === 'manzana')  return vals.has(l.manzana)
         if (col === 'moneda')   return vals.has(l.moneda)
         if (col === '__estado') return vals.has(getLoteEstado(l.promesa, l.recibo_numero))
@@ -526,8 +528,8 @@ export function LotesClient({
     const rows = filtered.map((l) =>
       colsToExport.map((k) => {
         if (k === 'empresa')  return empresaMap.get(l.empresa)   ?? ''
-        if (k === 'proyecto') return proyectoMap.get(l.proyecto) ?? ''
-        if (k === 'fase')     return faseMap.get(l.fase)         ?? ''
+        if (k === 'proyecto') return proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? ''
+        if (k === 'fase')     return faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? ''
         const v = (l as Record<string, unknown>)[k]
         return v ?? ''
       }),
@@ -690,9 +692,9 @@ export function LotesClient({
                         case 'empresa':
                           return <TableCell key="empresa"  className="whitespace-nowrap">{empresaMap.get(lote.empresa)   ?? lote.empresa}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="whitespace-nowrap">{proyectoMap.get(lote.proyecto) ?? lote.proyecto}</TableCell>
+                          return <TableCell key="proyecto" className="whitespace-nowrap">{proyectoMap.get(`${lote.empresa}-${lote.proyecto}`) ?? lote.proyecto}</TableCell>
                         case 'fase':
-                          return <TableCell key="fase"     className="whitespace-nowrap">{faseMap.get(lote.fase)         ?? lote.fase}</TableCell>
+                          return <TableCell key="fase"     className="whitespace-nowrap">{faseMap.get(`${lote.empresa}-${lote.proyecto}-${lote.fase}`) ?? lote.fase}</TableCell>
                         case 'manzana':
                           return <TableCell key="manzana">{lote.manzana}</TableCell>
                         case 'moneda': {
@@ -779,7 +781,7 @@ export function LotesClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? ''} · {faseMap.get(viewTarget.fase) ?? ''} · {viewTarget.manzana}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} · {faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} · {viewTarget.manzana}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -808,8 +810,8 @@ export function LotesClient({
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? ''} /></div>
-                  <ViewField label="Fase"    value={faseMap.get(viewTarget.fase) ?? ''} />
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
+                  <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} />
                   <ViewField label="Manzana" value={viewTarget.manzana} />
                   <ViewField label="Codigo"  value={viewTarget.codigo}  />
                   <SectionDivider label="GENERAL" />
@@ -849,7 +851,7 @@ export function LotesClient({
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
-                          {(v: string) => v && v !== '0' ? (proyectoMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -862,7 +864,7 @@ export function LotesClient({
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona fase">
-                          {(v: string) => v && v !== '0' ? (faseMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v && v !== '0' ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

@@ -52,6 +52,7 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
 - **No agregar** comentarios, docstrings ni tipos a código que no fue modificado.
 - **No agregar** manejo de errores para escenarios imposibles. Validar solo en los límites del sistema (entradas de usuario y respuestas de red).
 - **No refactorizar** código existente que no fue solicitado.
+- **Revisión post-edición obligatoria:** después de crear o modificar cualquier archivo TypeScript/TSX, usar `get_errors` sobre ese archivo para detectar errores de compilación (comas faltantes, tipos incorrectos, imports rotos, etc.) y corregirlos antes de dar la tarea por terminada.
 
 ---
 

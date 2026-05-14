@@ -103,9 +103,11 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -144,7 +146,7 @@ function formatCsvCell(value: unknown): string {
     ? `"${str.replace(/"/g, '""')}"` : str
 }
 
-function exportCsv(rows: TipoIngreso[], colPrefs: ColPref[], empresaMap: Map<number, string>, proyectoMap: Map<number, string>) {
+function exportCsv(rows: TipoIngreso[], colPrefs: ColPref[], empresaMap: Map<number, string>, proyectoMap: Map<string, string>) {
   const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
     .filter((k) => !NEVER_EXPORT.has(k))
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
@@ -152,7 +154,7 @@ function exportCsv(rows: TipoIngreso[], colPrefs: ColPref[], empresaMap: Map<num
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
       if (k === 'empresa') return formatCsvCell(empresaMap.get(r.empresa) ?? r.empresa)
-      if (k === 'proyecto') return formatCsvCell(proyectoMap.get(r.proyecto) ?? r.proyecto)
+      if (k === 'proyecto') return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto)
       return formatCsvCell(r[k as keyof TipoIngreso])
     }).join(',')),
   ]
@@ -291,7 +293,7 @@ export function TiposIngresosClient({
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
   const proyectoDefaultMoneda = useCallback((proyectoCodigo: number) => {
     return proyectos.find((p) => p.codigo === proyectoCodigo)?.moneda ?? (monedas[0]?.codigo ?? '')
   }, [proyectos, monedas])
@@ -332,7 +334,7 @@ export function TiposIngresosClient({
 
   // ── Unique filter values ──────────────────────────────────────────────────
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
   const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((r) => r.nombre))].sort(), [initialData])
 
   // ── Filtering pipeline ────────────────────────────────────────────────────
@@ -354,7 +356,7 @@ export function TiposIngresosClient({
       if (active.size === 0) continue
       rows = rows.filter((r) => {
         if (col === 'empresa')  return active.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto') return active.has(proyectoMap.get(r.proyecto) ?? '')
+        if (col === 'proyecto') return active.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
         if (col === 'nombre')   return active.has(r.nombre)
         return active.has(String(r[col as keyof TipoIngreso]))
       })
@@ -673,7 +675,7 @@ export function TiposIngresosClient({
                         case 'empresa':
                           return <TableCell key={col.key} className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
                         case 'proyecto':
-                          return <TableCell key={col.key} className="text-muted-foreground">{proyectoMap.get(row.proyecto) ?? row.proyecto}</TableCell>
+                          return <TableCell key={col.key} className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
                         case 'nombre':
                           return <TableCell key={col.key} className="font-medium">{row.nombre}</TableCell>
                         case 'activo':
@@ -748,7 +750,7 @@ export function TiposIngresosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? ''}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -768,7 +770,7 @@ export function TiposIngresosClient({
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa)} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto)} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} /></div>
                   <div className="col-span-2 grid grid-cols-3 gap-3">
                     <ViewField label="Codigo" value={String(viewTarget.codigo)} />
                     <div /><div />
@@ -893,10 +895,10 @@ export function TiposIngresosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="proyecto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     {viewTarget ? (
-                      <ViewField label="" value={proyectoMap.get(form.proyecto)} />
+                      <ViewField label="" value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
                       <Select value={String(form.proyecto)} onValueChange={(v) => handleProyectoChange(Number(v))}>
-                        <SelectTrigger id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                         </SelectContent>

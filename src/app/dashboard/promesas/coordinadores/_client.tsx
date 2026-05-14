@@ -72,8 +72,8 @@ function exportCsv(
   rows: Coordinador[],
   colPrefs: ColPref[],
   empresaMap: Map<number, string>,
-  proyectoMap: Map<number, string>,
-  supervisorMap: Map<number, string>,
+  proyectoMap: Map<string, string>,
+  supervisorMap: Map<string, string>,
 ) {
   const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
     .filter((k) => !NEVER_EXPORT.has(k))
@@ -82,8 +82,8 @@ function exportCsv(
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
       if (k === '__empresa')    return formatCsvCell(empresaMap.get(r.empresa)      ?? r.empresa)
-      if (k === '__proyecto')   return formatCsvCell(proyectoMap.get(r.proyecto)    ?? r.proyecto)
-      if (k === '__supervisor') return formatCsvCell(supervisorMap.get(r.supervisor) ?? r.supervisor)
+      if (k === '__proyecto')   return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`)              ?? r.proyecto)
+      if (k === '__supervisor') return formatCsvCell(supervisorMap.get(`${r.empresa}-${r.proyecto}-${r.supervisor}`) ?? r.supervisor)
       if (k === '__activo')     return formatCsvCell(r.activo === 1 ? 'Activo' : 'Inactivo')
       return formatCsvCell(r[k as keyof Coordinador])
     }).join(',')),
@@ -101,9 +101,11 @@ function exportCsv(
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -237,8 +239,8 @@ export function CoordinadoresClient({
 
   // ── Mapas derivados ───────────────────────────────────────────────────
   const empresaMap    = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap   = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
-  const supervisorMap = useMemo(() => new Map(supervisores.map((s) => [s.codigo, s.nombre])), [supervisores])
+  const proyectoMap   = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
+  const supervisorMap = useMemo(() => new Map(supervisores.map((s) => [`${s.empresa}-${s.proyecto}-${s.codigo}`, s.nombre])), [supervisores])
 
   const proyectosPorEmpresa = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
@@ -256,8 +258,8 @@ export function CoordinadoresClient({
     return initialData.filter((c) =>
       c.nombre.toLowerCase().includes(q) ||
       (empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(c.proyecto) ?? '').toLowerCase().includes(q) ||
-      (supervisorMap.get(c.supervisor) ?? '').toLowerCase().includes(q)
+      (proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q) ||
+      (supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? '').toLowerCase().includes(q)
     )
   }, [initialData, search, empresaMap, proyectoMap, supervisorMap])
 
@@ -266,8 +268,8 @@ export function CoordinadoresClient({
       if (vals.size === 0) return true
       if (col === '__activo')     return vals.has(String(c.activo))
       if (col === '__empresa')    return vals.has(String(c.empresa))
-      if (col === '__proyecto')   return vals.has(String(c.proyecto))
-      if (col === '__supervisor') return vals.has(String(c.supervisor))
+      if (col === '__proyecto')   return vals.has(`${c.empresa}-${c.proyecto}`)
+      if (col === '__supervisor') return vals.has(`${c.empresa}-${c.proyecto}-${c.supervisor}`)
       return vals.has(String(c[col as keyof Coordinador] ?? ''))
     })
   ), [afterSearch, colFilters])
@@ -557,10 +559,10 @@ export function CoordinadoresClient({
                     <TableHead key="__proyecto">
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(initialData.map((c) => proyectoMap.get(c.proyecto) ?? `#${c.proyecto}`))].sort()}
-                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? `#${k}`))}
+                        values={[...new Set(initialData.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
-                          const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
+                          const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
                           setColFilter('__proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
@@ -572,10 +574,10 @@ export function CoordinadoresClient({
                     <TableHead key="__supervisor">
                       <ColumnFilter
                         label="Supervisor"
-                        values={[...new Set(initialData.map((c) => supervisorMap.get(c.supervisor) ?? `#${c.supervisor}`))].sort()}
-                        active={new Set([...(colFilters['__supervisor'] ?? new Set())].map((k) => supervisorMap.get(Number(k)) ?? `#${k}`))}
+                        values={[...new Set(initialData.map((c) => supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? `#${c.supervisor}`))].sort()}
+                        active={new Set([...(colFilters['__supervisor'] ?? new Set())].map((k) => supervisorMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
-                          const byLabel = new Map(supervisores.map((s) => [s.nombre, String(s.codigo)]))
+                          const byLabel = new Map(supervisores.map((s) => [s.nombre, `${s.empresa}-${s.proyecto}-${s.codigo}`]))
                           setColFilter('__supervisor', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
@@ -649,7 +651,7 @@ export function CoordinadoresClient({
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(coordinador.proyecto) ?? `#${coordinador.proyecto}`}
+                              {proyectoMap.get(`${coordinador.empresa}-${coordinador.proyecto}`) ?? `#${coordinador.proyecto}`}
                             </TableCell>
                           )
                         case 'nombre':
@@ -657,7 +659,7 @@ export function CoordinadoresClient({
                         case '__supervisor':
                           return (
                             <TableCell key="__supervisor" className="text-muted-foreground">
-                              {supervisorMap.get(coordinador.supervisor) ?? `#${coordinador.supervisor}`}
+                              {supervisorMap.get(`${coordinador.empresa}-${coordinador.proyecto}-${coordinador.supervisor}`) ?? `#${coordinador.supervisor}`}
                             </TableCell>
                           )
                         case '__activo':
@@ -736,7 +738,7 @@ export function CoordinadoresClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? ''}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -758,11 +760,11 @@ export function CoordinadoresClient({
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
                   <div className="col-span-2"><ViewField label="Codigo"   value={String(viewTarget.codigo)} /></div>
 
                   <SectionDivider label="GENERAL" />
-                  <div className="col-span-2"><ViewField label="Supervisor" value={supervisorMap.get(viewTarget.supervisor) ?? `#${viewTarget.supervisor}`} /></div>
+                  <div className="col-span-2"><ViewField label="Supervisor" value={supervisorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.supervisor}`) ?? `#${viewTarget.supervisor}`} /></div>
                   <div className="col-span-2"><ViewField label="Nombre"     value={viewTarget.nombre} /></div>
                   <div className="col-span-2 flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.activo} disabled />
@@ -793,7 +795,7 @@ export function CoordinadoresClient({
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
-                          {(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -809,7 +811,7 @@ export function CoordinadoresClient({
                     <Select value={String(form.supervisor)} onValueChange={(v) => f('supervisor', Number(v))} disabled={!form.proyecto}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona supervisor">
-                          {(v: string) => v ? (supervisorMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v ? (supervisorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

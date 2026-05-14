@@ -140,9 +140,11 @@ const fmt = (n: number) =>
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -459,13 +461,13 @@ export function ReservasClient({
 
   // ── Mapas FK ──────────────────────────────────────────────────────────
   const empresaMap          = useMemo(() => new Map(empresas.map((e)  => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap         = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
-  const faseMap             = useMemo(() => new Map(fases.map((f)     => [f.codigo, f.nombre])), [fases])
+  const proyectoMap         = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
+  const faseMap             = useMemo(() => new Map(fases.map((f)     => [`${f.empresa}-${f.proyecto}-${f.codigo}`, f.nombre])), [fases])
   const clienteMap          = useMemo(() => new Map(clientes.map((c)  => [c.codigo, c.nombre])), [clientes])
   const bancoMap            = useMemo(() => new Map(bancos.map((b)    => [b.codigo, b.nombre])), [bancos])
   const cuentaBancariaMap   = useMemo(() => new Map(cuentasBancarias.map((cb) => [cb.codigo, `${bancoMap.get(cb.banco) ?? cb.banco}: ${cb.numero}`])), [cuentasBancarias, bancoMap])
-  const vendedorMap         = useMemo(() => new Map(vendedores.map((v) => [v.codigo, v.nombre])), [vendedores])
-  const cobradorMap         = useMemo(() => new Map(cobradores.map((c) => [c.codigo, c.nombre])), [cobradores])
+  const vendedorMap         = useMemo(() => new Map(vendedores.map((v) => [`${v.empresa}-${v.proyecto}-${v.codigo}`, v.nombre])), [vendedores])
+  const cobradorMap         = useMemo(() => new Map(cobradores.map((c) => [`${c.empresa}-${c.proyecto}-${c.codigo}`, c.nombre])), [cobradores])
 
   // ── Listas filtradas para los selects del formulario ─────────────────
 
@@ -644,7 +646,7 @@ export function ReservasClient({
   const afterSearch = useMemo(() => reservas.filter((r) => {
     const q = search.toLowerCase()
     if (!q) return true
-    const proyNombre = proyectoMap.get(r.proyecto)?.toLowerCase() ?? ''
+    const proyNombre = proyectoMap.get(`${r.empresa}-${r.proyecto}`)?.toLowerCase() ?? ''
     const clienteNombre = clienteMap.get(r.cliente)?.toLowerCase() ?? ''
     return proyNombre.includes(q) || clienteNombre.includes(q) || r.lote.toLowerCase().includes(q) || r.fecha.includes(q)
   }), [reservas, search, proyectoMap, clienteMap])
@@ -655,11 +657,11 @@ export function ReservasClient({
     if (vendedorFiltro !== 0 && r.vendedor !== vendedorFiltro) return false
     return Object.entries(colFilters).every(([col, vals]) => {
       if (col === '__empresa')         return vals.has(String(r.empresa))
-      if (col === '__proyecto')        return vals.has(String(r.proyecto))
-      if (col === '__fase')            return vals.has(String(r.fase))
+      if (col === '__proyecto')        return vals.has(`${r.empresa}-${r.proyecto}`)
+      if (col === '__fase')            return vals.has(`${r.empresa}-${r.proyecto}-${r.fase}`)
       if (col === '__manzana')         return vals.has(r.manzana)
       if (col === '__cliente')         return vals.has(String(r.cliente))
-      if (col === '__vendedor')        return vals.has(String(r.vendedor))
+      if (col === '__vendedor')        return vals.has(`${r.empresa}-${r.proyecto}-${r.vendedor}`)
       if (col === 'lote')              return vals.has(r.lote)
       if (col === 'fecha')             return vals.has(r.fecha)
       if (col === '__moneda')          return vals.has(r.moneda)
@@ -821,7 +823,7 @@ export function ReservasClient({
         lote:             form.lote,
         cliente:          form.cliente,
         cliente_nombre:   clienteMap.get(form.cliente) ?? '',
-        fase_nombre:      faseMap.get(form.fase) ?? '',
+        fase_nombre:      faseMap.get(`${form.empresa}-${form.proyecto}-${form.fase}`) ?? '',
         vendedor:         form.vendedor,
         cobrador:         form.cobrador,
         serie_recibo:     form.serie_recibo,
@@ -927,7 +929,7 @@ export function ReservasClient({
         <Select value={vendedorFiltro === 0 ? '' : String(vendedorFiltro)} onValueChange={(v) => setVendedorFiltro(v === '' ? 0 : Number(v))}>
           <SelectTrigger className="h-8 w-52 text-xs">
             <SelectValue placeholder="Todos los vendedores">
-              {(v: string) => v ? (vendedorMap.get(Number(v)) ?? v) : null}
+              {(v: string) => v ? (vendedorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -972,10 +974,10 @@ export function ReservasClient({
                     <TableHead key="__proyecto">
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(reservas.map((r) => proyectoMap.get(r.proyecto) ?? `#${r.proyecto}`))].sort()}
-                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? `#${k}`))}
+                        values={[...new Set(reservas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`))].sort()}
+                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
-                          const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
+                          const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
                           setColFilter('__proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
@@ -1002,10 +1004,10 @@ export function ReservasClient({
                     <TableHead key="__fase">
                       <ColumnFilter
                         label="Fase"
-                        values={[...new Set(reservas.map((r) => faseMap.get(r.fase) ?? `#${r.fase}`))].sort()}
-                        active={new Set([...(colFilters['__fase'] ?? new Set())].map((k) => faseMap.get(Number(k)) ?? `#${k}`))}
+                        values={[...new Set(reservas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`))].sort()}
+                        active={new Set([...(colFilters['__fase'] ?? new Set())].map((k) => faseMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
-                          const byLabel = new Map(fases.map((f) => [f.nombre, String(f.codigo)]))
+                          const byLabel = new Map(fases.map((f) => [f.nombre, `${f.empresa}-${f.proyecto}-${f.codigo}`]))
                           setColFilter('__fase', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
@@ -1029,10 +1031,10 @@ export function ReservasClient({
                     <TableHead key="__vendedor">
                       <ColumnFilter
                         label="Vendedor"
-                        values={[...new Set(reservas.map((r) => vendedorMap.get(r.vendedor) ?? `#${r.vendedor}`))].sort()}
-                        active={new Set([...(colFilters['__vendedor'] ?? new Set())].map((k) => vendedorMap.get(Number(k)) ?? `#${k}`))}
+                        values={[...new Set(reservas.map((r) => vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`))].sort()}
+                        active={new Set([...(colFilters['__vendedor'] ?? new Set())].map((k) => vendedorMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
-                          const byLabel = new Map(vendedores.map((v) => [v.nombre, String(v.codigo)]))
+                          const byLabel = new Map(vendedores.map((v) => [v.nombre, `${v.empresa}-${v.proyecto}-${v.codigo}`]))
                           setColFilter('__vendedor', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
                         }}
                       />
@@ -1142,9 +1144,9 @@ export function ReservasClient({
                         case '__empresa':
                           return <TableCell key="__empresa" className="text-muted-foreground">{empresaMap.get(r.empresa) ?? `#${r.empresa}`}</TableCell>
                         case '__proyecto':
-                          return <TableCell key="__proyecto" className="font-medium">{proyectoMap.get(r.proyecto) ?? `#${r.proyecto}`}</TableCell>
+                          return <TableCell key="__proyecto" className="font-medium">{proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`}</TableCell>
                         case '__fase':
-                          return <TableCell key="__fase" className="text-muted-foreground">{faseMap.get(r.fase) ?? `#${r.fase}`}</TableCell>
+                          return <TableCell key="__fase" className="text-muted-foreground">{faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`}</TableCell>
                         case '__manzana':
                           return <TableCell key="__manzana" className="text-muted-foreground">{r.manzana}</TableCell>
                         case 'lote':
@@ -1152,7 +1154,7 @@ export function ReservasClient({
                         case '__cliente':
                           return <TableCell key="__cliente" className="text-muted-foreground">{clienteMap.get(r.cliente) ?? `#${r.cliente}`}</TableCell>
                         case '__vendedor':
-                          return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(r.vendedor) ?? `#${r.vendedor}`}</TableCell>
+                          return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`}</TableCell>
                         case 'fecha':
                           return <TableCell key="fecha" className="text-muted-foreground">{r.fecha}</TableCell>
                         case '__moneda': {
@@ -1254,7 +1256,7 @@ export function ReservasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {proyectoMap.get(viewTarget.proyecto)} — Lote {viewTarget.lote}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} — Lote {viewTarget.lote}
                   </p>
                 )}
               </div>
@@ -1277,11 +1279,11 @@ export function ReservasClient({
                     <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)}  />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto)} />
+                    <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} />
                   </div>
 
                   <SectionDivider label="Ubicacion del Lote" />
-                  <ViewField label="Fase"    value={faseMap.get(viewTarget.fase)} />
+                  <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`)} />
                   <ViewField label="Manzana" value={viewTarget.manzana} />
                   <div className="col-span-2">
                     <ViewField label="Lote" value={viewTarget.lote} />
@@ -1289,7 +1291,7 @@ export function ReservasClient({
 
                   <SectionDivider label="Datos Reserva" />
                   <div className="col-span-2">
-                    <ViewField label="Vendedor" value={vendedorMap.get(viewTarget.vendedor)} />
+                    <ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`)} />
                   </div>
                   <ViewField label="Cliente" value={clienteMap.get(viewTarget.cliente)} />
                   <ViewField label="Fecha"   value={viewTarget.fecha} />
@@ -1321,7 +1323,7 @@ export function ReservasClient({
                     </>
                   )}
                   <div className="col-span-2">
-                    <ViewField label="Cobrador" value={cobradorMap.get(viewTarget.cobrador)} />
+                    <ViewField label="Cobrador" value={cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`)} />
                   </div>
                 </div>
 
@@ -1684,7 +1686,7 @@ export function ReservasClient({
                       disabled={!form.proyecto}
                     >
                       <SelectTrigger id="res-cobrador" className="w-full">
-                        <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(Number(v)) ?? v) : null}</SelectValue>
+                        <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {cobradoresPorProyecto.map((cob) => (

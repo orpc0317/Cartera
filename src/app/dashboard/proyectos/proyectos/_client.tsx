@@ -104,9 +104,11 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -1200,11 +1202,13 @@ export function ProyectosClient({
                       : <ViewField label="Monto Mora" value={formatMora(viewTarget.fijo_mora ?? 0)} />}
                     <ViewField label="Dias Gracia" value={String(viewTarget.dias_gracia ?? 0)} />
                   </div>
-                  <ViewField label="Dias Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Dias'} />
-                  <ViewField label="Mora Minima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
-                  <div className="flex items-center gap-2 py-1">
-                    <Checkbox checked={!!viewTarget.mora_enganche} disabled />
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Enganche</span>
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <ViewField label="Dias Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Dias'} />
+                    <ViewField label="Mora Minima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
+                    <div className="flex items-center gap-2 py-1">
+                      <Checkbox checked={!!viewTarget.mora_enganche} disabled />
+                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Enganche</span>
+                    </div>
                   </div>
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />

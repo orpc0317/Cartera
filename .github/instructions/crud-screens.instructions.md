@@ -335,14 +335,16 @@ const CURRENCY_FLAG_MAP = new Map<string, string>([
 {(() => {
   const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda ?? '')
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-      <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
-      {flag ? (
-        <span className="flex items-center gap-1.5 text-sm font-medium">
-          <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-          {viewTarget.moneda}
-        </span>
-      ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        {flag ? (
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+            {viewTarget.moneda}
+          </span>
+        ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
+      </div>
     </div>
   )
 })()}
@@ -601,7 +603,7 @@ Each spec's `TABS_MODAL` section uses **one table per section** to declare field
 
 | Value               | Meaning |
 |---------------------|---------|
-| `ViewField`         | Standard read-only card (`rounded-lg bg-muted/50`) — label + value |
+| `ViewField`         | Read-only field: label outside (`grid gap-1` + `text-[11px] font-semibold tracking-wider text-muted-foreground`), value inside card (`rounded-lg bg-muted/50`) |
 | `Checkbox card`     | `<Checkbox disabled />` inside a ViewField-style card (label above, checkbox below) |
 | `Moneda display`    | Apply **Moneda display rules** from `ui-conventions.instructions.md` |
 | `Input`             | `<Input>` text field |

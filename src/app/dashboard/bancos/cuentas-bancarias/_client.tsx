@@ -90,9 +90,11 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -228,8 +230,8 @@ export function CuentasBancariasClient({
   // ─── Lookup maps ─────────────────────────────────────────────────────────
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
-  const bancoMap    = useMemo(() => new Map(bancos.map((b) => [b.codigo, b.nombre])), [bancos])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
+  const bancoMap    = useMemo(() => new Map(bancos.map((b) => [`${b.empresa}-${b.proyecto}-${b.codigo}`, b.nombre])), [bancos])
 
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
@@ -246,8 +248,8 @@ export function CuentasBancariasClient({
 
   // Unique values for column filters
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)  ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueBancoNames    = useMemo(() => [...new Set(initialData.map((r) => bancoMap.get(r.banco)  ?? ''))].sort(), [initialData, bancoMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueBancoNames    = useMemo(() => [...new Set(initialData.map((r) => bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? ''))].sort(), [initialData, bancoMap])
   const uniqueMonedaLabels  = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(), [initialData])
 
   // ─── Filtering pipeline ───────────────────────────────────────────────────
@@ -257,7 +259,7 @@ export function CuentasBancariasClient({
     return !q ? initialData : initialData.filter((r) =>
       r.nombre?.toLowerCase().includes(q) ||
       r.numero?.toLowerCase().includes(q) ||
-      (bancoMap.get(r.banco) ?? '').toLowerCase().includes(q) ||
+      (bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '').toLowerCase().includes(q) ||
       String(r.codigo).includes(q)
     )
   }, [initialData, search, bancoMap])
@@ -266,8 +268,8 @@ export function CuentasBancariasClient({
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
         if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa)  ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
-        if (col === 'banco')    return vals.has(bancoMap.get(r.banco)    ?? '')
+        if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+        if (col === 'banco')    return vals.has(bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '')
         if (col === 'moneda') return vals.has(r.moneda)
         if (col === 'activo') return vals.has(r.activo === 1 ? 'Activo' : 'Inactivo')
         return vals.has(String(r[col as keyof CuentaBancaria] ?? ''))
@@ -544,9 +546,9 @@ export function CuentasBancariasClient({
                         case 'empresa':
                           return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(cb.empresa) ?? `#${cb.empresa}`}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(cb.proyecto) ?? `#${cb.proyecto}`}</TableCell>
+                          return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${cb.empresa}-${cb.proyecto}`) ?? `#${cb.proyecto}`}</TableCell>
                         case 'banco':
-                          return <TableCell key="banco" className="text-muted-foreground">{bancoMap.get(cb.banco) ?? `#${cb.banco}`}</TableCell>
+                          return <TableCell key="banco" className="text-muted-foreground">{bancoMap.get(`${cb.empresa}-${cb.proyecto}-${cb.banco}`) ?? `#${cb.banco}`}</TableCell>
                         case 'moneda':
                           return (
                             <TableCell key="moneda" className="text-muted-foreground">
@@ -629,7 +631,7 @@ export function CuentasBancariasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {bancoMap.get(viewTarget.banco) ?? ''}
+                    {bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? ''}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -655,7 +657,7 @@ export function CuentasBancariasClient({
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
                   <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
 
                   <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -664,7 +666,7 @@ export function CuentasBancariasClient({
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
 
-                  <div className="col-span-2"><ViewField label="Banco"    value={bancoMap.get(viewTarget.banco)    ?? `#${viewTarget.banco}`} /></div>
+                  <div className="col-span-2"><ViewField label="Banco"    value={bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`} /></div>
                   <div className="col-span-2"><ViewField label="Nombre Cuenta"  value={viewTarget.nombre} /></div>
                   <ViewField label="Numero Cuenta" value={viewTarget.numero} />
                   <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
@@ -702,7 +704,7 @@ export function CuentasBancariasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
@@ -716,7 +718,7 @@ export function CuentasBancariasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Banco *</Label>
                     <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {bancosFiltrados.length === 0
                           ? <SelectItem value="0" disabled>Sin bancos para este proyecto</SelectItem>

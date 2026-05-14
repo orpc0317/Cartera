@@ -81,9 +81,11 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -226,7 +228,7 @@ export function SeriesRecibosClient({
   const [colFilters, setColFilters]     = useState<ColFilters>({})
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
     [proyectos, form.empresa]
@@ -241,7 +243,7 @@ export function SeriesRecibosClient({
   }
 
   const uniqueEmpresaNames   = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames  = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueProyectoNames  = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
   const uniqueFormatoNames   = useMemo(() => [...new Set(initialData.map((r) => String(r.formato)))].sort(), [initialData])
 
   // ─── Filtering pipeline ──────────────────────────────────────────────────
@@ -252,7 +254,7 @@ export function SeriesRecibosClient({
       r.serie.toLowerCase().includes(q) ||
       (r.serie_factura ?? '').toLowerCase().includes(q) ||
       (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(r.proyecto) ?? '').toLowerCase().includes(q)
+      (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
     )
   }, [initialData, search, empresaMap, proyectoMap])
 
@@ -260,7 +262,7 @@ export function SeriesRecibosClient({
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
         if (col === 'empresa')        return vals.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto')       return vals.has(proyectoMap.get(r.proyecto) ?? '')
+        if (col === 'proyecto')       return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
         if (col === 'formato')        return vals.has(String(r.formato))
         if (col === 'predeterminado')    return vals.has(r.predeterminado === 1 ? 'Sí' : 'No')
         if (col === 'recibo_automatico') return vals.has(r.recibo_automatico === 1 ? 'Sí' : 'No')
@@ -546,7 +548,7 @@ export function SeriesRecibosClient({
                     {visibleCols.map((col) => {
                       switch (col.key) {
                         case 'empresa':        return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(row.empresa) ?? `#${row.empresa}`}</TableCell>
-                        case 'proyecto':       return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(row.proyecto) ?? `#${row.proyecto}`}</TableCell>
+                        case 'proyecto':       return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? `#${row.proyecto}`}</TableCell>
                         case 'serie_factura':  return <TableCell key="serie_factura" className="font-mono text-xs text-muted-foreground">{row.serie_factura || '—'}</TableCell>
                         case 'dias_fecha':     return <TableCell key="dias_fecha" className="text-muted-foreground">{row.dias_fecha}</TableCell>
                         case 'correlativo':    return <TableCell key="correlativo" className="text-muted-foreground">{row.correlativo || ''}</TableCell>
@@ -616,7 +618,7 @@ export function SeriesRecibosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? ''}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.serie}</span>
                   </p>
                 )}
@@ -638,7 +640,7 @@ export function SeriesRecibosClient({
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
                   <div className="col-span-2"><ViewField label="Serie"    value={viewTarget.serie} /></div>
                   <SectionDivider label="CONFIGURACION" />
                   <div className="col-span-2 grid grid-cols-3 gap-3">
@@ -682,7 +684,7 @@ export function SeriesRecibosClient({
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
-                          {(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>

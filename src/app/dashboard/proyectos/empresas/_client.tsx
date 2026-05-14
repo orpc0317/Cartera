@@ -114,9 +114,11 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -204,7 +206,7 @@ const EMPTY_FORM: EmpresaForm = {
   codigo: 0,
   nombre: '',
   razon_social: '',
-  identificacion_tributaria: ''
+  identificacion_tributaria: '',
   direccion_pais: '',
   direccion_departamento: '',
   direccion_municipio: '',
@@ -366,7 +368,7 @@ export function EmpresasClient({
         codigo:                    empresa.codigo,
         nombre:                    empresa.nombre,
         razon_social:              empresa.razon_social ?? '',
-        identificacion_tributaria:  empresa.identificacion_tributaria ?? ''
+        identificacion_tributaria:  empresa.identificacion_tributaria ?? '',
         direccion_pais:            pCode,
         direccion_departamento:    dCode,
         direccion_municipio:       empresa.direccion_municipio ?? '',

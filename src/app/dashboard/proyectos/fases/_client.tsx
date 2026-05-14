@@ -109,9 +109,11 @@ function exportCsv(rows: Fase[], colPrefs: ColPref[]) {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -236,7 +238,7 @@ export function FasesClient({
 
   // ── FK Maps ────────────────────────────────────────────────────────────
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
 
   // ── Proyectos por empresa (cascade) ───────────────────────────────────
   const proyectosPorEmpresa = useMemo(
@@ -246,7 +248,7 @@ export function FasesClient({
 
   // ── Unique filter values ───────────────────────────────────────────────
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((f) => proyectoMap.get(f.proyecto) ?? String(f.proyecto)))].sort(), [initialData, proyectoMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((f) => proyectoMap.get(`${f.empresa}-${f.proyecto}`) ?? String(f.proyecto)))].sort(), [initialData, proyectoMap])
   const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((f) => f.nombre).filter(Boolean))].sort(), [initialData])
   const uniqueMedidaLabels  = useMemo(() => [...new Set(initialData.map((f) => UNIDAD_MEDIDA[f.medida] ?? f.medida))].sort(), [initialData])
   const medidaLabelToKey    = useMemo(() => new Map(Object.entries(UNIDAD_MEDIDA).map(([k, v]) => [v, k])), [])
@@ -271,7 +273,7 @@ export function FasesClient({
   const filtered = useMemo(() => afterSearch.filter((fase) =>
     Object.entries(colFilters).every(([col, vals]) => {
       if (col === 'empresa') return vals.has(String(fase.empresa))
-      if (col === 'proyecto') return vals.has(String(fase.proyecto))
+      if (col === 'proyecto') return vals.has(`${fase.empresa}-${fase.proyecto}`)
       return vals.has(String(fase[col as keyof Fase] ?? ''))
     })
   ), [afterSearch, colFilters])
@@ -459,7 +461,7 @@ export function FasesClient({
       : (viewTarget?.nombre ?? '')
 
   const dialogSubtitle = viewTarget
-    ? `${empresaMap.get(viewTarget.empresa) ?? ''} / ${proyectoMap.get(viewTarget.proyecto) ?? ''}`
+    ? `${empresaMap.get(viewTarget.empresa) ?? ''} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
     : undefined
 
   return (
@@ -541,7 +543,7 @@ export function FasesClient({
                     }
                     active={
                       col.key === 'empresa'  ? new Set([...(colFilters['empresa']  ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? k)) :
-                      col.key === 'proyecto' ? new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(Number(k)) ?? k)) :
+                      col.key === 'proyecto' ? new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? k)) :
                       col.key === 'medida'   ? new Set([...(colFilters['medida']   ?? new Set())].map((k) => UNIDAD_MEDIDA[k] ?? k)) :
                       colFilters[col.key] ?? new Set()
                     }
@@ -550,7 +552,7 @@ export function FasesClient({
                         const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
                         setColFilter('empresa', new Set([...vals].map((l) => byLabel.get(l) ?? l)))
                       } else if (col.key === 'proyecto') {
-                        const byLabel = new Map(proyectos.map((p) => [p.nombre, String(p.codigo)]))
+                        const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
                         setColFilter('proyecto', new Set([...vals].map((l) => byLabel.get(l) ?? l)))
                       } else if (col.key === 'medida') {
                         setColFilter('medida', new Set([...vals].map((l) => medidaLabelToKey.get(l) ?? l)))
@@ -601,7 +603,7 @@ export function FasesClient({
                         case 'proyecto':
                           return (
                             <TableCell key="proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(fase.proyecto) ?? fase.proyecto}
+                              {proyectoMap.get(`${fase.empresa}-${fase.proyecto}`) ?? fase.proyecto}
                             </TableCell>
                           )
                         case 'nombre':
@@ -702,7 +704,7 @@ export function FasesClient({
                     <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? String(viewTarget.proyecto)} />
+                    <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} />
                   </div>
                   <div className="col-span-2">
                     <ViewField label="Codigo" value={String(viewTarget.codigo)} />
@@ -756,7 +758,7 @@ export function FasesClient({
                   >
                     <SelectTrigger id="proyecto" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
-                        {(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}
+                        {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>

@@ -87,9 +87,11 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -186,8 +188,8 @@ export function ManzanasClient({
   // ─── Lookup maps ──────────────────────────────────────────────────────────
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo,  e.nombre])), [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
-  const faseMap     = useMemo(() => new Map(fases.map((f) => [f.codigo,     f.nombre])), [fases])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
+  const faseMap     = useMemo(() => new Map(fases.map((f) => [`${f.empresa}-${f.proyecto}-${f.codigo}`, f.nombre])), [fases])
 
   // ─── Cascaded selects ─────────────────────────────────────────────────────
 
@@ -211,8 +213,8 @@ export function ManzanasClient({
   }
 
   const uniqueEmpresaNames  = useMemo(() => [...new Set(manzanas.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [manzanas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(manzanas.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [manzanas, proyectoMap])
-  const uniqueFaseNames     = useMemo(() => [...new Set(manzanas.map((r) => faseMap.get(r.fase)         ?? ''))].sort(), [manzanas, faseMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(manzanas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [manzanas, proyectoMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(manzanas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [manzanas, faseMap])
 
   // ─── Filtering pipeline ───────────────────────────────────────────────────
 
@@ -221,15 +223,15 @@ export function ManzanasClient({
     return !q ||
       r.codigo.toLowerCase().includes(q) ||
       (empresaMap.get(r.empresa)   ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(r.proyecto) ?? '').toLowerCase().includes(q) ||
-      (faseMap.get(r.fase)         ?? '').toLowerCase().includes(q)
+      (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) ||
+      (faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '').toLowerCase().includes(q)
   })
 
   const filtered = afterSearch.filter((r) =>
     Object.entries(colFilters).every(([col, vals]) => {
       if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa)   ?? '')
-      if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
-      if (col === 'fase')     return vals.has(faseMap.get(r.fase)         ?? '')
+      if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+      if (col === 'fase')     return vals.has(faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '')
       return vals.has(String((r as Record<string, unknown>)[col] ?? ''))
     }),
   )
@@ -377,8 +379,8 @@ export function ManzanasClient({
     const rows = filtered.map((m) => [
       m.codigo,
       empresaMap.get(m.empresa)   ?? String(m.empresa),
-      proyectoMap.get(m.proyecto) ?? String(m.proyecto),
-      faseMap.get(m.fase)         ?? String(m.fase),
+      proyectoMap.get(`${m.empresa}-${m.proyecto}`) ?? String(m.proyecto),
+      faseMap.get(`${m.empresa}-${m.proyecto}-${m.fase}`) ?? String(m.fase),
       m.agrego_fecha   ?? '',
       m.modifico_fecha ?? '',
     ])
@@ -505,8 +507,8 @@ export function ManzanasClient({
                     {visibleCols.map((col) => {
                       switch (col.key) {
                         case 'empresa':  return <TableCell key="empresa"  className="text-muted-foreground">{empresaMap.get(m.empresa)   ?? String(m.empresa)}</TableCell>
-                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(m.proyecto) ?? String(m.proyecto)}</TableCell>
-                        case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(m.fase)         ?? String(m.fase)}</TableCell>
+                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${m.empresa}-${m.proyecto}`) ?? String(m.proyecto)}</TableCell>
+                        case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(`${m.empresa}-${m.proyecto}-${m.fase}`) ?? String(m.fase)}</TableCell>
                         default:         return <TableCell key={col.key}  className="text-muted-foreground">{String((m as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
@@ -566,7 +568,7 @@ export function ManzanasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? String(viewTarget.proyecto)}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -603,7 +605,7 @@ export function ManzanasClient({
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
-                          {(v: string) => v && Number(v) ? (proyectoMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v && Number(v) ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -616,7 +618,7 @@ export function ManzanasClient({
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona fase">
-                          {(v: string) => v && Number(v) ? (faseMap.get(Number(v)) ?? v) : null}
+                          {(v: string) => v && Number(v) ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -637,8 +639,8 @@ export function ManzanasClient({
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa)} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? String(viewTarget.proyecto)} /></div>
-                  <ViewField label="Fase"   value={faseMap.get(viewTarget.fase) ?? String(viewTarget.fase)} />
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} /></div>
+                  <ViewField label="Fase"   value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase)} />
                   <ViewField label="Codigo" value={viewTarget.codigo} />
                 </div>
               ) : null}
@@ -667,7 +669,7 @@ export function ManzanasClient({
             <AlertDialogTitle>¿Eliminar manzana?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
               Se eliminara la manzana <strong>{deleteTarget?.codigo}</strong> de la fase{' '}
-              <strong>{faseMap.get(deleteTarget?.fase ?? 0) ?? deleteTarget?.fase}</strong>.
+              <strong>{faseMap.get(`${deleteTarget?.empresa}-${deleteTarget?.proyecto}-${deleteTarget?.fase ?? 0}`) ?? deleteTarget?.fase}</strong>.
               Esta accion es irreversible.
             </AlertDialogDescription>
           </AlertDialogHeader>

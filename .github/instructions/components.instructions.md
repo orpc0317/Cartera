@@ -80,7 +80,7 @@ const icon = !isEditing
 
 // Subtitle shown below entity name in modal header — pick ONE pattern:
 const subtitle = viewTarget ? (empresaMap.get(viewTarget.empresa) ?? '') : ''                   // single FK label
-// const subtitle = viewTarget ? [empresaMap.get(viewTarget.empresa), proyectoMap.get(viewTarget.proyecto)].filter(Boolean).join(' · ') : ''  // two FK labels
+// const subtitle = viewTarget ? [empresaMap.get(viewTarget.empresa), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ') : ''  // two FK labels
 // const subtitle = ''  // entity has no meaningful secondary label
 ```
 
@@ -494,9 +494,11 @@ Definir **dentro de cada `_client.tsx`** (no son componentes compartidos).
 ```tsx
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -879,9 +881,30 @@ function setColFilter(col: string, next: Set<string>) {
   })
 }
 
+// ── FK lookup maps ─────────────────────────────────────────────────────────
+// REGLA: las PKs de Empresa son (cuenta,codigo); de Proyecto son (cuenta,empresa,codigo);
+// de Fase/Banco/Supervisor/Cobrador/Coordinador/Vendedor son (cuenta,empresa,proyecto,codigo).
+// Por eso los mapas NUNCA usan solo `codigo` como clave — siempre clave compuesta:
+//   empresaMap:    Map<number, string>    key = empresa.codigo          (Empresa.PK es única por cuenta)
+//   proyectoMap:   Map<string, string>    key = `${empresa}-${codigo}`
+//   faseMap:       Map<string, string>    key = `${empresa}-${proyecto}-${codigo}`
+//   (ídem para bancoMap, supervisorMap, cobradorMap, coordinadorMap, vendedorMap)
+//
+// const empresaMap   = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
+// const proyectoMap  = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
+// const faseMap      = useMemo(() => new Map(fases.map((f)     => [`${f.empresa}-${f.proyecto}-${f.codigo}`, f.nombre])), [fases])
+//
+// Lookups:
+//   empresaMap.get(row.empresa)
+//   proyectoMap.get(`${row.empresa}-${row.proyecto}`)
+//   faseMap.get(`${row.empresa}-${row.proyecto}-${row.fase}`)
+//
+// SelectValue render prop:
+//   {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+//
 // Unique values para ColumnFilter dropdowns
 const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
+const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
 // Añadir un useMemo por cada columna filtrable adicional
 
 // Paso 1 — filtrar por texto de búsqueda
@@ -899,7 +922,7 @@ const filtered = useMemo(() =>
   afterSearch.filter((r) =>
     Object.entries(colFilters).every(([col, vals]) => {
       if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa) ?? '')
-      if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
+      if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
       if (col === 'activo')   return vals.has(r.activo === 1 ? 'Sí' : 'No')
       // Añadir un case por cada FK o enum con traducción
       return vals.has(String(r[col as keyof <Entity>] ?? ''))
@@ -982,14 +1005,16 @@ case 'moneda': {
 {(() => {
   const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda ?? '')
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-      {flag ? (
-        <span className="flex items-center gap-1.5 text-sm font-medium">
-          <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-          {viewTarget.moneda}
-        </span>
-      ) : <span className="text-sm font-medium">{viewTarget.moneda || '—'}</span>}
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        {flag ? (
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+            {viewTarget.moneda}
+          </span>
+        ) : <span className="text-sm font-medium">{viewTarget.moneda || '—'}</span>}
+      </div>
     </div>
   )
 })()}

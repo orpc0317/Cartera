@@ -77,9 +77,11 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-      <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">{label}</span>
-      <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+      </div>
     </div>
   )
 }
@@ -204,7 +206,7 @@ export function BancosClient({
   const [colFilters, setColFilters]   = useState<ColFilters>({})
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
-  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [p.codigo, p.nombre])), [proyectos])
+  const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
     [proyectos, form.empresa]
@@ -215,7 +217,7 @@ export function BancosClient({
   }
 
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(r.proyecto) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
 
   // ─── Filtering pipeline ──────────────────────────────────────────────────
 
@@ -232,7 +234,7 @@ export function BancosClient({
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
         if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(r.proyecto) ?? '')
+        if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
         return vals.has(String(r[col as keyof Banco] ?? ''))
       })
     ),
@@ -495,7 +497,7 @@ export function BancosClient({
                       switch (col.key) {
                         case 'nombre':   return <TableCell key="nombre" className="font-medium">{banco.nombre}</TableCell>
                         case 'empresa':  return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(banco.empresa) ?? `#${banco.empresa}`}</TableCell>
-                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(banco.proyecto) ?? `#${banco.proyecto}`}</TableCell>
+                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${banco.empresa}-${banco.proyecto}`) ?? `#${banco.proyecto}`}</TableCell>
                         default:         return <TableCell key={col.key} className="text-muted-foreground">{String((banco as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}
@@ -559,7 +561,7 @@ export function BancosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(viewTarget.proyecto) ?? ''}
+                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -581,7 +583,7 @@ export function BancosClient({
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(viewTarget.proyecto) ?? `#${viewTarget.proyecto}`} /></div>
+                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
                   <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
                   <SectionDivider label="GENERAL" />
                   <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
@@ -600,7 +602,7 @@ export function BancosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
