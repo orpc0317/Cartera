@@ -92,7 +92,7 @@ function ColumnFilter({ label, values, active, onChange }: {
           {values.map((v) => (
             <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => { const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next) }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -105,7 +105,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -215,8 +215,8 @@ const EMPTY_FORM: TipoIngresoForm = {
   activo: 1,
 }
 
-// SKIP_KEYS: campos de texto que NO deben convertirse a mayúsculas.
-// etiqueta: spec dice NO uppercase, SÍ quitar tildes (ver handler específico abajo).
+// SKIP_KEYS: campos de texto que NO deben convertirse a mayusculas.
+// etiqueta: spec dice NO uppercase, SI quitar tildes (ver handler especifico abajo).
 const SKIP_KEYS = new Set<keyof TipoIngresoForm>(['etiqueta', 'moneda'])
 
 // ─── Client component ──────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ export function TiposIngresosClient({
   const [form, setForm]                 = useState<TipoIngresoForm>(EMPTY_FORM)
 
   // Actualiza un campo del form. Para campos string: elimina tildes y convierte
-  // a mayúsculas, excepto las keys en SKIP_KEYS.
+  // a mayusculas, excepto las keys en SKIP_KEYS.
   function f(key: keyof TipoIngresoForm, value: string | number) {
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
@@ -463,6 +463,24 @@ export function TiposIngresosClient({
       hasta_monto: modo === 'eventual' ? 0 : hastaMonto,
     }
 
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget) {
+      const sinCambios =
+        finalForm.nombre              === viewTarget.nombre              &&
+        finalForm.etiqueta            === viewTarget.etiqueta            &&
+        finalForm.forma_pago          === viewTarget.forma_pago          &&
+        finalForm.moneda              === viewTarget.moneda              &&
+        finalForm.monto               === viewTarget.monto               &&
+        finalForm.hasta_monto         === viewTarget.hasta_monto         &&
+        finalForm.factura_item        === (viewTarget.factura_item        ?? '') &&
+        finalForm.factura_descripcion === (viewTarget.factura_descripcion ?? '') &&
+        finalForm.mora                === viewTarget.mora                &&
+        finalForm.impuesto            === viewTarget.impuesto            &&
+        finalForm.editable            === viewTarget.editable            &&
+        finalForm.activo              === viewTarget.activo
+      if (sinCambios) { setDialogOpen(false); return }
+    }
+
     startTransition(async () => {
       const lastModified = viewTarget?.modifico_fecha ?? undefined
       const result = viewTarget
@@ -489,8 +507,8 @@ export function TiposIngresosClient({
       if (!estadoCuentaMoneda) { toast.error('Selecciona una moneda para el modo Estado Cuenta.'); return }
     }
     if (form.impuesto === 1) {
-      if (!form.factura_item.trim()) { toast.error('El campo Item es requerido cuando Impuestos está activo.'); return }
-      if (!form.factura_descripcion.trim()) { toast.error('El campo Descripcion es requerido cuando Impuestos está activo.'); return }
+      if (!form.factura_item.trim()) { toast.error('El campo Item es requerido cuando Impuestos esta activo.'); return }
+      if (!form.factura_descripcion.trim()) { toast.error('El campo Descripcion es requerido cuando Impuestos esta activo.'); return }
     }
 
     // Jaro-Winkler similarity check
@@ -654,7 +672,7 @@ export function TiposIngresosClient({
                 <TableCell colSpan={visibleCols.length + 2} className="h-32 text-center text-sm text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron tipos de ingresos con ese criterio.'
-                    : 'Todavía no hay tipos de ingresos. Haz clic en "Nuevo Tipo Ingreso" para comenzar.'}
+                    : 'Todavia no hay tipos de ingresos. Haz clic en "Nuevo Tipo Ingreso" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -799,13 +817,15 @@ export function TiposIngresosClient({
                     <div className="col-span-2 grid grid-cols-3 gap-3">
                       <div>
                         {viewTarget.moneda && (
-                          <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                            <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
-                                <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`} width={20} height={14} alt="" className="rounded-sm" />
-                              )}
-                              <span className="text-[13px] font-medium">{viewTarget.moneda}</span>
+                          <div className="grid gap-1">
+                            <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+                            <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                              <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                                {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
+                                  <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`} width={20} height={14} alt="" className="rounded-sm shrink-0" />
+                                )}
+                                {viewTarget.moneda}
+                              </span>
                             </div>
                           </div>
                         )}
@@ -822,13 +842,15 @@ export function TiposIngresosClient({
                       <div className="col-span-2 grid grid-cols-3 gap-3">
                         <div>
                           {viewTarget.moneda && (
-                            <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                              <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
-                                  <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`} width={20} height={14} alt="" className="rounded-sm" />
-                                )}
-                                <span className="text-[13px] font-medium">{viewTarget.moneda}</span>
+                            <div className="grid gap-1">
+                              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+                              <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                                <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                                  {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
+                                    <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`} width={20} height={14} alt="" className="rounded-sm shrink-0" />
+                                  )}
+                                  {viewTarget.moneda}
+                                </span>
                               </div>
                             </div>
                           )}
@@ -906,7 +928,7 @@ export function TiposIngresosClient({
                     )}
                   </div>
 
-                  {/* Codigo (solo edición) */}
+                  {/* Codigo (solo edicion) */}
                   {viewTarget && (
                     <div className="col-span-2 grid grid-cols-3 gap-4">
                       <ViewField label="Codigo" value={String(viewTarget.codigo)} />
@@ -1143,7 +1165,7 @@ export function TiposIngresosClient({
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminar tipo ingreso</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. ¿Deseas eliminar el tipo ingreso <strong>{deleteTarget?.nombre}</strong>?
+              Esta accion no se puede deshacer. ¿Deseas eliminar el tipo ingreso <strong>{deleteTarget?.nombre}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -5,6 +5,39 @@ applyTo: "src/app/actions/*.ts, src/app/dashboard/**/page.tsx"
 
 # Cartera — Server Action Patterns
 
+## REGLA CRÍTICA — Exports en archivos `"use server"`
+
+En un archivo marcado con `'use server'`, Next.js/Turbopack solo permite exportar **funciones `async`** y **re-exports de tipos** (`export type`).
+
+**Prohibido:**
+```ts
+// ❌ NUNCA — los re-exports de valor rompen el build
+export { getEmpresas } from '@/app/actions/empresas'
+export { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'
+```
+
+**Correcto:**
+```ts
+// ✅ Los tipos se pueden re-exportar (se borran en compilación)
+export type { TasaCambio } from '@/lib/types/tasas-cambio'
+
+// ✅ Solo async functions como valores exportados
+export async function getTasasCambio() { ... }
+```
+
+**Consecuencia práctica para `page.tsx`:** si necesita funciones de otros módulos de actions (e.g. `getEmpresas`, `getProyectos`), importarlas **directamente** desde su archivo de origen:
+
+```ts
+// page.tsx
+import { getTasasCambio } from '@/app/actions/tasas-cambio'
+import { getEmpresas } from '@/app/actions/empresas'          // ← directo
+import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'  // ← directo
+```
+
+> **Nota:** `get_errors` (TS language server) **no detecta** esta violación — solo se manifiesta en build time. Por eso esta regla debe seguirse en tiempo de escritura.
+
+---
+
 ## getCuentaActiva (required in every action file)
 
 ```ts
@@ -29,6 +62,31 @@ if (!cuenta) return { error: 'Sesión no válida.' }
 ```
 
 Read operations (`get*`) do **not** need this guard — an empty `cuenta` silently returns 0 rows.
+
+---
+
+## Validación de correo electrónico
+
+Todo campo de correo (`correo`) en una Server Action debe validarse **antes** de tocar la base de datos.
+El campo es siempre opcional — validar solo si viene con valor.
+
+```ts
+// Definir una vez por archivo de actions
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim())
+}
+
+// En createXxx / updateXxx, inmediatamente después del guard de cuenta:
+if (form.correo && !isValidEmail(form.correo))
+  return { error: 'El correo electrónico no tiene un formato válido.' }
+```
+
+En el `_client.tsx`, el `<Input>` debe llevar `type="email"` para activar la validación nativa del browser como primera línea de defensa:
+
+```tsx
+<Input id="correo" type="email" value={form.correo} onChange={(e) => f('correo', e.target.value)} placeholder="correo@ejemplo.com" />
+```
 
 ---
 

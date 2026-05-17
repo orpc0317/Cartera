@@ -44,7 +44,7 @@ type ColPref = { key: string; visible: boolean }
 const FORMAS_PAGO: Record<number, string> = {
   1: 'Efectivo',
   2: 'Cheque',
-  3: 'Depósito',
+  3: 'Deposito',
   4: 'Transferencia',
 }
 
@@ -56,14 +56,14 @@ type ReservaForm = {
   lote:            string
   cliente:         number
   fecha:           string   // ISO date string YYYY-MM-DD
-  monto:           string   // string para el input, se convertirá a número al guardar
+  monto:           string   // string para el input, se convertira a numero al guardar
   serie_recibo:     string
-  recibo:           string   // número de recibo; vacío si la serie es automática
-  forma_pago:      number   // 1=Efectivo 2=Cheque 3=Depósito 4=Transferencia
+  recibo:           string   // numero de recibo; vacio si la serie es automatica
+  forma_pago:      number   // 1=Efectivo 2=Cheque 3=Deposito 4=Transferencia
   banco:           number   // solo Cheque
   num_cuenta:      string   // solo Cheque
-  cuenta_bancaria: number   // solo Depósito/Transferencia
-  num_documento:   string   // Cheque/Depósito/Transferencia
+  cuenta_bancaria: number   // solo Deposito/Transferencia
+  num_documento:   string   // Cheque/Deposito/Transferencia
   vendedor:        number
   cobrador:        number
 }
@@ -90,7 +90,7 @@ const EMPTY_FORM: ReservaForm = {
   cobrador:        0,
 }
 
-// ─── Catálogo de monedas (ISO → país para bandera) ─────────────────────────
+// ─── Catalogo de monedas (ISO → pais para bandera) ─────────────────────────
 
 const CURRENCY_FLAG_MAP = new Map<string, string>([
   ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
@@ -142,7 +142,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -187,7 +187,7 @@ function ColumnFilter({
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => {
                 const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next)
               }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -259,7 +259,7 @@ function ClienteCombobox({
               onChange={(e) => setQuery(e.target.value)}
             />
             {query && (
-              <button type="button" title="Limpiar búsqueda" onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground">
+              <button type="button" title="Limpiar busqueda" onClick={() => setQuery('')} className="text-muted-foreground hover:text-foreground">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -323,7 +323,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-// ─── Tipo Reserva (estado local, no hay tabla aún) ─────────────────────────
+// ─── Tipo Reserva (estado local, no hay tabla aun) ─────────────────────────
 
 type Reserva = {
   id: string        // temporal UUID en memoria
@@ -372,7 +372,7 @@ interface Props {
 // Devuelve la serie predeterminada de una lista ya filtrada por empresa+proyecto
 function getDefaultSerie(series: SerieRecibo[]): string {
   if (series.length === 0) return ''
-  // Comparación numérica explícita por si Supabase devuelve smallint como string
+  // Comparacion numerica explicita por si Supabase devuelve smallint como string
   return (series.find((s) => Number(s.predeterminado) === 1) ?? series[0]).serie
 }
 
@@ -441,14 +441,14 @@ export function ReservasClient({
     setReservas(mapReservas(reservasIniciales))
   }, [reservasIniciales])
 
-  // ── Búsqueda y filtros ────────────────────────────────────────────────
+  // ── Busqueda y filtros ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
   const [colFilters, setColFilters] = useState<ColFilters>({})
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [vendedorFiltro, setVendedorFiltro] = useState(0)
 
-  // ── Diálogo ───────────────────────────────────────────────────────────
+  // ── Dialogo ───────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [viewTarget, setViewTarget] = useState<Reserva | null>(null)
@@ -471,7 +471,7 @@ export function ReservasClient({
 
   // ── Listas filtradas para los selects del formulario ─────────────────
 
-  // Proyectos disponibles según empresa elegida
+  // Proyectos disponibles segun empresa elegida
   const proyectosPorEmpresa = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
     [proyectos, form.empresa],
@@ -511,7 +511,7 @@ export function ReservasClient({
   )
 
   // Capturar modifico_fecha del lote elegido para control de concurrencia optimista.
-  // Se limpia automáticamente cuando lote se resetea por cascada (empresa/proyecto/fase/manzana).
+  // Se limpia automaticamente cuando lote se resetea por cascada (empresa/proyecto/fase/manzana).
   useEffect(() => {
     if (!form.lote) { setLoteLastModified(undefined); return }
     const lote = lotesDisponibles.find(
@@ -552,7 +552,7 @@ export function ReservasClient({
     [cuentasBancarias, form.empresa, form.proyecto],
   )
 
-  // Series de recibo para el proyecto seleccionado (ordenadas alfabético, ya vienen así del servidor).
+  // Series de recibo para el proyecto seleccionado (ordenadas alfabetico, ya vienen asi del servidor).
   // Incluye series globales (empresa=0, proyecto=0) como fallback.
   const seriesReciboPorProyecto = useMemo(
     () => filterSeries(seriesRecibo, form.empresa, form.proyecto),
@@ -566,7 +566,7 @@ export function ReservasClient({
   )
   const reciboAutomatico = serieSeleccionada?.recibo_automatico === 1
 
-  // ── Función de actualización del formulario ───────────────────────────
+  // ── Funcion de actualizacion del formulario ───────────────────────────
 
   function f(key: keyof ReservaForm, value: string | number) {
     setForm((prev) => {
@@ -612,7 +612,7 @@ export function ReservasClient({
       if (key === 'manzana') {
         next.lote = firstLoteCodigo(lotesDisponibles, prev.empresa, prev.proyecto, prev.fase, String(value))
       }
-      // Al cambiar forma_pago, pre-seleccionar primer banco / primera cuenta bancaria según aplique
+      // Al cambiar forma_pago, pre-seleccionar primer banco / primera cuenta bancaria segun aplique
       if (key === 'forma_pago') {
         const fp = Number(value)
         next.num_cuenta      = ''
@@ -624,7 +624,7 @@ export function ReservasClient({
           ? (cuentasBancarias.find((cb) => cb.activo === 1 && cb.empresa === prev.empresa && cb.proyecto === prev.proyecto)?.codigo ?? 0)
           : 0
       }
-      // Al cambiar serie_recibo, limpiar el número de recibo manual
+      // Al cambiar serie_recibo, limpiar el numero de recibo manual
       if (key === 'serie_recibo') {
         next.recibo = ''
       }
@@ -731,7 +731,7 @@ export function ReservasClient({
 
   useEffect(() => { setCursorIdx(null) }, [search, colFilters, fechaDesde, fechaHasta, vendedorFiltro])
 
-  // ── Acciones de diálogo ───────────────────────────────────────────────
+  // ── Acciones de dialogo ───────────────────────────────────────────────
 
   function openCreate() {
     setViewTarget(null)
@@ -792,17 +792,17 @@ export function ReservasClient({
       return
     }
     if (!form.serie_recibo) { toast.error('Selecciona la serie de recibo.');           return }
-    if (!reciboAutomatico && !form.recibo.trim()) { toast.error('Ingresa el número de recibo.'); return }
+    if (!reciboAutomatico && !form.recibo.trim()) { toast.error('Ingresa el numero de recibo.'); return }
     if (!form.forma_pago) { toast.error('Selecciona la forma de pago.');               return }
     if (form.forma_pago === 2 && !form.banco)           { toast.error('Selecciona el banco.');            return }
-    if (form.forma_pago === 2 && !form.num_cuenta.trim()) { toast.error('Ingresa el número de cuenta.');  return }
-    if (form.forma_pago === 2 && !form.num_documento.trim()) { toast.error('Ingresa el número de documento.'); return }
+    if (form.forma_pago === 2 && !form.num_cuenta.trim()) { toast.error('Ingresa el numero de cuenta.');  return }
+    if (form.forma_pago === 2 && !form.num_documento.trim()) { toast.error('Ingresa el numero de documento.'); return }
     if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.cuenta_bancaria) { toast.error('Selecciona la cuenta bancaria.'); return }
-    if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.num_documento.trim()) { toast.error('Ingresa el número de documento.'); return }
+    if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.num_documento.trim()) { toast.error('Ingresa el numero de documento.'); return }
     if (!form.cobrador) { toast.error('Selecciona un cobrador.'); return }
 
     if (viewTarget) {
-      // Edición — pendiente de implementar persistencia
+      // Edicion — pendiente de implementar persistencia
       setReservas((prev) => prev.map((r) => r.id === viewTarget.id
         ? { ...r, ...form, monto: montoNum }
         : r,
@@ -812,7 +812,7 @@ export function ReservasClient({
       return
     }
 
-    // ── Creación con persistencia en BD ────────────────────────────────────
+    // ── Creacion con persistencia en BD ────────────────────────────────────
     setIsSaving(true)
     const result = await createReserva(
       {
@@ -885,7 +885,7 @@ export function ReservasClient({
         </Button>
       </div>
 
-      {/* ── Búsqueda + ColumnManager ── */}
+      {/* ── Busqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -906,7 +906,7 @@ export function ReservasClient({
         </div>
       </div>
 
-      {/* ── Filtros rápidos: fecha + vendedor ── */}
+      {/* ── Filtros rapidos: fecha + vendedor ── */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground shrink-0">Desde</span>
@@ -1118,7 +1118,7 @@ export function ReservasClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron reservas con ese criterio.'
-                    : 'Todavía no hay reservas. Haz clic en "Nueva Reserva" para comenzar.'}
+                    : 'Todavia no hay reservas. Haz clic en "Nueva Reserva" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -1238,7 +1238,7 @@ export function ReservasClient({
         </Table>
       </div>
 
-      {/* ── Diálogo Nueva / Ver / Editar Reserva ── */}
+      {/* ── Dialogo Nueva / Ver / Editar Reserva ── */}
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open)
         if (!open) { setIsEditing(false) }
@@ -1328,7 +1328,7 @@ export function ReservasClient({
                 </div>
 
               ) : (
-              /* ── Edición / Creación ──────────────────────────── */
+              /* ── Edicion / Creacion ──────────────────────────── */
                 <div className="grid grid-cols-2 gap-4">
 
                   {/* Empresa */}
@@ -1372,7 +1372,7 @@ export function ReservasClient({
                     </Select>
                   </div>
 
-                  {/* Selección de lote */}
+                  {/* Seleccion de lote */}
                   <SectionDivider label="Seleccion Lote" />
 
                   {/* Fase + Manzana + Lote en una fila (4 cols: Fase=2, Manzana=1, Lote=1) */}
@@ -1459,7 +1459,7 @@ export function ReservasClient({
                     </div>
                   )}
 
-                  {/* Transacción */}
+                  {/* Transaccion */}
                   <SectionDivider label="Datos Reserva" />
 
                   {/* Vendedor */}
@@ -1559,7 +1559,7 @@ export function ReservasClient({
                       </Label>
                       <Input
                         id="res-recibo"
-                        placeholder={reciboAutomatico ? 'Automático' : 'No. recibo'}
+                        placeholder={reciboAutomatico ? 'Automatico' : 'No. recibo'}
                         disabled={reciboAutomatico}
                         value={form.recibo}
                         onChange={(e) => f('recibo', e.target.value)}
@@ -1619,7 +1619,7 @@ export function ReservasClient({
                         </Label>
                         <Input
                           id="res-num-cuenta"
-                          placeholder="Número de cuenta"
+                          placeholder="Numero de cuenta"
                           value={form.num_cuenta}
                           onChange={(e) => f('num_cuenta', e.target.value)}
                         />
@@ -1630,7 +1630,7 @@ export function ReservasClient({
                         </Label>
                         <Input
                           id="res-num-doc-cheque"
-                          placeholder="Número de cheque"
+                          placeholder="Numero de cheque"
                           value={form.num_documento}
                           onChange={(e) => f('num_documento', e.target.value)}
                         />
@@ -1638,7 +1638,7 @@ export function ReservasClient({
                     </>
                   )}
 
-                  {/* Depósito / Transferencia: Cuenta Bancaria */}
+                  {/* Deposito / Transferencia: Cuenta Bancaria */}
                   {(form.forma_pago === 3 || form.forma_pago === 4) && (
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="res-cuenta-bancaria" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
@@ -1660,7 +1660,7 @@ export function ReservasClient({
                     </div>
                   )}
 
-                  {/* Depósito / Transferencia: No. Documento */}
+                  {/* Deposito / Transferencia: No. Documento */}
                   {(form.forma_pago === 3 || form.forma_pago === 4) && (
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="res-num-doc" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
@@ -1668,7 +1668,7 @@ export function ReservasClient({
                       </Label>
                       <Input
                         id="res-num-doc"
-                        placeholder="Número de documento"
+                        placeholder="Numero de documento"
                         value={form.num_documento}
                         onChange={(e) => f('num_documento', e.target.value)}
                       />

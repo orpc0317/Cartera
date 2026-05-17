@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal, Download } from 'lucide-react'
+import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal, Download, Coins, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,9 +34,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   createProyecto, updateProyecto, deleteProyecto, uploadProjectLogo,
+  addProyectoMoneda, toggleProyectoMonedaActivo, setProyectoMonedaPredeterminada,
 } from '@/app/actions/proyectos'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import type { Empresa, Proyecto, ProyectoForm, Fase, Moneda } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, ProyectoForm, Fase, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { CountrySelect } from '@/components/ui/country-select'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -93,7 +94,7 @@ function ColumnFilter({
                   onChange(next)
                 }}
               />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -106,7 +107,7 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -123,12 +124,12 @@ const CURRENCY_FLAG_MAP = new Map<string, string>([
   ['UYU', 'uy'], ['VES', 've'],
 ])
 
-// ─── Códigos de marcación telefónica ─────────────────────────────────────
+// ─── Codigos de marcacion telefonica ─────────────────────────────────────
 const PHONE_COUNTRIES: { iso: string; code: string; name: string }[] = [
   { iso: 'AR', code: '54',  name: 'Argentina' },
   { iso: 'BO', code: '591', name: 'Bolivia' },
   { iso: 'BR', code: '55',  name: 'Brasil' },
-  { iso: 'CA', code: '1',   name: 'Canadá' },
+  { iso: 'CA', code: '1',   name: 'Canada' },
   { iso: 'CL', code: '56',  name: 'Chile' },
   { iso: 'CO', code: '57',  name: 'Colombia' },
   { iso: 'CR', code: '506', name: 'Costa Rica' },
@@ -136,16 +137,16 @@ const PHONE_COUNTRIES: { iso: string; code: string; name: string }[] = [
   { iso: 'DE', code: '49',  name: 'Alemania' },
   { iso: 'DO', code: '1',   name: 'Rep. Dominicana' },
   { iso: 'EC', code: '593', name: 'Ecuador' },
-  { iso: 'ES', code: '34',  name: 'España' },
+  { iso: 'ES', code: '34',  name: 'Espana' },
   { iso: 'FR', code: '33',  name: 'Francia' },
   { iso: 'GB', code: '44',  name: 'Reino Unido' },
   { iso: 'GT', code: '502', name: 'Guatemala' },
   { iso: 'HN', code: '504', name: 'Honduras' },
   { iso: 'IT', code: '39',  name: 'Italia' },
-  { iso: 'MX', code: '52',  name: 'México' },
+  { iso: 'MX', code: '52',  name: 'Mexico' },
   { iso: 'NI', code: '505', name: 'Nicaragua' },
-  { iso: 'PA', code: '507', name: 'Panamá' },
-  { iso: 'PE', code: '51',  name: 'Perú' },
+  { iso: 'PA', code: '507', name: 'Panama' },
+  { iso: 'PE', code: '51',  name: 'Peru' },
   { iso: 'PT', code: '351', name: 'Portugal' },
   { iso: 'PY', code: '595', name: 'Paraguay' },
   { iso: 'SV', code: '503', name: 'El Salvador' },
@@ -184,13 +185,13 @@ function PhoneField({
     <div className="flex gap-2">
       <Select value={iso} onValueChange={(v: string | null) => onIsoChange(v ?? '')}>
         <SelectTrigger className="w-[110px] shrink-0 px-2">
-          <SelectValue placeholder="País">
+          <SelectValue placeholder="Pais">
             {(v: string) => v && DIAL_CODES[v] ? (
               <span className="flex items-center gap-1">
                 <img src={`https://flagcdn.com/w20/${v.toLowerCase()}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                 <span>+{DIAL_CODES[v]}</span>
               </span>
-            ) : <span className="text-muted-foreground text-xs">País</span>}
+            ) : <span className="text-muted-foreground text-xs">Pais</span>}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
@@ -288,7 +289,6 @@ const EMPTY_FORM: ProyectoForm = {
   empresa: 0,
   codigo: 0,
   nombre: '',
-  moneda: 'GTQ',
   direccion_pais: '',
   direccion_departamento: '',
   direccion_municipio: '',
@@ -323,7 +323,7 @@ const LOGO_MAX_DIM = 4000
 async function validateLogoFile(file: File): Promise<string | null> {
   const allowed = LOGO_ACCEPT.split(',')
   if (!allowed.includes(file.type)) return 'Formato no permitido. Use PNG, JPG, WebP o SVG.'
-  if (file.size > LOGO_MAX_BYTES) return `El archivo supera el tamaño máximo de 5 MB.`
+  if (file.size > LOGO_MAX_BYTES) return `El archivo supera el tamano maximo de 5 MB.`
   if (file.type === 'image/svg+xml') return null // SVG: skip dimension check
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
@@ -331,9 +331,9 @@ async function validateLogoFile(file: File): Promise<string | null> {
     img.onload = () => {
       URL.revokeObjectURL(url)
       if (img.width < LOGO_MIN_DIM || img.height < LOGO_MIN_DIM)
-        resolve(`Dimensiones mínimas ${LOGO_MIN_DIM}×${LOGO_MIN_DIM}px. La imagen tiene ${img.width}×${img.height}px.`)
+        resolve(`Dimensiones minimas ${LOGO_MIN_DIM}×${LOGO_MIN_DIM}px. La imagen tiene ${img.width}×${img.height}px.`)
       else if (img.width > LOGO_MAX_DIM || img.height > LOGO_MAX_DIM)
-        resolve(`Dimensiones máximas ${LOGO_MAX_DIM}×${LOGO_MAX_DIM}px. La imagen tiene ${img.width}×${img.height}px.`)
+        resolve(`Dimensiones maximas ${LOGO_MAX_DIM}×${LOGO_MAX_DIM}px. La imagen tiene ${img.width}×${img.height}px.`)
       else resolve(null)
     }
     img.onerror = () => { URL.revokeObjectURL(url); resolve('No se pudo leer la imagen.') }
@@ -368,7 +368,7 @@ function LogoUploadField({
           <img src={displayUrl} alt="Logo" className="h-14 w-14 shrink-0 rounded object-contain bg-white border border-border" />
           <div className="min-w-0 flex-1">
             {fileName && <p className="truncate text-xs font-medium">{fileName}</p>}
-            <p className="text-xs text-muted-foreground">PNG, JPG, WebP o SVG · máx. 5 MB · mín. {LOGO_MIN_DIM}×{LOGO_MIN_DIM}px</p>
+            <p className="text-xs text-muted-foreground">PNG, JPG, WebP o SVG · max. 5 MB · min. {LOGO_MIN_DIM}×{LOGO_MIN_DIM}px</p>
           </div>
           {!disabled && (
             <div className="flex gap-1 shrink-0">
@@ -395,7 +395,7 @@ function LogoUploadField({
         >
           <ImageIcon className="h-8 w-8 text-muted-foreground" />
           <span className="text-muted-foreground">Haz clic o arrastra una imagen</span>
-          <span className="text-xs text-muted-foreground">PNG, JPG, WebP o SVG · máx. 5 MB · mín. {LOGO_MIN_DIM}×{LOGO_MIN_DIM}px</span>
+          <span className="text-xs text-muted-foreground">PNG, JPG, WebP o SVG · max. 5 MB · min. {LOGO_MIN_DIM}×{LOGO_MIN_DIM}px</span>
         </button>
       )}
       <input ref={inputRef} type="file" accept={LOGO_ACCEPT} aria-label="Seleccionar logo" className="hidden"
@@ -419,6 +419,7 @@ export function ProyectosClient({
   departamentos,
   municipios,
   monedas,
+  proyectoMonedas,
   puedeAgregar,
   puedeModificar,
   puedeEliminar,
@@ -431,6 +432,7 @@ export function ProyectosClient({
   departamentos: Departamento[]
   municipios: Municipio[]
   monedas: Moneda[]
+  proyectoMonedas: ProyectoMoneda[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -450,16 +452,16 @@ export function ProyectosClient({
   const [similarWarning, setSimilarWarning] = useState<Proyecto[] | null>(null)
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
-  // Códigos para cascada (no van al form, solo filtran)
+  // Codigos para cascada (no van al form, solo filtran)
   const [paisCodigo, setPaisCodigo] = useState('')
   const [deptoCodigo, setDeptoCodigo] = useState('')
 
-  // Tipo de cálculo de mora (0=Tasa, 1=Valor Fijo) — solo UI, no va a BD
+  // Tipo de calculo de mora (0=Tasa, 1=Valor Fijo) — solo UI, no va a BD
   const [tipoCalculo, setTipoCalculo] = useState(0)
-  // Cadena de visualización para Mora Mínima (miles + 2 decimales)
+  // Cadena de visualizacion para Mora Minima (miles + 2 decimales)
   const [minMoraStr, setMinMoraStr] = useState('0.00')
 
-  // Estado para los campos de teléfono (separados en país + número local)
+  // Estado para los campos de telefono (separados en pais + numero local)
   const [tel1Iso, setTel1Iso] = useState('')
   const [tel1Local, setTel1Local] = useState('')
   const [tel2Iso, setTel2Iso] = useState('')
@@ -470,28 +472,38 @@ export function ProyectosClient({
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('')
   const [logoError, setLogoError] = useState('')
 
+  // Estado para gestión de monedas del proyecto
+  const [addMonedaValue, setAddMonedaValue] = useState('')
+  const [isMonedaPending, startMonedaTransition] = useTransition()
+
+  // Estado para la pestaña activa del modal y flujo de alta guiada de monedas
+  const [activeTab, setActiveTab] = useState('general')
+  const [pendingMonedasSetup, setPendingMonedasSetup] = useState<{ empresa: number; codigo: number } | null>(null)
+  const [warnNoMonedas, setWarnNoMonedas] = useState(false)
+
   const deptosFiltrados = departamentos.filter((d) => d.pais === paisCodigo)
   const municipiosFiltrados = municipios.filter(
     (m) => m.pais === paisCodigo && m.departamento === deptoCodigo
+  )
+
+  // Monedas del proyecto actualmente en vista
+  const proyectoMonedasActuales = useMemo(
+    () => viewTarget
+      ? proyectoMonedas.filter((m) => m.empresa === viewTarget.empresa && m.proyecto === viewTarget.codigo)
+      : [],
+    [proyectoMonedas, viewTarget],
+  )
+
+  // Monedas del catálogo aún no agregadas al proyecto
+  const monedasDisponibles = useMemo(
+    () => monedas.filter((m) => !proyectoMonedasActuales.some((pm) => pm.moneda === m.codigo)),
+    [monedas, proyectoMonedasActuales],
   )
 
   const empresaMap = useMemo(
     () => new Map(empresas.map((e) => [e.codigo, e.nombre])),
     [empresas]
   )
-
-  // País ISO → moneda ISO, restringido a monedas en t_moneda
-  const countryToCurrency = useMemo(() => ({
-    ...Object.fromEntries(
-      monedas
-        .filter((m) => m.codigo !== 'EUR')
-        .flatMap((m) => {
-          const flag = CURRENCY_FLAG_MAP.get(m.codigo)
-          return flag ? [[flag.toUpperCase(), m.codigo] as [string, string]] : []
-        })
-    ),
-    ...(monedas.some((m) => m.codigo === 'EUR') ? { DE: 'EUR', ES: 'EUR', FR: 'EUR', IT: 'EUR', PT: 'EUR' } : {}),
-  }), [monedas])
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
@@ -591,6 +603,20 @@ export function ProyectosClient({
 
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
+  // Abrir modal Edit en pestaña Monedas tras crear un proyecto nuevo
+  useEffect(() => {
+    if (!pendingMonedasSetup) return
+    const found = initialData.find(
+      (p) => p.empresa === pendingMonedasSetup.empresa && p.codigo === pendingMonedasSetup.codigo
+    )
+    if (!found) return
+    setPendingMonedasSetup(null)
+    openView(found)
+    setActiveTab('monedas')
+    setIsEditing(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData, pendingMonedasSetup])
+
   function buildFormFromProyecto(proyecto: Proyecto) {
     const pCode = proyecto.direccion_pais ?? ''
     const dCode = proyecto.direccion_departamento ?? ''
@@ -601,7 +627,6 @@ export function ProyectosClient({
         empresa: proyecto.empresa,
         codigo: proyecto.codigo,
         nombre: proyecto.nombre,
-        moneda: proyecto.moneda ?? 'GTQ',
         direccion_pais: pCode,
         direccion_departamento: dCode,
         direccion_municipio: proyecto.direccion_municipio ?? '',
@@ -629,22 +654,26 @@ export function ProyectosClient({
   }
 
   function openCreate() {
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const defIso = empresas[0]?.direccion_pais ?? ''
-    const defMoneda = countryToCurrency[defIso] ?? 'GTQ'
-    setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, moneda: defMoneda, direccion_pais: defIso })
+    const defDepto = departamentos.find((d) => d.pais === defIso)?.codigo ?? ''
+    const defMunicipio = municipios.find((m) => m.pais === defIso && m.departamento === defDepto)?.codigo ?? ''
+    setForm({ ...EMPTY_FORM, empresa: empresas[0]?.codigo ?? 0, direccion_pais: defIso, direccion_departamento: defDepto, direccion_municipio: defMunicipio })
     setPaisCodigo(defIso)
-    setDeptoCodigo('')
+    setDeptoCodigo(defDepto)
     setTel1Iso(defIso); setTel1Local('')
     setTel2Iso(defIso); setTel2Local('')
     setTipoCalculo(0)
     setMinMoraStr('0.00')
     setLogoFile(null); setLogoPreviewUrl(''); setLogoError('')
+    setAddMonedaValue('')
     setDialogOpen(true)
   }
 
   function openView(proyecto: Proyecto) {
+    setActiveTab('general')
     const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromProyecto(proyecto)
     const { iso: iso1, local: local1 } = splitPhone(proyecto.telefono1 ?? '')
     const { iso: iso2, local: local2 } = splitPhone(proyecto.telefono2 ?? '')
@@ -658,6 +687,7 @@ export function ProyectosClient({
     setTipoCalculo((proyecto.fijo_mora ?? 0) > 0 ? 1 : 0)
     setMinMoraStr(formatMora(proyecto.minimo_mora ?? 0))
     setLogoFile(null); setLogoPreviewUrl(''); setLogoError('')
+    setAddMonedaValue('')
     setIsEditing(false)
     setDialogOpen(true)
   }
@@ -665,6 +695,10 @@ export function ProyectosClient({
   function startEdit() { setIsEditing(true) }
 
   function cancelEdit() {
+    if (viewTarget && proyectoMonedasActuales.length === 0) {
+      setWarnNoMonedas(true)
+      return
+    }
     if (viewTarget) {
       const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromProyecto(viewTarget)
       const { iso: iso1, local: local1 } = splitPhone(viewTarget.telefono1 ?? '')
@@ -678,6 +712,7 @@ export function ProyectosClient({
       setTipoCalculo((viewTarget.fijo_mora ?? 0) > 0 ? 1 : 0)
       setMinMoraStr(formatMora(viewTarget.minimo_mora ?? 0))
       setLogoFile(null); setLogoPreviewUrl(''); setLogoError('')
+      setAddMonedaValue('')
       setIsEditing(false)
     } else {
       setDialogOpen(false)
@@ -685,7 +720,7 @@ export function ProyectosClient({
   }
 
   function f(key: keyof ProyectoForm, value: string | number) {
-    const v = typeof value === 'string' && key !== 'direccion_pais' && key !== 'direccion_departamento' && key !== 'direccion_municipio' && key !== 'moneda'
+    const v = typeof value === 'string' && key !== 'direccion_pais' && key !== 'direccion_departamento' && key !== 'direccion_municipio'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
     setForm((prev) => {
@@ -694,7 +729,6 @@ export function ProyectosClient({
         const emp = empresas.find((e) => e.codigo === Number(value))
         const iso = emp?.direccion_pais ?? ''
         next.direccion_pais = iso; next.direccion_departamento = ''; next.direccion_municipio = ''
-        next.moneda = countryToCurrency[iso] ?? 'GTQ'
         setPaisCodigo(iso); setDeptoCodigo('')
         if (!next.telefono1) { setTel1Iso(iso); setTel1Local('') }
         if (!next.telefono2) { setTel2Iso(iso); setTel2Local('') }
@@ -720,21 +754,65 @@ export function ProyectosClient({
     setForm((prev) => ({ ...prev, logo_url: '' }))
   }, [logoPreviewUrl])
 
+  function handleAddMoneda() {
+    if (!viewTarget || !addMonedaValue) return
+    startMonedaTransition(async () => {
+      const result = await addProyectoMoneda(viewTarget.empresa, viewTarget.codigo, addMonedaValue)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success('Moneda agregada al proyecto.')
+        setAddMonedaValue('')
+        router.refresh()
+      }
+    })
+  }
+
+  function handleToggleMonedaActivo(moneda: string, nuevoActivo: number) {
+    if (!viewTarget) return
+    startMonedaTransition(async () => {
+      const result = await toggleProyectoMonedaActivo(viewTarget.empresa, viewTarget.codigo, moneda, nuevoActivo)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(nuevoActivo === 1 ? 'Moneda activada.' : 'Moneda desactivada.')
+        router.refresh()
+      }
+    })
+  }
+
+  function handleSetPredeterminada(moneda: string) {
+    if (!viewTarget) return
+    startMonedaTransition(async () => {
+      const result = await setProyectoMonedaPredeterminada(viewTarget.empresa, viewTarget.codigo, moneda)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success('Moneda predeterminada actualizada.')
+        router.refresh()
+      }
+    })
+  }
+
   function handleSave() {
     if (!form.empresa) { toast.error('Debes seleccionar una empresa.'); return }
     if (!form.nombre.trim()) { toast.error('El nombre del proyecto es requerido.'); return }
-    if (!form.moneda.trim()) { toast.error('La moneda es requerida.'); return }
-    if (!form.direccion.trim()) { toast.error('La dirección es requerida.'); return }
-    if (!form.direccion_pais.trim()) { toast.error('El país es requerido.'); return }
+    if (!form.direccion.trim()) { toast.error('La direccion es requerida.'); return }
+    if (!form.direccion_pais.trim()) { toast.error('El pais es requerido.'); return }
     if (!form.direccion_departamento.trim()) { toast.error('El departamento es requerido.'); return }
     if (!form.direccion_municipio.trim()) { toast.error('El municipio es requerido.'); return }
-    if (!tel1Local.trim()) { toast.error('El teléfono 1 es requerido.'); return }
+    if (!tel1Local.trim()) { toast.error('El telefono 1 es requerido.'); return }
     if (form.mora_automatica === 1) {
       if (tipoCalculo === 0 && !form.interes_mora) { toast.error('El porcentaje de mora es requerido.'); return }
       if (tipoCalculo === 1 && !form.fijo_mora) { toast.error('El monto de mora es requerido.'); return }
-      if (form.dias_gracia < 0) { toast.error('Los días de gracia deben ser 0 o mayor.'); return }
+      if (form.dias_gracia < 0) { toast.error('Los dias de gracia deben ser 0 o mayor.'); return }
     }
     if (logoError) { toast.error('Corrige el error en el logo antes de guardar.'); return }
+
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget && !logoFile && JSON.stringify(form) === JSON.stringify(buildFormFromProyecto(viewTarget).form)) {
+      setDialogOpen(false); return
+    }
 
     // Verificar similitud de nombre (umbral 0.85) contra proyectos de la misma empresa
     const normalizedInput = toDbString(form.nombre)
@@ -771,9 +849,17 @@ export function ProyectosClient({
         if (result.error.includes('modificado')) setHadConflict(true)
       } else {
         setHadConflict(false)
-        toast.success(viewTarget ? 'Proyecto actualizado.' : 'Proyecto creado.')
-        setDialogOpen(false)
-        router.refresh()
+        if (viewTarget) {
+          toast.success('Proyecto actualizado.')
+          setDialogOpen(false)
+          router.refresh()
+        } else {
+          const newCodigo = (result as { error?: string; codigo?: number }).codigo ?? 0
+          setPendingMonedasSetup({ empresa: form.empresa, codigo: newCodigo })
+          toast.success('Proyecto creado. Ahora registra la primera moneda (obligatorio).')
+          setDialogOpen(false)
+          router.refresh()
+        }
       }
     })
   }
@@ -906,7 +992,7 @@ export function ProyectosClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron proyectos con ese criterio.'
-                    : 'Todavía no hay proyectos. Haz clic en "Nuevo Proyecto" para comenzar.'}
+                    : 'Todavia no hay proyectos. Haz clic en "Nuevo Proyecto" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -1000,7 +1086,11 @@ export function ProyectosClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares está activo
+          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares esta activo
+          if (!open && isEditing && viewTarget && proyectoMonedasActuales.length === 0) {
+            setWarnNoMonedas(true)
+            return
+          }
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -1035,7 +1125,7 @@ export function ProyectosClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2 flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0">
               <TabsTrigger value="general" className="gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
@@ -1043,8 +1133,14 @@ export function ProyectosClient({
               </TabsTrigger>
               <TabsTrigger value="mora" className="gap-1.5">
                 <SlidersHorizontal className="h-3.5 w-3.5" />
-                Parámetros
+                Parametros
               </TabsTrigger>
+              {viewTarget && (
+              <TabsTrigger value="monedas" className="gap-1.5">
+                <Coins className="h-3.5 w-3.5" />
+                Monedas
+              </TabsTrigger>
+              )}
             </TabsList>
 
             {/* ── Tab General ── */}
@@ -1068,14 +1164,16 @@ export function ProyectosClient({
                   {(() => {
                     const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                     return (
-                      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                        <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
-                        {p ? (
-                          <span className="flex items-center gap-1.5 text-sm font-medium">
-                            <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                            {p.nombre}
-                          </span>
-                        ) : <span className="text-sm font-medium">{viewTarget.direccion_pais ?? '—'}</span>}
+                      <div className="grid gap-1">
+                        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
+                        <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                          {p ? (
+                            <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                              <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                              {p.nombre}
+                            </span>
+                          ) : <span className="block text-[13px] font-medium text-foreground">{viewTarget.direccion_pais ?? '—'}</span>}
+                        </div>
                       </div>
                     )
                   })()}
@@ -1119,24 +1217,25 @@ export function ProyectosClient({
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="direccion_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                    <Input id="direccion_p" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Dirección del proyecto" />
+                    <Input id="direccion_p" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
                   </div>
                   <div className="grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
                     <CountrySelect paises={paises} value={paisCodigo}
                       onChange={(codigo, _nombre) => {
-                        setPaisCodigo(codigo); setDeptoCodigo('')
-                        const autoMoneda = countryToCurrency[codigo] ?? form.moneda
-                        setForm((prev) => ({ ...prev, direccion_pais: codigo, direccion_departamento: '', direccion_municipio: '', moneda: autoMoneda }))
+                        const firstDepto = departamentos.find((d) => d.pais === codigo)?.codigo ?? ''
+                        const firstMunicipio = municipios.find((m) => m.pais === codigo && m.departamento === firstDepto)?.codigo ?? ''
+                        setPaisCodigo(codigo); setDeptoCodigo(firstDepto)
+                        setForm((prev) => ({ ...prev, direccion_pais: codigo, direccion_departamento: firstDepto, direccion_municipio: firstMunicipio }))
                       }}
                     />
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="departamento_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento *</Label>
                     <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo}
-                      onChange={(e) => { const v = e.target.value; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: '' })) }}
-                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
-                      <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un país'}</option>
+                      onChange={(e) => { const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
+                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50">
+                      <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                       {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
                     </select>
                   </div>
@@ -1146,7 +1245,7 @@ export function ProyectosClient({
                       value={form.direccion_municipio}
                       disabled={!deptoCodigo}
                       onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
-                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50">
+                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50">
                       <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                       {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
                     </select>
@@ -1162,7 +1261,7 @@ export function ProyectosClient({
                       local={tel1Local}
                       onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
                       onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
-                      placeholder="Número local"
+                      placeholder="Numero local"
                     />
                   </div>
                   <div className="col-span-2 grid gap-1">
@@ -1172,7 +1271,7 @@ export function ProyectosClient({
                       local={tel2Local}
                       onIsoChange={(v) => { setTel2Iso(v); f('telefono2', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel2Local}` : tel2Local) }}
                       onLocalChange={(v) => { setTel2Local(v); f('telefono2', tel2Iso && DIAL_CODES[tel2Iso] ? `+${DIAL_CODES[tel2Iso]}${v}` : v) }}
-                      placeholder="Número local"
+                      placeholder="Numero local"
                     />
                   </div>
                 </div>
@@ -1188,12 +1287,12 @@ export function ProyectosClient({
                     <span className="text-xs font-semibold uppercase tracking-wider text-primary">Mora</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
-                  {/* Mora Automática — checkbox */}
+                  {/* Mora Automatica — checkbox */}
                   <div className="col-span-2 flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.mora_automatica} disabled />
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Automática</span>
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Automatica</span>
                   </div>
-                  {/* Forma Cálculo + Tipo Cálculo + % Mora|Monto Mora + Días Gracia */}
+                  {/* Forma Calculo + Tipo Calculo + % Mora|Monto Mora + Dias Gracia */}
                   <div className="col-span-2 grid grid-cols-4 gap-3">
                     <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
                     <ViewField label="Tipo Calculo" value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
@@ -1218,24 +1317,10 @@ export function ProyectosClient({
                   <ViewField label="Minimo Abono Capital" value={formatMora(viewTarget.minimo_abono_capital ?? 0)} />
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parametros</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="col-span-2 grid grid-cols-3 gap-3">
-                    {(() => {
-                      const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda ?? '')
-                      return (
-                        <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                          <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Moneda</span>
-                          {flag ? (
-                            <span className="flex items-center gap-1.5 text-sm font-medium">
-                              <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                              {viewTarget.moneda}
-                            </span>
-                          ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
-                        </div>
-                      )
-                    })()}
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
                       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Promesa Vencida</span>
@@ -1332,9 +1417,9 @@ export function ProyectosClient({
                     <div className="grid gap-1">
                       <Label htmlFor="dias_afectos" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Dias Afectos</Label>
                       <Select value={String(form.dias_afectos ?? 0)} onValueChange={(v) => f('dias_afectos', Number(v))}>
-                        <SelectTrigger id="dias_afectos" className="w-full"><SelectValue>{(v: string) => v === '1' ? 'Un Mes' : 'Todos Los Días'}</SelectValue></SelectTrigger>
+                        <SelectTrigger id="dias_afectos" className="w-full"><SelectValue>{(v: string) => v === '1' ? 'Un Mes' : 'Todos Los Dias'}</SelectValue></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="0">Todos Los Días</SelectItem>
+                          <SelectItem value="0">Todos Los Dias</SelectItem>
                           <SelectItem value="1">Un Mes</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1371,41 +1456,10 @@ export function ProyectosClient({
                   <div className="grid gap-1 w-3/4"><Label htmlFor="minimo_abono" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Minimo Abono Capital</Label><Input id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parámetros</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parametros</span>
                     <div className="flex-1 border-t border-primary/30" />
                   </div>
                   <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
-                    <div className="grid gap-1">
-                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
-                      <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? 'GTQ')}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Seleccionar moneda">
-                            {(v: string) => {
-                              const flag = CURRENCY_FLAG_MAP.get(v)
-                              return flag ? (
-                                <span className="flex items-center gap-2">
-                                  <img src={`https://flagcdn.com/w20/${flag}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  <span>{v}</span>
-                                </span>
-                              ) : null
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {monedas.map((m) => {
-                            const flag = CURRENCY_FLAG_MAP.get(m.codigo)
-                            return (
-                              <SelectItem key={m.codigo} value={m.codigo}>
-                                <span className="flex items-center gap-2">
-                                  {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={m.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                                  {m.codigo}
-                                </span>
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox
                         id="promesa_vencida"
@@ -1426,6 +1480,159 @@ export function ProyectosClient({
                   </div>
                 </div>
               )}
+            </TabsContent>
+            {/* ── Tab Monedas ── */}
+            <TabsContent value="monedas" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">Monedas</span>
+                  <div className="flex-1 border-t border-primary/30" />
+                </div>
+
+                {!viewTarget ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+                    <Coins className="h-8 w-8 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">
+                      Guarda el proyecto primero para poder administrar sus monedas.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {proyectoMonedasActuales.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-8 text-center gap-2 rounded-lg border border-dashed border-border">
+                        <Coins className="h-7 w-7 text-muted-foreground/30" />
+                        <p className="text-sm text-muted-foreground">No hay monedas registradas.</p>
+                        <p className="text-xs text-muted-foreground">Agrega la primera moneda del proyecto abajo.</p>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-border overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-muted/30 border-b border-border">
+                              <th className="px-3 py-2 text-left text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</th>
+                              <th className="px-3 py-2 text-center text-[11px] font-semibold tracking-wider text-muted-foreground">Predeterminada</th>
+                              <th className="px-3 py-2 text-center text-[11px] font-semibold tracking-wider text-muted-foreground">Estado</th>
+                              {puedeModificar && isEditing && <th className="px-3 py-2 w-24" />}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {proyectoMonedasActuales.map((pm) => {
+                              const flag = CURRENCY_FLAG_MAP.get(pm.moneda)
+                              return (
+                                <tr key={pm.moneda} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
+                                  <td className="px-3 py-2.5">
+                                    <span className="flex items-center gap-2 font-medium">
+                                      {flag && (
+                                        <img src={`https://flagcdn.com/w20/${flag}.png`} alt={pm.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                      )}
+                                      {pm.moneda}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    {pm.predeterminado === 1 ? (
+                                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+                                        <Star className="h-3 w-3 fill-sky-500" />
+                                        Predeterminada
+                                      </span>
+                                    ) : (
+                                      puedeModificar && isEditing ? (
+                                        <button
+                                          type="button"
+                                          disabled={pm.activo !== 1 || isMonedaPending}
+                                          onClick={() => handleSetPredeterminada(pm.moneda)}
+                                          title="Marcar como predeterminada"
+                                          className="inline-flex items-center justify-center rounded p-1 text-muted-foreground/40 hover:text-sky-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                        >
+                                          <Star className="h-4 w-4" />
+                                        </button>
+                                      ) : null
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    {pm.activo === 1 ? (
+                                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                                        Activo
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500">
+                                        Inactivo
+                                      </span>
+                                    )}
+                                  </td>
+                                  {puedeModificar && isEditing && (
+                                    <td className="px-3 py-2.5 text-right">
+                                      {pm.predeterminado !== 1 && (
+                                        <button
+                                          type="button"
+                                          disabled={isMonedaPending}
+                                          onClick={() => handleToggleMonedaActivo(pm.moneda, pm.activo === 1 ? 0 : 1)}
+                                          className={`text-[11px] rounded px-2 py-0.5 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                                            pm.activo === 1
+                                              ? 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'
+                                              : 'text-muted-foreground hover:bg-green-100 hover:text-green-700'
+                                          }`}
+                                        >
+                                          {pm.activo === 1 ? 'Desactivar' : 'Activar'}
+                                        </button>
+                                      )}
+                                    </td>
+                                  )}
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {puedeAgregar && isEditing && monedasDisponibles.length > 0 && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <Select value={addMonedaValue} onValueChange={(v) => setAddMonedaValue(v ?? '')}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Seleccionar moneda para agregar...">
+                              {(v: string) => {
+                                if (!v) return null
+                                const flag = CURRENCY_FLAG_MAP.get(v)
+                                return (
+                                  <span className="flex items-center gap-2">
+                                    {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                    {v}
+                                  </span>
+                                )
+                              }}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {monedasDisponibles.map((m) => {
+                              const flag = CURRENCY_FLAG_MAP.get(m.codigo)
+                              return (
+                                <SelectItem key={m.codigo} value={m.codigo}>
+                                  <span className="flex items-center gap-2">
+                                    {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={m.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                    {m.codigo}
+                                  </span>
+                                </SelectItem>
+                              )
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={!addMonedaValue || isMonedaPending}
+                          onClick={handleAddMoneda}
+                          className="shrink-0 gap-1.5"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Agregar
+                        </Button>
+                      </div>
+                    )}
+
+                  </>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
 
@@ -1448,6 +1655,26 @@ export function ProyectosClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* No-monedas warning */}
+      <AlertDialog open={warnNoMonedas} onOpenChange={(o) => !o && setWarnNoMonedas(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Moneda requerida</AlertDialogTitle>
+            <AlertDialogDescription render={<div />}>
+              Este proyecto no tiene monedas configuradas. La moneda es obligatoria — agrega al menos una antes de continuar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setWarnNoMonedas(false); setDialogOpen(false) }}>
+              Cerrar sin agregar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setWarnNoMonedas(false); setActiveTab('monedas') }}>
+              Agregar moneda ahora
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Similar name warning */}
       <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
@@ -1472,7 +1699,7 @@ export function ProyectosClient({
             <AlertDialogAction
               onClick={() => { setSimilarWarning(null); doSave() }}
             >
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1484,8 +1711,8 @@ export function ProyectosClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción eliminará permanentemente{' '}
-              <strong>{deleteTarget?.nombre}</strong>. Esta operación no se puede deshacer.
+              Esta accion eliminara permanentemente{' '}
+              <strong>{deleteTarget?.nombre}</strong>. Esta operacion no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

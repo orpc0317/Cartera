@@ -79,7 +79,7 @@ function ColumnFilter({ label, values, active, onChange }: {
           {values.map((v) => (
             <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => { const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next) }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -92,7 +92,7 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -397,6 +397,19 @@ export function CuentasBancariasClient({
     if (!form.nombre.trim()) { toast.error('El nombre de cuenta es requerido.'); return }
     if (!form.moneda.trim()) { toast.error('Selecciona la moneda.'); return }
 
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget) {
+      const sinCambios =
+        form.empresa === viewTarget.empresa &&
+        form.proyecto === viewTarget.proyecto &&
+        form.banco    === viewTarget.banco    &&
+        form.numero   === viewTarget.numero   &&
+        form.nombre   === viewTarget.nombre   &&
+        form.moneda   === viewTarget.moneda   &&
+        form.activo   === viewTarget.activo
+      if (sinCambios) { setDialogOpen(false); return }
+    }
+
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -669,17 +682,19 @@ export function CuentasBancariasClient({
                   <div className="col-span-2"><ViewField label="Banco"    value={bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`} /></div>
                   <div className="col-span-2"><ViewField label="Nombre Cuenta"  value={viewTarget.nombre} /></div>
                   <ViewField label="Numero Cuenta" value={viewTarget.numero} />
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-                    {(() => {
-                    const flagIso = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                    return (
-                      <span className="flex items-center gap-1.5 text-sm font-medium">
-                        {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                        {viewTarget.moneda || '—'}
-                      </span>
-                    )
-                  })()}
+                  <div className="grid gap-1">
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                      {(() => {
+                        const flagIso = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                        return flagIso ? (
+                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                            {viewTarget.moneda}
+                          </span>
+                        ) : <span className="block text-[13px] font-medium text-foreground">{viewTarget.moneda || '—'}</span>
+                      })()}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.activo} disabled />
@@ -815,7 +830,7 @@ export function CuentasBancariasClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cuenta bancaria?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong> ({deleteTarget?.numero}).
+              Esta accion no se puede deshacer. Se eliminara permanentemente <strong>{deleteTarget?.nombre}</strong> ({deleteTarget?.numero}).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

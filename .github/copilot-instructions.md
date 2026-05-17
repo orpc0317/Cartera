@@ -52,7 +52,9 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
 - **No agregar** comentarios, docstrings ni tipos a código que no fue modificado.
 - **No agregar** manejo de errores para escenarios imposibles. Validar solo en los límites del sistema (entradas de usuario y respuestas de red).
 - **No refactorizar** código existente que no fue solicitado.
-- **Revisión post-edición obligatoria:** después de crear o modificar cualquier archivo TypeScript/TSX, usar `get_errors` sobre ese archivo para detectar errores de compilación (comas faltantes, tipos incorrectos, imports rotos, etc.) y corregirlos antes de dar la tarea por terminada.
+- **Revisión post-edición obligatoria:** después de crear o modificar cualquier archivo TypeScript/TSX, usar `get_errors` sobre ese archivo para detectar errores de compilación (comas faltantes, tipos incorrectos, imports rotos, etc.) y corregirlos antes de dar la tarea por terminada. **Esto incluye ediciones parcialmente fallidas:** si `replace_string_in_file` o `multi_replace_string_in_file` reportan que algún reemplazo falló, el archivo puede haber quedado en estado corrupto — ejecutar `get_errors` de inmediato antes de continuar.
+- **`get_errors` puede devolver resultados obsoletos** si el language server de VS Code aún no re-analizó el archivo tras la escritura (funciona de forma asíncrona). Para errores **sintácticos** (comas dobles, llaves desbalanceadas, tokens inesperados), `get_errors` no es suficiente. Tras cualquier edición que modifique la estructura de un object literal, array, o bloque de código, ejecutar adicionalmente en terminal: `npx tsc --noEmit 2>&1 | Select-String "error TS"` y corregir antes de dar la tarea por terminada.
+- **Regla de contexto en reemplazos de object literals:** al eliminar una propiedad de un object literal (`key: value,`), el `oldString` DEBE incluir al menos una línea **después** de la propiedad eliminada (la línea siguiente del objeto) para garantizar que la coma de separación quede correcta y no se genere coma doble.
 
 ---
 

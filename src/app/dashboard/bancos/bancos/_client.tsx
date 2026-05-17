@@ -66,7 +66,7 @@ function ColumnFilter({ label, values, active, onChange }: {
           {values.map((v) => (
             <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => { const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next) }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -79,7 +79,7 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -344,6 +344,15 @@ export function BancosClient({
     if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
 
+    // Si estamos editando y no hay cambios, cerrar sin ir a la base de datos
+    if (viewTarget) {
+      const sinCambios =
+        form.nombre  === viewTarget.nombre  &&
+        form.empresa === viewTarget.empresa &&
+        form.proyecto === viewTarget.proyecto
+      if (sinCambios) { setDialogOpen(false); return }
+    }
+
     // Verificar similitud de nombre (umbral 0.85) contra bancos del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
     const candidates = initialData.filter((b) =>
@@ -473,7 +482,7 @@ export function BancosClient({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters ? 'Sin resultados para esa búsqueda.' : 'No hay bancos registrados aún.'}
+                  {search || hasActiveFilters ? 'Sin resultados para esa busqueda.' : 'No hay bancos registrados aun.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -536,7 +545,7 @@ export function BancosClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares está activo
+          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares esta activo
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -613,8 +622,8 @@ export function BancosClient({
                       id="nombre"
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}
-                      placeholder="Ej: banco industrial, banco g&t..."
-                      autoFocus
+                      placeholder="Nombre de la institucion financiera"
+                      autoComplete="off"
                     />
                   </div>
                 </div>
@@ -663,7 +672,7 @@ export function BancosClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -675,7 +684,7 @@ export function BancosClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar banco?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
+              Esta accion no se puede deshacer. Se eliminara permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

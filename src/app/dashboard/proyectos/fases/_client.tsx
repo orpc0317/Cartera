@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -41,13 +41,13 @@ import type { Empresa, Proyecto, Fase, FaseForm } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { UNIDAD_MEDIDA } from '@/lib/constants'
 
-// ─── Column types ───────────────────────────────────────────────────────────
+// --- Column types -----------------------------------------------------------
 
 type ColFilters = Record<string, Set<string>>
 type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
-// ─── Column definitions ─────────────────────────────────────────────────────
+// --- Column definitions -----------------------------------------------------
 
 const ALL_COLUMNS: ColDef[] = [
   { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
@@ -58,7 +58,7 @@ const ALL_COLUMNS: ColDef[] = [
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
-// ─── Empty form ──────────────────────────────────────────────────────────────
+// --- Empty form --------------------------------------------------------------
 
 const EMPTY_FORM: FaseForm = {
   empresa: 0,
@@ -68,7 +68,7 @@ const EMPTY_FORM: FaseForm = {
   medida: '',
 }
 
-// ─── CSV Export ──────────────────────────────────────────────────────────────
+// --- CSV Export --------------------------------------------------------------
 
 const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
 const COL_LABELS: Record<string, string> = Object.fromEntries(
@@ -105,13 +105,13 @@ function exportCsv(rows: Fase[], colPrefs: ColPref[]) {
   URL.revokeObjectURL(url)
 }
 
-// ─── Subcomponents ───────────────────────────────────────────────────────────
+// --- Subcomponents -----------------------------------------------------------
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -156,7 +156,7 @@ function ColumnFilter({
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => {
                 const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next)
               }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -199,7 +199,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-// ─── Props ───────────────────────────────────────────────────────────────────
+// --- Props -------------------------------------------------------------------
 
 interface Props {
   initialData: Fase[]
@@ -211,7 +211,7 @@ interface Props {
   userId: string
 }
 
-// ─── Main component ──────────────────────────────────────────────────────────
+// --- Main component ----------------------------------------------------------
 
 export function FasesClient({
   initialData, empresas, proyectos,
@@ -220,11 +220,11 @@ export function FasesClient({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  // ── Search & filters ───────────────────────────────────────────────────
+  // -- Search & filters ---------------------------------------------------
   const [search, setSearch] = useState('')
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
-  // ── Dialog state ───────────────────────────────────────────────────────
+  // -- Dialog state -------------------------------------------------------
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
@@ -232,28 +232,28 @@ export function FasesClient({
   const [deleteTarget, setDeleteTarget] = useState<Fase | null>(null)
   const [auditTarget, setAuditTarget] = useState<Fase | null>(null)
 
-  // ── Form ───────────────────────────────────────────────────────────────
+  // -- Form ---------------------------------------------------------------
   const [form, setForm] = useState<FaseForm>(EMPTY_FORM)
   const [similarWarning, setSimilarWarning] = useState<Fase[] | null>(null)
 
-  // ── FK Maps ────────────────────────────────────────────────────────────
+  // -- FK Maps ------------------------------------------------------------
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
 
-  // ── Proyectos por empresa (cascade) ───────────────────────────────────
+  // -- Proyectos por empresa (cascade) -----------------------------------
   const proyectosPorEmpresa = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
     [proyectos, form.empresa],
   )
 
-  // ── Unique filter values ───────────────────────────────────────────────
+  // -- Unique filter values -----------------------------------------------
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort(), [initialData, empresaMap])
   const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((f) => proyectoMap.get(`${f.empresa}-${f.proyecto}`) ?? String(f.proyecto)))].sort(), [initialData, proyectoMap])
   const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((f) => f.nombre).filter(Boolean))].sort(), [initialData])
   const uniqueMedidaLabels  = useMemo(() => [...new Set(initialData.map((f) => UNIDAD_MEDIDA[f.medida] ?? f.medida))].sort(), [initialData])
   const medidaLabelToKey    = useMemo(() => new Map(Object.entries(UNIDAD_MEDIDA).map(([k, v]) => [v, k])), [])
 
-  // ── Filter helpers ─────────────────────────────────────────────────────
+  // -- Filter helpers -----------------------------------------------------
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
       const u = { ...prev }
@@ -280,7 +280,7 @@ export function FasesClient({
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
-  // ── Column preferences ─────────────────────────────────────────────────
+  // -- Column preferences -------------------------------------------------
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const STORAGE_KEY = `fases_cols_v1_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
@@ -315,7 +315,7 @@ export function FasesClient({
   }
   const visibleCols = colPrefs.filter((p) => p.visible)
 
-  // ── Keyboard cursor ────────────────────────────────────────────────────
+  // -- Keyboard cursor ----------------------------------------------------
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
 
@@ -338,7 +338,7 @@ export function FasesClient({
 
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
-  // ── Form helper ────────────────────────────────────────────────────────
+  // -- Form helper --------------------------------------------------------
   function f(key: keyof FaseForm, value: string | number) {
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
@@ -363,7 +363,7 @@ export function FasesClient({
     }
   }
 
-  // ── Dialog actions ─────────────────────────────────────────────────────
+  // -- Dialog actions -----------------------------------------------------
   function openCreate() {
     setViewTarget(null)
     setIsEditing(true)
@@ -391,7 +391,7 @@ export function FasesClient({
     }
   }
 
-  // ── Delete ─────────────────────────────────────────────────────────────
+  // -- Delete -------------------------------------------------------------
   function handleDelete() {
     if (!deleteTarget) return
     startTransition(async () => {
@@ -406,12 +406,17 @@ export function FasesClient({
     })
   }
 
-  // ── Save ───────────────────────────────────────────────────────────────
+  // -- Save ---------------------------------------------------------------
   function handleSave() {
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
     if (!form.empresa)       { toast.error('La empresa es requerida.'); return }
     if (!form.proyecto)      { toast.error('El proyecto es requerido.'); return }
     if (!form.medida)        { toast.error('La medida es requerida.'); return }
+
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromFase(viewTarget))) {
+      setDialogOpen(false); return
+    }
 
     // Frontend similarity check (jaroWinkler >= 0.85)
     const normalizedInput = toDbString(form.nombre)
@@ -446,7 +451,7 @@ export function FasesClient({
     })
   }
 
-  // ── Dialog header derived state ────────────────────────────────────────
+  // -- Dialog header derived state ----------------------------------------
   const iconBadgeBg = isEditing && viewTarget ? 'bg-amber-100' : 'bg-violet-100'
   const iconEl = isEditing && viewTarget
     ? <Pencil className="h-4 w-4 text-amber-600" />
@@ -467,7 +472,7 @@ export function FasesClient({
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
 
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-violet-100 p-2.5">
@@ -488,14 +493,14 @@ export function FasesClient({
         </Button>
       </div>
 
-      {/* ── Warning: no projects ── */}
+      {/* -- Warning: no projects -- */}
       {proyectos.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           No hay proyectos disponibles. Crea un proyecto antes de agregar fases.
         </div>
       )}
 
-      {/* ── Search + toolbar ── */}
+      {/* -- Search + toolbar -- */}
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -519,7 +524,7 @@ export function FasesClient({
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* -- Table -- */}
       <div
         ref={tableRef}
         className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
@@ -572,7 +577,7 @@ export function FasesClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron fases con ese criterio.'
-                    : 'Todavía no hay fases. Haz clic en "Nueva Fase" para comenzar.'}
+                    : 'Todavia no hay fases. Haz clic en "Nueva Fase" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -658,7 +663,7 @@ export function FasesClient({
         </Table>
       </div>
 
-      {/* ── CRUD Dialog ── */}
+      {/* -- CRUD Dialog -- */}
       <Dialog
         modal={false}
         open={dialogOpen}
@@ -696,7 +701,7 @@ export function FasesClient({
 
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
-              {/* ── View mode ── */}
+              {/* -- View mode -- */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="Identificacion" />
@@ -719,7 +724,7 @@ export function FasesClient({
                 </div>
               ) : (
 
-              /* ── Edit / Create mode ── */
+              /* -- Edit / Create mode -- */
               <div className="grid grid-cols-2 gap-4">
                 <SectionDivider label="Identificacion" />
 
@@ -831,7 +836,7 @@ export function FasesClient({
         </DialogContent>
       </Dialog>
 
-      {/* ── Similar name warning ── */}
+      {/* -- Similar name warning -- */}
       <AlertDialog open={!!similarWarning} onOpenChange={(o) => { if (!o) setSimilarWarning(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -852,19 +857,19 @@ export function FasesClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Delete confirmation ── */}
+      {/* -- Delete confirmation -- */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar fase?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente la fase{' '}
+              Esta accion no se puede deshacer. Se eliminara permanentemente la fase{' '}
               <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -881,7 +886,7 @@ export function FasesClient({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Audit log dialog ── */}
+      {/* -- Audit log dialog -- */}
       {auditTarget && (
         <AuditLogDialog
           open={!!auditTarget}

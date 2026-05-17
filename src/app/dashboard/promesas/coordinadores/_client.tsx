@@ -103,7 +103,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -148,7 +148,7 @@ function ColumnFilter({
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => {
                 const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next)
               }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -416,6 +416,11 @@ export function CoordinadoresClient({
     if (!form.supervisor)    { toast.error('El supervisor es requerido.'); return }
     if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
 
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCoordinador(viewTarget))) {
+      setDialogOpen(false); return
+    }
+
     const normalizedInput = toDbString(form.nombre)
     const candidates = initialData.filter((c) =>
       c.empresa === form.empresa && c.proyecto === form.proyecto &&
@@ -492,7 +497,7 @@ export function CoordinadoresClient({
         </div>
       )}
 
-      {/* ── Búsqueda + ColumnManager ── */}
+      {/* ── Busqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -503,7 +508,7 @@ export function CoordinadoresClient({
             className="pl-8"
           />
           {search && (
-            <button type="button" title="Limpiar búsqueda" onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground">
+            <button type="button" title="Limpiar busqueda" onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -618,7 +623,7 @@ export function CoordinadoresClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron coordinadores con ese criterio.'
-                    : 'Todavía no hay coordinadores. Haz clic en "Nuevo Coordinador" para comenzar.'}
+                    : 'Todavia no hay coordinadores. Haz clic en "Nuevo Coordinador" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -882,7 +887,7 @@ export function CoordinadoresClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -894,7 +899,7 @@ export function CoordinadoresClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar coordinador?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
+              Esta accion no se puede deshacer. Se eliminara permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

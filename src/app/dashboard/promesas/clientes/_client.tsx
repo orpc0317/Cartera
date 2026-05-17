@@ -69,12 +69,11 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'identificacion_tributaria', label: 'ID Tributaria',   defaultVisible: true  },
   { key: 'nombre_factura',            label: 'Nombre Factura',  defaultVisible: false },
   { key: 'regimen_iva',               label: 'Regimen IVA',     defaultVisible: false },
-  { key: '__activo',                  label: 'Activo',           defaultVisible: true  },
 ]
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
-// ─── Formulario vacío ──────────────────────────────────────────────────────
+// ─── Formulario vacio ──────────────────────────────────────────────────────
 
 const EMPTY_FORM: ClienteForm = {
   empresa: 0,
@@ -93,7 +92,6 @@ const EMPTY_FORM: ClienteForm = {
   direccion_departamento: '',
   direccion_municipio: '',
   codigo_postal: '',
-  activo: 1,
 }
 
 // ─── CSV Export ──────────────────────────────────────────────────────────────
@@ -114,9 +112,8 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
   const lines = [
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
-      if (k === '__activo') return formatCsvCell(ACTIVO_LABELS[(r.activo as number)] ?? r.activo)
       return formatCsvCell(r[k as keyof Cliente])
-    }).join(',')),
+    }).join(',')),  
   ]
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
@@ -133,7 +130,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -178,7 +175,7 @@ function ColumnFilter({
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => {
                 const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next)
               }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -242,7 +239,7 @@ export function ClientesClient({
   initialData, empresas, proyectos, paises, departamentos, municipios,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
-  // Teléfono: lógica igual que Proyectos
+  // Telefono: logica igual que Proyectos
   const [tel1Iso, setTel1Iso] = useState('')
   const [tel1Local, setTel1Local] = useState('')
   const [tel2Iso, setTel2Iso] = useState('')
@@ -252,11 +249,11 @@ export function ClientesClient({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
-  // ── Búsqueda y filtros ────────────────────────────────────────────────
+  // ── Busqueda y filtros ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
   const [colFilters, setColFilters] = useState<ColFilters>({})
 
-  // ── Diálogo ───────────────────────────────────────────────────────────
+  // ── Dialogo ───────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
@@ -324,7 +321,6 @@ export function ClientesClient({
       if (col === 'proyecto') return vals.has(`${c.empresa}-${c.proyecto}`)
       if (col === 'tipo_identificacion') return vals.has(String(c.tipo_identificacion ?? 0))
       if (col === 'regimen_iva') return vals.has(String(c.regimen_iva))
-      if (col === '__activo') return vals.has(String(c.activo))
       if (col === 'direccion_pais') {
         const p = paises.find((x) => x.codigo === c.direccion_pais)
         return vals.has(p?.nombre ?? c.direccion_pais ?? '')
@@ -377,7 +373,7 @@ export function ClientesClient({
   }
   const visibleCols = colPrefs.filter((p) => p.visible)
 
-  // ── Valores únicos para filtros de columna ────────────────────────────
+  // ── Valores unicos para filtros de columna ────────────────────────────
   function uniqueVals(key: keyof Cliente) {
     return [...new Set(initialData.map((c) => String(c[key] ?? '')))].sort()
   }
@@ -431,6 +427,24 @@ export function ClientesClient({
         next.direccion_pais = isoFromProyecto; next.direccion_departamento = ''; next.direccion_municipio = ''
         setPaisCodigo(isoFromProyecto); setDeptoCodigo('')
       }
+      if (key === 'direccion_pais') {
+        const newPais = value as string
+        const firstDepto = departamentos.find((d) => d.pais === newPais)
+        const dCode = firstDepto?.codigo ?? ''
+        const mCode = firstDepto
+          ? (municipios.find((m) => m.pais === newPais && m.departamento === dCode)?.codigo ?? '')
+          : ''
+        next.direccion_departamento = dCode
+        next.direccion_municipio = mCode
+        setPaisCodigo(newPais)
+        setDeptoCodigo(dCode)
+      }
+      if (key === 'direccion_departamento') {
+        const newDepto = value as string
+        const mCode = municipios.find((m) => m.pais === paisCodigo && m.departamento === newDepto)?.codigo ?? ''
+        next.direccion_municipio = mCode
+        setDeptoCodigo(newDepto)
+      }
       return next
     })
   }
@@ -458,12 +472,11 @@ export function ClientesClient({
         direccion_departamento: dCode,
         direccion_municipio: c.direccion_municipio ?? '',
         codigo_postal: c.codigo_postal ?? '',
-        activo: c.activo ?? 1,
       } satisfies ClienteForm,
     }
   }
 
-  // ── Acciones de diálogo ──────────────────────────────────────────────
+  // ── Acciones de dialogo ──────────────────────────────────────────────
   function openCreate() {
     setViewTarget(null)
     setIsEditing(true)
@@ -557,21 +570,26 @@ export function ClientesClient({
   // ── Guardar ──────────────────────────────────────────────────────────
   function handleSave() {
     if (!form.nombre.trim())    { toast.error('El nombre es requerido.'); return }
-    if (!form.telefono1.trim()) { toast.error('El teléfono es requerido.'); return }
+    if (!form.telefono1.trim()) { toast.error('El telefono es requerido.'); return }
     if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && form.identificacion_tributaria.trim() && !validarNIT(form.identificacion_tributaria)) {
-      toast.error('El NIT no tiene una estructura válida.')
+      toast.error('El NIT no tiene una estructura valida.')
       return
     }
     if (form.direccion_pais === 'GT' && form.tipo_identificacion === 2 && form.identificacion_tributaria.trim() && !validarDPI(form.identificacion_tributaria)) {
-      toast.error('El DPI debe contener exactamente 13 dígitos numéricos y tener una estructura de CUI válida.')
+      toast.error('El DPI debe contener exactamente 13 digitos numericos y tener una estructura de CUI valida.')
       return
     }
-    if (!form.direccion.trim()) { toast.error('La dirección es requerida.'); return }
+    if (!form.direccion.trim()) { toast.error('La direccion es requerida.'); return }
     if (!form.empresa)          { toast.error('La empresa es requerida.'); return }
     if (!form.proyecto)         { toast.error('El proyecto es requerido.'); return }
-    if (!form.direccion_pais)   { toast.error('El país es requerido.'); return }
+    if (!form.direccion_pais)   { toast.error('El pais es requerido.'); return }
     if (!form.direccion_departamento) { toast.error('El departamento es requerido.'); return }
     if (!form.direccion_municipio)    { toast.error('El municipio es requerido.'); return }
+
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCliente(viewTarget).form)) {
+      setDialogOpen(false); return
+    }
 
     // Verificar similitud de nombre (umbral 0.85) contra clientes del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
@@ -634,7 +652,7 @@ export function ClientesClient({
         </div>
       )}
 
-      {/* ── Búsqueda + ColumnManager ── */}
+      {/* ── Busqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -776,21 +794,6 @@ export function ClientesClient({
                     </TableHead>
                   )
                 }
-                if (col.key === '__activo') {
-                  return (
-                    <TableHead key="__activo">
-                      <ColumnFilter
-                        label="Activo"
-                        values={Object.values(ACTIVO_LABELS)}
-                        active={new Set([...(colFilters['__activo'] ?? new Set())].map((k) => ACTIVO_LABELS[Number(k)] ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = Object.fromEntries(Object.entries(ACTIVO_LABELS).map(([k, v]) => [v, k]))
-                          setColFilter('__activo', new Set([...labels].map((l) => byLabel[l] ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
                 return (
                   <TableHead key={col.key}>
                     <ColumnFilter
@@ -811,7 +814,7 @@ export function ClientesClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron clientes con ese criterio.'
-                    : 'Todavía no hay clientes. Haz clic en "Nuevo Cliente" para comenzar.'}
+                    : 'Todavia no hay clientes. Haz clic en "Nuevo Cliente" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -921,25 +924,10 @@ export function ClientesClient({
                           )
                         }
 
-                        case '__activo':
-                          return (
-                            <TableCell key="__activo">
-                              <Badge
-                                variant="secondary"
-                                className={cliente.activo === 1
-                                  ? 'font-normal bg-emerald-100 text-emerald-700'
-                                  : 'font-normal bg-muted text-muted-foreground'
-                                }
-                              >
-                                {ACTIVO_LABELS[cliente.activo] ?? `#${cliente.activo}`}
-                              </Badge>
-                            </TableCell>
-                          )
-
                         default:
                           return (
                             <TableCell key={col.key} className="text-muted-foreground">
-                              {(cliente[col.key as keyof Cliente] as string) || '—'}}
+                              {(cliente[col.key as keyof Cliente] as string) || '—'}
                             </TableCell>
                           )
                       }
@@ -985,7 +973,7 @@ export function ClientesClient({
         </Table>
       </div>
 
-      {/* ── Diálogo Ver / Crear / Editar ── */}
+      {/* ── Dialogo Ver / Crear / Editar ── */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
@@ -1031,11 +1019,11 @@ export function ClientesClient({
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
               <TabsTrigger value="facturacion" className="gap-1.5">
-                <Receipt className="h-3.5 w-3.5" /> Facturación
+                <Receipt className="h-3.5 w-3.5" /> Facturacion
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* ── Vista ── */}
               {!isEditing && viewTarget ? (
@@ -1065,18 +1053,20 @@ export function ClientesClient({
                     <ViewField label="Direccion" value={viewTarget.direccion} />
                   </div>
 
-                  {/* País con bandera */}
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
-                    {viewTarget.direccion_pais ? (() => {
-                      const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
-                      return (
-                        <span className="flex items-center gap-1.5 text-[13px] font-medium">
-                          {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                          {p?.nombre ?? viewTarget.direccion_pais}
-                        </span>
-                      )
-                    })() : <span className="text-[13px] font-medium">—</span>}
+                  {/* Pais con bandera */}
+                  <div className="grid gap-1">
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
+                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                      {viewTarget.direccion_pais ? (() => {
+                        const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
+                        return (
+                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                            {p?.nombre ?? viewTarget.direccion_pais}
+                          </span>
+                        )
+                      })() : <span className="block text-[13px] font-medium text-foreground">—</span>}
+                    </div>
                   </div>
 
                   <ViewField
@@ -1092,7 +1082,7 @@ export function ClientesClient({
                 </div>
 
               ) : (
-              /* ── Edición / Creación ── */
+              /* ── Edicion / Creacion ── */
               <div className="grid grid-cols-2 gap-4">
 
                 {/* Empresa */}
@@ -1131,7 +1121,7 @@ export function ClientesClient({
                     local={tel1Local}
                     onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
                     onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
-                    placeholder="Número local"
+                    placeholder="Numero local"
                   />
                 </div>
                 <div className="col-span-2 grid gap-1">
@@ -1141,7 +1131,7 @@ export function ClientesClient({
                     local={tel2Local}
                     onIsoChange={(v) => { setTel2Iso(v); f('telefono2', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel2Local}` : tel2Local) }}
                     onLocalChange={(v) => { setTel2Local(v); f('telefono2', tel2Iso && DIAL_CODES[tel2Iso] ? `+${DIAL_CODES[tel2Iso]}${v}` : v) }}
-                    placeholder="Número local"
+                    placeholder="Numero local"
                   />
                 </div>
 
@@ -1158,7 +1148,7 @@ export function ClientesClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                  <Input id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Dirección completa" />
+                  <Input id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
                 </div>
 
                 <div className="grid gap-1">
@@ -1167,9 +1157,14 @@ export function ClientesClient({
                     paises={paises}
                     value={paisCodigo}
                     onChange={(codigo) => {
+                      const firstDepto = departamentos.find((d) => d.pais === codigo)
+                      const dCode = firstDepto?.codigo ?? ''
+                      const mCode = firstDepto
+                        ? (municipios.find((m) => m.pais === codigo && m.departamento === dCode)?.codigo ?? '')
+                        : ''
                       setPaisCodigo(codigo)
-                      setDeptoCodigo('')
-                      setForm((p) => ({ ...p, direccion_pais: codigo, direccion_departamento: '', direccion_municipio: '' }))
+                      setDeptoCodigo(dCode)
+                      setForm((p) => ({ ...p, direccion_pais: codigo, direccion_departamento: dCode, direccion_municipio: mCode }))
                     }}
                   />
                 </div>
@@ -1183,12 +1178,13 @@ export function ClientesClient({
                     disabled={!paisCodigo}
                     onChange={(e) => {
                       const v = e.target.value
+                      const mCode = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''
                       setDeptoCodigo(v)
-                      setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: '' }))
+                      setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: mCode }))
                     }}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un país'}</option>
+                    <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                     {deptosFiltrados.map((d) => (
                       <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
                     ))}
@@ -1203,7 +1199,7 @@ export function ClientesClient({
                     value={form.direccion_municipio}
                     disabled={!deptoCodigo}
                     onChange={(e) => setForm((p) => ({ ...p, direccion_municipio: e.target.value }))}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                     {municipiosFiltrados.map((m) => (
@@ -1214,15 +1210,15 @@ export function ClientesClient({
 
                 <div className="grid gap-1">
                   <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Cod. Postal</Label>
-                  <Input id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Código postal" />
+                  <Input id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Codigo postal" />
                 </div>
 
               </div>
             )}
             </TabsContent>
 
-            {/* ── Tab Facturación ── */}
-            <TabsContent value="facturacion" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            {/* ── Tab Facturacion ── */}
+            <TabsContent value="facturacion" className="mt-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="Facturacion" />
@@ -1232,16 +1228,12 @@ export function ClientesClient({
                   <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
                   <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                   <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
-                  <div className="col-span-2 flex items-center gap-2 py-1">
-                    <Checkbox checked={viewTarget.activo === 1} disabled />
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
-                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre_factura" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Factura</Label>
-                    <Input id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturación (si difiere)" />
+                    <Input id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturacion (si difiere)" />
                   </div>
 
                   <div className="grid gap-1">
@@ -1281,14 +1273,7 @@ export function ClientesClient({
                     </Select>
                   </div>
 
-                  <div className="col-span-2 flex items-center gap-2 pb-1">
-                    <Checkbox
-                      id="activo"
-                      checked={form.activo === 1}
-                      onCheckedChange={(checked) => setForm((prev) => ({ ...prev, activo: checked ? 1 : 0 }))}
-                    />
-                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
-                  </div>
+
                 </div>
               )}
             </TabsContent>
@@ -1336,7 +1321,7 @@ export function ClientesClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1348,7 +1333,7 @@ export function ClientesClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente a{' '}
+              Esta accion no se puede deshacer. Se eliminara permanentemente a{' '}
               <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>

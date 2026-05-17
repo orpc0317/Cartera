@@ -65,7 +65,6 @@ Proyecto {
   minimo_abono_capital:             numeric       -- debe ser mayor o igual a 0
   inicio_abono_capital_estricto:    string        -- fecha del recibo (YYYY-MM-DD), default '1900-01-01'
   promesa_vencida:                  smallint      -- 1 = si, 0 = no
-  moneda:                           string        -- FK -> cartera.t_moneda
   logo_url:                         string        -- ubicacion del archivo logo
   agrego_usuario:                   uuid          -- gestionado por sistema
   agrego_fecha:                     timestamptz   -- gestionado por sistema
@@ -97,7 +96,6 @@ ProyectoForm {          	-- campos editables por el usuario
   minimo_abono_capital:         numeric
   inicio_abono_capital_estricto:smallint
   promesa_vencida:              smallint
-  moneda:                       string
   logo_url:                     string
 }
 
@@ -134,7 +132,7 @@ Cascada: pais → departamento → municipio.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `empresa`, `nombre`, `direccion`, `direccion_pais`, `direccion_departamento`, `direccion_municipio`, `codigo_postal`, `telefono1`, `telefono2`, `mora_automatica`, `fijar_parametros_mora`, `forma_mora`, `interes_mora`, `fijo_mora`, `mora_enganche`, `dias_gracia`, `dias_afectos`, `inicio_calculo_mora`, `calcular_mora_antes`, `minimo_mora`, `minimo_abono_capital`, `inicio_abono_capital_estricto`, `promesa_vencida`, `moneda`, `logo_url`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `empresa`, `nombre`, `direccion`, `direccion_pais`, `direccion_departamento`, `direccion_municipio`, `codigo_postal`, `telefono1`, `telefono2`, `mora_automatica`, `fijar_parametros_mora`, `forma_mora`, `interes_mora`, `fijo_mora`, `mora_enganche`, `dias_gracia`, `dias_afectos`, `inicio_calculo_mora`, `calcular_mora_antes`, `minimo_mora`, `minimo_abono_capital`, `inicio_abono_capital_estricto`, `promesa_vencida`, `logo_url`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
@@ -188,7 +186,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 |---------------|---------------|----|-----------------------------|---------------------------------------------------------------------------------------------|--------------------------------|-------|
 | nombre        | Nombre        | full | ViewField                  | Input; req                                                                                  | ''                             |       |
 | direccion     | Direccion     | full | ViewField                  | Input; req                                                                                  | ''                             |       |
-| pais          | Pais          | half | ViewField (bandera+nombre) | `CountrySelect`; req; al cambiar: reset departamento/municipio, auto-set moneda via `COUNTRY_TO_CURRENCY` | empresa.pais → '' | Componente especial `CountrySelect` |
+| pais          | Pais          | half | ViewField (bandera+nombre) | `CountrySelect`; req; al cambiar: reset departamento/municipio | empresa.pais → '' | Componente especial `CountrySelect` |
 | departamento  | Departamento  | half | ViewField                  | `<select>` nativo; filtrado por `pais`; **disabled si no hay pais**; al cambiar: reset municipio | por pais | |
 | municipio     | Municipio     | half | ViewField                  | `<select>` nativo; filtrado por `pais` + `departamento`; **disabled si no hay departamento**     | por depto | |
 | codigo_postal | Codigo Postal | half | ViewField                  | Input                                                                                       | ''                             |       |
@@ -222,11 +220,38 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 **[OTROS PARAMETROS]**
 
-| Campo           | Label           | Ancho | View                                  | Nuevo / Edit                                                                                               | Default (Nuevo)                        | Notas |
-|-----------------|-----------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------|-------|
-| moneda          | Moneda          | third  | Moneda display [§W]                      | Select moneda [§W]; req; **auto-set al cambiar pais/empresa** via `COUNTRY_TO_CURRENCY` | COUNTRY_TO_CURRENCY[empresa.pais] → 'GTQ' | No usa prop `monedas` del server; lista embebida en `_client.tsx` |
-| promesa_vencida | Promesa Vencida | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0                                      |       |
+| Campo           | Label           | Ancho | View                                  | Nuevo / Edit                                                                                               | Default (Nuevo) | Notas |
+|-----------------|-----------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|-----------------|-------|
+| promesa_vencida | Promesa Vencida | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               |       |
 | logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
+
+### Tab: Monedas  (icono: Coins)
+
+> **Esta pestaña se oculta en modo Nuevo** — el trigger `<TabsTrigger value="monedas">` solo se renderiza cuando `viewTarget` existe.
+> La primera moneda grabada se convierte automáticamente en **predeterminada** (lógica en `addProyectoMoneda` server action: verifica `count === 0`).
+
+**[MONEDAS]**
+
+Muestra la lista de monedas asignadas al proyecto (`proyectoMonedasActuales`) con las columnas:
+
+| Columna        | Detalle |
+|----------------|---------|
+| Moneda         | Código ISO (ej. GTQ); muestra bandera via `CURRENCY_FLAG_MAP` si existe |
+| Predeterminada | Badge `"Predeterminada"` si `pm.predeterminado === 1`; si no, botón de estrella `⭐` (solo en edit, disabled si moneda inactiva) que llama `handleSetPredeterminada` |
+| Estado         | Badge verde `"Activo"` / gris `"Inactivo"` según `pm.activo` |
+| Acciones       | Botón `"Desactivar"` / `"Activar"` (solo si `puedeModificar && isEditing` y `pm.predeterminado !== 1`); llama `handleToggleMonedaActivo` |
+
+Si no hay monedas: empty state con borde dashed e instrucción de agregar la primera.
+
+**Agregar moneda** (visible si `puedeAgregar && isEditing && monedasDisponibles.length > 0`):
+- Select [§G] con `monedasDisponibles` (monedas del catálogo que aún no están en el proyecto); muestra bandera+código
+- Botón "Agregar" → llama `handleAddMoneda()` → server action `addProyectoMoneda`
+- `monedasDisponibles = monedas.filter(m => !proyectoMonedasActuales.some(pm => pm.moneda === m.codigo))`
+
+**Server actions** (en `src/app/actions/proyectos.ts`):
+- `addProyectoMoneda(empresa, proyecto, moneda)` — si `count === 0` → `predeterminado = 1`; si no → `predeterminado = 0`
+- `toggleProyectoMonedaActivo(empresa, proyecto, moneda, activo)` — no permite desactivar la predeterminada
+- `setProyectoMonedaPredeterminada(empresa, proyecto, moneda)` — solo si `activo === 1`
 
 ---
 
@@ -258,8 +283,8 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Cascadas en `f()`
 
-- **Al cambiar `empresa`:** auto-set `form.pais` = `empresa.pais`; reset `departamento`/`municipio` a `''`; auto-set `form.moneda` = `COUNTRY_TO_CURRENCY[empresa.pais] ?? 'GTQ'`; si `telefono1`/`telefono2` estan vacios, resetear `tel1Iso`/`tel2Iso` al pais de la empresa.
-- **Al cambiar `pais` (via CountrySelect):** reset `departamento`/`municipio` a `''`; auto-set `form.moneda` = `COUNTRY_TO_CURRENCY[pais] ?? form.moneda`.
+- **Al cambiar `empresa`:** auto-set `form.pais` = `empresa.pais`; reset `departamento`/`municipio` a `''`; si `telefono1`/`telefono2` estan vacios, resetear `tel1Iso`/`tel2Iso` al pais de la empresa.
+- **Al cambiar `pais` (via CountrySelect):** reset `departamento`/`municipio` a `''`.
 - **Al cambiar `departamento`:** reset `municipio` a `''`.
 
 ### Estado local `tipoCalculo` (NO va a BD)
@@ -279,11 +304,11 @@ Cada telefono maneja dos estados locales: `{tel}Iso` (código ISO del país) y `
 
 ### Campos inhabilitados por `mora_automatica`
 
-Cuando `mora_automatica !== 1` quedan **disabled**: `forma_mora`, `tipoCalculo` (Select), `interes_mora`, `fijo_mora`, `dias_gracia`. Los campos `dias_afectos`, `minimo_mora`, `mora_enganche`, `minimo_abono_capital`, `moneda`, `promesa_vencida` y `logo_url` permanecen siempre habilitados.
+Cuando `mora_automatica !== 1` quedan **disabled**: `forma_mora`, `tipoCalculo` (Select), `interes_mora`, `fijo_mora`, `dias_gracia`. Los campos `dias_afectos`, `minimo_mora`, `mora_enganche`, `minimo_abono_capital`, `promesa_vencida` y `logo_url` permanecen siempre habilitados.
 
 ### Validaciones en `handleSave()`
 
-- Requeridos siempre: `empresa`, `nombre`, `moneda`, `direccion`, `pais`, `departamento`, `municipio`, `telefono1` (parte local).
+- Requeridos siempre: `empresa`, `nombre`, `direccion`, `pais`, `departamento`, `municipio`, `telefono1` (parte local).
 - Si `mora_automatica === 1`: requeridos `interes_mora` (si `tipoCalculo=0`) o `fijo_mora` (si `tipoCalculo=1`), y `dias_gracia` (debe ser `>= 0`; **0 es válido** — validar con `< 0`, no con `!value`).
 - Si `logoError` no esta vacio: bloquear guardado.
 
@@ -303,7 +328,39 @@ El item "Eliminar" del dropdown **no se muestra** si existen registros en el pro
 
 ### `openCreate()`
 
-Pre-selecciona la primera empresa disponible. Deriva `pais` y `moneda` de `empresa.pais` via `COUNTRY_TO_CURRENCY`. Inicializa `tel1Iso` y `tel2Iso` al pais de la empresa. `tipoCalculo = 0`. `minMoraStr = '0.00'`.
+Pre-selecciona la primera empresa disponible. Deriva `pais` de `empresa.pais`. Inicializa `tel1Iso` y `tel2Iso` al pais de la empresa. `tipoCalculo = 0`. `minMoraStr = '0.00'`. También resetea `setActiveTab('general')`.
+
+### `openView()`
+
+Restablece `setActiveTab('general')` al abrir cualquier proyecto en modo Ver/Editar.
+
+### Pestaña activa — estado controlado
+
+Las tabs del modal usan estado controlado: `<Tabs value={activeTab} onValueChange={setActiveTab}>` con estado `const [activeTab, setActiveTab] = useState('general')`. Esto permite cambiar la pestaña activa programáticamente.
+
+### Alta guiada de monedas (flujo post-crear)
+
+Cuando se guarda un proyecto nuevo con éxito:
+1. `createProyecto` retorna `{ error?: string; codigo?: number }` — el `codigo` auto-asignado viene en la respuesta.
+2. Se almacena `pendingMonedasSetup = { empresa: form.empresa, codigo: newCodigo }` en estado.
+3. Toast: `'Proyecto creado. Ahora registra la primera moneda (obligatorio).'`
+4. Se cierra el modal de Nuevo y se llama `router.refresh()`.
+5. Un `useEffect([initialData, pendingMonedasSetup])` vigila: cuando el nuevo proyecto aparece en `initialData` (tras el refresh), llama `openView(found)`, luego `setActiveTab('monedas')` y `setIsEditing(true)` — abriendo automáticamente el modal Edit en la pestaña Monedas.
+6. La pestaña "Monedas" **no se muestra en el modal Nuevo** (oculta con `{viewTarget && <TabsTrigger value="monedas" ...>}`).
+
+Estado local nuevo: `activeTab: string`, `pendingMonedasSetup: { empresa: number; codigo: number } | null`, `warnNoMonedas: boolean`.
+
+### Advertencia de moneda faltante (`warnNoMonedas`)
+
+Cuando el usuario intenta salir del modo Editar con `proyectoMonedasActuales.length === 0` en un proyecto existente (`viewTarget` no nulo):
+- `cancelEdit()` intercepta la acción y muestra el AlertDialog en lugar de volver al modo Ver.
+- `Dialog onOpenChange` también intercepta el cierre con la X cuando `isEditing && viewTarget && proyectoMonedasActuales.length === 0`.
+
+El AlertDialog **"Moneda requerida"** ofrece:
+- **"Agregar moneda ahora"** → cierra el AlertDialog y cambia `activeTab` a `'monedas'`.
+- **"Cerrar sin agregar"** → cierra el AlertDialog y cierra el modal principal (`setDialogOpen(false)`).
+
+Usar `<AlertDialogDescription render={<div />}>` (requerido para contenido compuesto; ver `base-ui-gotchas.instructions.md`).
 
 ---
 

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -39,7 +39,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createManzana, deleteManzana } from '@/app/actions/manzanas'
 import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm } from '@/lib/types/proyectos'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+// --- Helpers --------------------------------------------------------------
 
 type ColFilters = Record<string, Set<string>>
 
@@ -76,7 +76,7 @@ function ColumnFilter({ label, values, active, onChange }: {
                   onChange(next)
                 }}
               />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -89,7 +89,7 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -106,7 +106,7 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
-// ─── Column Manager ────────────────────────────────────────────────────────
+// --- Column Manager --------------------------------------------------------
 
 type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
@@ -148,11 +148,11 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-// ─── Form default ──────────────────────────────────────────────────────────
+// --- Form default ----------------------------------------------------------
 
 const EMPTY_FORM: ManzanaForm = { empresa: 0, proyecto: 0, fase: 0, codigo: '' }
 
-// ─── Component ────────────────────────────────────────────────────────────
+// --- Component ------------------------------------------------------------
 
 export function ManzanasClient({
   manzanas,
@@ -185,13 +185,13 @@ export function ManzanasClient({
   const [form,         setForm]         = useState<ManzanaForm>(EMPTY_FORM)
   const [colFilters,   setColFilters]   = useState<ColFilters>({})
 
-  // ─── Lookup maps ──────────────────────────────────────────────────────────
+  // --- Lookup maps ----------------------------------------------------------
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo,  e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
   const faseMap     = useMemo(() => new Map(fases.map((f) => [`${f.empresa}-${f.proyecto}-${f.codigo}`, f.nombre])), [fases])
 
-  // ─── Cascaded selects ─────────────────────────────────────────────────────
+  // --- Cascaded selects -----------------------------------------------------
 
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
@@ -202,7 +202,7 @@ export function ManzanasClient({
     [fases, form.empresa, form.proyecto],
   )
 
-  // ─── Column filters ───────────────────────────────────────────────────────
+  // --- Column filters -------------------------------------------------------
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
@@ -216,7 +216,7 @@ export function ManzanasClient({
   const uniqueProyectoNames = useMemo(() => [...new Set(manzanas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [manzanas, proyectoMap])
   const uniqueFaseNames     = useMemo(() => [...new Set(manzanas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [manzanas, faseMap])
 
-  // ─── Filtering pipeline ───────────────────────────────────────────────────
+  // --- Filtering pipeline ---------------------------------------------------
 
   const afterSearch = manzanas.filter((r) => {
     const q = search.toLowerCase()
@@ -238,7 +238,7 @@ export function ManzanasClient({
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
-  // ─── Column preferences (localStorage) ───────────────────────────────────
+  // --- Column preferences (localStorage) -----------------------------------
 
   const STORAGE_KEY = `manzanas_cols_v1_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
@@ -275,7 +275,7 @@ export function ManzanasClient({
   }
   const visibleCols = colPrefs.filter((p) => p.visible && ALL_COLUMNS.some((c) => c.key === p.key))
 
-  // ─── Keyboard navigation ──────────────────────────────────────────────────
+  // --- Keyboard navigation --------------------------------------------------
 
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
@@ -299,7 +299,7 @@ export function ManzanasClient({
 
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
-  // ─── Form handler ──────────────────────────────────────────────────────────
+  // --- Form handler ----------------------------------------------------------
 
   function f(key: keyof ManzanaForm, value: string | number) {
     const v = typeof value === 'string'
@@ -321,7 +321,7 @@ export function ManzanasClient({
     })
   }
 
-  // ─── Dialog handlers ──────────────────────────────────────────────────────
+  // --- Dialog handlers ------------------------------------------------------
 
   function openCreate() {
     const firstEmpresa  = empresas[0]?.codigo ?? 0
@@ -339,7 +339,7 @@ export function ManzanasClient({
     setDialogOpen(true)
   }
 
-  // ─── Save / Delete ─────────────────────────────────────────────────────────
+  // --- Save / Delete ---------------------------------------------------------
 
   function handleSave() {
     if (!form.empresa)       { toast.error('Selecciona empresa.'); return }
@@ -371,7 +371,7 @@ export function ManzanasClient({
     })
   }
 
-  // ─── CSV Export ───────────────────────────────────────────────────────────
+  // --- CSV Export -----------------------------------------------------------
 
   function exportCsv() {
     const date = new Date().toISOString().slice(0, 10)
@@ -394,7 +394,7 @@ export function ManzanasClient({
     URL.revokeObjectURL(url)
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // --- Render ---------------------------------------------------------------
 
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">

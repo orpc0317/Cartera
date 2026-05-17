@@ -25,7 +25,7 @@ export type Proyecto = {
   empresa: number
   codigo: number
   nombre: string
-  moneda: string
+  moneda?: string
   direccion_pais: string
   direccion_departamento: string
   direccion_municipio: string
@@ -54,7 +54,7 @@ export type Proyecto = {
   modifico_fecha?: string
 }
 
-export type ProyectoForm = Omit<Proyecto, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+export type ProyectoForm = Omit<Proyecto, 'cuenta' | 'moneda' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
 
 export type Fase = {
   cuenta: string
@@ -133,6 +133,17 @@ export type Moneda = {
   codigo: string
 }
 
+export type ProyectoMoneda = {
+  cuenta: string
+  empresa: number
+  proyecto: number
+  moneda: string
+  predeterminado: number
+  activo: number
+  agrego_usuario?: string
+  agrego_fecha?: string
+}
+
 export type Lote = {
   cuenta: string
   empresa: number
@@ -187,7 +198,6 @@ export type Cliente = {
   identificacion_tributaria?: string
   tipo_identificacion?: number
   regimen_iva: number
-  activo: number
   agrego_usuario?: string
   agrego_fecha?: string
   modifico_usuario?: string

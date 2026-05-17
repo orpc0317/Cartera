@@ -116,7 +116,7 @@ Cascada: pais → departamento → municipio.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `nombre`, `direccion`, `direccion_pais`, `direccion_departamento`, `direccion_municipio`, `codigo_postal`, `telefono1`, `telefono2`, `correo`, `tipo_identificacion`, `nombre_factura`, `identificacion_tributaria`, `regimen_iva`, `activo`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `nombre`, `direccion`, `direccion_pais`, `direccion_departamento`, `direccion_municipio`, `codigo_postal`, `telefono1`, `telefono2`, `correo`, `tipo_identificacion`, `nombre_factura`, `identificacion_tributaria`, `regimen_iva`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV

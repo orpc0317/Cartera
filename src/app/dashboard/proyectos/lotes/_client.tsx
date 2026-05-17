@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -106,7 +106,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -327,7 +327,7 @@ export function LotesClient({
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
-  // ── Keyboard cursor ────────────────────────────────────────────────────
+  // -- Keyboard cursor ----------------------------------------------------
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
 
@@ -476,9 +476,27 @@ export function LotesClient({
   // --- Guardar ---
 
   function handleSave() {
+    const valor     = parseFloat(valorStr)     || form.valor
+    const extension = parseFloat(extensionStr) || form.extension
+
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget) {
+      const sinCambios =
+        form.moneda  === viewTarget.moneda        &&
+        valor        === viewTarget.valor         &&
+        extension    === viewTarget.extension     &&
+        form.finca   === (viewTarget.finca  ?? '') &&
+        form.folio   === (viewTarget.folio  ?? '') &&
+        form.libro   === (viewTarget.libro  ?? '') &&
+        form.norte   === (viewTarget.norte  ?? '') &&
+        form.sur     === (viewTarget.sur    ?? '') &&
+        form.este    === (viewTarget.este   ?? '') &&
+        form.oeste   === (viewTarget.oeste  ?? '') &&
+        form.otro    === (viewTarget.otro   ?? '')
+      if (sinCambios) { setIsEditing(false); return }
+    }
+
     startTransition(async () => {
-      const valor     = parseFloat(valorStr)     || form.valor
-      const extension = parseFloat(extensionStr) || form.extension
       if (viewTarget) {
         const res = await updateLote(
           viewTarget.empresa, viewTarget.proyecto, viewTarget.fase, viewTarget.manzana, viewTarget.codigo,
@@ -579,7 +597,7 @@ export function LotesClient({
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
 
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-rose-100 p-2.5">
@@ -598,7 +616,7 @@ export function LotesClient({
         )}
       </div>
 
-      {/* ── Toolbar ── */}
+      {/* -- Toolbar -- */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="relative max-w-xs flex-1">
@@ -815,17 +833,19 @@ export function LotesClient({
                   <ViewField label="Manzana" value={viewTarget.manzana} />
                   <ViewField label="Codigo"  value={viewTarget.codigo}  />
                   <SectionDivider label="GENERAL" />
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-1">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Moneda</span>
-                    {(() => {
-                      const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                      return flag ? (
-                        <span className="flex items-center gap-1.5 text-sm font-medium">
-                          <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                          {viewTarget.moneda}
-                        </span>
-                      ) : <span className="text-sm font-medium">{viewTarget.moneda}</span>
-                    })()}
+                  <div className="grid gap-1">
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                      {(() => {
+                        const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                        return flag ? (
+                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                            {viewTarget.moneda}
+                          </span>
+                        ) : <span className="block text-[13px] font-medium text-foreground">{viewTarget.moneda}</span>
+                      })()}
+                    </div>
                   </div>
                   <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
                   <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />

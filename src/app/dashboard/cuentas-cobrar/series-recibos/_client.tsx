@@ -70,7 +70,7 @@ function ColumnFilter({ label, values, active, onChange }: {
           {values.map((v) => (
             <label key={v} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => { const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next) }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -83,7 +83,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -264,9 +264,9 @@ export function SeriesRecibosClient({
         if (col === 'empresa')        return vals.has(empresaMap.get(r.empresa) ?? '')
         if (col === 'proyecto')       return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
         if (col === 'formato')        return vals.has(String(r.formato))
-        if (col === 'predeterminado')    return vals.has(r.predeterminado === 1 ? 'Sí' : 'No')
-        if (col === 'recibo_automatico') return vals.has(r.recibo_automatico === 1 ? 'Sí' : 'No')
-        if (col === 'activo')         return vals.has(r.activo === 1 ? 'Sí' : 'No')
+        if (col === 'predeterminado')    return vals.has(r.predeterminado === 1 ? 'Si' : 'No')
+        if (col === 'recibo_automatico') return vals.has(r.recibo_automatico === 1 ? 'Si' : 'No')
+        if (col === 'activo')         return vals.has(r.activo === 1 ? 'Si' : 'No')
         return vals.has(String(r[col as keyof SerieRecibo] ?? ''))
       })
     ),
@@ -405,6 +405,22 @@ export function SeriesRecibosClient({
     if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
     if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
 
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget) {
+      const sinCambios =
+        form.empresa          === viewTarget.empresa          &&
+        form.proyecto         === viewTarget.proyecto         &&
+        form.serie            === viewTarget.serie            &&
+        form.serie_factura    === (viewTarget.serie_factura ?? null) &&
+        form.dias_fecha       === viewTarget.dias_fecha       &&
+        form.correlativo      === viewTarget.correlativo      &&
+        form.formato          === viewTarget.formato          &&
+        form.predeterminado   === viewTarget.predeterminado   &&
+        form.recibo_automatico === viewTarget.recibo_automatico &&
+        form.activo           === viewTarget.activo
+      if (sinCambios) { setDialogOpen(false); return }
+    }
+
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     startTransition(async () => {
       const result = viewTarget
@@ -506,9 +522,9 @@ export function SeriesRecibosClient({
                       col.key === 'empresa'        ? uniqueEmpresaNames :
                       col.key === 'proyecto'       ? uniqueProyectoNames :
                       col.key === 'formato'        ? uniqueFormatoNames :
-                      col.key === 'predeterminado'    ? ['Sí', 'No'] :
-                      col.key === 'recibo_automatico' ? ['Sí', 'No'] :
-                      col.key === 'activo'         ? ['Sí', 'No'] :
+                      col.key === 'predeterminado'    ? ['Si', 'No'] :
+                      col.key === 'recibo_automatico' ? ['Si', 'No'] :
+                      col.key === 'activo'         ? ['Si', 'No'] :
                       [...new Set(initialData.map((r) => String(r[col.key as keyof SerieRecibo] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
@@ -525,7 +541,7 @@ export function SeriesRecibosClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron series con ese criterio.'
-                    : 'Todavía no hay series de recibos. Haz clic en "Nueva Serie" para comenzar.'}
+                    : 'Todavia no hay series de recibos. Haz clic en "Nueva Serie" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -553,8 +569,8 @@ export function SeriesRecibosClient({
                         case 'dias_fecha':     return <TableCell key="dias_fecha" className="text-muted-foreground">{row.dias_fecha}</TableCell>
                         case 'correlativo':    return <TableCell key="correlativo" className="text-muted-foreground">{row.correlativo || ''}</TableCell>
                         case 'formato':        return <TableCell key="formato" className="text-muted-foreground">{String(row.formato)}</TableCell>
-                        case 'predeterminado':    return <TableCell key="predeterminado" className="text-muted-foreground">{row.predeterminado === 1 ? 'Sí' : 'No'}</TableCell>
-                        case 'recibo_automatico': return <TableCell key="recibo_automatico" className="text-muted-foreground">{row.recibo_automatico === 1 ? 'Sí' : 'No'}</TableCell>
+                        case 'predeterminado':    return <TableCell key="predeterminado" className="text-muted-foreground">{row.predeterminado === 1 ? 'Si' : 'No'}</TableCell>
+                        case 'recibo_automatico': return <TableCell key="recibo_automatico" className="text-muted-foreground">{row.recibo_automatico === 1 ? 'Si' : 'No'}</TableCell>
                         case 'activo':         return <TableCell key="activo"><Badge variant="secondary" className={row.activo === 1 ? 'font-normal bg-emerald-100 text-emerald-700' : 'font-normal bg-muted text-muted-foreground'}>{row.activo === 1 ? 'Activo' : 'Inactivo'}</Badge></TableCell>
                         default:               return <TableCell key={col.key} className="text-muted-foreground">{String((row as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
@@ -700,7 +716,7 @@ export function SeriesRecibosClient({
                       onChange={(e) => f('serie', e.target.value)}
                       placeholder="Ej: A, B, REC1..."
                       disabled={!!viewTarget}
-                      autoFocus={!viewTarget}
+                      autoComplete="off"
                     />
                   </div>
                   <SectionDivider label="CONFIGURACION" />
@@ -711,7 +727,7 @@ export function SeriesRecibosClient({
                         checked={form.recibo_automatico === 1}
                         onCheckedChange={(checked) => f('recibo_automatico', checked ? 1 : 0)}
                       />
-                      <Label htmlFor="recibo_automatico" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Recibo Automático</Label>
+                      <Label htmlFor="recibo_automatico" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Recibo Automatico</Label>
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="correlativo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Correlativo</Label>
@@ -810,7 +826,7 @@ export function SeriesRecibosClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar serie de recibos?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente la serie <strong>{deleteTarget?.serie}</strong>.
+              Esta accion no se puede deshacer. Se eliminara permanentemente la serie <strong>{deleteTarget?.serie}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

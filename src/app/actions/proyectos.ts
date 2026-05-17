@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
-import type { Proyecto, ProyectoForm } from '@/lib/types/proyectos'
+import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyectos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -71,7 +71,7 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   return data as Proyecto[]
 }
 
-export async function createProyecto(form: ProyectoForm): Promise<{ error?: string }> {
+export async function createProyecto(form: ProyectoForm): Promise<{ error?: string; codigo?: number }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
@@ -134,7 +134,7 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
 
   revalidatePath('/dashboard/proyectos/proyectos')
   revalidatePath('/dashboard')
-  return {}
+  return { codigo }
 }
 
 export async function updateProyecto(
@@ -353,4 +353,176 @@ export async function uploadProjectLogo(
 
   const { data } = admin.storage.from(LOGO_BUCKET).getPublicUrl(path)
   return { url: data.publicUrl }
+}
+
+// ─── Monedas por Proyecto ─────────────────────────────────────────────────────
+
+export async function getProyectoMonedas(): Promise<ProyectoMoneda[]> {
+  const cuenta = await getCuentaActiva()
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .order('predeterminado', { ascending: false })
+    .order('moneda')
+  if (error) throw new Error(error.message)
+  return (data ?? []) as ProyectoMoneda[]
+}
+
+export async function addProyectoMoneda(
+  empresa: number,
+  proyecto: number,
+  moneda: string,
+): Promise<{ error?: string }> {
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  // Validar duplicado
+  const { data: existing } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('moneda')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('moneda', moneda)
+    .maybeSingle()
+  if (existing) return { error: 'Esta moneda ya está registrada en el proyecto.' }
+
+  // Primera moneda del proyecto → predeterminada automáticamente
+  const { count } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+
+  const esPrimera = (count ?? 0) === 0
+  const now = new Date().toISOString()
+
+  const payload = {
+    cuenta,
+    empresa,
+    proyecto,
+    moneda,
+    predeterminado: esPrimera ? 1 : 0,
+    activo: 1,
+    agrego_usuario: auditUser.userId,
+    agrego_fecha: now,
+  }
+
+  const { error } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .insert(payload)
+
+  if (error) return { error: error.message }
+
+  await writeAudit(admin, {
+    tabla: 't_proyecto_moneda', operacion: 'INSERT', cuenta,
+    registroId: { empresa, proyecto, moneda },
+    datoAntes: null, datoDespues: payload as Record<string, unknown>,
+    ...auditUser,
+  })
+
+  revalidatePath('/dashboard/proyectos/proyectos')
+  return {}
+}
+
+export async function toggleProyectoMonedaActivo(
+  empresa: number,
+  proyecto: number,
+  moneda: string,
+  nuevoActivo: number,
+): Promise<{ error?: string }> {
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  const { data: row } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('moneda', moneda)
+    .maybeSingle()
+
+  if (!row) return { error: 'Moneda no encontrada en el proyecto.' }
+  if (nuevoActivo === 0 && row.predeterminado === 1)
+    return { error: 'No se puede desactivar la moneda predeterminada del proyecto.' }
+
+  const { error } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .update({ activo: nuevoActivo })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('moneda', moneda)
+
+  if (error) return { error: error.message }
+
+  await writeAudit(admin, {
+    tabla: 't_proyecto_moneda', operacion: 'UPDATE', cuenta,
+    registroId: { empresa, proyecto, moneda },
+    datoAntes: row as Record<string, unknown>,
+    datoDespues: { ...row, activo: nuevoActivo } as Record<string, unknown>,
+    ...auditUser,
+  })
+
+  revalidatePath('/dashboard/proyectos/proyectos')
+  return {}
+}
+
+export async function setProyectoMonedaPredeterminada(
+  empresa: number,
+  proyecto: number,
+  moneda: string,
+): Promise<{ error?: string }> {
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+
+  const { data: row } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('activo, predeterminado')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('moneda', moneda)
+    .maybeSingle()
+
+  if (!row) return { error: 'Moneda no encontrada en el proyecto.' }
+  if (row.activo !== 1) return { error: 'Solo se puede marcar como predeterminada una moneda activa.' }
+
+  // Quitar predeterminado a la actual
+  await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .update({ predeterminado: 0 })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+
+  // Marcar la nueva como predeterminada
+  const { error } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .update({ predeterminado: 1 })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('moneda', moneda)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard/proyectos/proyectos')
+  return {}
 }

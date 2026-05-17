@@ -1,4 +1,4 @@
-import { getProyectos } from '@/app/actions/proyectos'
+import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'
 import { getEmpresas } from '@/app/actions/empresas'
 import { getFases } from '@/app/actions/fases'
 import { getPaises, getDepartamentos, getMunicipios, getMonedas } from '@/app/actions/geo'
@@ -11,7 +11,7 @@ export default async function ProyectosPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [data, empresas, fases, paises, departamentos, municipios, monedas, permisos] = await Promise.all([
+  const [data, empresas, fases, paises, departamentos, municipios, monedas, proyectoMonedas, permisos] = await Promise.all([
     getProyectos().catch(() => []),
     getEmpresas().catch(() => []),
     getFases().catch(() => []),
@@ -19,6 +19,7 @@ export default async function ProyectosPage() {
     getDepartamentos().catch((e: Error) => { console.error(e.message); return [] }),
     getMunicipios().catch((e: Error) => { console.error(e.message); return [] }),
     getMonedas().catch((e: Error) => { console.error('getMonedas:', e.message); return [] }),
+    getProyectoMonedas().catch((e: Error) => { console.error('getProyectoMonedas:', e.message); return [] }),
     getPermisosDetalle(PERMISOS.PRO_CAT),
   ])
   return (
@@ -30,6 +31,7 @@ export default async function ProyectosPage() {
       departamentos={departamentos}
       municipios={municipios}
       monedas={monedas}
+      proyectoMonedas={proyectoMonedas}
       puedeAgregar={permisos.agregar}
       puedeModificar={permisos.modificar}
       puedeEliminar={permisos.eliminar}

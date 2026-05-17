@@ -96,7 +96,7 @@ function exportCsv(
   URL.revokeObjectURL(url)
 }
 
-// ─── Formulario vacío ──────────────────────────────────────────────────────
+// ─── Formulario vacio ──────────────────────────────────────────────────────
 
 const EMPTY_FORM: SupervisorForm = {
   empresa: 0,
@@ -112,7 +112,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -157,7 +157,7 @@ function ColumnFilter({
               <Checkbox checked={active.has(v)} onCheckedChange={(checked: boolean) => {
                 const next = new Set(active); checked ? next.add(v) : next.delete(v); onChange(next)
               }} />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -393,6 +393,11 @@ export function SupervisoresClient({
     if (!form.proyecto)       { toast.error('El proyecto es requerido.'); return }
     if (!form.nombre.trim())  { toast.error('El nombre es requerido.'); return }
 
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromSupervisor(viewTarget))) {
+      setDialogOpen(false); return
+    }
+
     // Verificar similitud de nombre (umbral 0.85) contra supervisores del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
     const candidates = initialData.filter((s) =>
@@ -470,7 +475,7 @@ export function SupervisoresClient({
         </div>
       )}
 
-      {/* ── Búsqueda + ColumnManager ── */}
+      {/* ── Busqueda + ColumnManager ── */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -481,7 +486,7 @@ export function SupervisoresClient({
             className="pl-8"
           />
           {search && (
-            <button type="button" title="Limpiar búsqueda" onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground">
+            <button type="button" title="Limpiar busqueda" onClick={() => setSearch('')} className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -582,7 +587,7 @@ export function SupervisoresClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron supervisores con ese criterio.'
-                    : 'Todavía no hay supervisores. Haz clic en "Nuevo Supervisor" para comenzar.'}
+                    : 'Todavia no hay supervisores. Haz clic en "Nuevo Supervisor" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -688,7 +693,7 @@ export function SupervisoresClient({
         </Table>
       </div>
 
-      {/* ── Diálogo Ver / Crear / Editar ── */}
+      {/* ── Dialogo Ver / Crear / Editar ── */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
@@ -761,7 +766,7 @@ export function SupervisoresClient({
                 </div>
 
               ) : (
-              /* ── Edición / Creación ── */
+              /* ── Edicion / Creacion ── */
               <div className="grid grid-cols-2 gap-4">
 
                 <SectionDivider label="IDENTIFICACION" />
@@ -859,7 +864,7 @@ export function SupervisoresClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -871,7 +876,7 @@ export function SupervisoresClient({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar supervisor?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Esta acción no se puede deshacer. Se eliminará permanentemente <strong>{deleteTarget?.nombre}</strong>.
+              Esta accion no se puede deshacer. Se eliminara permanentemente <strong>{deleteTarget?.nombre}</strong>.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

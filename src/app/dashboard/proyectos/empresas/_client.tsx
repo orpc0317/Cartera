@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useTransition, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -44,11 +44,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 
-// ─── Constants ─────────────────────────────────────────────────────────────
+// --- Constants -------------------------------------------------------------
 
 const SKIP_KEYS = new Set(['direccion_pais', 'direccion_departamento', 'direccion_municipio'])
 
-// ─── Helper components ─────────────────────────────────────────────────────
+// --- Helper components -----------------------------------------------------
 
 type ColFilters = Record<string, Set<string>>
 
@@ -103,7 +103,7 @@ function ColumnFilter({
                   onChange(next)
                 }}
               />
-              <span className="truncate">{v || '(vacío)'}</span>
+              <span className="truncate">{v || '(vacio)'}</span>
             </label>
           ))}
         </div>
@@ -116,7 +116,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -133,7 +133,7 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
-// ─── Column definitions ────────────────────────────────────────────────────
+// --- Column definitions ----------------------------------------------------
 
 type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
@@ -200,7 +200,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-// ─── Form defaults ─────────────────────────────────────────────────────────
+// --- Form defaults ---------------------------------------------------------
 
 const EMPTY_FORM: EmpresaForm = {
   codigo: 0,
@@ -215,7 +215,7 @@ const EMPTY_FORM: EmpresaForm = {
   regimen_isr: 0,
 }
 
-// ─── Props ─────────────────────────────────────────────────────────────────
+// --- Props -----------------------------------------------------------------
 
 interface Props {
   initialData: Empresa[]
@@ -228,7 +228,7 @@ interface Props {
   userId: string
 }
 
-// ─── Main component ────────────────────────────────────────────────────────
+// --- Main component --------------------------------------------------------
 
 export function EmpresasClient({
   initialData, paises, departamentos, municipios,
@@ -257,7 +257,7 @@ export function EmpresasClient({
     (m) => m.pais === paisCodigo && m.departamento === deptoCodigo,
   )
 
-  // ─ Filters ──────────────────────────────────────────────────────────────
+  // - Filters --------------------------------------------------------------
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
@@ -293,7 +293,7 @@ export function EmpresasClient({
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
-  // ─ Column prefs (localStorage) ──────────────────────────────────────────
+  // - Column prefs (localStorage) ------------------------------------------
 
   const STORAGE_KEY = `empresas_cols_v1_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
@@ -333,7 +333,7 @@ export function EmpresasClient({
 
   const visibleCols = colPrefs.filter((p) => p.visible)
 
-  // ─ Keyboard navigation ──────────────────────────────────────────────────
+  // - Keyboard navigation --------------------------------------------------
 
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
@@ -356,7 +356,7 @@ export function EmpresasClient({
 
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
-  // ─ Form helpers ─────────────────────────────────────────────────────────
+  // - Form helpers ---------------------------------------------------------
 
   function buildFormFromEmpresa(empresa: Empresa) {
     const pCode = empresa.direccion_pais ?? ''
@@ -419,7 +419,7 @@ export function EmpresasClient({
     setForm((prev) => ({ ...prev, [key]: v }))
   }
 
-  // ─ Actions ──────────────────────────────────────────────────────────────
+  // - Actions --------------------------------------------------------------
 
   function handleDelete() {
     if (!deleteTarget) return
@@ -447,6 +447,11 @@ export function EmpresasClient({
     if (!form.direccion_pais) { toast.error('El pais es requerido.'); return }
     if (!form.direccion_departamento) { toast.error('El departamento es requerido.'); return }
     if (!form.direccion_municipio) { toast.error('El municipio es requerido.'); return }
+
+    // Sin cambios: no ir a la base de datos
+    if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromEmpresa(viewTarget).form)) {
+      setDialogOpen(false); return
+    }
 
     const normalizedInput = toDbString(form.nombre)
     const candidates = initialData.filter((e) => viewTarget ? e.codigo !== viewTarget.codigo : true)
@@ -506,7 +511,7 @@ export function EmpresasClient({
     URL.revokeObjectURL(url)
   }
 
-  // ─ Icon badge ───────────────────────────────────────────────────────────
+  // - Icon badge -----------------------------------------------------------
 
   const iconBadgeBg = isEditing && viewTarget ? 'bg-amber-100' : 'bg-emerald-100'
   const iconEl = isEditing && !viewTarget
@@ -515,12 +520,12 @@ export function EmpresasClient({
     ? <Pencil className="h-5 w-5 text-amber-600" />
     : <Building2 className="h-5 w-5 text-emerald-600" />
 
-  // ─ Render ────────────────────────────────────────────────────────────────
+  // - Render ----------------------------------------------------------------
 
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
 
-      {/* ─ Header ──────────────────────────────────────────────────────────── */}
+      {/* - Header ------------------------------------------------------------ */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-emerald-100 p-2.5">
@@ -538,7 +543,7 @@ export function EmpresasClient({
         )}
       </div>
 
-      {/* ─ Search + toolbar ─────────────────────────────────────────────── */}
+      {/* - Search + toolbar ----------------------------------------------- */}
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -567,7 +572,7 @@ export function EmpresasClient({
         </div>
       </div>
 
-      {/* ─ Tabla ────────────────────────────────────────────────────────── */}
+      {/* - Tabla ---------------------------------------------------------- */}
       <div
         ref={tableRef}
         className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
@@ -626,7 +631,7 @@ export function EmpresasClient({
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron empresas con ese criterio.'
-                    : 'Todavía no hay empresas. Haz clic en "Nueva Empresa" para comenzar.'}
+                    : 'Todavia no hay empresas. Haz clic en "Nueva Empresa" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -739,12 +744,12 @@ export function EmpresasClient({
         </Table>
       </div>
 
-      {/* ─ Ver / Crear / Editar Dialog ──────────────────────────────────── */}
+      {/* - Ver / Crear / Editar Dialog ------------------------------------ */}
       <Dialog
         modal={false}
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares está activo
+          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares esta activo
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -779,7 +784,7 @@ export function EmpresasClient({
 
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
-              {/* ── Modo Vista ── */}
+              {/* -- Modo Vista -- */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
@@ -799,23 +804,25 @@ export function EmpresasClient({
                   <div className="col-span-2">
                     <ViewField label="Direccion" value={viewTarget.direccion} />
                   </div>
-                  <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-0.5">
-                    <span className="block text-[10px] font-bold tracking-widest text-muted-foreground/55">Pais</span>
-                    {viewTarget.direccion_pais ? (() => {
-                      const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
-                      return (
-                        <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
-                          <img
-                            src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
-                            alt={viewTarget.direccion_pais}
-                            width={20}
-                            height={14}
-                            className="object-cover rounded-sm shrink-0"
-                          />
-                          {p?.nombre ?? viewTarget.direccion_pais}
-                        </span>
-                      )
-                    })() : <span className="text-[13px] font-medium text-foreground"></span>}
+                  <div className="grid gap-1">
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
+                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                      {viewTarget.direccion_pais ? (() => {
+                        const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
+                        return (
+                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            <img
+                              src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
+                              alt={viewTarget.direccion_pais}
+                              width={20}
+                              height={14}
+                              className="object-cover rounded-sm shrink-0"
+                            />
+                            {p?.nombre ?? viewTarget.direccion_pais}
+                          </span>
+                        )
+                      })() : <span className="block text-[13px] font-medium text-foreground"></span>}
+                    </div>
                   </div>
                   <ViewField
                     label="Departamento"
@@ -833,7 +840,7 @@ export function EmpresasClient({
 
               ) : (
 
-              /* ── Modo Edicion / Creacion ── */
+              /* -- Modo Edicion / Creacion -- */
               <div className="grid grid-cols-2 gap-4">
                 {viewTarget && (
                   <>
@@ -920,7 +927,7 @@ export function EmpresasClient({
                       setDeptoCodigo(v)
                       setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
                     }}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
                     {deptosFiltrados.map((d) => (
@@ -939,7 +946,7 @@ export function EmpresasClient({
                     onChange={(e) => {
                       setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
                     }}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
                     {municipiosFiltrados.map((m) => (
@@ -1001,7 +1008,7 @@ export function EmpresasClient({
         </DialogContent>
       </Dialog>
 
-      {/* ─ Audit Log ────────────────────────────────────────────────────── */}
+      {/* - Audit Log ------------------------------------------------------ */}
       {auditTarget && (
         <AuditLogDialog
           open={!!auditTarget}
@@ -1013,7 +1020,7 @@ export function EmpresasClient({
         />
       )}
 
-      {/* ─ Similar names warning ─────────────────────────────────────────── */}
+      {/* - Similar names warning ------------------------------------------- */}
       <AlertDialog open={!!similarWarning} onOpenChange={(o) => !o && setSimilarWarning(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1034,19 +1041,19 @@ export function EmpresasClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setSimilarWarning(null); doSave() }}>
-              Sí, es diferente — Continuar
+              Si, es diferente — Continuar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ─ Delete confirmation ───────────────────────────────────────────── */}
+      {/* - Delete confirmation --------------------------------------------- */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar empresa?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Se eliminará <strong>{deleteTarget?.nombre}</strong>. Esta acción no se puede deshacer.
+              Se eliminara <strong>{deleteTarget?.nombre}</strong>. Esta accion no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

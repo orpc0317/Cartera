@@ -29,6 +29,7 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Coordinadores    | `blue-100 / blue-600`         |
 | Vendedores       | `lime-100 / lime-600`         |
 | Tipos Ingresos   | `yellow-100 / yellow-600`     |
+| Tasas de Cambio  | `teal-100 / teal-600`         |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
@@ -76,6 +77,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Coordinadores    | `Network`        |
 | Vendedores       | `UserCheck`      |
 | Tipos Ingresos   | `Tags`           |
+| Tasas de Cambio  | `ArrowLeftRight` |
 
 ---
 

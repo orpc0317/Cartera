@@ -5,6 +5,13 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Cliente, ClienteForm } from '@/lib/types/proyectos'
 
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+function isValidEmail(value: string): boolean {
+  return EMAIL_RE.test(value.trim())
+}
+
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -78,6 +85,7 @@ export async function getClientes(empresa?: number, proyecto?: number): Promise<
 export async function createCliente(form: ClienteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  if (form.correo && !isValidEmail(form.correo)) return { error: 'El correo electrónico no tiene un formato válido.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -132,6 +140,7 @@ export async function updateCliente(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  if (form.correo && !isValidEmail(form.correo)) return { error: 'El correo electrónico no tiene un formato válido.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

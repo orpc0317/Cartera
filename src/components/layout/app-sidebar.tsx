@@ -29,7 +29,18 @@ import {
   Receipt,
   BookOpen,
   Tags,
+  Settings,
+  ArrowLeftRight,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { logout } from '@/app/actions/auth'
@@ -83,8 +94,9 @@ const NAV: NavItem[] = [
     label: 'Bancos',
     icon: Landmark,
     children: [
-      { label: 'Bancos',           href: '/dashboard/bancos/bancos',  icon: Landmark },
+      { label: 'Bancos',           href: '/dashboard/bancos/bancos',         icon: Landmark },
       { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias', icon: CreditCard },
+      { label: 'Tasas Cambio',  href: '/dashboard/bancos/tasas-cambio',   icon: ArrowLeftRight },
     ],
   },
   {
@@ -271,23 +283,35 @@ export function AppSidebar({
         </div>
       </nav>
 
-      {/* Footer: usuario + logout */}
+      {/* Footer: usuario + configuraciones */}
       <div className="border-t border-sidebar-border px-3 py-3">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/20 text-xs font-bold text-sidebar-primary">
-            {userEmail?.[0]?.toUpperCase() ?? 'U'}
-          </div>
-          <p className="flex-1 truncate text-xs text-sidebar-foreground/50">{userEmail}</p>
-          <form action={logout}>
-            <button
-              type="submit"
-              className="rounded-md p-1.5 text-sidebar-foreground/40 transition-colors hover:bg-sidebar-accent hover:text-destructive"
-              title="Cerrar sesión"
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button title="Configuraciones" className="flex w-full items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-sidebar-accent" />
+            }
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary/20 text-xs font-bold text-sidebar-primary">
+              {userEmail?.[0]?.toUpperCase() ?? 'U'}
+            </div>
+            <p className="flex-1 truncate text-left text-xs text-sidebar-foreground/50">{userEmail}</p>
+            <Settings className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40" />
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent side="top" align="start" sideOffset={6}>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Configuraciones</DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => logout()}
             >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
-          </form>
-        </div>
+              <LogOut />
+              Cerrar sesión
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </aside>
   )

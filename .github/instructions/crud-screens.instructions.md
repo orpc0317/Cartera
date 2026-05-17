@@ -339,11 +339,11 @@ const CURRENCY_FLAG_MAP = new Map<string, string>([
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
       <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
         {flag ? (
-          <span className="flex items-center gap-1.5 text-sm font-medium">
+          <span className="flex items-center gap-1.5 text-[13px] font-medium">
             <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
             {viewTarget.moneda}
           </span>
-        ) : <span className="text-sm font-medium">{viewTarget.moneda ?? '—'}</span>}
+        ) : <span className="text-[13px] font-medium">{viewTarget.moneda ?? '—'}</span>}
       </div>
     </div>
   )

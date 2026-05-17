@@ -143,6 +143,28 @@ function handleSave() {
 
 > **Cascade in `openCreate`:** when the form has chained dropdowns (empresa → proyecto → fase), compute each first value from the filtered downstream list, in cascade order, and pass all of them to `setForm`.
 
+> **Dirty check (obligatorio en todo `handleSave`):** si `viewTarget` existe (modo Edit), comparar el `form` actual con los valores originales antes de llamar al servidor. Si no hay cambios, cerrar el modal sin hacer ningún request ni escribir en el audit log.
+>
+> — Screens **con `buildFormFromX`** (la función que popula el form en `openView`/`startEdit`):
+> ```ts
+> if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFrom<Entity>(viewTarget))) {
+>   setDialogOpen(false); return
+> }
+> ```
+> Si `buildFormFrom<Entity>` devuelve `{ form, paisCodigo, deptoCodigo }` (screens con geo), usar `.form`:
+> ```ts
+> if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFrom<Entity>(viewTarget).form)) {
+>   setDialogOpen(false); return
+> }
+> ```
+> — Screens **sin `buildFormFromX`** (form poblado directamente en `openView`): comparar campo a campo con los valores de `viewTarget`, respetando `?? null` / `?? ''` de cada campo opcional.
+>
+> — Screens con **virtual state** (`tipos-ingresos`): construir el `finalForm` primero (mapeando el virtual state a campos DB), y luego comparar contra `viewTarget` antes del `startTransition`.
+>
+> — Screens donde el edit tiene lógica inline en `handleSave` (lotes): extraer `valor`/`extension` fuera del `startTransition`, comparar antes de entrar a la transición, y llamar `setIsEditing(false)` en lugar de `setDialogOpen(false)`.
+>
+> — Si el screen tiene campo `logoFile` (logo upload), incluir `&& !logoFile` en la condición — un logo nuevo siempre debe persistirse.
+
 ---
 
 ## D · Form — Text Input
@@ -313,8 +335,8 @@ State: `const [deleteTarget, setDeleteTarget] = useState<<Entity> | null>(null)`
         Esta acción es permanente. ¿Eliminar <strong>{deleteTarget?.<nombre>}</strong>?
       </div>
     </AlertDialogDescription>
-    <AlertDialogActions>
-      <AlertDialogClose render={<Button variant="outline" />}>Cancelar</AlertDialogClose>
+    <AlertDialogFooter>
+      <AlertDialogCancel render={<Button variant="outline" />}>Cancelar</AlertDialogCancel>
       <AlertDialogAction
         render={<Button variant="destructive" />}
         onClick={async () => {
@@ -327,7 +349,7 @@ State: `const [deleteTarget, setDeleteTarget] = useState<<Entity> | null>(null)`
       >
         Eliminar
       </AlertDialogAction>
-    </AlertDialogActions>
+    </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
 ```
@@ -496,7 +518,7 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
   return (
     <div className="grid gap-1">
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
     </div>
@@ -676,7 +698,7 @@ return (
           <MapPin className="h-3.5 w-3.5" /> General
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+      <TabsContent value="general" className="mt-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
         {!isEditing && viewTarget ? (
           /* ── View mode — § O ── */
           <div className="grid grid-cols-2 gap-3">
@@ -1009,11 +1031,11 @@ case 'moneda': {
       <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
       <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
         {flag ? (
-          <span className="flex items-center gap-1.5 text-sm font-medium">
+          <span className="flex items-center gap-1.5 text-[13px] font-medium">
             <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
             {viewTarget.moneda}
           </span>
-        ) : <span className="text-sm font-medium">{viewTarget.moneda || '—'}</span>}
+        ) : <span className="text-[13px] font-medium">{viewTarget.moneda || '—'}</span>}
       </div>
     </div>
   )
@@ -1039,16 +1061,28 @@ if (col === 'moneda') return vals.has(r.moneda)
 
 Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos tres campos.
 
+**IMPORTANTE — Cascada en los onChange:** cada nivel debe auto-seleccionar el primer elemento del nivel inferior. Los `onChange` no deben simplemente resetear a `''` — deben buscar el primer item disponible y pre-seleccionarlo.
+
 ```tsx
 {/* Clase estándar para los tres niveles */}
 {/* className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50" */}
 
-{/* País */}
+{/* País — al cambiar, auto-selecciona primer depto y primer municipio */}
 <div className="grid gap-1">
   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</Label>
   <select
     value={form.pais}
-    onChange={(e) => f('pais', e.target.value)}
+    onChange={(e) => {
+      const codigo = e.target.value
+      const firstDepto = departamentos.find((d) => d.pais === codigo)
+      const dCode = firstDepto?.codigo ?? ''
+      const mCode = firstDepto
+        ? (municipios.find((m) => m.pais === codigo && m.departamento === dCode)?.codigo ?? '')
+        : ''
+      setPaisCodigo(codigo)
+      setDeptoCodigo(dCode)
+      setForm((p) => ({ ...p, pais: codigo, departamento: dCode, municipio: mCode }))
+    }}
     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
   >
     <option value="">Selecciona país</option>
@@ -1056,16 +1090,22 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
   </select>
 </div>
 
-{/* Departamento — filtrado por pais */}
+{/* Departamento — filtrado por pais; al cambiar, auto-selecciona primer municipio */}
 <div className="grid gap-1">
   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento</Label>
   <select
     value={form.departamento}
-    onChange={(e) => f('departamento', e.target.value)}
+    disabled={!paisCodigo}
+    onChange={(e) => {
+      const v = e.target.value
+      const mCode = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''
+      setDeptoCodigo(v)
+      setForm((p) => ({ ...p, departamento: v, municipio: mCode }))
+    }}
     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
   >
-    <option value="">Selecciona departamento</option>
-    {departamentos.filter((d) => d.pais === form.pais).map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
+    <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un país'}</option>
+    {departamentos.filter((d) => d.pais === paisCodigo).map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
   </select>
 </div>
 
@@ -1074,17 +1114,19 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio</Label>
   <select
     value={form.municipio}
-    onChange={(e) => f('municipio', e.target.value)}
+    disabled={!deptoCodigo}
+    onChange={(e) => setForm((p) => ({ ...p, municipio: e.target.value }))}
     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
   >
-    <option value="">Selecciona municipio</option>
-    {municipios.filter((m) => m.pais === form.pais && m.departamento === form.departamento).map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
+    <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
+    {municipios.filter((m) => m.pais === paisCodigo && m.departamento === deptoCodigo).map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
   </select>
 </div>
 ```
 
 **Reglas:**
-- Pre-selección en `openCreate()` → ver `crud-screens.instructions.md § Country/Geo pre-selection`.
+- La cascada aplica tanto en `openCreate()` como en los `onChange` del usuario — ver `crud-screens.instructions.md § Country/Geo pre-selection`.
+- Los nombres de campos (`pais`, `departamento`, `municipio`) pueden variar por entidad (ej. `direccion_pais`, `direccion_departamento`, `direccion_municipio` en Clientes). Adaptar los `setForm` al nombre real de la columna.
 - En vista (`ViewField`): resolver código → nombre via los props arrays; mostrar bandera del país.
 - Nunca mostrar el código raw de pais/depto/municipio en la UI.
 
@@ -1146,7 +1188,7 @@ if (col === 'activo') return vals.has(r.activo === 1 ? 'Sí' : 'No')
     onChange={(e) => f('<field>', e.target.value)}
     placeholder="<Sentence case placeholder>"
     rows={3}
-    className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+    className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
   />
 </div>
 ```
