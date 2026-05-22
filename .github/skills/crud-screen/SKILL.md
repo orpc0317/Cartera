@@ -48,8 +48,8 @@ Read the prompt file (e.g. `prompts/crud-bancos.md`). Extract these fields:
 | `TABLA_BD` | `cartera.<table>` — used in all queries |
 | `RUTA` | Next.js route (e.g. `/dashboard/bancos/bancos`) |
 | `PERMISO` | Constant key (e.g. `BAN_CAT`) |
-| `COLOR_ACENTO` | Tailwind token pair; if "elegir" → pick unused from ui-conventions table |
-| `ICONO_LUCIDE` | Lucide icon; if "elegir" → pick unused from ui-conventions table |
+| `COLOR_ACENTO` | Tailwind token pair; if "elegir" → pick the **first row** in the accent-color table in `ui-conventions.instructions.md` whose "En uso" column is empty, reading top-to-bottom |
+| `ICONO_LUCIDE` | Lucide icon; if "elegir" → same rule: first row in the icon table whose "En uso" column is empty, reading top-to-bottom |
 | `MODO` | `nuevo` or `actualizar` |
 | `ENTIDAD` | Type definitions and PK composition |
 | `RELACIONES` | FK dependencies, cascade rules, and which action functions to call |
@@ -59,7 +59,7 @@ Read the prompt file (e.g. `prompts/crud-bancos.md`). Extract these fields:
 
 **MODO guard** (also enforced by the `## MODO_GUARD` block in the spec file):
 - `nuevo` → use the file tool to check if `src/app/dashboard/<ruta>/page.tsx` already exists. If it does, **STOP — do not generate any file**. Tell the user the screen already exists and ask for explicit confirmation to overwrite before proceeding.
-- `actualizar` → apply only the changes listed in `CAMBIOS_PENDIENTES`; when done, reset `MODO` to `nuevo` and clear `CAMBIOS_PENDIENTES` to `_(sin cambios pendientes)_`.
+- `actualizar` → read the **`### Cambios a aplicar:`** sub-section inside `CAMBIOS_PENDIENTES`. Apply each listed change to the code files. **Mandatory post-step — no exceptions:** once all code changes are done, edit the spec file: (1) set `MODO` back to `nuevo`; (2) replace the change items under `### Cambios a aplicar:` with `> _(sin cambios pendientes)_`.
 
 ---
 
@@ -93,7 +93,7 @@ export type EntityForm = {
 }
 ```
 
-Derive the filename from `TABLA_BD` (e.g. `cartera.t_banco` → `bancos.ts`).
+Derive the filename from `TABLA_BD`: strip the schema prefix and leading `t_`, pluralize in Spanish, use kebab-case for multi-word names (e.g. `cartera.t_banco` → `bancos.ts`, `cartera.t_tipo_ingreso` → `tipos-ingreso.ts`).
 
 ---
 
@@ -173,7 +173,7 @@ const [search, setSearch]         = useState('')
 
 ---
 
-### Step 7 — Post-Generation Checklist
+### Step 7 — Code Quality Verification
 
 **Before declaring the screen finished, verify every item below.** This is not optional — these are the most common generation errors. Fix any violation before responding to the user.
 
@@ -269,4 +269,4 @@ Run `get_errors` after all files are created and fix any TypeScript issues befor
 - [ ] Accent color table in `ui-conventions.instructions.md` updated (add row if new module)
 - [ ] Icon table in `ui-conventions.instructions.md` updated (add row if new icon)
 - [ ] No TypeScript errors
-- [ ] If `MODO` was `actualizar`: reset to `nuevo`, clear `CAMBIOS_PENDIENTES`
+- [ ] **If `MODO` was `actualizar`:** edit the spec file — set `MODO` to `nuevo` and replace the change items under `### Cambios a aplicar:` with `> _(sin cambios pendientes)_`. This step is mandatory, not optional.

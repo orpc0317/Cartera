@@ -31,7 +31,7 @@ Este proyecto usa **Base UI** (`@base-ui/react`), no Radix UI. Muchos patrones d
 </SelectValue>
 ```
 
-**Regla:** usar siempre `(v: string) => v ? (...) : null`. Aplica a **todos** los `<Select>`: FK cargados de BD, hardcoded, y monedas.
+**Regla por defecto:** usar `(v: string) => v ? (...) : null`. Aplica a la mayoría de `<Select>`: FK cargados de BD, hardcoded, y monedas. Ver excepción abajo.
 
 **Excepción — quando el `codigo` ya ES el label de display** (e.g. `manzana`, `serie_recibo`, `serie_factura`): estas entidades no tienen campo `nombre` separado; el `codigo` es lo que se muestra. Para estos selects usar `<SelectValue />` limpio **sin render-prop**.
 
@@ -60,6 +60,33 @@ El componente base tiene `w-fit` por defecto. **Siempre** agregar `className="w-
 ```
 
 Aplica a todos los selects en edit mode, sin importar si el campo es `full`, `half`, o `third`.
+
+### 2b. Selects dentro de grids con template literal (`grid-cols-[...]`) — trampa del `min-width: auto`
+
+`className="w-full"` en el trigger es **necesario pero no suficiente** cuando el Select está en un grid con template literal custom.
+
+**Por qué:** los grids numerados de Tailwind (`grid-cols-3`, etc.) generan `repeat(N, minmax(0, 1fr))` — tracks con mínimo **0**. Los grids con template literal (`grid-cols-[2fr_1fr_1fr]`, etc.) generan tracks con mínimo **`auto`**, que CSS calcula como el tamaño de contenido mínimo. El `whitespace-nowrap` del `SelectTrigger` (y de los `Label` con `tracking-wider`) hace que ese mínimo sea el ancho del texto más largo. Al cambiar la opción seleccionada ("Todos Los Dias" → "Un Mes"), el mínimo del track cambia y el grid se recalcula → el trigger "salta" de ancho aunque tenga `w-full`.
+
+**Fix obligatorio:** agregar `[&>*]:min-w-0` al contenedor del grid para forzar `min-width: 0` en todos los grid items.
+
+```tsx
+// ✅ CORRECTO — el grid no crece/encoge según el texto seleccionado
+<div className="col-span-2 grid grid-cols-[2fr_2fr_1fr_1fr_1fr] gap-3 [&>*]:min-w-0">
+  <div className="grid gap-1.5">
+    <Label>Campo</Label>
+    <Select ...>
+      <SelectTrigger variant="underline" className="w-full">...</SelectTrigger>
+    </Select>
+  </div>
+</div>
+
+// ❌ INCORRECTO — el ancho del trigger cambia al seleccionar opciones de distinto largo
+<div className="col-span-2 grid grid-cols-[2fr_2fr_1fr_1fr_1fr] gap-3">
+  ...
+</div>
+```
+
+**Regla:** siempre que uses `grid-cols-[...]` (template literal con valores `fr` custom) y el grid contenga Selects o Inputs con Labels `whitespace-nowrap`, agregar `[&>*]:min-w-0` al grid. No aplica a `grid-cols-{n}` numerados porque ya incluyen `minmax(0, 1fr)`.
 
 ---
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -114,8 +114,8 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -547,7 +547,7 @@ export function EmpresasClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar empresas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -744,6 +744,8 @@ export function EmpresasClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} empresa{filtered.length !== 1 ? 's' : ''}</p>
+
       {/* - Ver / Crear / Editar Dialog ------------------------------------ */}
       <Dialog
         modal={false}
@@ -757,7 +759,7 @@ export function EmpresasClient({
           }
         }}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
@@ -786,202 +788,225 @@ export function EmpresasClient({
 
               {/* -- Modo Vista -- */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <SectionDivider label="IDENTIFICACION" />
-                  <div className="col-span-2">
-                    <ViewField label="Codigo" value={String(viewTarget.codigo)} />
-                  </div>
-                  <SectionDivider label="GENERAL" />
-                  <div className="col-span-2">
-                    <ViewField label="Nombre" value={viewTarget.nombre} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Razon Social" value={viewTarget.razon_social} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Direccion" value={viewTarget.direccion} />
-                  </div>
-                  <div className="grid gap-1">
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
-                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-                      {viewTarget.direccion_pais ? (() => {
-                        const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
-                        return (
-                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
-                            <img
-                              src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
-                              alt={viewTarget.direccion_pais}
-                              width={20}
-                              height={14}
-                              className="object-cover rounded-sm shrink-0"
-                            />
-                            {p?.nombre ?? viewTarget.direccion_pais}
-                          </span>
-                        )
-                      })() : <span className="block text-[13px] font-medium text-foreground"></span>}
+                <div className="flex gap-6 items-start">
+                  {/* Columna izquierda — IDENTIFICACION + GENERAL */}
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    <SectionDivider label="IDENTIFICACION" />
+                    <div className="col-span-2">
+                      <ViewField label="Codigo" value={String(viewTarget.codigo)} />
+                    </div>
+                    <SectionDivider label="GENERAL" />
+                    <div className="col-span-2">
+                      <ViewField label="Nombre" value={viewTarget.nombre} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField label="Razon Social" value={viewTarget.razon_social} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                     </div>
                   </div>
-                  <ViewField
-                    label="Departamento"
-                    value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
-                  />
-                  <ViewField
-                    label="Municipio"
-                    value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
-                  />
-                  <ViewField label="Codigo Postal" value={viewTarget.codigo_postal} />
-                  <div className="col-span-2">
-                    <ViewField label="Regimen ISR" value={REGIMENES_ISR[viewTarget.regimen_isr] ?? String(viewTarget.regimen_isr)} />
+                  {/* Separador vertical */}
+                  <div className="w-px self-stretch bg-primary/30" />
+                  {/* Columna derecha — DIRECCION + OTROS */}
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    <SectionDivider label="DIRECCION" />
+                    <div className="col-span-2">
+                      <ViewField label="Direccion" value={viewTarget.direccion} />
+                    </div>
+                    <div className="grid gap-1">
+                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
+                      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                        {viewTarget.direccion_pais ? (() => {
+                          const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
+                          return (
+                            <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                              <img
+                                src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
+                                alt={viewTarget.direccion_pais}
+                                width={20}
+                                height={14}
+                                className="object-cover rounded-sm shrink-0"
+                              />
+                              {p?.nombre ?? viewTarget.direccion_pais}
+                            </span>
+                          )
+                        })() : <span className="block text-[13px] font-medium text-foreground"></span>}
+                      </div>
+                    </div>
+                    <ViewField
+                      label="Departamento"
+                      value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
+                    />
+                    <ViewField
+                      label="Municipio"
+                      value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
+                    />
+                    <ViewField label="Codigo Postal" value={viewTarget.codigo_postal} />
+                    <SectionDivider label="OTROS" />
+                    <div className="col-span-2">
+                      <ViewField label="Regimen ISR" value={REGIMENES_ISR[viewTarget.regimen_isr] ?? String(viewTarget.regimen_isr)} />
+                    </div>
                   </div>
                 </div>
 
               ) : (
 
               /* -- Modo Edicion / Creacion -- */
-              <div className="grid grid-cols-2 gap-4">
-                {viewTarget && (
-                  <>
-                    <SectionDivider label="IDENTIFICACION" />
-                    <div className="col-span-2">
-                      <ViewField label="Codigo" value={String(viewTarget.codigo)} />
-                    </div>
-                  </>
-                )}
-                <SectionDivider label="GENERAL" />
+              <div className="flex gap-6 items-start">
+                {/* Columna izquierda — IDENTIFICACION + GENERAL */}
+                <div className="flex-1 grid grid-cols-2 gap-4">
+                  {viewTarget && (
+                    <>
+                      <SectionDivider label="IDENTIFICACION" />
+                      <div className="col-span-2">
+                        <ViewField label="Codigo" value={String(viewTarget.codigo)} />
+                      </div>
+                    </>
+                  )}
+                  <SectionDivider label="GENERAL" />
 
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
-                  <Input
-                    id="nombre"
-                    value={form.nombre}
-                    onChange={(e) => f('nombre', e.target.value)}
-                    placeholder="Nombre comercial"
-                  />
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
+                    <Input variant="underline"
+                      id="nombre"
+                      value={form.nombre}
+                      onChange={(e) => f('nombre', e.target.value)}
+                      placeholder="Nombre comercial"
+                    />
+                  </div>
+
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="razon_social" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Razon Social *</Label>
+                    <Input variant="underline"
+                      id="razon_social"
+                      value={form.razon_social}
+                      onChange={(e) => f('razon_social', e.target.value)}
+                      placeholder="Razon social legal"
+                    />
+                  </div>
+
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria *</Label>
+                    <Input variant="underline"
+                      id="id_trib"
+                      value={form.identificacion_tributaria}
+                      onChange={(e) => f('identificacion_tributaria', e.target.value)}
+                      placeholder="NIT o equivalente"
+                    />
+                  </div>
                 </div>
 
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="razon_social" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Razon Social *</Label>
-                  <Input
-                    id="razon_social"
-                    value={form.razon_social}
-                    onChange={(e) => f('razon_social', e.target.value)}
-                    placeholder="Razon social legal"
-                  />
-                </div>
+                {/* Separador vertical */}
+                <div className="w-px self-stretch bg-primary/30" />
 
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria *</Label>
-                  <Input
-                    id="id_trib"
-                    value={form.identificacion_tributaria}
-                    onChange={(e) => f('identificacion_tributaria', e.target.value)}
-                    placeholder="NIT o equivalente"
-                  />
-                </div>
+                {/* Columna derecha — DIRECCION + OTROS */}
+                <div className="flex-1 grid grid-cols-2 gap-4">
+                  <SectionDivider label="DIRECCION" />
 
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                  <Input
-                    id="direccion"
-                    value={form.direccion}
-                    onChange={(e) => f('direccion', e.target.value)}
-                    placeholder="Direccion completa"
-                  />
-                </div>
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
+                    <Input variant="underline"
+                      id="direccion"
+                      value={form.direccion}
+                      onChange={(e) => f('direccion', e.target.value)}
+                      placeholder="Direccion completa"
+                    />
+                  </div>
 
-                <div className="grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
-                  <CountrySelect
-                    paises={paises}
-                    value={paisCodigo}
-                    onChange={(codigo) => {
-                      const firstDepto = departamentos.filter((d) => d.pais === codigo)[0]
-                      const firstMuni  = firstDepto
-                        ? municipios.filter((m) => m.pais === codigo && m.departamento === firstDepto.codigo)[0]
-                        : undefined
-                      setPaisCodigo(codigo)
-                      setDeptoCodigo(firstDepto?.codigo ?? '')
-                      setForm((prev) => ({
-                        ...prev,
-                        direccion_pais:          codigo,
-                        direccion_departamento:   firstDepto?.codigo ?? '',
-                        direccion_municipio:      firstMuni?.codigo ?? '',
-                      }))
-                    }}
-                  />
-                </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
+                    <CountrySelect
+                      paises={paises}
+                      value={paisCodigo}
+                      onChange={(codigo) => {
+                        const firstDepto = departamentos.filter((d) => d.pais === codigo)[0]
+                        const firstMuni  = firstDepto
+                          ? municipios.filter((m) => m.pais === codigo && m.departamento === firstDepto.codigo)[0]
+                          : undefined
+                        setPaisCodigo(codigo)
+                        setDeptoCodigo(firstDepto?.codigo ?? '')
+                        setForm((prev) => ({
+                          ...prev,
+                          direccion_pais:          codigo,
+                          direccion_departamento:   firstDepto?.codigo ?? '',
+                          direccion_municipio:      firstMuni?.codigo ?? '',
+                        }))
+                      }}
+                    />
+                  </div>
 
-                <div className="grid gap-1">
-                  <Label htmlFor="departamento" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento</Label>
-                  <select
-                    id="departamento"
-                    title="Departamento"
-                    value={deptoCodigo}
-                    disabled={!paisCodigo}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      const firstMuni = municipios.filter((m) => m.pais === paisCodigo && m.departamento === v)[0]
-                      setDeptoCodigo(v)
-                      setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
-                    }}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
-                    {deptosFiltrados.map((d) => (
-                      <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-1">
-                  <Label htmlFor="municipio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio</Label>
-                  <select
-                    id="municipio"
-                    title="Municipio"
-                    value={form.direccion_municipio}
-                    disabled={!deptoCodigo}
-                    onChange={(e) => {
-                      setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
-                    }}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
-                    {municipiosFiltrados.map((m) => (
-                      <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-1">
-                  <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo Postal</Label>
-                  <Input
-                    id="codigo_postal"
-                    value={form.codigo_postal}
-                    onChange={(e) => f('codigo_postal', e.target.value)}
-                    placeholder="Ej: 01001"
-                  />
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="regimen_isr" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen ISR</Label>
-                  <Select
-                    value={String(form.regimen_isr)}
-                    onValueChange={(v) => f('regimen_isr', Number(v))}
-                  >
-                    <SelectTrigger id="regimen_isr" className="w-full">
-                      <SelectValue>
-                        {(v: string) => v !== '' ? (REGIMENES_ISR[Number(v)] ?? v) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(REGIMENES_ISR).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                  <div className="grid gap-1">
+                    <Label htmlFor="departamento" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento</Label>
+                    <select
+                      id="departamento"
+                      title="Departamento"
+                      value={deptoCodigo}
+                      disabled={!paisCodigo}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        const firstMuni = municipios.filter((m) => m.pais === paisCodigo && m.departamento === v)[0]
+                        setDeptoCodigo(v)
+                        setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
+                      }}
+                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
+                      {deptosFiltrados.map((d) => (
+                        <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </select>
+                  </div>
+
+                  <div className="grid gap-1">
+                    <Label htmlFor="municipio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio</Label>
+                    <select
+                      id="municipio"
+                      title="Municipio"
+                      value={form.direccion_municipio}
+                      disabled={!deptoCodigo}
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
+                      }}
+                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
+                      {municipiosFiltrados.map((m) => (
+                        <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid gap-1">
+                    <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo Postal</Label>
+                    <Input variant="underline"
+                      id="codigo_postal"
+                      value={form.codigo_postal}
+                      onChange={(e) => f('codigo_postal', e.target.value)}
+                      placeholder="Ej: 01001"
+                    />
+                  </div>
+
+                  <SectionDivider label="OTROS" />
+
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="regimen_isr" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen ISR</Label>
+                    <Select
+                      value={String(form.regimen_isr)}
+                      onValueChange={(v) => f('regimen_isr', Number(v))}
+                    >
+                      <SelectTrigger variant="underline" id="regimen_isr" className="w-full">
+                        <SelectValue>
+                          {(v: string) => v !== '' ? (REGIMENES_ISR[Number(v)] ?? v) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(REGIMENES_ISR).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
               )}
@@ -1015,7 +1040,7 @@ export function EmpresasClient({
           onOpenChange={(o) => !o && setAuditTarget(null)}
           tabla="t_empresa"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.codigo}
+          registroId={{ codigo: auditTarget.codigo }}
           titulo={auditTarget.nombre}
         />
       )}

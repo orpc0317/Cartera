@@ -127,8 +127,8 @@ Right-side slide-over panel for quick edits without navigating away. Uses the `<
     </div>
 
     <div className="border-t border-border/60 pt-4 flex justify-end gap-2">
-      <Button variant="outline" onClick={() => setDrawerOpen(false)}>Cancelar</Button>
-      <Button onClick={handleSave}>Guardar</Button>
+      <Button variant="outline" onClick={() => setDrawerOpen(false)} disabled={saving}>Cancelar</Button>
+      <Button onClick={handleSave} disabled={saving}>Guardar</Button>
     </div>
   </SheetContent>
 </Sheet>

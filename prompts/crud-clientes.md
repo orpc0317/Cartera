@@ -13,6 +13,7 @@
 | PERMISO        | `CLI_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| MODAL_LAYOUT   | ancho                                              |
 | MODO           | nuevo                                                        |
 
 ---
@@ -63,7 +64,7 @@ Cliente {
   modifico_fecha:           timestamptz   -- token de concurrencia optimista
 }
 
-ClienteForm {          	-- campos editables por el usuario
+ClienteForm {          	      -- campos editables por el usuario
   empresa:                    number
   proyecto:                   number
   nombre:                     string
@@ -200,6 +201,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+**PAGINACION:** SI 50/pag
+
+---
+
 ## REGLAS_ESPECIFICAS
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
@@ -239,9 +244,12 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
+
+### Cambios a aplicar:
 
 > _(sin cambios pendientes)_

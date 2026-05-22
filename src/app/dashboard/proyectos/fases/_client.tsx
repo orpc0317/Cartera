@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -109,8 +109,8 @@ function exportCsv(rows: Fase[], colPrefs: ColPref[]) {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -504,7 +504,7 @@ export function FasesClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar fases..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -663,6 +663,8 @@ export function FasesClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} fase{filtered.length !== 1 ? 's' : ''}</p>
+
       {/* -- CRUD Dialog -- */}
       <Dialog
         modal={false}
@@ -738,7 +740,7 @@ export function FasesClient({
                     onValueChange={(v) => f('empresa', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger id="empresa" className="w-full">
+                    <SelectTrigger variant="underline" id="empresa" className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -761,7 +763,7 @@ export function FasesClient({
                     onValueChange={(v) => f('proyecto', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger id="proyecto" className="w-full">
+                    <SelectTrigger variant="underline" id="proyecto" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -781,7 +783,7 @@ export function FasesClient({
                   <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
                     Nombre *
                   </Label>
-                  <Input
+                  <Input variant="underline"
                     id="nombre"
                     value={form.nombre}
                     onChange={(e) => f('nombre', e.target.value)}
@@ -796,9 +798,9 @@ export function FasesClient({
                   </Label>
                   <Select
                     value={form.medida}
-                    onValueChange={(v) => f('medida', v)}
+                    onValueChange={(v) => f('medida', v ?? '')}
                   >
-                    <SelectTrigger id="medida" className="w-full">
+                    <SelectTrigger variant="underline" id="medida" className="w-full">
                       <SelectValue placeholder="Selecciona medida">
                         {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
                       </SelectValue>
@@ -893,7 +895,7 @@ export function FasesClient({
           onOpenChange={(o) => { if (!o) setAuditTarget(null) }}
           tabla="t_fase"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.codigo}
+          registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, codigo: auditTarget.codigo }}
           titulo={auditTarget.nombre}
         />
       )}

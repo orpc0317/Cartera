@@ -13,6 +13,7 @@
 | PERMISO        | `LOT_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| MODAL_LAYOUT   | ancho                                              |
 | MODO           | nuevo                                                        |
 
 ---
@@ -98,21 +99,22 @@ LoteForm {          	-- campos editables por el usuario
 FK que deben cargarse en `page.tsx` y pasarse como props al client component:
 
 ```
-getEmpresas()       -> prop 'empresas'       -> alimenta el Select de empresa
-getProyectos()      -> prop 'proyectos'      -> alimenta el Select de proyecto (filtrado por empresa)
-getFases()          -> prop 'fases'          -> alimenta el Select de fases (filtrado por proyecto)
-getManzanas()       -> prop 'manzanas'       -> alimenta el Select de manzanas (filtrado por fases)
-getMonedas()        -> prop 'monedas'        -> alimenta el Select de monedas (catalogo global)
+getEmpresas()           -> prop 'empresas'           -> alimenta el Select de empresa
+getProyectos()          -> prop 'proyectos'           -> alimenta el Select de proyecto (filtrado por empresa)
+getFases()              -> prop 'fases'               -> alimenta el Select de fases (filtrado por proyecto)
+getManzanas()           -> prop 'manzanas'            -> alimenta el Select de manzanas (filtrado por fases)
+getMonedas()            -> prop 'monedas'             -> catálogo global (se mantiene para display en tabla/view)
+getProyectoMonedas()    -> prop 'proyectoMonedas'     -> monedas asignadas al proyecto (fuente del Select de moneda en Nuevo/Editar)
 
 > **Unidad de extension:** el campo `t_fase.medida` (ej. `m²`, `vara²`, `ft²`) es la unidad de medida
 > de los lotes de esa fase. Se obtiene de `fases.find(f => f.codigo === lote.fase)?.medida`.
 > Se usa como sufijo no editable junto al campo `extension` en la tabla, en ViewField y en el Input de edicion.
 
-Cascada: empresa → proyecto → fase → manzana.
-- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0. Luego resetear fase a la primera disponible, y si no hubiera una resetear en blanco con valor 0. Luego resetear manzana a la primera disponible, y si no hubiera una resetear a blanco.
+Cascada: empresa → proyecto → fase → manzana → moneda.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0. Luego resetear fase, manzana y **moneda** a la predeterminada del nuevo proyecto (`proyectoMonedas` con `predeterminado===1` para ese `(empresa, proyecto)`).
 
-Cascada: proyecto → fase → manzana.
-- Al cambiar poryecto: resetear fase a la primera disponible, y si no hubiera una resetear en blanco con valor 0. Luego resetear manzana a la primera disponible, y si no hubiera una resetear a blanco.
+Cascada: proyecto → fase → manzana → moneda.
+- Al cambiar proyecto: resetear fase a la primera disponible, y si no hubiera una resetear en blanco con valor 0. Luego resetear manzana a la primera disponible, y si no hubiera una resetear a blanco. **Actualizar `moneda`** a la predeterminada del nuevo proyecto.
 
 Cascada: fase → manzana.
 - Al cambiar fase: resetear manzana a la primera disponible, y si no hubiera una resetear a blanco.
@@ -177,7 +179,11 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Tab: General  (icono: MapPin)
 
-**[IDENTIFICACION]**
+> **Layout modal:** `w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden`. Contenido en `flex gap-6 items-start` con separador `<div className="w-px self-stretch bg-primary/30" />` entre columnas.
+> - **Columna izquierda** (`flex-1 grid grid-cols-2 gap-3`): secciones IDENTIFICACION y GENERAL.
+> - **Columna derecha** (`flex-1 grid grid-cols-2 gap-3`): secciones REGISTRO y COLINDANCIAS.
+
+**[IDENTIFICACION]** — columna izquierda
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)     | Notas |
 |----------|----------|-------|-----------|-------------|------------------|---------------------|-------|
@@ -187,17 +193,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | manzana  | Manzana  | half  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera de fase     | prop `manzanas`; filtrado por empresa+proyecto+fase |
 | codigo   | Codigo   | half  | ViewField | —                   | —                        | ''                  |                 |
 
-**[GENERAL]**
+**[GENERAL]** — columna izquierda
 
 | Campo                    | Label           | Ancho | View           | Nuevo / Edit                                  | Default (Nuevo)                   | Notas                    |
 |--------------------------|-----------------|-------|----------------|-----------------------------------------------|-----------------------------------|--------------------------|
-| moneda    | Moneda    | half  | Moneda display [§W] | Select moneda [§W]; req              | COUNTRY_CURRENCY_MAP → monedas[0] | ver Moneda display rules |
+| moneda    | Moneda    | half  | Moneda display [§W] | Select moneda [§W]; req              | moneda predeterminada del proyecto (`proyectoMonedas` con `predeterminado===1`) → `monedas[0]` como fallback | opciones = `proyectoMonedas.filter(pm => pm.empresa===form.empresa && pm.proyecto===form.proyecto && pm.activo===1)`; ver Moneda display rules |
 | valor     | Valor     | half  | ViewField          | Input number [§E]; req               | 0                                  |                          |
 | extension | Extension | half  | ViewField: `{extension} {medida}` | Input number+sufijo [§AD]; req | 0                             | `medida` = `fases.find(f => f.codigo === form.fase)?.medida ?? ''`. Sufijo no editable a la derecha del input. En ViewField concatenar: `String(viewTarget.extension) + ' ' + medida`. |
 
-### Tab: Otros  (icono: Receipt)
-
-**[REGISTRO]**
+**[REGISTRO]** — columna derecha
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Default (Nuevo) | Notas                                    |
 |--------------------------|-----------------|-------|---------------|----------------------------------------|-----------------|------------------------------------------|
@@ -205,7 +209,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | folio  | Folio | half | ViewField | Input [§D] | '' |  |
 | libro  | libro | half | ViewField | Input [§D] | '' |  |
 
-**[COLINDANCIAS]**
+**[COLINDANCIAS]** — columna derecha
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                           | Default (Nuevo) | Notas                                    |
 |--------------------------|-----------------|-------|---------------|----------------------------------------|-----------------|------------------------------------------|
@@ -217,7 +221,9 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Tab: Promesas  (icono: ClipboardList)  — solo en modal Ver
 
-**[RESERVA]**
+> **Layout:** misma estructura de dos columnas con separador `bg-primary/30`. Columna izquierda (`flex-1 grid grid-cols-2 gap-3`): sección RESERVA. Columna derecha: `<div className="flex-1" />` (reservada para contenido futuro).
+
+**[RESERVA]** — columna izquierda
 
 | Campo                       | Label   | Ancho | View      | Nuevo | Edit | Notas                                                                            |
 |-----------------------------|---------|-------|-----------|-------|------|----------------------------------------------------------------------------------|
@@ -225,6 +231,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | recibo_serie+recibo_numero  | Recibo | third | ViewField  | -     | -    | se llena si `recibo_numero > 0`: concatenar `recibo_serie` + `recibo_numero` del lote |
 | fecha                       | Fecha  | third | ViewField  | -     | -    | se llena si `recibo_numero > 0`: `fecha` desde `t_recibo_caja` via `getLoteReservaInfo` |
 | cliente_nombre              | Cliente | full | ViewField  | -     | -    | se llena si `recibo_numero > 0`: `nombre` desde `t_cliente` via `getLoteReservaInfo` |
+
+---
+
+**PAGINACION:** SI 50/pag
 
 ---
 
@@ -256,7 +266,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
   - `promesa === 0 && recibo_numero === 0` → **Disponible**
   El estado no forma parte de `LoteForm` ni de ningún UPDATE — es solo presentación.
 - **Unidad de extension (medida):** derivar `medida` reactivamente como `fases.find(f => f.codigo === form.fase)?.medida ?? ''`. Usar en: sufijo del Input de `extension` en modo edicion/creacion, y en `ViewField` de `extension` en modo vista. No almacenar en el form — es solo presentacion.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa **Y** pre-seleccionar `moneda` usando el algoritmo de **Currency pre-selection from country** de `ui-conventions.instructions.md`: detectar el pais por proyecto → empresa → IP (ver **Country / Geo pre-selection** en `crud-screens.instructions.md`) y convertirlo a moneda con `COUNTRY_CURRENCY_MAP` de `@/lib/constants`. Si no existe match, usar `monedas[0].codigo` como fallback.
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa **Y** pre-seleccionar `moneda` con la moneda `predeterminado===1` de `proyectoMonedas` para ese `(empresa, proyecto)`. Fallback: `monedas[0].codigo`. **No usar `COUNTRY_CURRENCY_MAP` ni geolocalización por IP** — la moneda predeterminada ya está definida en `t_proyecto_moneda`.
 
 ---
 
@@ -270,9 +280,12 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
- _(sin cambios pendientes)_
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_

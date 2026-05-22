@@ -29,7 +29,7 @@ El cliente de Cartera es la **empresa lotificadora** — no el comprador final d
 cuenta
  └── empresa          (una cuenta puede tener muchas empresas)
       └── proyecto    (una empresa puede tener muchos proyectos)
-           └── fase   (máximo 2 fases activas por proyecto — ver regla abajo)
+           └── fase   (máximo 2 fases por proyecto — ver regla abajo)
                 └── manzana
                      └── lote
 ```
@@ -52,7 +52,7 @@ Entidades transversales al proyecto (no pertenecen a una fase específica):
 ## Reglas de negocio críticas
 
 ### Límite de fases por proyecto
-Un proyecto puede tener **máximo 2 fases activas**. Si el usuario necesita una tercera fase, debe crear un nuevo proyecto.
+Un proyecto puede tener **máximo 2 fases**. Si el usuario necesita una tercera fase, debe crear un nuevo proyecto.
 > A nivel de BD la estructura permite N fases — la restricción es solo de negocio, debe validarse en la Server Action `createFase`.
 
 ### Aislamiento de datos por cuenta

@@ -11,8 +11,9 @@
 | TABLA_BD       | `cartera.t_proyecto`                                         |
 | RUTA           | `/dashboard/proyectos/proyectos`                             |
 | PERMISO        | `PRO_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
-| COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
-| ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| COLOR_ACENTO   | `sky`                                                        |
+| ICONO_LUCIDE   | `FolderKanban`                                               |
+| MODAL_LAYOUT   | ancho                                                        |
 | MODO           | nuevo                                                        |
 
 ---
@@ -65,6 +66,8 @@ Proyecto {
   minimo_abono_capital:             numeric       -- debe ser mayor o igual a 0
   inicio_abono_capital_estricto:    string        -- fecha del recibo (YYYY-MM-DD), default '1900-01-01'
   promesa_vencida:                  smallint      -- 1 = si, 0 = no
+  promesa_correlativo:              smallint      -- 1 = si, 0 = no
+  promesa_alfanumerico:             smallint      -- 1 = si, 0 = no
   logo_url:                         string        -- ubicacion del archivo logo
   agrego_usuario:                   uuid          -- gestionado por sistema
   agrego_fecha:                     timestamptz   -- gestionado por sistema
@@ -95,7 +98,10 @@ ProyectoForm {          	-- campos editables por el usuario
   minimo_mora:                  numeric
   minimo_abono_capital:         numeric
   inicio_abono_capital_estricto:smallint
+  moneda:                       string
   promesa_vencida:              smallint
+  promesa_correlativo:          smallint
+  promesa_alfanumerico:         smallint
   logo_url:                     string
 }
 
@@ -173,6 +179,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Tab: General  (icono: MapPin)
 
+> **Layout modal:** `w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden`. Contenido en `flex gap-6 items-start` con separador `<div className="w-px self-stretch bg-primary/30" />` entre columnas.
+> - **Columna izquierda** (`flex-1 grid grid-cols-2 gap-3/4`): secciones IDENTIFICACION y GENERAL.
+> - **Columna derecha** (`flex-1 grid grid-cols-2 gap-3/4`): secciones MORA, ABONO CAPITAL y OTROS PARAMETROS.
+
 **[IDENTIFICACION]**
 
 | Campo   | Label   | Ancho | View      | Nuevo       | Edit                 | Default (Nuevo)    | Notas    |
@@ -193,9 +203,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | telefono1     | Telefono 1    | full | ViewField                  | `PhoneField` (selector pais + numero local); req                                            | ''                             | E.164: `+{dialCode}{local}` |
 | telefono2     | Telefono 2    | full | ViewField                  | `PhoneField` (selector {pais + numero local)                                                 | ''                            | Opcional |
 
-### Tab: Parametros  (icono: SlidersHorizontal)
-
-**[MORA]**
+**[MORA]** — columna derecha
 
 | Campo           | Label           | Ancho | View                          | Nuevo / Edit                                                                                                  | Default (Nuevo) | Notas |
 |-----------------|-----------------|-------|-------------------------------|---------------------------------------------------------------------------------------------------------------|-----------------|-------|
@@ -210,23 +218,32 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 | dias_afectos    | Dias Afectos    | 1/3   | ViewField: Un Mes/Todos         | Select cat [§G]; siempre habilitado                                                                | 0 (Todos Los Dias)    |       |
 | minimo_mora     | Mora Minima     | 1/3   | ViewField (2 decimales)         | Input [§D] (inputMode=decimal); estado auxiliar `minMoraStr`; onBlur reformatea a 2 decimales (`es-GT`); siempre habilitado | 0.00 | `minMoraStr` sincroniza display ↔ `form.minimo_mora` |
-| mora_enganche   | Mora Enganche   | 1/3   | Checkbox [§I]; disabled         | Checkbox [§I]; siempre habilitado                                                                  | 0 |       |
 
-**[ABONO CAPITAL]**
+> Los campos `dias_afectos` y `minimo_mora` ocupan una fila de 2 columnas (`grid-cols-3`, 2 celdas usadas). A continuación, en una **nueva fila** de `grid-cols-3`:
+
+| mora_enganche         | Mora Enganche        | 1/3   | Checkbox [§I]; disabled         | Checkbox [§I]; siempre habilitado                                 | 0 |       |
+| fijar_parametros_mora | Parametros Editables | 1/3   | Checkbox [§I]; disabled         | Checkbox [§I]; siempre habilitado                                 | 0 | Controla si los parametros de mora son editables en Promesas |
+
+**[ABONO CAPITAL]** — columna derecha
 
 | Campo                | Label                | Ancho | View      | Nuevo / Edit                               | Default (Nuevo) | Notas |
 |----------------------|----------------------|-------|-----------|--------------------------------------------|-----------------|-------|
 | minimo_abono_capital | Minimo Abono Capital | 3/4   | ViewField | Input number [§E]; ≥0; siempre habilitado | 0 | |
 
-**[OTROS PARAMETROS]**
+**[OTROS PARAMETROS]** — columna derecha
 
-| Campo           | Label           | Ancho | View                                  | Nuevo / Edit                                                                                               | Default (Nuevo) | Notas |
-|-----------------|-----------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|-----------------|-------|
-| promesa_vencida | Promesa Vencida | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               |       |
+| Campo               | Label                | Ancho | View                                  | Nuevo / Edit                                                                                               | Default (Nuevo) | Notas |
+|-----------------------|----------------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|-----------------|-------|
+| promesa_vencida       | Promesa Vencida      | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               |       |
+| promesa_correlativo   | Promesa Correlativo  | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; Nuevo: siempre habilitado; Edit: siempre desabilitado                                                     | 0               | Una vez grabado el registro este campo no es editable      |
+| promesa_alfanumerico  | Promesa Alfanumerico | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; Nuevo: siempre habilitado; Edit: siempre desabilitado                                                     | 0               | Una vez grabado el registro este campo no es editable      |
+| moneda                | Moneda               | third | _(no se renderiza — ver pestaña Monedas)_ | Select FK [§F]; req; **solo visible en modo Nuevo** (en Ver/Editar se gestiona desde pestaña Monedas)     | primer elemento de `monedas` | prop `monedas`; muestra código ISO; usar `CURRENCY_FLAG_MAP` si disponible |
 | logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
 
 ### Tab: Monedas  (icono: Coins)
 
+> **Layout:** `flex gap-6 items-start` con separador `bg-primary/30`. El contenido MONEDAS se posiciona en la **columna izquierda** (`flex-1 space-y-4`); columna derecha = `<div className="flex-1" />`.
+>
 > **Esta pestaña se oculta en modo Nuevo** — el trigger `<TabsTrigger value="monedas">` solo se renderiza cuando `viewTarget` existe.
 > La primera moneda grabada se convierte automáticamente en **predeterminada** (lógica en `addProyectoMoneda` server action: verifica `count === 0`).
 
@@ -237,13 +254,13 @@ Muestra la lista de monedas asignadas al proyecto (`proyectoMonedasActuales`) co
 | Columna        | Detalle |
 |----------------|---------|
 | Moneda         | Código ISO (ej. GTQ); muestra bandera via `CURRENCY_FLAG_MAP` si existe |
-| Predeterminada | Badge `"Predeterminada"` si `pm.predeterminado === 1`; si no, botón de estrella `⭐` (solo en edit, disabled si moneda inactiva) que llama `handleSetPredeterminada` |
+| Predeterminada | Badge `"Predeterminada"` si `pm.predeterminado === 1`; si no, celda vacía — **la predeterminada es inmutable** (se fija al crear el proyecto desde modal Nuevo y no puede cambiarse) |
 | Estado         | Badge verde `"Activo"` / gris `"Inactivo"` según `pm.activo` |
 | Acciones       | Botón `"Desactivar"` / `"Activar"` (solo si `puedeModificar && isEditing` y `pm.predeterminado !== 1`); llama `handleToggleMonedaActivo` |
 
 Si no hay monedas: empty state con borde dashed e instrucción de agregar la primera.
 
-**Agregar moneda** (visible si `puedeAgregar && isEditing && monedasDisponibles.length > 0`):
+**Agregar moneda** (visible si `puedeModificar && isEditing && monedasDisponibles.length > 0`):
 - Select [§G] con `monedasDisponibles` (monedas del catálogo que aún no están en el proyecto); muestra bandera+código
 - Botón "Agregar" → llama `handleAddMoneda()` → server action `addProyectoMoneda`
 - `monedasDisponibles = monedas.filter(m => !proyectoMonedasActuales.some(pm => pm.moneda === m.codigo))`
@@ -251,7 +268,11 @@ Si no hay monedas: empty state con borde dashed e instrucción de agregar la pri
 **Server actions** (en `src/app/actions/proyectos.ts`):
 - `addProyectoMoneda(empresa, proyecto, moneda)` — si `count === 0` → `predeterminado = 1`; si no → `predeterminado = 0`
 - `toggleProyectoMonedaActivo(empresa, proyecto, moneda, activo)` — no permite desactivar la predeterminada
-- `setProyectoMonedaPredeterminada(empresa, proyecto, moneda)` — solo si `activo === 1`
+- `setProyectoMonedaPredeterminada(empresa, proyecto, moneda)` — **siempre retorna error**; la predeterminada es inmutable; se mantiene solo como defensa en profundidad
+
+---
+
+**PAGINACION:** NO (contador)
 
 ---
 
@@ -261,6 +282,8 @@ Si no hay monedas: empty state con borde dashed e instrucción de agregar la pri
 2. No puede existir duplicado de `nombre` dentro del mismo `(cuenta, empresa)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('nombre', ...)`.
 3. **Validacion de similitud de nombre (frontend):** antes de llamar a `doSave()`, comparar el nombre ingresado contra todos los proyectos de la misma `(empresa)` usando `jaroWinkler(toDbString(form.nombre), toDbString(x.nombre)) >= 0.85` (importar `jaroWinkler, toDbString` de `@/lib/utils`). Si hay coincidencias, mostrar un `AlertDialog` que lista los nombres similares y pregunta al usuario si desea continuar. El boton de confirmacion dice `"Si, es diferente — Continuar"` y llama a `doSave()`. Al editar, excluir el propio registro del analisis (`x.codigo !== viewTarget.codigo`).
 4. Mostrar advertencia si `empresa.length === 0` deshabilitar el boton "Nuevo Proyecto".
+5. **Moneda predeterminada es inmutable:** se fija al momento de crear el proyecto (modal Nuevo) y no puede modificarse posteriormente. `setProyectoMonedaPredeterminada` siempre retorna error como defensa en profundidad. No mostrar botón de estrella en la columna Predeterminada.
+6. **Moneda predeterminada no se puede desactivar:** `toggleProyectoMonedaActivo` rechaza el cambio si `nuevoActivo === 0 && row.predeterminado === 1`. El botón Desactivar/Activar solo se muestra cuando `pm.predeterminado !== 1`.
 
 ---
 
@@ -268,6 +291,7 @@ Si no hay monedas: empty state con borde dashed e instrucción de agregar la pri
 
 - Duplicado: `nombre` ya existe en el mismo `(cuenta, empresa)` -> `'Ya existe un proyecto con ese nombre en esta empresa.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
+- **Campo virtual `moneda`:** `ProyectoForm` incluye `moneda` (usado solo en el modal Nuevo para insertar en `t_proyecto_moneda`). En `updateProyecto` este campo debe ser eliminado del payload antes del `.update()` — hacer destructuring `const { moneda: _moneda, ...proyectoPayload } = normalized` y usar `proyectoPayload` en el update.
 - **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en:
    1. `cartera.t_fase` con el mismo `(cuenta, empresa, proyecto)`. Si existen -> `'No se puede eliminar este proyecto porque tiene fases asociadas.'` La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
    2. `cartera.t_serie_recibo` con el mismo `(cuenta, empresa, proyecto)`. Si existen -> `'No se puede eliminar este proyecto porque tiene serie recibos asociados.'` La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.
@@ -304,11 +328,12 @@ Cada telefono maneja dos estados locales: `{tel}Iso` (código ISO del país) y `
 
 ### Campos inhabilitados por `mora_automatica`
 
-Cuando `mora_automatica !== 1` quedan **disabled**: `forma_mora`, `tipoCalculo` (Select), `interes_mora`, `fijo_mora`, `dias_gracia`. Los campos `dias_afectos`, `minimo_mora`, `mora_enganche`, `minimo_abono_capital`, `promesa_vencida` y `logo_url` permanecen siempre habilitados.
+Cuando `mora_automatica !== 1` quedan **disabled**: `forma_mora`, `tipoCalculo` (Select), `interes_mora`, `fijo_mora`, `dias_gracia`. Los campos `dias_afectos`, `minimo_mora`, `mora_enganche`, `fijar_parametros_mora`, `minimo_abono_capital`, `promesa_vencida` y `logo_url` permanecen siempre habilitados.
 
 ### Validaciones en `handleSave()`
 
 - Requeridos siempre: `empresa`, `nombre`, `direccion`, `pais`, `departamento`, `municipio`, `telefono1` (parte local).
+- En modo Nuevo (`!viewTarget`): `moneda` es requerido.
 - Si `mora_automatica === 1`: requeridos `interes_mora` (si `tipoCalculo=0`) o `fijo_mora` (si `tipoCalculo=1`), y `dias_gracia` (debe ser `>= 0`; **0 es válido** — validar con `< 0`, no con `!value`).
 - Si `logoError` no esta vacio: bloquear guardado.
 
@@ -328,7 +353,7 @@ El item "Eliminar" del dropdown **no se muestra** si existen registros en el pro
 
 ### `openCreate()`
 
-Pre-selecciona la primera empresa disponible. Deriva `pais` de `empresa.pais`. Inicializa `tel1Iso` y `tel2Iso` al pais de la empresa. `tipoCalculo = 0`. `minMoraStr = '0.00'`. También resetea `setActiveTab('general')`.
+Pre-selecciona la primera empresa disponible. Deriva `pais` de `empresa.pais`. Inicializa `tel1Iso` y `tel2Iso` al pais de la empresa. `tipoCalculo = 0`. `minMoraStr = '0.00'`. Inicializa `moneda` al `codigo` de la primera moneda disponible en `monedas` (`monedas[0]?.codigo ?? ''`). También resetea `setActiveTab('general')`.
 
 ### `openView()`
 
@@ -340,15 +365,15 @@ Las tabs del modal usan estado controlado: `<Tabs value={activeTab} onValueChang
 
 ### Alta guiada de monedas (flujo post-crear)
 
+> **Este flujo fue simplificado.** La moneda predeterminada ahora se captura en el modal Nuevo (campo `moneda` en pestaña Parámetros / OTROS PARAMETROS) y se graba automáticamente al crear el proyecto.
+
 Cuando se guarda un proyecto nuevo con éxito:
 1. `createProyecto` retorna `{ error?: string; codigo?: number }` — el `codigo` auto-asignado viene en la respuesta.
-2. Se almacena `pendingMonedasSetup = { empresa: form.empresa, codigo: newCodigo }` en estado.
-3. Toast: `'Proyecto creado. Ahora registra la primera moneda (obligatorio).'`
-4. Se cierra el modal de Nuevo y se llama `router.refresh()`.
-5. Un `useEffect([initialData, pendingMonedasSetup])` vigila: cuando el nuevo proyecto aparece en `initialData` (tras el refresh), llama `openView(found)`, luego `setActiveTab('monedas')` y `setIsEditing(true)` — abriendo automáticamente el modal Edit en la pestaña Monedas.
-6. La pestaña "Monedas" **no se muestra en el modal Nuevo** (oculta con `{viewTarget && <TabsTrigger value="monedas" ...>}`).
+2. Toast: `'Proyecto creado exitosamente.'`
+3. Se cierra el modal y se llama `router.refresh()`.
+4. La pestaña "Monedas" **no se muestra en el modal Nuevo** (oculta con `{viewTarget && <TabsTrigger value="monedas" ...>}`).
 
-Estado local nuevo: `activeTab: string`, `pendingMonedasSetup: { empresa: number; codigo: number } | null`, `warnNoMonedas: boolean`.
+Estado local: `activeTab: string`, `warnNoMonedas: boolean`. **Eliminar** el estado `pendingMonedasSetup` y el `useEffect` que lo vigilaba.
 
 ### Advertencia de moneda faltante (`warnNoMonedas`)
 
@@ -374,9 +399,14 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('nombre')
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_
+
+

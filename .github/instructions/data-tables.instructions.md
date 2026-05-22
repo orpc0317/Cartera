@@ -19,9 +19,9 @@ const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVi
 ```
 
 - Use `__prefix` for virtual columns that don't map 1:1 to a DB field (e.g. `__regimen_iva`).
-- `STORAGE_KEY = '<entity>_cols_v1_${userId}'`
+- `STORAGE_KEY = '<entity>_cols_v1_${userId}'` — replace `<entity>` with the lowercase plural slug used in the route (e.g. `clientes_cols_v1_${userId}`, `series-recibos_cols_v1_${userId}`).
 - Label naming: no accents, Title Case (see ui-conventions.instructions.md).
-- Copy `ColumnFilter`, `ColumnManager`, and `handleTableKeyDown` verbatim from `components.instructions.md § M` — do **not** read `clientes/_client.tsx`.
+- Copy `ColumnFilter`, `ColumnManager`, and `handleTableKeyDown` verbatim from `components.instructions.md § M` — do **not** read individual `_client.tsx` files for these utilities.
 
 ---
 
@@ -82,7 +82,7 @@ return <TableHead key={col.key}>{col.label}</TableHead>
 
 When a column has no filterable values (e.g. a free-text field with too many unique values), pass `values={[]}` — `ColumnFilter` still renders the styled label correctly, just without a dropdown.
 
-FK columns (empresa, proyecto, fase…) and enum columns (medida, moneda…) require label↔key translation in both `values` and `active`/`onChange` — see the filter pipeline in `clientes/_client.tsx` for reference.
+FK columns (empresa, proyecto, fase…) and enum columns (medida, moneda…) require label↔key translation in both `values` and `active`/`onChange` — see the filter pipeline in `components.instructions.md § M` for reference.
 
 ---
 
@@ -117,9 +117,9 @@ Use `switch (col.key)` with explicit cases; `default` for generic text columns.
 | Text / FK    | `text-muted-foreground`                  | |
 | Code/NIT/ID  | `font-mono text-xs text-muted-foreground` | |
 | Enum         | no className on cell                     | Wrap in `<Badge variant="secondary" className="font-normal">` |
-| Pais         | `text-muted-foreground`                  | Flag img 2014 (flagcdn.com) + resolved nombre |
-| Departamento | `text-muted-foreground`                  | Resolve code  nombre via props array |
-| Municipio    | `text-muted-foreground`                  | Resolve code  nombre via props array |
+| Pais         | `text-muted-foreground`                  | Flag image 20×14 px (flagcdn.com) + resolved nombre |
+| Departamento | `text-muted-foreground`                  | Resolve code → nombre via the `departamentos` prop array |
+| Municipio    | `text-muted-foreground`                  | Resolve code → nombre via the `municipios` prop array |
 
 **Never display raw geo codes.**
 
@@ -128,7 +128,7 @@ Use `switch (col.key)` with explicit cases; `default` for generic text columns.
 ## Dropdown menu (actions cell)
 
 Always: **Ver / Editar** (`Eye`) + **Historial** (`History`).
-Conditional: **Eliminar** (`Trash2`) wrapped in `<DropdownMenuSeparator>`  only when entity supports delete.
+Conditional: **Eliminar** (`Trash2`) wrapped in `<DropdownMenuSeparator>` only when `puedeEliminar` prop is `true`.
 Label: `puedeModificar ? 'Ver / Editar' : 'Ver'`.
 
 Trigger: `inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none` + `opacity-0 group-hover:opacity-100` (visible when row is active).
@@ -151,9 +151,127 @@ Always check both `search` and `hasActiveFilters`.
 
 ## Keyboard navigation
 
-Copy `handleTableKeyDown` from any existing `_client.tsx`. Reset cursor on filter change:
+Copy `handleTableKeyDown` from `components.instructions.md § M`. Reset cursor on filter change:
 ```ts
 useEffect(() => { setCursorIdx(null) }, [search, colFilters])
+```
+
+---
+
+## Pagination (client-side)
+
+The spec declares `PAGINACION: SI [N/pag]` or `PAGINACION: NO (contador)`. Use this section when the spec says `SI`.
+
+- `PAGE_SIZE` constant (commonly 50).
+- `page` state (0-based).
+- `pagedRows` slice — render this instead of `filtered`.
+- `cursorIdx` always points to the **global** index in `filtered`, not the page-local index. This allows transparent cross-page keyboard navigation.
+
+### Core additions
+
+```ts
+const PAGE_SIZE = 50
+const [page, setPage] = useState(0)
+const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+const pagedRows = useMemo(
+  () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+  [filtered, page],
+)
+```
+
+### Reset page on filter change (add `setPage(0)` alongside `setCursorIdx(null)`)
+
+```ts
+useEffect(() => { setCursorIdx(null); setPage(0) }, [search, colFilters])
+```
+
+### Page-aware `handleTableKeyDown`
+
+```ts
+const handleTableKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+  if (filtered.length === 0) return
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    setCursorIdx((prev) => {
+      const next = prev === null ? page * PAGE_SIZE : Math.min(prev + 1, filtered.length - 1)
+      if (next >= (page + 1) * PAGE_SIZE) setPage((p) => p + 1)
+      return next
+    })
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    setCursorIdx((prev) => {
+      const next = prev === null ? page * PAGE_SIZE : Math.max(prev - 1, 0)
+      if (next < page * PAGE_SIZE) setPage((p) => Math.max(p - 1, 0))
+      return next
+    })
+  } else if (e.key === 'Enter' && cursorIdx !== null) {
+    e.preventDefault()
+    openView(filtered[cursorIdx])   // global filtered index, not pagedRows index
+  } else if (e.key === 'Escape') {
+    setCursorIdx(null)
+  }
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [filtered, cursorIdx, page])
+```
+
+### `onFocus` — set cursor to first row of current page
+
+```tsx
+onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
+```
+
+### Row render — use `pagedRows`, `globalIdx`
+
+```tsx
+{pagedRows.map((row, rowIdx) => {
+  const globalIdx = page * PAGE_SIZE + rowIdx
+  const isActive = cursorIdx === globalIdx
+  return (
+    <TableRow
+      key={row.codigo}
+      className={...}
+      onClick={() => setCursorIdx(globalIdx)}
+      onDoubleClick={() => openView(row)}
+    >
+```
+
+### Pagination controls + counter (below the table `</div>`)
+
+```tsx
+<div className="flex items-center justify-between">
+  <p className="text-xs text-muted-foreground">
+    {filtered.length > 0
+      ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} entidades`
+      : '0 entidades'}
+  </p>
+  {totalPages > 1 && (
+    <div className="flex items-center gap-1">
+      <button type="button" aria-label="Página anterior"
+        disabled={page === 0}
+        onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+        <ChevronLeft className="h-3.5 w-3.5" />
+      </button>
+      <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
+      <button type="button" aria-label="Página siguiente"
+        disabled={page >= totalPages - 1}
+        onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  )}
+</div>
+```
+
+Required imports: `ChevronLeft, ChevronRight` from `lucide-react`.
+
+### For small tables (PAGINACION: NO)
+
+Just add a counter (no navigation controls):
+
+```tsx
+<p className="text-xs text-muted-foreground">{filtered.length} entidad{filtered.length !== 1 ? 'es' : ''}</p>
 ```
 
 ---
@@ -168,6 +286,7 @@ useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 6. Empty state with `search || hasActiveFilters` ternary
 7. Dropdown: Eye/Historial always; Eliminar only when supported
 8. CSV export: `exportCsv` + `Exportar CSV` button (see **CSV Export** section below)
+9. If spec declares `PAGINACION: SI`, apply all changes listed in **§ Pagination** above. If `PAGINACION: NO`, add only the record counter `<p>`.
 
 ---
 
@@ -206,3 +325,5 @@ Every CRUD table must include a **"Exportar CSV"** button in the toolbar (see la
 → **Copiar verbatim de `components.instructions.md § T · Función exportCsv`**
 
 > `formatCsvCell` envuelve valores en comillas dobles cuando contienen comas, saltos de línea o comillas — no se necesita librería externa.
+
+**Formato de celdas:** fechas como `YYYY-MM-DD`, booleanos/flags como `Si`/`No`, columnas FK exportan el nombre resuelto (no el código numérico), nulos como cadena vacía.

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -81,8 +81,8 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -482,7 +482,7 @@ export function SeriesRecibosClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar series..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -606,6 +606,8 @@ export function SeriesRecibosClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} serie{filtered.length !== 1 ? 's' : ''} de recibos</p>
+
       {/* Ver / Crear / Editar Dialog */}
       <Dialog
         open={dialogOpen}
@@ -685,7 +687,7 @@ export function SeriesRecibosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -698,7 +700,7 @@ export function SeriesRecibosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -710,7 +712,7 @@ export function SeriesRecibosClient({
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="serie" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Serie *</Label>
-                    <Input
+                    <Input variant="underline"
                       id="serie"
                       value={form.serie}
                       onChange={(e) => f('serie', e.target.value)}
@@ -731,7 +733,7 @@ export function SeriesRecibosClient({
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="correlativo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Correlativo</Label>
-                      <Input
+                      <Input variant="underline"
                         id="correlativo"
                         type="number"
                         min={0}
@@ -743,7 +745,7 @@ export function SeriesRecibosClient({
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="formato" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Formato</Label>
-                      <Input
+                      <Input variant="underline"
                         id="formato"
                         type="number"
                         min={0}
@@ -754,7 +756,7 @@ export function SeriesRecibosClient({
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="dias_fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Dias Fecha</Label>
-                    <Input
+                    <Input variant="underline"
                       id="dias_fecha"
                       type="number"
                       min={0}
@@ -768,7 +770,7 @@ export function SeriesRecibosClient({
                       value={form.serie_factura ?? ''}
                       onValueChange={(v) => setForm((p) => ({ ...p, serie_factura: v || null }))}
                     >
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="" />
                       </SelectTrigger>
                       <SelectContent>
@@ -845,7 +847,7 @@ export function SeriesRecibosClient({
           onOpenChange={(o) => !o && setAuditTarget(null)}
           tabla="t_serie_recibo"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.serie}
+          registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, serie: auditTarget.serie }}
           titulo={`Serie ${auditTarget.serie}`}
         />
       )}

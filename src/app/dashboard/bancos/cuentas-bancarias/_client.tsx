@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -90,8 +90,8 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -471,7 +471,7 @@ export function CuentasBancariasClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar cuentas bancarias..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -616,6 +616,8 @@ export function CuentasBancariasClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} cuenta{filtered.length !== 1 ? 's' : ''} bancaria{filtered.length !== 1 ? 's' : ''}</p>
+
       {/* Ver / Crear / Editar Dialog */}
       <Dialog
         open={dialogOpen}
@@ -712,14 +714,14 @@ export function CuentasBancariasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
@@ -733,7 +735,7 @@ export function CuentasBancariasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Banco *</Label>
                     <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {bancosFiltrados.length === 0
                           ? <SelectItem value="0" disabled>Sin bancos para este proyecto</SelectItem>
@@ -744,7 +746,7 @@ export function CuentasBancariasClient({
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Cuenta *</Label>
-                    <Input
+                    <Input variant="underline"
                       id="nombre"
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}
@@ -753,7 +755,7 @@ export function CuentasBancariasClient({
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="numero" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Numero Cuenta *</Label>
-                    <Input
+                    <Input variant="underline"
                       id="numero"
                       value={form.numero}
                       onChange={(e) => f('numero', e.target.value)}
@@ -762,8 +764,8 @@ export function CuentasBancariasClient({
                   </div>
                   <div className="grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
-                    <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-                      <SelectTrigger className="w-full">
+                    <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="Selecciona moneda">
                           {(v: string) => {
                             const flagIso = CURRENCY_FLAG_MAP.get(v)
@@ -849,7 +851,7 @@ export function CuentasBancariasClient({
           onOpenChange={(o) => !o && setAuditTarget(null)}
           tabla="t_cuenta_bancaria"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.codigo}
+          registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, codigo: auditTarget.codigo }}
           titulo={auditTarget.nombre}
         />
       )}

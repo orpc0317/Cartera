@@ -108,18 +108,18 @@ interface AuditLogDialogProps {
   onOpenChange: (open: boolean) => void
   tabla: string
   cuenta: string
-  codigo: number | string
+  registroId: Record<string, unknown>
   titulo: string
 }
 
-export function AuditLogDialog({ open, onOpenChange, tabla, cuenta, codigo, titulo }: AuditLogDialogProps) {
+export function AuditLogDialog({ open, onOpenChange, tabla, cuenta, registroId, titulo }: AuditLogDialogProps) {
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
     if (!open) return
     startTransition(async () => {
-      const data = await getAuditLog(tabla, cuenta, codigo)
+      const data = await getAuditLog(tabla, cuenta, registroId)
       setEntries(data)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps

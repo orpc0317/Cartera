@@ -19,7 +19,7 @@ export type AuditEntry = {
 export async function getAuditLog(
   tabla: string,
   cuenta: string,
-  codigo: number | string,
+  registroId: Record<string, unknown>,
 ): Promise<AuditEntry[]> {
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -28,7 +28,7 @@ export async function getAuditLog(
     .select('*')
     .eq('tabla', tabla)
     .eq('cuenta', cuenta)
-    .eq('registro_id->>codigo', String(codigo))
+    .filter('registro_id', 'cs', JSON.stringify(registroId))
     .order('fecha', { ascending: false })
     .limit(100)
 

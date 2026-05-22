@@ -31,6 +31,7 @@ import {
   Tags,
   Settings,
   ArrowLeftRight,
+  FileSignature,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -94,9 +95,9 @@ const NAV: NavItem[] = [
     label: 'Bancos',
     icon: Landmark,
     children: [
-      { label: 'Bancos',           href: '/dashboard/bancos/bancos',         icon: Landmark },
-      { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias', icon: CreditCard },
-      { label: 'Tasas Cambio',  href: '/dashboard/bancos/tasas-cambio',   icon: ArrowLeftRight },
+      { label: 'Bancos',            href: '/dashboard/bancos/bancos',             icon: Landmark,      separator: 'Catálogos' },
+      { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias',  icon: CreditCard },
+      { label: 'Tasas Cambio',      href: '/dashboard/bancos/tasas-cambio',       icon: ArrowLeftRight, separator: 'Operaciones' },
     ],
   },
   {
@@ -109,6 +110,7 @@ const NAV: NavItem[] = [
       { label: 'Vendedores',    href: '/dashboard/promesas/vendedores',    icon: UserCheck },
       { label: 'Cobradores',   href: '/dashboard/promesas/cobradores',   icon: Banknote },
       { label: 'Reservas',     href: '/dashboard/promesas/reservas',     icon: ClipboardList,  separator: 'Operaciones' },
+      { label: 'Promesas',     href: '/dashboard/promesas/promesas',     icon: FileSignature },
       { label: 'Balance',      href: '#',                                icon: Scale,          separator: 'Consultas', comingSoon: true },
     ],
   },

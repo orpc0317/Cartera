@@ -44,6 +44,8 @@ Copia cada sección verbatim — reemplaza los `<angle-bracket>` placeholders.
 | AC | LogoUploadField (carga de imagen / logo) |
 | AD | Input numérico con sufijo de unidad (adornment) |
 | AE | Selection Buttons (radio group visual) |
+| AF | AuditLogDialog (historial de cambios) |
+| AG | Modal ancho — 2 columnas con separador vertical |
 
 ---
 
@@ -60,8 +62,7 @@ const [isPending, startTransition]        = useTransition()
 const [hadConflict, setHadConflict]       = useState(false)
 const [similarWarning, setSimilarWarning] = useState<string[]>([])  // names of potential duplicates; non-empty = AlertDialog open
 const [deleteTarget, setDeleteTarget]     = useState<<Entity> | null>(null)
-const [auditTarget, setAuditTarget]       = useState<number | null>(null)
-const [auditOpen, setAuditOpen]           = useState(false)
+const [auditTarget, setAuditTarget]       = useState<<Entity> | null>(null)  // full row object; !!auditTarget controls dialog open
 ```
 
 ---
@@ -78,17 +79,17 @@ const icon = !isEditing
     ? <Plus   className={`h-4 w-4 ${iconBadgeClr}`} />              // creating
     : <Pencil className={`h-4 w-4 ${iconBadgeClr}`} />              // editing
 
-// Subtitle shown below entity name in modal header — pick ONE pattern:
-const subtitle = viewTarget ? (empresaMap.get(viewTarget.empresa) ?? '') : ''                   // single FK label
-// const subtitle = viewTarget ? [empresaMap.get(viewTarget.empresa), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ') : ''  // two FK labels
-// const subtitle = ''  // entity has no meaningful secondary label
+// Subtitle shown below entity name in modal header — pick ONE pattern based on the entity's FK depth:
+const subtitle = viewTarget ? (empresaMap.get(viewTarget.empresa) ?? '') : ''                   // entity belongs to empresa (not proyecto)
+// const subtitle = viewTarget ? [empresaMap.get(viewTarget.empresa), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ') : ''  // entity belongs to proyecto (e.g. cliente, vendedor, lote)
+// const subtitle = ''  // entity belongs only to cuenta, with no empresa/proyecto FK
 ```
 
 ---
 
 ## C · Modal — Functions
 
-Copy all five. In `startEdit` list every `<EntityForm>` field. Replace `create<Entity>` / `update<Entity>` with the actual action import names.
+Copy all five. In `startEdit` list every `<EntityForm>` field. Replace `create<Entity>` / `update<Entity>` with the actual action import names (convención: `createBanco`, `updateBanco`, `deleteBanco` — camelCase `create/update/delete` + PascalCase entity, importados desde `@/app/actions/<entity-kebab>.ts`).
 
 ```ts
 function openCreate() {
@@ -373,7 +374,7 @@ State: `const [deleteTarget, setDeleteTarget] = useState<<Entity> | null>(null)`
     <Eye className="mr-2 h-4 w-4" />
     {puedeModificar ? 'Ver / Editar' : 'Ver'}
   </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => { setAuditTarget(row.codigo); setAuditOpen(true) }}>
+  <DropdownMenuItem onClick={() => setAuditTarget(row)}>
     <History className="mr-2 h-4 w-4" />
     Historial
   </DropdownMenuItem>
@@ -516,8 +517,8 @@ Definir **dentro de cada `_client.tsx`** (no son componentes compartidos).
 ```tsx
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -538,7 +539,7 @@ function SectionDivider({ label }: { label: string }) {
 
 ### Reglas ViewField
 
-- **Texto:** pasar el valor crudo; `ViewField` muestra en blanco si es `null`/`undefined`/`''`. Nunca pasar `|| '—'`.
+- **Texto:** pasar el valor crudo; `ViewField` muestra en blanco si es `null`/`undefined`/`''`. Nunca pasar `|| '—'` a `ViewField`. En renderers de columna de tabla, `|| '—'` es aceptable.
 - **Numérico:** si `0` significa "no definido", guardar en el call site: `value={viewTarget.valor ? fmt(viewTarget.valor) : ''}`. Si `0` es válido (p.ej. `dias_gracia`), pasar `fmt(x)` directo.
 - **Códigos numéricos auto-increment:** mostrar como `String(viewTarget.codigo)` — nunca con `#` prefix.
 
@@ -1789,3 +1790,137 @@ Renderizar condicionalmente debajo de los botones:
 const <campo> = modo === '<opcionA>' ? <valorA> : <valorB>
 // Incluir en el payload
 ```
+
+---
+
+## AF · AuditLogDialog — Historial de cambios
+
+Mostrar en **todas** las pantallas CRUD. Permite ver el historial completo de INSERT/UPDATE/DELETE de un registro.
+
+### Import
+
+```ts
+import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
+```
+
+### State (ya está en §A)
+
+```ts
+const [auditTarget, setAuditTarget] = useState<<Entity> | null>(null)  // full row
+```
+
+### Dropdown item (ya está en §L)
+
+```tsx
+<DropdownMenuItem onClick={() => setAuditTarget(row)}>
+  <History className="mr-2 h-4 w-4" />
+  Historial
+</DropdownMenuItem>
+```
+
+### JSX del componente
+
+Agregar **antes** del `</div>` de cierre del componente, después del AlertDialog de borrado:
+
+```tsx
+{/* ── Historial ── */}
+{auditTarget && (
+  <AuditLogDialog
+    open={!!auditTarget}
+    onOpenChange={(o) => !o && setAuditTarget(null)}
+    tabla="<t_nombre_tabla>"
+    cuenta={auditTarget.cuenta}
+    registroId={<registroId>}
+    titulo={auditTarget.nombre}
+  />
+)}
+```
+
+### Campo `registroId` según jerarquía de la entidad
+
+Debe coincidir **exactamente** con lo que `writeAudit` almacena en la action de la entidad.
+
+| Entidad | `registroId` |
+|---------|-------------|
+| Empresa | `{{ codigo: auditTarget.codigo }}` |
+| Proyecto | `{{ empresa: auditTarget.empresa, codigo: auditTarget.codigo }}` |
+| Fase, Banco, CuentaBancaria, TipoIngreso, Vendedor, Cobrador, Coordinador, Supervisor, Cliente | `{{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, codigo: auditTarget.codigo }}` |
+| Manzana | `{{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, fase: auditTarget.fase, codigo: auditTarget.codigo }}` |
+| Lote | `{{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, fase: auditTarget.fase, manzana: auditTarget.manzana, codigo: auditTarget.codigo }}` |
+| SerieRecibo | `{{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, serie: auditTarget.serie }}` (campo `serie`, no `codigo`) |
+
+> **REGLA:** el `registroId` debe incluir **todos** los campos que forman la clave primaria compuesta de la tabla — los mismos que la action almacena en `registro_id` de `t_audit_log`. Usar el operador `cs` (JSON containment) de PostgREST garantiza que no haya colisiones entre registros de diferentes proyectos que compartan el mismo `codigo`.
+
+### `titulo` cuando no hay campo `nombre`
+
+- `Manzana`: `titulo={\`Manzana ${auditTarget.codigo}\``}
+- `Lote`: `titulo={auditTarget.codigo}`
+- `SerieRecibo`: `titulo={\`Serie ${auditTarget.serie}\``}
+
+---
+
+## AG · Modal ancho — 2 columnas con separador vertical
+
+Usar cuando el modal tiene **3 o más secciones**, o **12+ campos** en total, y una sola columna resultaría en una lista excesivamente larga. Primera pantalla validada: `lotes/_client.tsx`.
+
+### Cuándo usar wide vs narrow
+
+| Condición | Modal a usar |
+|-----------|-------------|
+| 1–2 secciones, ≤ 10 campos | Narrow `sm:max-w-[36rem]` — **§ R** |
+| 3+ secciones, o ≥ 12 campos | Wide `sm:max-w-[64rem]` — **§ AG** |
+
+### DialogContent
+
+```tsx
+<DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+```
+
+### Contenedor de 2 columnas
+
+Este `<div>` reemplaza el `<div className="grid grid-cols-2 gap-3">` estándar del § O / § P.  
+Aplica **exactamente igual** en modo vista y en modo edición (solo cambia `gap-3` → `gap-4` en el inner grid de edición).
+
+```tsx
+<div className="flex gap-6 items-start">
+
+  {/* Columna izquierda */}
+  <div className="flex-1 grid grid-cols-2 gap-3">   {/* gap-4 en edit mode */}
+    <SectionDivider label="SECCION A" />
+    {/* campos de la sección A */}
+    <SectionDivider label="SECCION B" />
+    {/* campos de la sección B */}
+  </div>
+
+  {/* Separador vertical */}
+  <div className="w-px self-stretch bg-primary/30" />
+
+  {/* Columna derecha */}
+  <div className="flex-1 grid grid-cols-2 gap-3">   {/* gap-4 en edit mode */}
+    <SectionDivider label="SECCION C" />
+    {/* campos de la sección C */}
+    <SectionDivider label="SECCION D" />
+    {/* campos de la sección D */}
+  </div>
+
+</div>
+```
+
+### Columna derecha vacía (reservada para contenido futuro)
+
+Cuando una pestaña todavía no tiene contenido en la columna derecha, usar un `div` vacío para mantener la estructura simétrica:
+
+```tsx
+<div className="w-px self-stretch bg-primary/30" />
+<div className="flex-1" />
+```
+
+### Reglas
+
+- **`gap-6`** en el flex exterior — provee 24 px a cada lado del separador. No reducir.
+- **`SectionDivider`** tiene `col-span-2` hardcodeado → funciona correctamente dentro de `flex-1 grid grid-cols-2`.
+- **Anchos de campo** dentro de cada columna: `(full)` = `col-span-2`, `(half)` = una celda, `(third)` = igual que el estándar (ver `crud-screens.instructions.md`). Las reglas no cambian respecto al modal estrecho.
+- **Color del separador:** `bg-primary/30` — mismo tono que la línea horizontal del `SectionDivider` (`border-primary/30`). **No** usar colores de acento de módulo.
+- **Distribución de secciones:** máximo ~3 secciones por columna. Distribuir equilibrando la altura visual entre columnas izquierda y derecha.
+- El `TabsContent` que envuelve este layout mantiene `className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1"` sin cambios.
+

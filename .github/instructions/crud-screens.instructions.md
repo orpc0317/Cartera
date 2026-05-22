@@ -56,7 +56,20 @@ return (
 
 ## Modal layout
 
-→ **Copiar verbatim de `components.instructions.md § R · Modal JSX completo`**  
+El campo **`MODAL_LAYOUT`** en la sección `## IDENTIFICACION` del spec indica qué patrón usar:
+
+| Valor | Cuándo | DialogContent |
+|-------|--------|---------------|
+| `estandar` | 1–2 secciones o ≤ 10 campos en el modal | `sm:max-w-[36rem]` |
+| `ancho` | 3+ secciones o muchos campos; contenido se organiza en 2 columnas | `w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden` |
+
+**`MODAL_LAYOUT = estandar`**:  
+→ **Copiar verbatim de `components.instructions.md § R · Modal JSX completo`**
+
+**`MODAL_LAYOUT = ancho`** (2 columnas con separador):  
+→ **Copiar verbatim de `components.instructions.md § AG · Modal ancho — 2 columnas con separador`**  
+Las secciones se distribuyen en dos columnas separadas por `<div className="w-px self-stretch bg-primary/30" />`. Pantalla de referencia: `src/app/dashboard/proyectos/proyectos/_client.tsx`.
+
 → Las variables computadas (`iconBadgeBg`, `icon`, `subtitle`) están en **§ B**  
 → Las funciones (`openCreate`, `openView`, `startEdit`, `cancelEdit`, `handleSave`) están en **§ C**
 
@@ -554,7 +567,7 @@ Applies to every CRUD screen. The three permissions from `t_menu_usuario` map to
 
 | Permission | UI effect |
 |---|---|
-| `agregar`   | Shows/hides the **"Nuevo {NOMBRE}"** button in the toolbar — `{NOMBRE}` is the singular entity name declared in the prompt's `IDENTIFICACION.NOMBRE` field |
+| `agregar`   | Shows/hides the **"Nuevo {NOMBRE}"** button in the **page header** (not the toolbar) — `{NOMBRE}` is the singular entity name declared in the prompt's `IDENTIFICACION.NOMBRE` field |
 | `modificar` | Shows/hides the **"Editar"** button in the modal footer; changes the row dropdown label to **"Ver / Editar"** vs **"Ver"** |
 | `eliminar`  | Shows/hides the **"Eliminar"** option in the row action dropdown |
 

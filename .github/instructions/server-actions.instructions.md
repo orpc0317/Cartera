@@ -41,6 +41,10 @@ import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'  // â
 ## getCuentaActiva (required in every action file)
 
 ```ts
+// Required imports at the top of every action file:
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -95,6 +99,10 @@ En el `_client.tsx`, el `<Input>` debe llevar `type="email"` para activar la val
 Use **per-call `.catch()`** â€” never a single `try/catch` wrapping all calls:
 
 ```ts
+// Required imports in page.tsx:
+import { getPermisosDetalle } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
+
 const [data, empresas, permisos] = await Promise.all([
   getEntities().catch((e: Error) => { console.error('getEntities:', e.message); return [] as Awaited<ReturnType<typeof getEntities>> }),
   getEmpresas().catch((e: Error)  => { console.error('getEmpresas:', e.message);  return [] as Awaited<ReturnType<typeof getEmpresas>>  }),

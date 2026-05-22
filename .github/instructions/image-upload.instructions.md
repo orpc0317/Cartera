@@ -82,6 +82,9 @@ function extractStoragePath(publicUrl: string, bucket: string): string | null {
 ## Patrón de Server Action para upload
 
 ```ts
+import { createAdminClient } from '@/lib/supabase/admin'
+// getCuentaActiva se define localmente en el archivo de acciones (ver server-actions.instructions.md)
+
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 const MAX_BYTES     = 5 * 1024 * 1024   // 5 MB
 const BUCKET        = 'project-logos'   // nombre del bucket en Supabase Storage
@@ -115,7 +118,7 @@ export async function uploadProjectLogo(
 
   // 6. Generar nombre único — NUNCA usar el nombre original del usuario
   const ext  = file.type === 'image/svg+xml' ? 'svg' : file.type.split('/')[1]
-  const path = `${cuenta}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `${cuenta}/${crypto.randomUUID()}.${ext}`
 
   const admin = createAdminClient()
 

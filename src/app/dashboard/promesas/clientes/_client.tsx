@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Eye, Plus, Users, Search,
   History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Receipt, Download,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -128,8 +129,8 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -382,14 +383,31 @@ export function ClientesClient({
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
 
+  // -- Paginacion --------------------------------------------------------
+  const PAGE_SIZE = 50
+  const [page, setPage] = useState(0)
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const pagedRows = useMemo(
+    () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filtered, page],
+  )
+
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (filtered.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setCursorIdx((prev) => prev === null ? 0 : Math.min(prev + 1, filtered.length - 1))
+      setCursorIdx((prev) => {
+        const next = prev === null ? page * PAGE_SIZE : Math.min(prev + 1, filtered.length - 1)
+        if (next >= (page + 1) * PAGE_SIZE) setPage((p) => p + 1)
+        return next
+      })
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setCursorIdx((prev) => prev === null ? 0 : Math.max(prev - 1, 0))
+      setCursorIdx((prev) => {
+        const next = prev === null ? page * PAGE_SIZE : Math.max(prev - 1, 0)
+        if (next < page * PAGE_SIZE) setPage((p) => Math.max(p - 1, 0))
+        return next
+      })
     } else if (e.key === 'Enter' && cursorIdx !== null) {
       e.preventDefault()
       openView(filtered[cursorIdx])
@@ -397,9 +415,9 @@ export function ClientesClient({
       setCursorIdx(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, cursorIdx])
+  }, [filtered, cursorIdx, page])
 
-  useEffect(() => { setCursorIdx(null) }, [search, colFilters])
+  useEffect(() => { setCursorIdx(null); setPage(0) }, [search, colFilters])
 
   // ── Helpers de formulario ────────────────────────────────────────────
   const SKIP_KEYS = new Set<string>(['correo', 'direccion_pais', 'direccion_departamento', 'direccion_municipio'])
@@ -413,7 +431,7 @@ export function ClientesClient({
       if (key === 'empresa') {
         const fp = proyectos.find((p) => p.empresa === Number(value))
         next.proyecto = fp?.codigo ?? 0
-        const isoFromProyecto = fp?.pais ?? ''
+        const isoFromProyecto = fp?.direccion_pais ?? ''
         if (!next.telefono1) { setTel1Iso(isoFromProyecto); setTel1Local('') }
         if (!next.telefono2) { setTel2Iso(isoFromProyecto); setTel2Local('') }
         next.direccion_pais = isoFromProyecto; next.direccion_departamento = ''; next.direccion_municipio = ''
@@ -421,7 +439,7 @@ export function ClientesClient({
       }
       if (key === 'proyecto') {
         const fp = proyectos.find((p) => p.codigo === Number(value))
-        const isoFromProyecto = fp?.pais ?? ''
+        const isoFromProyecto = fp?.direccion_pais ?? ''
         if (!next.telefono1) { setTel1Iso(isoFromProyecto); setTel1Local('') }
         if (!next.telefono2) { setTel2Iso(isoFromProyecto); setTel2Local('') }
         next.direccion_pais = isoFromProyecto; next.direccion_departamento = ''; next.direccion_municipio = ''
@@ -516,8 +534,8 @@ export function ClientesClient({
     setTel2Iso(''); setTel2Local('')
     setDialogOpen(true)
 
-    const paisFromProject = firstProyecto?.pais ?? ''
-    const paisFromEmpresa = empresas[0]?.pais ?? ''
+    const paisFromProject = firstProyecto?.direccion_pais ?? ''
+    const paisFromEmpresa = empresas[0]?.direccion_pais ?? ''
     if (paisFromProject) {
       applyWithPais(paisFromProject)
     } else if (paisFromEmpresa) {
@@ -571,11 +589,11 @@ export function ClientesClient({
   function handleSave() {
     if (!form.nombre.trim())    { toast.error('El nombre es requerido.'); return }
     if (!form.telefono1.trim()) { toast.error('El telefono es requerido.'); return }
-    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && form.identificacion_tributaria.trim() && !validarNIT(form.identificacion_tributaria)) {
+    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && (form.identificacion_tributaria ?? '').trim() && !validarNIT(form.identificacion_tributaria ?? '')) {
       toast.error('El NIT no tiene una estructura valida.')
       return
     }
-    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 2 && form.identificacion_tributaria.trim() && !validarDPI(form.identificacion_tributaria)) {
+    if (form.direccion_pais === 'GT' && form.tipo_identificacion === 2 && (form.identificacion_tributaria ?? '').trim() && !validarDPI(form.identificacion_tributaria ?? '')) {
       toast.error('El DPI debe contener exactamente 13 digitos numericos y tener una estructura de CUI valida.')
       return
     }
@@ -656,7 +674,7 @@ export function ClientesClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar clientes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -682,7 +700,7 @@ export function ClientesClient({
         className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
       >
         <Table>
           <TableHeader>
@@ -809,7 +827,7 @@ export function ClientesClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {pagedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
@@ -818,15 +836,16 @@ export function ClientesClient({
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((cliente, rowIdx) => {
-                const isActive = cursorIdx === rowIdx
+              pagedRows.map((cliente, rowIdx) => {
+                const globalIdx = page * PAGE_SIZE + rowIdx
+                const isActive = cursorIdx === globalIdx
                 return (
                   <TableRow
                     key={`${cliente.empresa}-${cliente.proyecto}-${cliente.codigo}`}
                     className={`group cursor-pointer transition-colors ${
                       isActive ? 'bg-indigo-50 dark:bg-indigo-950/30' : 'hover:bg-muted/40'
                     }`}
-                    onClick={() => setCursorIdx(rowIdx)}
+                    onClick={() => setCursorIdx(globalIdx)}
                     onDoubleClick={() => openView(cliente)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
@@ -973,6 +992,27 @@ export function ClientesClient({
         </Table>
       </div>
 
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {filtered.length > 0
+            ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} cliente${filtered.length !== 1 ? 's' : ''}`
+            : '0 clientes'}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button type="button" aria-label="Página anterior" disabled={page === 0} onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
+            <button type="button" aria-label="Página siguiente" disabled={page >= totalPages - 1} onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* ── Dialogo Ver / Crear / Editar ── */}
       <Dialog
         open={dialogOpen}
@@ -1089,7 +1129,7 @@ export function ClientesClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                   <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                    <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                     <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
@@ -1098,14 +1138,14 @@ export function ClientesClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                   <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                    <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                     <SelectContent>{proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Cliente *</Label>
-                  <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
+                  <Input variant="underline" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
                 </div>
 
                 <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -1137,7 +1177,7 @@ export function ClientesClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="correo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Correo</Label>
-                  <Input id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="Correo@ejemplo.com" />
+                  <Input variant="underline" id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="Correo@ejemplo.com" />
                 </div>
 
                 <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -1148,7 +1188,7 @@ export function ClientesClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                  <Input id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
+                  <Input variant="underline" id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
                 </div>
 
                 <div className="grid gap-1">
@@ -1210,7 +1250,7 @@ export function ClientesClient({
 
                 <div className="grid gap-1">
                   <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Cod. Postal</Label>
-                  <Input id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Codigo postal" />
+                  <Input variant="underline" id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Codigo postal" />
                 </div>
 
               </div>
@@ -1233,13 +1273,13 @@ export function ClientesClient({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre_factura" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Factura</Label>
-                    <Input id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturacion (si difiere)" />
+                    <Input variant="underline" id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturacion (si difiere)" />
                   </div>
 
                   <div className="grid gap-1">
                     <Label htmlFor="tipo_id" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Identificacion</Label>
                     <Select value={String(form.tipo_identificacion)} onValueChange={(v) => f('tipo_identificacion', Number(v))}>
-                      <SelectTrigger id="tipo_id" className="w-full">
+                      <SelectTrigger variant="underline" id="tipo_id" className="w-full">
                         <SelectValue>
                           {(v: string) => v !== '' ? (TIPO_IDENTIFICACION[Number(v)] ?? v) : null}
                         </SelectValue>
@@ -1254,13 +1294,13 @@ export function ClientesClient({
 
                   <div className="grid gap-1">
                     <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria</Label>
-                    <Input id="id_trib" value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
+                    <Input variant="underline" id="id_trib" value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
                   </div>
 
                   <div className="grid gap-1">
                     <Label htmlFor="regimen_iva" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen IVA</Label>
                     <Select value={String(form.regimen_iva)} onValueChange={(v) => f('regimen_iva', Number(v))}>
-                      <SelectTrigger id="regimen_iva" className="w-full">
+                      <SelectTrigger variant="underline" id="regimen_iva" className="w-full">
                         <SelectValue>
                           {(v: string) => v !== '' ? (REGIMENES_IVA[Number(v)] ?? v) : null}
                         </SelectValue>
@@ -1353,7 +1393,7 @@ export function ClientesClient({
           onOpenChange={(o) => !o && setAuditTarget(null)}
           tabla="t_cliente"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.codigo}
+          registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, codigo: auditTarget.codigo }}
           titulo={auditTarget.nombre}
         />
       )}

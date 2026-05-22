@@ -13,6 +13,7 @@
 | PERMISO        | `TIN_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
 | ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
+| MODAL_LAYOUT   | ancho                                              |
 | MODO           | nuevo                                                        |
 
 ---
@@ -47,12 +48,12 @@ TipoIngreso {
   nombre:               string        -- ingresado por el usuario
   etiqueta:             string        -- ingresado por el usuario
   forma_pago:           smallint      -- 0 = Eventual, 1 = Monto Mensual Fijo, 2 = % (Anual) Precio Lote, 3 = % (Anual) Precio Lote - Enganche, 4 = % (Anual) Saldo Capital, 5 = % Capital Cuota
-  monto:                numeric       -- mayor que 0.00
-  moneda:               varchar       -- ISO-4217 (⚠ verificar si existe en BD; puede requerir migración)
-  hasta_monto:          numeric       -- mayor o igual a 0.00  
-  factura_item          varchar       -- ingresado por el usuario
-  factura_descripcion   varchar       -- ingresado por el usuario
-  mora:                 smallint      -- 1 = si, 0 = no
+  monto:                numeric          -- mayor que 0.00
+  moneda:               varchar          -- ISO-4217
+  hasta_monto:          numeric          -- mayor o igual a 0.00
+  facturacion_item:     varchar          -- ingresado por el usuario
+  facturacion_descripcion: varchar       -- ingresado por el usuario
+  mora:                 smallint         -- 1 = si, 0 = no
   impuesto:             smallint      -- 1 = si, 0 = no
   editable:             smallint      -- 1 = si, 0 = no
   fijo:                 smallint      -- 1 = si, 0 = no
@@ -69,11 +70,11 @@ TipoIngresoForm {                     -- campos editables por el usuario
   nombre:               string
   etiqueta:             string
   forma_pago:           number        -- 0 = Eventual, 1-5 = FORMA_CALCULO_OTROS (Estado Cuenta)
-  moneda:               string        -- ISO-4217 (⚠ verificar si existe en BD)
+  moneda:               string        -- ISO-4217
   monto:                number        -- monto eventual o monto/porcentaje estado cuenta
   hasta_monto:          number        -- tope de monto; aplica solo en modo Estado Cuenta
-  factura_item:         string
-  factura_descripcion:  string
+  facturacion_item:     string
+  facturacion_descripcion: string
   mora:                 number
   impuesto:             number
   editable:             number
@@ -94,12 +95,15 @@ TipoIngresoForm {                     -- campos editables por el usuario
 FK que deben cargarse en `page.tsx` y pasarse como props al client component:
 
 ```
-getEmpresas()       -> prop 'empresas'       -> alimenta el Select de empresa
-getProyectos()      -> prop 'proyectos'      -> alimenta el Select de proyecto (filtrado por empresa)
+getEmpresas()          -> prop 'empresas'         -> alimenta el Select de empresa
+getProyectos()         -> prop 'proyectos'        -> alimenta el Select de proyecto (filtrado por empresa)
+getMonedas()           -> prop 'monedas'          -> catálogo global (display en tabla/view y opciones en Select de moneda)
+getProyectoMonedas()   -> prop 'proyectoMonedas'  -> moneda predeterminada por proyecto (t_proyecto_moneda)
 ```
 
-Cascade doble: empresa → proyecto.
-- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+Cascade doble: empresa → proyecto → moneda.
+- Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0. Luego actualizar `eventualMoneda` y `estadoCuentaMoneda` a la moneda predeterminada del nuevo proyecto (`proyectoMonedas.find(pm => pm.empresa === empCodigo && pm.proyecto === primerProyecto && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find(pm => pm.empresa === empCodigo && pm.proyecto === primerProyecto && pm.activo === 1)?.moneda ?? (monedas[0]?.codigo ?? '')`).
+- Al cambiar proyecto: actualizar `eventualMoneda` y `estadoCuentaMoneda` a la moneda predeterminada del proyecto seleccionado (misma lógica con `proyectoMonedas`).
 
 > `getEmpresas` y `getProyectos` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
 
@@ -109,7 +113,7 @@ Cascade doble: empresa → proyecto.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `nombre`, `etiqueta`, `forma_pago`, `moneda`, `monto`, `hasta_monto`, `factura_item`, `factura_descripcion`, `mora`, `impuesto`, `editable`, `activo`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `nombre`, `etiqueta`, `forma_pago`, `moneda`, `monto`, `hasta_monto`, `facturacion_item`, `facturacion_descripcion`, `mora`, `impuesto`, `editable`, `activo`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
@@ -130,83 +134,91 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 `STORAGE_KEY = 'tipos_ingresos_cols_v1_${userId}'`
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
-> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`).
+> `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
+> `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
 
 | key            | label           | defaultVisible | render                                                |
 |----------------|-----------------|----------------|-------------------------------------------------------|
 | empresa        | Empresa         | false          | nombre FK (prop `empresas`)                           |
 | proyecto       | Proyecto        | true           | nombre FK (prop `proyectos`)                          |
+| moneda         | Moneda          | true           | Moneda display [§W]                                   |
 | nombre         | Nombre          | true           | valor directo                                         |
-| activo         | Activo          | true           | Badge activo [§Y]                                    |
+| activo         | Activo          | true           | Badge activo [§Y]                                     |
 
 ---
 
 ## TABS_MODAL
 
-> **Formato de columnas:**
-> - **Origen:** `Base Datos` = campo real en BD · `Virtual` = `useState` local en el componente, no va directo al form type
-> - **Comportamiento:** lógica condicional/reactiva; se detalla con más precisión en `REGLAS_ESPECIFICAS`
-> - **Ancho:** `full` = col-span-2 · `half` = 1 columna · `third` = grupos de 3 · `spacer` = celda vacía para completar el grupo
+> **Ancho:** `full` = col-span-2 · `half` = 1 columna · `third` = grupos de 3 · `spacer` = celda vacía para completar el grupo
+> **Virtual** = campo `useState` local en el componente (no va en el form type); se mapea a BD al guardar (ver REGLA #6).
 
 ### Tab: General  (icono: MapPin)
 
+> **Layout modal:** `w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden`. Contenido en `flex gap-6 items-start` con separador `<div className="w-px self-stretch bg-primary/30" />` entre columnas.
+> - **Columna izquierda** (`flex-1 grid grid-cols-2 gap-3/4`): secciones IDENTIFICACION y GENERAL.
+> - **Columna derecha** (`flex-1 grid grid-cols-2 gap-3/4`): secciones FORMA PAGO, FACTURACION y OTROS PARAMETROS.
+
 **[IDENTIFICACION]**
 
-| Campo    | Origen     | Label    | Ancho | Ver                  | Nuevo           | Editar               | Default (Nuevo)        | Comportamiento | Notas |
-|----------|------------|----------|-------|----------------------|-----------------|----------------------|------------------------|----------------|-------|
-| empresa  | Base Datos | Empresa  | full  | ViewField            | Select FK [§F]; req     | Select FK [§F]; disabled | primera disponible     | | prop `empresas` |
-| proyecto | Base Datos | Proyecto | full  | ViewField            | Select FK [§F]; req     | Select FK [§F]; disabled | primero de empresa     | al cambiar proyecto → resetear `moneda` a la moneda del proyecto seleccionado | prop `proyectos` |
-| codigo   | Base Datos | Codigo   | third | ViewField            | —               | ViewField (readonly) | —                      | | auto-asignado por BD |
-| (spacer) |            |          | third |                      |                 |                      |                        | | |
-| (spacer) |            |          | third |                      |                 |                      |                        | | |
+| Campo    | Label    | Ancho | View      | Nuevo                    | Edit                     | Default (Nuevo)     | Notas |
+|----------|----------|-------|-----------|--------------------------|--------------------------|---------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req      | Select FK [§F]; disabled | primera disponible  | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req      | Select FK [§F]; disabled | primero de empresa  | prop `proyectos`; al cambiar → actualizar `eventualMoneda` y `estadoCuentaMoneda` a la moneda predeterminada del proyecto (`proyectoMonedas.find(pm => pm.empresa === form.empresa && pm.proyecto === val && pm.predeterminado === 1)?.moneda ?? ...`) |
+| codigo   | Codigo   | third | ViewField | —                        | ViewField (readonly)     | — (auto-asignado)   |       |
+| (spacer) |          | third |           |                          |                          |                     |       |
+| (spacer) |          | third |           |                          |                          |                     |       |
 
 **[GENERAL]**
 
-| Campo    | Origen     | Label    | Ancho | Ver       | Nuevo / Editar | Default (Nuevo) | Comportamiento | Notas |
-|----------|------------|----------|-------|-----------|----------------|-----------------|----------------|-------|
-| nombre   | Base Datos | Nombre   | full  | ViewField | Input [§D]; req     | —               | | |
-| etiqueta | Base Datos | Etiqueta | third | ViewField | Input [§D]; req; max:10 | —            | | máx 10 caracteres · **excepción**: NO normalizar a mayúsculas; SÍ quitar tildes |
-| (spacer) |            |          | third |           |                |                 | | |
-| (spacer) |            |          | third |           |                |                 | | |
+| Campo    | Label    | Ancho | View      | Nuevo / Edit                | Default (Nuevo) | Notas |
+|----------|----------|-------|-----------|------------------------------|-----------------|-------|
+| nombre   | Nombre   | full  | ViewField | Input [§D]; req              | —               |       |
+| etiqueta | Etiqueta | third | ViewField | Input [§D]; req; max:10      | —               | máx 10 caracteres · **excepción**: NO normalizar a mayúsculas; SÍ quitar tildes |
+| (spacer) |          | third |           |                              |                 |       |
+| (spacer) |          | third |           |                              |                 |       |
 
 **[FORMA PAGO]**
 
 > Los campos `eventual` y `estado_cuenta` son **Selection Buttons** mutuamente excluyentes (ver REGLA #5).
 > Los campos marcados como `Virtual` son `useState` locales; su valor se mapea a campos BD al guardar (ver REGLA #6).
-> **Monedas** — usar `getMonedas()` de `@/app/actions/geo.ts` (lee `t_moneda`). Recibir como prop `monedas: Moneda[]` desde `page.tsx`. Para la bandera usar `CURRENCY_FLAG_MAP` — ver `components.instructions.md § W · Select moneda con bandera`.
+> **Monedas** — para la bandera usar `CURRENCY_FLAG_MAP` — ver `components.instructions.md § W · Select moneda con bandera`. La prop `monedas: Moneda[]` viene de `getMonedas()` declarada en RELACIONES.
 
-| Campo                | Origen  | Label         | Ancho | Ver                             | Nuevo                             | Editar                            | Default (Nuevo)              | Comportamiento | Notas |
-|----------------------|---------|---------------|-------|---------------------------------|-----------------------------------|-----------------------------------|------------------------------|----------------|-------|
-| eventual             | Virtual | Eventual      | half  | SelectionButton [§AE]; disabled | SelectionButton [§AE]  | SelectionButton [§AE]  | seleccionado                 | si seleccionado → habilitar `eventual_moneda` y `eventual_monto`; si deseleccionado → deshabilitar y limpiar ambos (valor → 0 / '') | mutuamente exclusivo con `estado_cuenta` |
-| (spacer)             |         |               | half  |                                  |                         |                         |                              | | |
-| eventual_moneda      | Virtual | Moneda        | third | Moneda display [§W]             | Select moneda [§W]; req | Select moneda [§W]; req | moneda del proyecto          | habilitado solo si `eventual` = true · requerido si `eventual` = true | lista de prop `monedas`; bandera via `CURRENCY_FLAG_MAP` |
-| eventual_monto       | Virtual | Monto         | third | ViewField; fmt()                 | Input number [§E]; req; ≥0; sin-spin | Input number [§E]; req; ≥0; sin-spin | 0              | habilitado solo si `eventual` = true · requerido si `eventual` = true | |
-| (spacer)             |         |               | third |                                  |                         |                         |                              | | |
-| estado_cuenta        | Virtual | Estado Cuenta | half  | SelectionButton [§AE]; disabled | SelectionButton [§AE]  | SelectionButton [§AE]  | no seleccionado              | si seleccionado → habilitar `forma_calculo`, `estado_cuenta_moneda`, `estado_cuenta_monto`, `hasta_monto`; al activar → resetear `forma_calculo` al primer elemento; si deseleccionado → deshabilitar y limpiar | mutuamente exclusivo con `eventual` |
-| (spacer)             |         |               | half  |                                  |                         |                         |                              | | |
-| forma_calculo        | Virtual | Forma Calculo | half  | ViewField; label FORMA_CALCULO_OTROS | Select cat [§G]; req | Select cat [§G]; req  | primer elemento (key=1)      | habilitado solo si `estado_cuenta` = true · al cambiar → actualizar label del campo `estado_cuenta_monto` (ver REGLA #7) | opciones: `FORMA_CALCULO_OTROS` |
-| (spacer)             |         |               | half  |                                  |                         |                         |                              | | |
-| estado_cuenta_moneda | Virtual | Moneda        | third | Moneda display [§W]             | Select moneda [§W]; req | Select moneda [§W]; req | moneda del proyecto          | habilitado solo si `estado_cuenta` = true · requerido si `estado_cuenta` = true | lista de prop `monedas`; bandera via `CURRENCY_FLAG_MAP` |
-| estado_cuenta_monto  | Virtual | (dinámico)    | third | ViewField; fmt()                 | Input number [§E]; req; ≥0; sin-spin | Input number [§E]; req; ≥0; sin-spin | 0              | label dinámico: `"Monto"` si `forma_calculo = 1`, `"Porcentaje (%)"` para cualquier otro valor (ver REGLA #7) · habilitado solo si `estado_cuenta` = true | |
-| hasta_monto          | Virtual | Hasta Monto   | third | ViewField; fmt()                 | Input number [§E]; ≥0; sin-spin | Input number [§E]; ≥0; sin-spin | 0             | habilitado solo si `estado_cuenta` = true | |
+| Campo                | Label         | Ancho | View                                 | Nuevo                                | Edit                                 | Default (Nuevo)     | Notas |
+|----------------------|---------------|-------|--------------------------------------|--------------------------------------|--------------------------------------|---------------------|-------|
+| eventual             | Eventual      | half  | SelectionButton [§AE]; disabled      | SelectionButton [§AE]                | SelectionButton [§AE]                | seleccionado        | Virtual. Mutuamente exclusivo con `estado_cuenta`. Si activo → habilitar `eventual_moneda` y `eventual_monto`; si inactivo → deshabilitar y limpiar (→ 0 / '') |
+| (spacer)             |               | half  |                                      |                                      |                                      |                     |       |
+| eventual_moneda      | Moneda        | third | Moneda display [§W]                  | Select moneda [§W]; req              | Select moneda [§W]; req              | moneda predeterminada del proyecto (`proyectoMonedas`, `predeterminado=1`) | Virtual. Habilitado y requerido solo si `eventual` activo. Opciones: prop `monedas`; bandera via `CURRENCY_FLAG_MAP` |
+| eventual_monto       | Monto         | third | ViewField; fmt()                     | Input number [§E]; req; ≥0; sin-spin | Input number [§E]; req; ≥0; sin-spin | 0                   | Virtual. Habilitado y requerido solo si `eventual` activo |
+| (spacer)             |               | third |                                      |                                      |                                      |                     |       |
+| estado_cuenta        | Estado Cuenta | half  | SelectionButton [§AE]; disabled      | SelectionButton [§AE]                | SelectionButton [§AE]                | no seleccionado     | Virtual. Mutuamente exclusivo con `eventual`. Si activo → habilitar `forma_calculo`, `estado_cuenta_moneda`, `estado_cuenta_monto`, `hasta_monto` y resetear `forma_calculo` al primer elemento; si inactivo → deshabilitar y limpiar |
+| (spacer)             |               | half  |                                      |                                      |                                      |                     |       |
+| forma_calculo        | Forma Calculo | half  | ViewField; label FORMA_CALCULO_OTROS | Select cat [§G]; req                 | Select cat [§G]; req                 | primer elemento (key=1) | Virtual. Habilitado solo si `estado_cuenta` activo. Al cambiar → actualizar label de `estado_cuenta_monto` (ver REGLA #7). Opciones: `FORMA_CALCULO_OTROS` |
+| (spacer)             |               | half  |                                      |                                      |                                      |                     |       |
+| estado_cuenta_moneda | Moneda        | third | Moneda display [§W]                  | Select moneda [§W]; req              | Select moneda [§W]; req              | moneda predeterminada del proyecto (`proyectoMonedas`, `predeterminado=1`) | Virtual. Habilitado y requerido solo si `estado_cuenta` activo. Opciones: prop `monedas`; bandera via `CURRENCY_FLAG_MAP` |
+| estado_cuenta_monto  | (dinámico)    | third | ViewField; fmt()                     | Input number [§E]; req; ≥0; sin-spin | Input number [§E]; req; ≥0; sin-spin | 0                   | Virtual. Label dinámico: `"Monto"` si `forma_calculo = 1`, `"Porcentaje (%)"` para otros (ver REGLA #7). Habilitado solo si `estado_cuenta` activo |
+| hasta_monto          | Hasta Monto   | third | ViewField; fmt()                     | Input number [§E]; ≥0; sin-spin      | Input number [§E]; ≥0; sin-spin      | 0                   | Virtual. Habilitado solo si `estado_cuenta` activo |
 
 **[FACTURACION]**
 
-| Campo               | Origen     | Label               | Ancho | Ver       | Nuevo / Editar | Default (Nuevo) | Comportamiento | Notas |
-|---------------------|------------|---------------------|-------|-----------|----------------|-----------------|----------------|-------|
-| factura_item        | Base Datos | Item        | half  | ViewField | Input; req si `impuesto=1`          | Input; req si `impuesto=1`          | —               | habilitado solo si `impuesto = 1`; requerido si `impuesto = 1` | |
-| factura_descripcion | Base Datos | Descripcion | half  | ViewField | Input; req si `impuesto=1`          | Input; req si `impuesto=1`          | —               | habilitado solo si `impuesto = 1`; requerido si `impuesto = 1` | |
+| Campo                   | Label       | Ancho | View      | Nuevo / Edit                    | Default (Nuevo) | Notas |
+|-------------------------|-------------|-------|-----------|---------------------------------|-----------------|-------|
+| facturacion_item        | Item        | half  | ViewField | Input; req si `impuesto=1`      | —               | Habilitado solo si `impuesto = 1`; requerido si `impuesto = 1` |
+| facturacion_descripcion | Descripcion | half  | ViewField | Input; req si `impuesto=1`      | —               | Habilitado solo si `impuesto = 1`; requerido si `impuesto = 1` |
 
 **[OTROS PARAMETROS]**
 
-| Campo    | Origen     | Label    | Ancho | Ver                     | Nuevo                   | Editar                  | Default (Nuevo)     | Comportamiento | Notas |
-|----------|------------|----------|-------|-------------------------|-------------------------|-------------------------|---------------------|----------------|-------|
-| fijo     | Base Datos | Fijo     | third | Checkbox [§I]; disabled | Checkbox [§I]; disabled | Checkbox [§I]; disabled | no seleccionado (0) | no editable — administrado por BD · ningún registro se puede crear como Fijo | valores: 1=seleccionado, 0=no seleccionado |
-| editable | Base Datos | Editable | third | Checkbox [§I]; disabled | Checkbox [§I]          | Checkbox [§I]          | no seleccionado (0) | | valores: 1=seleccionado, 0=no seleccionado |
-| impuesto | Base Datos | Impuestos | third | Checkbox [§I]; disabled | Checkbox [§I]          | Checkbox [§I]          | no seleccionado (0) | si seleccionado → habilitar y hacer requeridos `factura_item` y `factura_descripcion`; si deseleccionado → deshabilitar y limpiar ambos | valores: 1=seleccionado, 0=no seleccionado |
-| mora     | Base Datos | Mora     | third | Checkbox [§I]; disabled | Checkbox [§I]          | Checkbox [§I]          | no seleccionado (0) | | valores: 1=seleccionado, 0=no seleccionado |
-| activo   | Base Datos | Activo   | third | Badge activo [§Y]       | Checkbox [§I]          | Checkbox [§I]          | seleccionado (1)    | | valores: 1=seleccionado, 0=no seleccionado |
-| (spacer) |            |          | third |                         |                         |                         |                     | | |
+| Campo    | Label     | Ancho | View                    | Nuevo                   | Edit                    | Default (Nuevo)     | Notas |
+|----------|-----------|-------|-------------------------|-------------------------|-------------------------|---------------------|-------|
+| fijo     | Fijo      | third | Checkbox [§I]; disabled | Checkbox [§I]; disabled | Checkbox [§I]; disabled | no seleccionado (0) | No editable — administrado por BD; ningún registro se puede crear como Fijo. valores: 1=sí, 0=no |
+| editable | Editable  | third | Checkbox [§I]; disabled | Checkbox [§I]           | Checkbox [§I]           | no seleccionado (0) | valores: 1=sí, 0=no |
+| impuesto | Impuestos | third | Checkbox [§I]; disabled | Checkbox [§I]           | Checkbox [§I]           | no seleccionado (0) | Si activo → habilitar y requerir `facturacion_item` y `facturacion_descripcion`; si inactivo → deshabilitar y limpiar. valores: 1=sí, 0=no |
+| mora     | Mora      | third | Checkbox [§I]; disabled | Checkbox [§I]           | Checkbox [§I]           | no seleccionado (0) | valores: 1=sí, 0=no |
+| activo   | Activo    | third | Checkbox [§I]; disabled | Checkbox [§I]           | Checkbox [§I]           | seleccionado (1)    | valores: 1=sí, 0=no |
+| (spacer) |           | third |                         |                         |                         |                     |       |
+
+---
+
+**PAGINACION:** NO (contador)
 
 ---
 
@@ -288,7 +300,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 ## LOGIC_ESPECIFICO
 
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa.
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa. Inicializar `eventualMoneda` y `estadoCuentaMoneda` con la moneda predeterminada del primer proyecto (`proyectoMonedas.find(pm => pm.empresa === firstEmpresa && pm.proyecto === firstProyecto && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find(pm => pm.empresa === firstEmpresa && pm.proyecto === firstProyecto && pm.activo === 1)?.moneda ?? (monedas[0]?.codigo ?? '')`). **No usar `proyectos[].moneda` ni `COUNTRY_CURRENCY_MAP`** — la moneda predeterminada está en `t_proyecto_moneda`.
 
 ---
 
@@ -302,9 +314,12 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_

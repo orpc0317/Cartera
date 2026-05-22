@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -39,7 +39,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createTipoIngreso, updateTipoIngreso, deleteTipoIngreso } from '@/app/actions/tipos-ingresos'
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
-import type { Empresa, Proyecto, Moneda } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -103,8 +103,8 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -130,6 +130,7 @@ type ColPref = { key: string; visible: boolean }
 const ALL_COLUMNS: ColDef[] = [
   { key: 'empresa',  label: 'Empresa',  defaultVisible: false },
   { key: 'proyecto', label: 'Proyecto', defaultVisible: true  },
+  { key: 'moneda',   label: 'Moneda',   defaultVisible: true  },
   { key: 'nombre',   label: 'Nombre',   defaultVisible: true  },
   { key: 'activo',   label: 'Activo',   defaultVisible: true  },
 ]
@@ -207,8 +208,8 @@ const EMPTY_FORM: TipoIngresoForm = {
   moneda: '',
   monto: 0,
   hasta_monto: 0,
-  factura_item: '',
-  factura_descripcion: '',
+  facturacion_item: '',
+  facturacion_descripcion: '',
   mora: 0,
   impuesto: 0,
   editable: 0,
@@ -226,6 +227,7 @@ export function TiposIngresosClient({
   empresas,
   proyectos,
   monedas,
+  proyectoMonedas,
   puedeAgregar,
   puedeModificar,
   puedeEliminar,
@@ -235,6 +237,7 @@ export function TiposIngresosClient({
   empresas: Empresa[]
   proyectos: Proyecto[]
   monedas: Moneda[]
+  proyectoMonedas: ProyectoMoneda[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -294,9 +297,11 @@ export function TiposIngresosClient({
   // ── Derived ──────────────────────────────────────────────────────────────
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
-  const proyectoDefaultMoneda = useCallback((proyectoCodigo: number) => {
-    return proyectos.find((p) => p.codigo === proyectoCodigo)?.moneda ?? (monedas[0]?.codigo ?? '')
-  }, [proyectos, monedas])
+  const proyectoDefaultMoneda = useCallback((empresaCodigo: number, proyectoCodigo: number) => {
+    return proyectoMonedas.find((pm) => pm.empresa === empresaCodigo && pm.proyecto === proyectoCodigo && pm.predeterminado === 1)?.moneda
+      ?? proyectoMonedas.find((pm) => pm.empresa === empresaCodigo && pm.proyecto === proyectoCodigo && pm.activo === 1)?.moneda
+      ?? (monedas[0]?.codigo ?? '')
+  }, [proyectoMonedas, monedas])
 
   const proyectosFiltrados = useMemo(
     () => proyectos.filter((p) => p.empresa === form.empresa),
@@ -336,6 +341,7 @@ export function TiposIngresosClient({
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
   const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
   const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((r) => r.nombre))].sort(), [initialData])
+  const uniqueMonedaValues  = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(), [initialData])
 
   // ── Filtering pipeline ────────────────────────────────────────────────────
   const visibleCols = useMemo(() => colPrefs.filter((p) => p.visible), [colPrefs])
@@ -357,6 +363,7 @@ export function TiposIngresosClient({
       rows = rows.filter((r) => {
         if (col === 'empresa')  return active.has(empresaMap.get(r.empresa) ?? '')
         if (col === 'proyecto') return active.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+        if (col === 'moneda')   return active.has(r.moneda)
         if (col === 'nombre')   return active.has(r.nombre)
         return active.has(String(r[col as keyof TipoIngreso]))
       })
@@ -390,7 +397,7 @@ export function TiposIngresosClient({
   function openCreate() {
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
-    const defaultMoneda = proyectoDefaultMoneda(firstProyecto)
+    const defaultMoneda = proyectoDefaultMoneda(firstEmpresa, firstProyecto)
     setViewTarget(null)
     setIsEditing(true)
     setHadConflict(false)
@@ -417,8 +424,8 @@ export function TiposIngresosClient({
       moneda: viewTarget.moneda,
       monto: viewTarget.monto,
       hasta_monto: viewTarget.hasta_monto,
-      factura_item: viewTarget.factura_item ?? '',
-      factura_descripcion: viewTarget.factura_descripcion ?? '',
+      facturacion_item: viewTarget.facturacion_item ?? '',
+      facturacion_descripcion: viewTarget.facturacion_descripcion ?? '',
       mora: viewTarget.mora,
       impuesto: viewTarget.impuesto,
       editable: viewTarget.editable,
@@ -429,7 +436,7 @@ export function TiposIngresosClient({
       setModo('eventual')
       setEventualMoneda(viewTarget.moneda)
       setEventualMonto(viewTarget.monto)
-      setEstadoCuentaMoneda(proyectoDefaultMoneda(viewTarget.proyecto))
+      setEstadoCuentaMoneda(proyectoDefaultMoneda(viewTarget.empresa, viewTarget.proyecto))
       setEstadoCuentaMonto(0)
       setFormaCalculo(1)
       setHastaMonto(0)
@@ -439,7 +446,7 @@ export function TiposIngresosClient({
       setEstadoCuentaMoneda(viewTarget.moneda)
       setEstadoCuentaMonto(viewTarget.monto)
       setHastaMonto(viewTarget.hasta_monto)
-      setEventualMoneda(proyectoDefaultMoneda(viewTarget.proyecto))
+      setEventualMoneda(proyectoDefaultMoneda(viewTarget.empresa, viewTarget.proyecto))
       setEventualMonto(0)
     }
   }
@@ -472,8 +479,8 @@ export function TiposIngresosClient({
         finalForm.moneda              === viewTarget.moneda              &&
         finalForm.monto               === viewTarget.monto               &&
         finalForm.hasta_monto         === viewTarget.hasta_monto         &&
-        finalForm.factura_item        === (viewTarget.factura_item        ?? '') &&
-        finalForm.factura_descripcion === (viewTarget.factura_descripcion ?? '') &&
+        finalForm.facturacion_item        === (viewTarget.facturacion_item        ?? '') &&
+        finalForm.facturacion_descripcion === (viewTarget.facturacion_descripcion ?? '') &&
         finalForm.mora                === viewTarget.mora                &&
         finalForm.impuesto            === viewTarget.impuesto            &&
         finalForm.editable            === viewTarget.editable            &&
@@ -507,8 +514,8 @@ export function TiposIngresosClient({
       if (!estadoCuentaMoneda) { toast.error('Selecciona una moneda para el modo Estado Cuenta.'); return }
     }
     if (form.impuesto === 1) {
-      if (!form.factura_item.trim()) { toast.error('El campo Item es requerido cuando Impuestos esta activo.'); return }
-      if (!form.factura_descripcion.trim()) { toast.error('El campo Descripcion es requerido cuando Impuestos esta activo.'); return }
+      if (!form.facturacion_item.trim()) { toast.error('El campo Item es requerido cuando Impuestos esta activo.'); return }
+      if (!form.facturacion_descripcion.trim()) { toast.error('El campo Descripcion es requerido cuando Impuestos esta activo.'); return }
     }
 
     // Jaro-Winkler similarity check
@@ -554,7 +561,7 @@ export function TiposIngresosClient({
 
   // ── Proyecto change ───────────────────────────────────────────────────────
   function handleProyectoChange(proyectoCodigo: number) {
-    const moneda = proyectoDefaultMoneda(proyectoCodigo)
+    const moneda = proyectoDefaultMoneda(form.empresa, proyectoCodigo)
     setForm((prev) => ({ ...prev, proyecto: proyectoCodigo }))
     setEventualMoneda(moneda)
     setEstadoCuentaMoneda(moneda)
@@ -564,7 +571,7 @@ export function TiposIngresosClient({
   function handleEmpresaChange(empresaCodigo: number) {
     const firstProyecto = proyectos.find((p) => p.empresa === empresaCodigo)?.codigo ?? 0
     setForm((prev) => ({ ...prev, empresa: empresaCodigo, proyecto: firstProyecto }))
-    const moneda = proyectoDefaultMoneda(firstProyecto)
+    const moneda = proyectoDefaultMoneda(empresaCodigo, firstProyecto)
     setEventualMoneda(moneda)
     setEstadoCuentaMoneda(moneda)
   }
@@ -620,7 +627,7 @@ export function TiposIngresosClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+          <Input variant="underline" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
         </div>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
@@ -656,6 +663,7 @@ export function TiposIngresosClient({
                     values={
                       col.key === 'empresa'  ? uniqueEmpresaNames  :
                       col.key === 'proyecto' ? uniqueProyectoNames :
+                      col.key === 'moneda'   ? uniqueMonedaValues  :
                       col.key === 'nombre'   ? uniqueNombreValues  : []
                     }
                     active={colFilters[col.key] ?? new Set()}
@@ -694,6 +702,17 @@ export function TiposIngresosClient({
                           return <TableCell key={col.key} className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
                         case 'proyecto':
                           return <TableCell key={col.key} className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
+                        case 'moneda': {
+                          const flag = CURRENCY_FLAG_MAP.get(row.moneda)
+                          return (
+                            <TableCell key={col.key}>
+                              <span className="flex items-center gap-1.5 text-sm">
+                                {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt="" className="rounded-sm" />}
+                                {row.moneda}
+                              </span>
+                            </TableCell>
+                          )
+                        }
                         case 'nombre':
                           return <TableCell key={col.key} className="font-medium">{row.nombre}</TableCell>
                         case 'activo':
@@ -742,13 +761,15 @@ export function TiposIngresosClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} tipo{filtered.length !== 1 ? 's' : ''} de ingreso</p>
+
       {/* ── Main dialog ── */}
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
         if (!open && similarWarning.length > 0) return
         setDialogOpen(open)
         if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-yellow-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${
@@ -785,7 +806,9 @@ export function TiposIngresosClient({
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
                 // ── View mode ──────────────────────────────────────────────
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex gap-6 items-start">
+                  {/* Columna izquierda: IDENTIFICACION + GENERAL */}
+                  <div className="flex-1 grid grid-cols-2 gap-3">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa)} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} /></div>
@@ -800,6 +823,10 @@ export function TiposIngresosClient({
                     <ViewField label="Etiqueta" value={viewTarget.etiqueta} />
                     <div /><div />
                   </div>
+                  </div>
+                  {/* Separador + columna derecha: FORMA PAGO, FACTURACION, OTROS PARAMETROS */}
+                  <div className="w-px self-stretch bg-primary/30" />
+                  <div className="flex-1 grid grid-cols-2 gap-3">
 
                   <SectionDivider label="FORMA PAGO" />
                   {/* Selection Buttons — view mode always disabled */}
@@ -865,8 +892,8 @@ export function TiposIngresosClient({
                   )}
 
                   <SectionDivider label="FACTURACION" />
-                  <ViewField label="Item" value={viewTarget.factura_item} />
-                  <ViewField label="Descripcion" value={viewTarget.factura_descripcion} />
+                  <ViewField label="Item" value={viewTarget.facturacion_item} />
+                  <ViewField label="Descripcion" value={viewTarget.facturacion_descripcion} />
 
                   <SectionDivider label="OTROS PARAMETROS" />
                   <div className="col-span-2 grid grid-cols-3 gap-3">
@@ -892,10 +919,13 @@ export function TiposIngresosClient({
                     </div>
                     <div />
                   </div>
+                  </div>
                 </div>
               ) : (
                 // ── Edit / Create mode ─────────────────────────────────────
-                <div className="grid grid-cols-2 gap-4">
+                <div className="flex gap-6 items-start">
+                  {/* Columna izquierda: IDENTIFICACION + GENERAL */}
+                  <div className="flex-1 grid grid-cols-2 gap-4">
                   <SectionDivider label="IDENTIFICACION" />
 
                   {/* Empresa */}
@@ -905,7 +935,7 @@ export function TiposIngresosClient({
                       <ViewField label="" value={empresaMap.get(form.empresa)} />
                     ) : (
                       <Select value={String(form.empresa)} onValueChange={(v) => handleEmpresaChange(Number(v))}>
-                        <SelectTrigger id="empresa" className="w-full"><SelectValue>{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="underline" id="empresa" className="w-full"><SelectValue>{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                         </SelectContent>
@@ -920,7 +950,7 @@ export function TiposIngresosClient({
                       <ViewField label="" value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
                       <Select value={String(form.proyecto)} onValueChange={(v) => handleProyectoChange(Number(v))}>
-                        <SelectTrigger id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="underline" id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                         </SelectContent>
@@ -941,17 +971,21 @@ export function TiposIngresosClient({
                   {/* Nombre */}
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
-                    <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
+                    <Input variant="underline" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
                   </div>
 
                   {/* Etiqueta */}
                   <div className="col-span-2 grid grid-cols-3 gap-4">
                     <div className="grid gap-1">
                       <Label htmlFor="etiqueta" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Etiqueta *</Label>
-                      <Input id="etiqueta" maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
+                      <Input variant="underline" id="etiqueta" maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
                     </div>
                     <div /><div />
                   </div>
+                  </div>
+                  {/* Separador + columna derecha: FORMA PAGO, FACTURACION, OTROS PARAMETROS */}
+                  <div className="w-px self-stretch bg-primary/30" />
+                  <div className="flex-1 grid grid-cols-2 gap-4">
 
                   <SectionDivider label="FORMA PAGO" />
 
@@ -974,8 +1008,8 @@ export function TiposIngresosClient({
                     <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
                       <div className="grid gap-1">
                         <Label htmlFor="eventual_moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
-                        <Select value={eventualMoneda} onValueChange={setEventualMoneda}>
-                          <SelectTrigger id="eventual_moneda" className="w-full">
+                        <Select value={eventualMoneda} onValueChange={(v) => setEventualMoneda(v ?? '')}>
+                          <SelectTrigger variant="underline" id="eventual_moneda" className="w-full">
                             <SelectValue>
                               {(v: string) => {
                                 const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1005,7 +1039,7 @@ export function TiposIngresosClient({
                       </div>
                       <div className="grid gap-1">
                         <Label htmlFor="eventual_monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Monto *</Label>
-                        <Input id="eventual_monto" type="number" min={0} value={eventualMonto || ''} onChange={(e) => setEventualMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                        <Input variant="underline" id="eventual_monto" type="number" min={0} value={eventualMonto || ''} onChange={(e) => setEventualMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                       </div>
                       <div />
                     </div>
@@ -1018,7 +1052,7 @@ export function TiposIngresosClient({
                         <div className="grid gap-1">
                           <Label htmlFor="forma_calculo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Forma Calculo *</Label>
                           <Select value={String(formaCalculo)} onValueChange={(v) => setFormaCalculo(Number(v))}>
-                            <SelectTrigger id="forma_calculo" className="w-full"><SelectValue>{(v: string) => v ? (FORMA_CALCULO_OTROS[Number(v)] ?? v) : null}</SelectValue></SelectTrigger>
+                            <SelectTrigger variant="underline" id="forma_calculo" className="w-full"><SelectValue>{(v: string) => v ? (FORMA_CALCULO_OTROS[Number(v)] ?? v) : null}</SelectValue></SelectTrigger>
                             <SelectContent>
                               {Object.entries(FORMA_CALCULO_OTROS).map(([k, v]) => (
                                 <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -1031,8 +1065,8 @@ export function TiposIngresosClient({
                       <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
                         <div className="grid gap-1">
                           <Label htmlFor="ec_moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
-                          <Select value={estadoCuentaMoneda} onValueChange={setEstadoCuentaMoneda}>
-                            <SelectTrigger id="ec_moneda" className="w-full">
+                          <Select value={estadoCuentaMoneda} onValueChange={(v) => setEstadoCuentaMoneda(v ?? '')}>
+                            <SelectTrigger variant="underline" id="ec_moneda" className="w-full">
                               <SelectValue>
                                 {(v: string) => {
                                   const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1062,11 +1096,11 @@ export function TiposIngresosClient({
                         </div>
                         <div className="grid gap-1">
                           <Label htmlFor="ec_monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">{montoLabel} *</Label>
-                          <Input id="ec_monto" type="number" min={0} value={estadoCuentaMonto || ''} onChange={(e) => setEstadoCuentaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                          <Input variant="underline" id="ec_monto" type="number" min={0} value={estadoCuentaMonto || ''} onChange={(e) => setEstadoCuentaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                         </div>
                         <div className="grid gap-1">
                           <Label htmlFor="hasta_monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Hasta Monto</Label>
-                          <Input id="hasta_monto" type="number" min={0} value={hastaMonto || ''} onChange={(e) => setHastaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                          <Input variant="underline" id="hasta_monto" type="number" min={0} value={hastaMonto || ''} onChange={(e) => setHastaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                         </div>
                       </div>
                     </>
@@ -1074,25 +1108,25 @@ export function TiposIngresosClient({
 
                   <SectionDivider label="FACTURACION" />
                   <div className="grid gap-1">
-                    <Label htmlFor="factura_item" className={`text-[11px] font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`}>
+                    <Label htmlFor="facturacion_item" className={`text-[11px] font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`}>
                       Item {form.impuesto === 1 && '*'}
                     </Label>
-                    <Input
-                      id="factura_item"
-                      value={form.factura_item}
-                      onChange={(e) => f('factura_item', e.target.value)}
+                    <Input variant="underline"
+                      id="facturacion_item"
+                      value={form.facturacion_item}
+                      onChange={(e) => f('facturacion_item', e.target.value)}
                       disabled={form.impuesto !== 1}
                       placeholder="Item de factura"
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="factura_descripcion" className={`text-[11px] font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`}>
+                    <Label htmlFor="facturacion_descripcion" className={`text-[11px] font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`}>
                       Descripcion {form.impuesto === 1 && '*'}
                     </Label>
-                    <Input
-                      id="factura_descripcion"
-                      value={form.factura_descripcion}
-                      onChange={(e) => f('factura_descripcion', e.target.value)}
+                    <Input variant="underline"
+                      id="facturacion_descripcion"
+                      value={form.facturacion_descripcion}
+                      onChange={(e) => f('facturacion_descripcion', e.target.value)}
                       disabled={form.impuesto !== 1}
                       placeholder="Descripcion de factura"
                     />
@@ -1117,8 +1151,8 @@ export function TiposIngresosClient({
                           setForm((p) => ({
                             ...p,
                             impuesto: val,
-                            factura_item: val ? p.factura_item : '',
-                            factura_descripcion: val ? p.factura_descripcion : '',
+                            facturacion_item: val ? p.facturacion_item : '',
+                            facturacion_descripcion: val ? p.facturacion_descripcion : '',
                           }))
                         }}
                       />
@@ -1133,6 +1167,7 @@ export function TiposIngresosClient({
                       <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
                     </div>
                     <div />
+                  </div>
                   </div>
                 </div>
               )}
@@ -1205,7 +1240,9 @@ export function TiposIngresosClient({
           open={!!auditTarget}
           onOpenChange={(open) => { if (!open) setAuditTarget(null) }}
           tabla="t_tipo_ingreso"
+          cuenta={auditTarget.cuenta}
           registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, codigo: auditTarget.codigo }}
+          titulo={auditTarget.nombre}
         />
       )}
     </div>

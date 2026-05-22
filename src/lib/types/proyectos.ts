@@ -25,7 +25,7 @@ export type Proyecto = {
   empresa: number
   codigo: number
   nombre: string
-  moneda?: string
+  moneda: string
   direccion_pais: string
   direccion_departamento: string
   direccion_municipio: string
@@ -47,6 +47,8 @@ export type Proyecto = {
   minimo_abono_capital: number
   inicio_abono_capital_estricto: string
   promesa_vencida: number
+  promesa_correlativo: number
+  promesa_alfanumerico: number
   logo_url?: string
   agrego_usuario?: string
   agrego_fecha?: string
@@ -54,7 +56,7 @@ export type Proyecto = {
   modifico_fecha?: string
 }
 
-export type ProyectoForm = Omit<Proyecto, 'cuenta' | 'moneda' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+export type ProyectoForm = Omit<Proyecto, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
 
 export type Fase = {
   cuenta: string
@@ -179,7 +181,6 @@ export type SerieFactura = {
   serie: string
 }
 
-
 export type Cliente = {
   cuenta: string
   empresa: number
@@ -300,3 +301,5 @@ export type SerieRecibo = {
   modifico_usuario?: string
   modifico_fecha?: string
 }
+
+export type SerieReciboForm = Omit<SerieRecibo, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>

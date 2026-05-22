@@ -108,11 +108,12 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
     .maybeSingle()
   if (existente) return { error: 'Ya existe un proyecto con ese nombre en esta empresa.' }
 
+  const { moneda: _moneda, ...proyectoPayload } = normalized
   const { data, error } = await admin
     .schema('cartera')
     .from('t_proyecto')
     .insert({
-      ...normalized,
+      ...proyectoPayload,
       cuenta,
       codigo,
       agrego_usuario: auditUser.userId,
@@ -125,16 +126,33 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
 
   if (error) return { error: error.message }
 
+  // Usar el código asignado por el trigger DB (no el pre-calculado por la app)
+  const dbCodigo = (data as { codigo: number }).codigo
+
+  // Insertar moneda predeterminada en t_proyecto_moneda
+  const { error: monedaError } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .insert({ cuenta, empresa: form.empresa, proyecto: dbCodigo, moneda: form.moneda, predeterminado: 1, activo: 1, agrego_usuario: auditUser.userId, agrego_fecha: now })
+  if (monedaError) return { error: monedaError.message }
+
+  // Registrar tasa de cambio inicial (1.00) en t_moneda_tasa_cambio
+  const { error: tasaError } = await admin
+    .schema('cartera')
+    .from('t_moneda_tasa_cambio')
+    .insert({ cuenta, empresa: form.empresa, proyecto: dbCodigo, moneda: form.moneda, fecha: new Date().toISOString().slice(0, 10), tasa_cambio: 1.00, agrego_usuario: auditUser.userId, agrego_fecha: now })
+  if (tasaError) return { error: tasaError.message }
+
   await writeAudit(admin, {
     tabla: 't_proyecto', operacion: 'INSERT', cuenta,
-    registroId: { empresa: form.empresa, codigo },
+    registroId: { empresa: form.empresa, codigo: dbCodigo },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
     ...auditUser,
   })
 
   revalidatePath('/dashboard/proyectos/proyectos')
   revalidatePath('/dashboard')
-  return { codigo }
+  return { codigo: dbCodigo }
 }
 
 export async function updateProyecto(
@@ -180,10 +198,12 @@ export async function updateProyecto(
     if (existente) return { error: 'Ya existe un proyecto con ese nombre en esta empresa.' }
   }
 
+  const { moneda: _moneda, ...proyectoPayload } = normalized
+
   let query = admin
     .schema('cartera')
     .from('t_proyecto')
-    .update({ ...normalized, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .update({ ...proyectoPayload, modifico_usuario: auditUser.userId, modifico_fecha: now })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
@@ -500,29 +520,7 @@ export async function setProyectoMonedaPredeterminada(
     .maybeSingle()
 
   if (!row) return { error: 'Moneda no encontrada en el proyecto.' }
-  if (row.activo !== 1) return { error: 'Solo se puede marcar como predeterminada una moneda activa.' }
 
-  // Quitar predeterminado a la actual
-  await admin
-    .schema('cartera')
-    .from('t_proyecto_moneda')
-    .update({ predeterminado: 0 })
-    .eq('cuenta', cuenta)
-    .eq('empresa', empresa)
-    .eq('proyecto', proyecto)
-
-  // Marcar la nueva como predeterminada
-  const { error } = await admin
-    .schema('cartera')
-    .from('t_proyecto_moneda')
-    .update({ predeterminado: 1 })
-    .eq('cuenta', cuenta)
-    .eq('empresa', empresa)
-    .eq('proyecto', proyecto)
-    .eq('moneda', moneda)
-
-  if (error) return { error: error.message }
-
-  revalidatePath('/dashboard/proyectos/proyectos')
-  return {}
+  // La moneda predeterminada se fija al crear el proyecto y no puede modificarse.
+  return { error: 'La moneda predeterminada del proyecto no puede cambiarse.' }
 }

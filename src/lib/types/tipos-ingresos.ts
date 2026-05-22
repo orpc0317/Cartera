@@ -11,8 +11,8 @@ export type TipoIngreso = {
   monto: number
   moneda: string
   hasta_monto: number
-  factura_item: string | null
-  factura_descripcion: string | null
+  facturacion_item: string | null
+  facturacion_descripcion: string | null
   mora: number
   impuesto: number
   editable: number
@@ -33,8 +33,8 @@ export type TipoIngresoForm = {
   moneda: string
   monto: number
   hasta_monto: number
-  factura_item: string
-  factura_descripcion: string
+  facturacion_item: string
+  facturacion_descripcion: string
   mora: number
   impuesto: number
   editable: number

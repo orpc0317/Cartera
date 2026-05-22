@@ -11,9 +11,10 @@
 | TABLA_BD       | `cartera.t_empresa`                                          |
 | RUTA           | `/dashboard/proyectos/empresa `                              |
 | PERMISO        | `EMP_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
-| COLOR_ACENTO   | _(elegir segun modulo; ver nota)_                            |
-| ICONO_LUCIDE   | _(elegir segun nombre y contexto de la pantalla; ver nota)_  |
-| MODO           | nuevo                                                        |
+| COLOR_ACENTO   | `emerald`                                                    |
+| ICONO_LUCIDE   | `Building2`                                                  |
+| MODAL_LAYOUT   | ancho                                              |
+| MODO           | actualizar                                                   |
 
 ---
 
@@ -140,25 +141,43 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Tab: General  (icono: MapPin)
 
-**[IDENTIFICACION]** _(solo en Vista y Edicion — NO se muestra al crear porque el codigo lo asigna la BD)_
+> **Layout modal:** `w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden`. Contenido en `flex gap-6 items-start` con separador `<div className="w-px self-stretch bg-primary/30" />` entre columnas.
+> - **Columna izquierda** (`flex-1 grid grid-cols-2 gap-3/4`): secciones IDENTIFICACION y GENERAL.
+> - **Columna derecha** (`flex-1 grid grid-cols-2 gap-3/4`): secciones DIRECCION y OTROS.
+
+**[IDENTIFICACION]** — columna izquierda _(solo en Vista y Edicion — NO se muestra al crear porque el codigo lo asigna la BD)_
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit                 | Default (Nuevo)   | Notas |
 |----------|----------|-------|-----------|-------------|----------------------|-------------------|-------|
 | codigo   | Codigo   | full  | ViewField | —           | ViewField (readonly) | — (auto-asignado) |       |
 
-**[GENERAL]**
+**[GENERAL]** — columna izquierda
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
 |--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
 | nombre                   | Nombre          | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
 | razon_social             | Razon Social    | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
 | identificacion_tributaria| ID Tributaria   | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
+
+**[DIRECCION]** — columna derecha
+
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
+|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
 | direccion                | Direccion       | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
 | direccion_pais           | Pais            | half  | ViewField     | Select geo [§X]; req                   | ''          | filtrado por paises disponibles               |
 | direccion_departamento   | Departamento    | half  | ViewField     | Select geo [§X]; disabled si no hay pais | ''        | filtrado por pais                             |
 | direccion_municipio      | Municipio       | half  | ViewField     | Select geo [§X]; disabled si no hay departamento | '' | filtrado por pais+departamento         |
 | codigo_postal            | Codigo Postal   | half  | ViewField     | Input [§D]                             | ''          |                                               |
+
+**[OTROS]** — columna derecha
+
+| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
+|--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
 | regimen_isr              | Regimen ISR     | full  | ViewField     | Select cat [§G]                        | primer item | opciones: `REGIMENES_ISR` de `@/lib/constants` |
+
+---
+
+**PAGINACION:** NO (contador)
 
 ---
 
@@ -197,9 +216,12 @@ No requiere RPC ni queries especiales. Orden: `.order('nombre')`.
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_

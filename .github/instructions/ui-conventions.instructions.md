@@ -25,7 +25,7 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Cobradores       | `orange-100 / orange-600`     |
 | Bancos           | `teal-100 / teal-600`         |
 | Cuentas Bancarias | `cyan-100 / cyan-600`        |
-| Serie Recibos    | `green-100 / gree-600`        |
+| Serie Recibos    | `green-100 / green-600`       |
 | Coordinadores    | `blue-100 / blue-600`         |
 | Vendedores       | `lime-100 / lime-600`         |
 | Tipos Ingresos   | `yellow-100 / yellow-600`     |
@@ -59,7 +59,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 > 3. Verificar que el icono exista en https://lucide.dev/icons/ antes de usarlo.
 > 4. Agregar la fila del nuevo modulo a esta tabla al final de los archivos generados.
 >
-> **Nota:** `MapPin` es el icono estandar de la pestana **General** en todos los modales — no es un icono de modulo.
+> **Nota:** `MapPin` es el icono del módulo Lotes y también el icono estándar de la pestaña **General** en todos los modales. No está disponible para módulos nuevos.
 
 | Module            | Lucide icon      |
 |-------------------|------------------|

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -443,7 +443,7 @@ export default function TasasCambioClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar tasas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -563,6 +563,8 @@ export default function TasasCambioClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} tasa{filtered.length !== 1 ? 's' : ''} de cambio</p>
+
       {/* ── Modal (Ver + Nuevo) ── */}
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
         if (!open && deleteTarget !== null) return
@@ -656,7 +658,7 @@ export default function TasasCambioClient({
                       setForm((p) => ({ ...p, empresa: emp, proyecto: firstProyecto, moneda: firstMoneda }))
                     }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger variant="underline" className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -680,7 +682,7 @@ export default function TasasCambioClient({
                       setForm((p) => ({ ...p, proyecto: proy, moneda: firstMoneda }))
                     }}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger variant="underline" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -696,8 +698,8 @@ export default function TasasCambioClient({
                 {/* Moneda */}
                 <div className="col-span-1 grid gap-1">
                   <Label htmlFor="moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
-                  <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-                    <SelectTrigger className="w-full">
+                  <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
+                    <SelectTrigger variant="underline" className="w-full">
                       <SelectValue placeholder="Selecciona moneda">
                         {(v: string) => {
                           const flag = CURRENCY_FLAG_MAP.get(v)
@@ -729,7 +731,7 @@ export default function TasasCambioClient({
                 {/* Moneda / Fecha / Tasa — third width each */}
                 <div className="col-span-1 grid gap-1">
                   <Label htmlFor="fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fecha *</Label>
-                  <Input
+                  <Input variant="underline"
                     id="fecha"
                     type="date"
                     value={form.fecha}
@@ -738,7 +740,7 @@ export default function TasasCambioClient({
                 </div>
                 <div className="col-span-1 grid gap-1">
                   <Label htmlFor="tasa_cambio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Tasa Cambio *</Label>
-                  <Input
+                  <Input variant="underline"
                     id="tasa_cambio"
                     type="number"
                     value={form.tasa_cambio}

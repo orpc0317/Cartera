@@ -274,6 +274,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
 // ─── Listar Reservas ──────────────────────────────────────────────────────────
 
 export type ReservaRow = {
+  cuenta:           string
   numero:           number   // PK de t_reserva
   empresa:          number
   proyecto:         number
@@ -304,9 +305,8 @@ export async function getReservas(): Promise<ReservaRow[]> {
   const { data: reservas, error: err1 } = await admin
     .schema('cartera')
     .from('t_reserva')
-    .select('numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
+    .select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
     .eq('cuenta', cuenta)
-    .eq('estado', 1)
     .order('numero', { ascending: false })
   if (err1) throw new Error(err1.message)
   if (!reservas || reservas.length === 0) return []
@@ -330,6 +330,7 @@ export async function getReservas(): Promise<ReservaRow[]> {
   return reservas.map((r) => {
     const rc = reciboMap.get(`${r.empresa}-${r.proyecto}-${r.recibo_serie}-${r.recibo_numero}`)
     return {
+      cuenta:           cuenta,
       numero:           r.numero,
       empresa:          r.empresa,
       proyecto:         r.proyecto,
@@ -504,4 +505,65 @@ export async function getLoteReservaInfo(
     cliente_nombre: (cliente as { nombre?: string } | null)?.nombre ?? '',
     fecha: (recibo as { fecha?: string } | null)?.fecha ?? '',
   }
+}
+
+// ─── Desistir Reserva ─────────────────────────────────────────────────────────
+
+export async function desistirReserva(
+  empresa: number,
+  proyecto: number,
+  fase: number,
+  manzana: string,
+  codigo: string,
+  reservaNumero: number,
+): Promise<{ error?: string }> {
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const now = new Date().toISOString()
+
+  const [{ data: oldLote }, { data: oldReserva }] = await Promise.all([
+    admin.schema('cartera').from('t_lote').select('*')
+      .eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', proyecto)
+      .eq('fase', fase).eq('manzana', manzana).eq('codigo', codigo).single(),
+    admin.schema('cartera').from('t_reserva').select('*')
+      .eq('cuenta', cuenta).eq('numero', reservaNumero).maybeSingle(),
+  ])
+
+  const { error: errLote, data: newLote } = await admin
+    .schema('cartera').from('t_lote')
+    .update({ recibo_serie: null, recibo_numero: 0, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', proyecto)
+    .eq('fase', fase).eq('manzana', manzana).eq('codigo', codigo)
+    .select()
+  if (errLote) return { error: errLote.message }
+
+  const { error: errReserva, data: newReserva } = await admin
+    .schema('cartera').from('t_reserva')
+    .update({ estado: 4, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .eq('cuenta', cuenta).eq('numero', reservaNumero)
+    .select()
+  if (errReserva) return { error: errReserva.message }
+
+  await Promise.all([
+    writeAudit(admin, {
+      tabla: 't_lote', operacion: 'UPDATE', cuenta,
+      registroId: { empresa, proyecto, fase, manzana, codigo },
+      datoAntes: oldLote as Record<string, unknown> | null,
+      datoDespues: newLote?.[0] as Record<string, unknown> | null,
+      ...auditUser,
+    }),
+    writeAudit(admin, {
+      tabla: 't_reserva', operacion: 'UPDATE', cuenta,
+      registroId: { numero: reservaNumero },
+      datoAntes: oldReserva as Record<string, unknown> | null,
+      datoDespues: newReserva?.[0] as Record<string, unknown> | null,
+      ...auditUser,
+    }),
+  ])
+
+  revalidatePath('/dashboard/proyectos/lotes')
+  revalidatePath('/dashboard/promesas/reservas')
+  revalidatePath('/dashboard')
+  return {}
 }

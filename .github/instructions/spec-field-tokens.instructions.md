@@ -225,3 +225,30 @@ Los siguientes tokens se usan en specs escritos antes de que existiera este cat�
 | valor   | Valor   | true           | fmt(valor)                          |
 | ext     | Ext.    | true           | fmt(campo)+sufijo (medida de fase)  |
 ```
+
+---
+
+## 6 · Metadata fields (no son tokens de campo)
+
+Los siguientes campos van en la sección `METADATA` (o equivalente) de cada spec CRUD. No son tokens de campo — no aparecen en `TABS_MODAL` ni en `COLUMNAS_TABLA`. Son instrucciones para el generador de `_client.tsx`.
+
+### PAGINACION
+
+Declara si la tabla debe tener paginación cliente o solo un contador de registros.
+
+| Valor | Significado |
+|-------|-------------|
+| `SI 50/pag` | Implementar paginación con PAGE_SIZE=50. Ver sección "Pagination (client-side)" en `data-tables.instructions.md`. |
+| `SI N/pag` | Implementar paginación con PAGE_SIZE=N. |
+| `NO (contador)` | Solo mostrar `{filtered.length} entidades` debajo de la tabla. Sin controles de página. |
+
+**Regla:** el programador decide cuál usar en cada spec. La IA **no decide** — lee el valor declarado en el spec y lo implementa.
+
+Cuando `PAGINACION: SI`:
+- Añadir `ChevronLeft, ChevronRight` a los imports de `lucide-react`.
+- Usar `pagedRows.map(...)` en el render, con `globalIdx = page * PAGE_SIZE + rowIdx`.
+- Actualizar `handleTableKeyDown`, `useEffect` cursor reset y `onFocus` como se describe en `data-tables.instructions.md`.
+
+Cuando `PAGINACION: NO (contador)`:
+- Añadir `<p className="text-xs text-muted-foreground">{filtered.length} [entidad]</p>` debajo del `</div>` de la tabla.
+- Sin `page` state, sin `pagedRows`, sin controles de navegación.

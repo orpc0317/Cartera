@@ -13,6 +13,7 @@
 | PERMISO        | `COO_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | `blue-100 / blue-600`                                        |
 | ICONO_LUCIDE   | `Network`                                                    |
+| MODAL_LAYOUT   | estandar                                           |
 | MODO           | nuevo                                                        |
 
 ---
@@ -150,6 +151,10 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+**PAGINACION:** NO (contador)
+
+---
+
 ## REGLAS_ESPECIFICAS
 
 1. `codigo` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
@@ -185,9 +190,12 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('proyecto
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_

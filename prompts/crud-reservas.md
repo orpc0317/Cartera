@@ -13,6 +13,7 @@
 | PERMISO        | `RES_OPE` — ya existe en `src/lib/permisos.ts`              |
 | COLOR_ACENTO   | elegir según tabla de `ui-conventions.instructions.md`       |
 | ICONO_LUCIDE   | `ClipboardList`                                              |
+| MODAL_LAYOUT   | ancho                                              |
 | MODO           | nuevo                                                        |
 
 ---
@@ -61,7 +62,7 @@ ReservaRow {                          -- tipo ya definido en src/app/actions/lot
   numero_documento: string            -- Cheque/Deposito/Transferencia
   cuenta_deposito:  number            -- solo Deposito/Transferencia (FK -> t_cuenta_bancaria)
   cobrador:         number            -- FK -> t_cobrador
-  estado:           number            -- 1=Abierta 2=Promesa 3=Devolucion 99=Anulado
+  estado:           number            -- 1=Abierta 2=Promesa 3=Devolucion 4=Desistido 99=Anulado
   -- desde t_recibo_caja:
   monto:            number            -- debe ser mayor a 0.00
 }
@@ -212,126 +213,90 @@ const RESERVA_ESTADOS: Record<number, { label: string; cls: string }> = {
   1:  { label: 'Abierta',    cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   2:  { label: 'Promesa',    cls: 'bg-sky-100     text-sky-700     border-sky-200'     },
   3:  { label: 'Devolucion', cls: 'bg-amber-100   text-amber-700   border-amber-200'   },
+  4:  { label: 'Desistido',  cls: 'bg-orange-100  text-orange-700  border-orange-200'  },
   99: { label: 'Anulado',    cls: 'bg-red-100     text-red-700     border-red-200'     },
 }
 ```
 
 `estado` renderiza como `<Badge variant="outline">` usando el `cls` del mapa.
 `moneda` renderiza con bandera + codigo ISO segun regla global **Moneda display rules** en `ui-conventions.instructions.md`.
-`monto` renderiza como `fmt(monto)` (locale es-GT, 2 decimales) precedido por el codigo de moneda: `GTQ 1,500.00`.
+`monto` renderiza como `fmt(monto)` (locale es-GT, 2 decimales). La moneda ya se muestra en la columna `moneda`; no se repite el prefijo en este campo.
 
 ---
 
 ## TABS_MODAL
 
-El modal es de **solo lectura** (no hay modo edicion). Solo tiene las pestanas General y Pago.
-El boton de footer dice unicamente **"Cerrar"**.
+Dos tabs: **General** (icono: `MapPin`) y **Pago** (icono: `Receipt`).
+
+**Modo vista:** footer con solo `Cerrar`. **Modo nuevo:** footer `Cancelar` + `Guardar`. **No hay modo edicion** (reservas inmutables).
 
 ### Tab: General  (icono: MapPin)
 
 **[IDENTIFICACION]**
 
-| Campo    | Label    | Ancho | View                                     |
-|----------|----------|-------|------------------------------------------|
-| empresa  | Empresa  | full  | ViewField; nombre de la empresa          |
-| proyecto | Proyecto | full  | ViewField; nombre del proyecto           |
-| numero   | Numero   | half  | ViewField                                |
-|          |          | half  | blank                                    |
+| Campo    | Label    | Ancho | Ver       | Nuevo                                                   | Editar | Default (Nuevo)    | Notas |
+|----------|----------|-------|-----------|---------------------------------------------------------|--------|--------------------|-------|
+| empresa  | Empresa  | full  | ViewField | Select FK [§F]; req                                     | —      | primera disponible | prop `empresas` |
+| proyecto | Proyecto | full  | ViewField | Select FK [§F]; req; disabled si no hay empresa         | —      | primero de empresa | prop `proyectos`; filtrado por empresa |
+| numero   | Numero   | half  | ViewField | —                                                       | —      | auto BD            | |
+| (spacer) |          | half  |           |                                                         |        |                    | |
 
-**[GENERAL]**
+**[GENERAL]** — `<SectionDivider label="General" />` (vista) / `<SectionDivider label="Generales" />` (nuevo)
 
-| Campo    | Label    | Ancho | View                                     |
-|----------|----------|-------|------------------------------------------|
-| fecha    | Fecha    | half  | ViewField                                |
-| estado   | Estado   | half  | Badge custom (RESERVA_ESTADOS)  |
-| fase     | Fase     | third | ViewField; nombre de la fase             |
-| manzana  | Manzana  | third | ViewField;          |
-| lote     | Lote     | third | ViewField                                |
+> En modo **nuevo**: fila 1 es grid-cols-3 con Fecha + Moneda + Monto; luego Cliente (full); luego Vendedor (full).
 
-**[CLIENTE]**
+| Campo    | Label    | Ancho          | Ver           | Nuevo                                                                                    | Editar | Default (Nuevo)     | Notas |
+|----------|----------|----------------|---------------|------------------------------------------------------------------------------------------|--------|---------------------|-------|
+| fecha    | Fecha    | third          | ViewField     | Input fecha [§Z]; req                                                                    | —      | hoy                 | vista: fila 3-col Fecha + spacer + Estado |
+| (spacer) |          | third          | —             | —                                                                                        | —      | —                   | celda vacia en modo vista |
+| estado   | Estado   | third          | Badge custom  | —                                                                                        | —      | —                   | RESERVA_ESTADOS; solo modo vista |
+| moneda   | Moneda   | third          | —             | Select FK [§F]; req; disabled si no hay proyecto; opciones: `monedasPorProyecto`         | —      | moneda del lote     | Solo en Nuevo; prop `proyectoMonedas` filtrado activo=1; auto-selecciona al elegir lote |
+| monto    | Monto    | third          | —             | Input number [§E]; req; >0; sin-spin                                                     | —      | ''                  | Solo en Nuevo; no puede exceder lote.valor |
+| cliente  | Cliente  | full           | ViewField     | ClienteCombobox [§AB]; req                                                               | —      | ''                  | filtrado por proyecto |
+| vendedor | Vendedor | full           | ViewField     | Select FK [§F]; req; disabled si no hay proyecto                                         | —      | primero del proyecto| prop `vendedores`; filtrado activo=1 por empresa+proyecto |
 
-| Campo    | Label    | Ancho | View                                     |
-|----------|----------|-------|------------------------------------------|
-| cliente  | Cliente  | full  | ViewField; nombre del cliente            |
-| vendedor | Vendedor | half  | ViewField; nombre del vendedor           |
-| cobrador | Cobrador | half  | ViewField; nombre del cobrador           |
+**[LOTE]**
+
+> En modo **vista**, los tres campos se muestran en una sola fila de 3 columnas iguales (`grid-cols-3`).
+
+| Campo   | Label   | Ancho        | Ver       | Nuevo                                                | Editar | Default (Nuevo)                    | Notas |
+|---------|---------|--------------|-----------|------------------------------------------------------|--------|------------------------------------|-------|
+| fase    | Fase    | third (vista)| ViewField | Select FK [§F]; req; disabled si no hay proyecto     | —      | primera fase con lotes disponibles | prop `fases`; opciones: `fasesConLotes` |
+| manzana | Manzana | third (vista)| ViewField | Select cod [§H]; req; disabled si no hay fase        | —      | primera manzana con lotes          | opciones: `manzanasConLotes` |
+| lote    | Lote    | third (vista)| ViewField | Select cod [§H]; req; disabled si no hay manzana     | —      | primer lote disponible             | opciones: `lotesEnManzana` |
+
+> Al seleccionar lote: mostrar card informativo con valor + moneda + area (si existe).
 
 ### Tab: Pago  (icono: Receipt)
 
 **[RECIBO]**
 
-| Campo          | Label        | Ancho | View                                     |
-|----------------|--------------|-------|------------------------------------------|
-| recibo_serie   | Serie        | half  | ViewField                                |
-| recibo_numero  | Numero       | half  | ViewField                                |
-| forma_pago     | Forma de Pago| half  | ViewField; FORMAS_PAGO label             |
-| moneda         | Moneda       | half  | Moneda display [§W]                    |
-| monto          | Monto        | half  | ViewField; fmt(monto) con moneda         |
+> En modo **nuevo**: Serie + Recibo en grid-cols-3 (Serie=third, Recibo=third, spacer=third). Moneda y Monto se encuentran en tab General/[GENERALES].
+
+| Campo         | Label         | Ancho               | Ver                 | Nuevo                                            | Editar | Default (Nuevo)      | Notas |
+|---------------|---------------|---------------------|---------------------|--------------------------------------------------|--------|----------------------|-------|
+| recibo_serie  | Serie         | half (vista) / third (nuevo) | ViewField  | Select FK [§F]; req                              | —      | primera serie activa | prop `seriesRecibo`; filtrado activo=1 por empresa+proyecto |
+| recibo_numero | Numero        | half (vista) / third (nuevo) | ViewField  | Input [§D]; req si recibo_automatico=0           | —      | ''                   | ocultar si serie es automatica |
+| (spacer)      |               | third               | —                   | tercer celda vacia en grid-cols-3                | —      | —                    | solo en modo nuevo |
+| moneda        | Moneda        | half                | Moneda display [§W] | — (campo en tab General)                         | —      | —                    | en Nuevo, Moneda esta en tab General/[GENERALES] |
+| monto         | Monto         | half                | ViewField           | — (campo en tab General)                         | —      | —                    | en Nuevo, Monto esta en tab General/[GENERALES]; sin prefijo moneda |
+| cobrador      | Cobrador      | full                | ViewField           | Select FK [§F]; req; disabled si no hay proyecto | —      | primero del proyecto | prop `cobradores`; filtrado activo=1 por empresa+proyecto |
 
 **[FORMA PAGO]**
 
-> Esta seccion solo se muestra si forma_pago != 1 (Efectivo)
+> En modo vista, esta seccion solo se muestra si forma_pago != 1 (Efectivo).
 
-| Campo           | Label               | Ancho | View                                     |
-|-----------------|---------------------|-------|------------------------------------------|
-| banco           | Banco               | full  | ViewField; nombre del banco (solo Cheque)|
-| numero_cuenta   | Numero Cuenta       | half  | ViewField (solo Cheque)                  |
-| cuenta_deposito | Cuenta Dep.         | full  | ViewField; nombre de la cuenta (Dep/Trans)|
-| numero_documento| Numero Documento    | half  | ViewField                                |
+| Campo            | Label            | Ancho | Ver       | Nuevo                                     | Editar | Default (Nuevo) | Notas |
+|------------------|------------------|-------|-----------|-------------------------------------------|--------|-----------------|-------|
+| forma_pago       | Forma de Pago    | full  | ViewField | Select cat [§G]; req                      | —      | 1 (Efectivo)    | FORMAS_PAGO |
+| banco            | Banco            | full  | ViewField | Select FK [§F]; req si forma_pago=2       | —      | ''              | prop `bancos`; visible solo si forma_pago=2 |
+| numero_cuenta    | Numero Cuenta    | half  | ViewField | Input [§D]; req si forma_pago=2           | —      | ''              | visible solo si forma_pago=2 |
+| cuenta_bancaria  | Cuenta Bancaria  | full  | ViewField | Select FK [§F]; req si forma_pago=3 o 4  | —      | ''              | prop `cuentasBancarias`; visible si forma_pago=3,4 |
+| numero_documento | Numero Documento | half  | ViewField | Input [§D]; req si forma_pago≠1           | —      | ''              | visible si forma_pago=2,3,4 |
 
 ---
 
-## FORMULARIO_CREACION
-
-El formulario de creacion es un `Dialog` separado del modal de vista.
-Tiene dos pestanas: **General** y **Pago**.
-
-### Tab: General  (icono: MapPin)
-
-**[IDENTIFICACION]**
-
-| Campo   | Label   | Ancho | Edit                                                  | Default (Nuevo)    |
-|---------|---------|-------|-------------------------------------------------------|--------------------|
-| empresa | Empresa | full  | Select; req                                           | primera disponible |
-| proyecto| Proyecto| full  | Select; proyectosPorEmpresa; req                      | primero de empresa |
-
-**[GENERAL]**
-
-| Campo   | Label   | Ancho | Edit                                                         | Default (Nuevo)                    |
-|---------|---------|-------|--------------------------------------------------------------|------------------------------------|
-| fecha   | Fecha   | half  | Input type="date"; req; default hoy                         | hoy                                |
-| fase    | Fase    | full  | Select; fasesConLotes (fases con lotes disponibles); req     | primera fase con lotes disponibles |
-| manzana | Manzana | full  | Select; manzanasConLotes; req                                | primera manzana con lotes          |
-| lote    | Lote    | full  | Select; lotesEnManzana; req. Muestra codigo + valor + moneda | primer lote disponible             |
-
-> Al seleccionar lote mostrar debajo un card informativo con: valor del lote, moneda, area (si existe).
-
-| Campo    | Label    | Ancho | Edit                                                   | Default (Nuevo)      |
-|----------|----------|-------|--------------------------------------------------------|----------------------|
-| cliente  | Cliente  | full  | ClienteCombobox (busqueda por nombre); req             | ''                   |
-| vendedor | Vendedor | half  | Select; vendedoresPorProyecto (activo=1); req          | primero del proyecto |
-| cobrador | Cobrador | half  | Select; cobradoresPorProyecto (activo=1); req          | primero del proyecto |
-
-### Tab: Pago  (icono: Receipt)
-
-**[RECIBO]**
-
-| Campo        | Label         | Ancho | Edit                                                         | Default (Nuevo)                         |
-|--------------|---------------|-------|--------------------------------------------------------------|-----------------------------------------|
-| serie_recibo | Serie Recibo  | half  | Select; seriesReciboPorProyecto; req                         | primera serie activa del proyecto       |
-| recibo       | Numero Recibo | half  | Input; visible y req solo si serie NO es automatica; sin-spin: true | ''                             |
-| moneda       | Moneda        | half  | Moneda display (bandera + ISO); req                          | COUNTRY_CURRENCY_MAP[proyecto.pais]     |
-| monto        | Monto         | half  | Input type="number"; req; > 0; sin-spin: true                | ''                                      |
-
-**[FORMA DE PAGO]**
-
-| Campo           | Label               | Ancho | Edit                                                              | Default (Nuevo)  |
-|-----------------|---------------------|-------|-------------------------------------------------------------------|------------------|
-| forma_pago      | Forma de Pago       | full  | Select hardcoded FORMAS_PAGO; req                                 | 1 (Efectivo)     |
-| banco           | Banco               | full  | Select; bancosPorProyecto; visible y req solo si forma_pago=2     | ''               |
-| numero_cuenta   | Numero Cuenta       | half  | Input; visible y req solo si forma_pago=2; sin-spin: true         | ''               |
-| cuenta_bancaria | Cuenta Bancaria     | full  | Select; cuentasActivas; visible y req si forma_pago=3 o 4         | ''               |
-| numero_documento| Numero Documento    | half  | Input; visible y req si forma_pago=2,3,4; sin-spin: true          | ''               |
+**PAGINACION:** SI 50/pag
 
 ---
 
@@ -362,15 +327,17 @@ En orden:
 6. vendedor requerido
 7. cliente requerido
 8. fecha requerida
-9. monto > 0 y es numero valido
-10. monto <= lote.valor
-11. serie_recibo requerida
-12. recibo requerido si la serie NO es automatica
-13. forma_pago requerida (> 0)
-14. banco requerido si forma_pago=2
-15. numero_cuenta requerido si forma_pago=2
-16. numero_documento requerido si forma_pago=2,3,4
-17. cuenta_bancaria requerida si forma_pago=3 o 4
+9. moneda requerida
+10. monto > 0 y es numero valido
+11. monto <= lote.valor
+12. serie_recibo requerida
+13. recibo requerido si la serie NO es automatica
+14. forma_pago requerida (> 0)
+15. banco requerido si forma_pago=2
+16. numero_cuenta requerido si forma_pago=2
+17. numero_documento requerido si forma_pago=2,3,4
+18. cuenta_bancaria requerida si forma_pago=3 o 4
+19. cobrador requerido
 18. cobrador requerido
 
 ---
@@ -388,7 +355,7 @@ En orden:
 ## QUERIES_TABLA
 
 Utilizar las funciones ya existentes en `src/app/actions/lotes.ts`:
-- `getReservas()` — lista reservas con estado=1 (Abiertas), enriquecidas con datos de `t_recibo_caja`.
+- `getReservas()` — lista todas las reservas (todos los estados), enriquecidas con datos de `t_recibo_caja`.
 - `getLotesDisponibles()` — lotes con estado disponible para el formulario de creacion.
 - `getSeriesRecibo()` — ya esta en `lotes.ts`.
 
@@ -400,9 +367,12 @@ Orden de la tabla: los datos llegan ordenados por `numero DESC` desde `getReserv
 
 > Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
 > Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
 > Ejemplo de como se deberia especificar puntualmente los cambios realizados:
 > [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
 > [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
 > [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
 
-_(sin cambios pendientes)_
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_

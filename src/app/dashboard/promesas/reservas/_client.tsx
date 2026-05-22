@@ -1,11 +1,13 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  ClipboardList, Plus, Search, X, Settings2,
+  ClipboardList, MapPin, Receipt, Download,
+  Plus, Search, X, Settings2,
   ChevronDown, ChevronUp, MoreHorizontal, Eye, History,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,8 +32,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador, SerieRecibo } from '@/lib/types/proyectos'
+import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador, SerieRecibo, ProyectoMoneda } from '@/lib/types/proyectos'
 import { createReserva, type ReservaRow } from '@/app/actions/lotes'
+import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
 
@@ -66,6 +69,7 @@ type ReservaForm = {
   num_documento:   string   // Cheque/Deposito/Transferencia
   vendedor:        number
   cobrador:        number
+  moneda:          string   // moneda seleccionada para la reserva
 }
 
 const today = new Date().toISOString().split('T')[0]
@@ -88,6 +92,7 @@ const EMPTY_FORM: ReservaForm = {
   num_documento:   '',
   vendedor:        0,
   cobrador:        0,
+  moneda:          '',
 }
 
 // ─── Catalogo de monedas (ISO → pais para bandera) ─────────────────────────
@@ -102,10 +107,11 @@ const CURRENCY_FLAG_MAP = new Map<string, string>([
 ])
 
 const RESERVA_ESTADOS: Record<number, { label: string; cls: string }> = {
-  1:  { label: 'Abierta',    cls: 'bg-emerald-100 text-emerald-700' },
-  2:  { label: 'Promesa',    cls: 'bg-sky-100     text-sky-700'     },
-  3:  { label: 'Devolucion', cls: 'bg-amber-100   text-amber-700'   },
-  99: { label: 'Anulado',    cls: 'bg-red-100     text-red-700'     },
+  1:  { label: 'Abierta',    cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  2:  { label: 'Promesa',    cls: 'bg-sky-100     text-sky-700     border-sky-200'     },
+  3:  { label: 'Devolucion', cls: 'bg-amber-100   text-amber-700   border-amber-200'   },
+  4:  { label: 'Desistido',  cls: 'bg-orange-100  text-orange-700  border-orange-200'  },
+  99: { label: 'Anulado',    cls: 'bg-red-100     text-red-700     border-red-200'     },
 }
 
 // ─── Columnas ──────────────────────────────────────────────────────────────
@@ -131,6 +137,38 @@ const ALL_COLUMNS: ColDef[] = [
 
 const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
+// ─── Export CSV ────────────────────────────────────────────────────────────
+
+const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
+
+const COL_LABELS: Record<string, string> = Object.fromEntries(
+  [{ key: 'numero', label: 'Numero' }, ...ALL_COLUMNS].map((c) => [c.key, c.label]),
+)
+
+function formatCsvCell(value: unknown): string {
+  const str = value == null ? '' : String(value)
+  return str.includes(',') || str.includes('\n') || str.includes('"')
+    ? `"${str.replace(/"/g, '""')}"`
+    : str
+}
+
+function exportCsv(rows: Reserva[], colPrefs: ColPref[]) {
+  const keys = ['numero', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+    .filter((k) => !NEVER_EXPORT.has(k))
+  const headers = keys.map((k) => COL_LABELS[k] ?? k)
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) => keys.map((k) => formatCsvCell(r[k as keyof Reserva])).join(',')),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `reservas-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ─── Helpers de formato ────────────────────────────────────────────────────
 
 const fmt = (n: number) =>
@@ -140,8 +178,8 @@ const fmt = (n: number) =>
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -326,7 +364,9 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // ─── Tipo Reserva (estado local, no hay tabla aun) ─────────────────────────
 
 type Reserva = {
-  id: string        // temporal UUID en memoria
+  id: string        // string version of numero (usado como React key)
+  numero:          number
+  cuenta:          string
   empresa:         number
   proyecto:        number
   fase:            number
@@ -363,6 +403,7 @@ interface Props {
   vendedores:        Vendedor[]
   cobradores:        Cobrador[]
   seriesRecibo:      SerieRecibo[]
+  proyectoMonedas:   ProyectoMoneda[]
   puedeAgregar:      boolean
   userId:            string
 }
@@ -405,6 +446,8 @@ function firstLoteCodigo(lotes: Lote[], empresa: number, proyecto: number, fase:
 function mapReservas(rows: ReservaRow[]): Reserva[] {
   return rows.map((r) => ({
     id:              String(r.numero),
+    numero:          r.numero,
+    cuenta:          r.cuenta,
     empresa:         r.empresa,
     proyecto:        r.proyecto,
     fase:            r.fase,
@@ -429,7 +472,7 @@ function mapReservas(rows: ReservaRow[]): Reserva[] {
 
 export function ReservasClient({
   reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes,
-  bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, puedeAgregar, userId,
+  bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, puedeAgregar, userId,
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -446,12 +489,12 @@ export function ReservasClient({
   const [colFilters, setColFilters] = useState<ColFilters>({})
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
-  const [vendedorFiltro, setVendedorFiltro] = useState(0)
 
   // ── Dialogo ───────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [viewTarget, setViewTarget] = useState<Reserva | null>(null)
+  const [auditTarget, setAuditTarget] = useState<Reserva | null>(null)
 
   // ── Formulario ────────────────────────────────────────────────────────
   const [form, setForm] = useState<ReservaForm>(EMPTY_FORM)
@@ -522,6 +565,17 @@ export function ReservasClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.lote, form.empresa, form.proyecto, form.fase, form.manzana])
 
+  // Default moneda to the selected lote's currency
+  useEffect(() => {
+    if (!form.lote) return
+    const lote = lotesDisponibles.find(
+      (l) => l.empresa === form.empresa && l.proyecto === form.proyecto &&
+             l.fase === form.fase && l.manzana === form.manzana && l.codigo === form.lote,
+    )
+    if (lote) f('moneda', lote.moneda)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.lote, form.empresa, form.proyecto, form.fase, form.manzana])
+
   // Clientes filtrados por proyecto
   const clientesPorProyecto = useMemo(
     () => clientes.filter((c) => c.proyecto === form.proyecto),
@@ -538,6 +592,12 @@ export function ReservasClient({
   const cobradoresPorProyecto = useMemo(
     () => cobradores.filter((c) => c.activo === 1 && c.empresa === form.empresa && c.proyecto === form.proyecto),
     [cobradores, form.empresa, form.proyecto],
+  )
+
+  // Monedas activas del proyecto seleccionado
+  const monedasPorProyecto = useMemo(
+    () => proyectoMonedas.filter((m) => m.activo === 1 && m.empresa === form.empresa && m.proyecto === form.proyecto),
+    [proyectoMonedas, form.empresa, form.proyecto],
   )
 
   // Bancos filtrados por empresa + proyecto
@@ -581,6 +641,7 @@ export function ReservasClient({
         next.fase            = fase
         next.manzana         = manz
         next.lote            = firstLoteCodigo(lotesDisponibles, emp, proy, fase, manz)
+        next.moneda          = ''
         next.vendedor        = vendedores.find((v) => v.empresa === emp && v.proyecto === proy)?.codigo ?? 0
         next.cobrador        = cobradores.find((c) => c.empresa === emp && c.proyecto === proy)?.codigo ?? 0
         next.banco           = 0
@@ -596,6 +657,7 @@ export function ReservasClient({
         next.fase            = fase
         next.manzana         = manz
         next.lote            = firstLoteCodigo(lotesDisponibles, emp, proy, fase, manz)
+        next.moneda          = ''
         next.vendedor        = vendedores.find((v) => v.empresa === emp && v.proyecto === proy)?.codigo ?? 0
         next.cobrador        = cobradores.find((c) => c.empresa === emp && c.proyecto === proy)?.codigo ?? 0
         next.banco           = 0
@@ -654,7 +716,6 @@ export function ReservasClient({
   const filtered = useMemo(() => afterSearch.filter((r) => {
     if (fechaDesde && r.fecha < fechaDesde) return false
     if (fechaHasta && r.fecha > fechaHasta) return false
-    if (vendedorFiltro !== 0 && r.vendedor !== vendedorFiltro) return false
     return Object.entries(colFilters).every(([col, vals]) => {
       if (col === '__empresa')         return vals.has(String(r.empresa))
       if (col === '__proyecto')        return vals.has(`${r.empresa}-${r.proyecto}`)
@@ -668,11 +729,12 @@ export function ReservasClient({
       if (col === '__forma_pago')      return vals.has(String(r.forma_pago))
       if (col === '__banco')           return vals.has(String(r.banco))
       if (col === '__cuenta_bancaria') return vals.has(String(r.cuenta_bancaria))
+      if (col === '__estado')           return vals.has(String(r.estado))
       return vals.has(String(r[col as keyof Reserva] ?? ''))
     })
-  }), [afterSearch, colFilters, fechaDesde, fechaHasta, vendedorFiltro])
+  }), [afterSearch, colFilters, fechaDesde, fechaHasta])
 
-  const hasActiveFilters = Object.keys(colFilters).length > 0 || !!fechaDesde || !!fechaHasta || vendedorFiltro !== 0
+  const hasActiveFilters = Object.keys(colFilters).length > 0 || !!fechaDesde || !!fechaHasta
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `reservas_cols_v1_${userId}`
@@ -712,14 +774,31 @@ export function ReservasClient({
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
 
+  // -- Paginacion --------------------------------------------------------
+  const PAGE_SIZE = 50
+  const [page, setPage] = useState(0)
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const pagedRows = useMemo(
+    () => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filtered, page],
+  )
+
   const handleTableKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (filtered.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setCursorIdx((prev) => prev === null ? 0 : Math.min(prev + 1, filtered.length - 1))
+      setCursorIdx((prev) => {
+        const next = prev === null ? page * PAGE_SIZE : Math.min(prev + 1, filtered.length - 1)
+        if (next >= (page + 1) * PAGE_SIZE) setPage((p) => p + 1)
+        return next
+      })
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setCursorIdx((prev) => prev === null ? 0 : Math.max(prev - 1, 0))
+      setCursorIdx((prev) => {
+        const next = prev === null ? page * PAGE_SIZE : Math.max(prev - 1, 0)
+        if (next < page * PAGE_SIZE) setPage((p) => Math.max(p - 1, 0))
+        return next
+      })
     } else if (e.key === 'Enter' && cursorIdx !== null) {
       e.preventDefault()
       openView(filtered[cursorIdx])
@@ -727,9 +806,9 @@ export function ReservasClient({
       setCursorIdx(null)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, cursorIdx])
+  }, [filtered, cursorIdx, page])
 
-  useEffect(() => { setCursorIdx(null) }, [search, colFilters, fechaDesde, fechaHasta, vendedorFiltro])
+  useEffect(() => { setCursorIdx(null); setPage(0) }, [search, colFilters, fechaDesde, fechaHasta])
 
   // ── Acciones de dialogo ───────────────────────────────────────────────
 
@@ -764,14 +843,8 @@ export function ReservasClient({
     setDialogOpen(true)
   }
 
-  function startEdit() { setIsEditing(true) }
-
   function cancelEdit() {
-    if (viewTarget) {
-      setIsEditing(false)
-    } else {
-      setDialogOpen(false)
-    }
+    setDialogOpen(false)
   }
 
   // ── Guardar ────────────────────────────────────────────────────────────────
@@ -785,6 +858,7 @@ export function ReservasClient({
     if (!form.vendedor)  { toast.error('Selecciona un vendedor.');                     return }
     if (!form.cliente)    { toast.error('Selecciona un cliente.');                     return }
     if (!form.fecha)      { toast.error('La fecha es requerida.');                     return }
+    if (!form.moneda)     { toast.error('Selecciona la moneda.');                      return }
     const montoNum = parseFloat(form.monto.replace(',', '.'))
     if (isNaN(montoNum) || montoNum <= 0) { toast.error('El monto debe ser mayor a 0.'); return }
     if (loteSeleccionado && montoNum > loteSeleccionado.valor) {
@@ -800,17 +874,6 @@ export function ReservasClient({
     if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.cuenta_bancaria) { toast.error('Selecciona la cuenta bancaria.'); return }
     if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.num_documento.trim()) { toast.error('Ingresa el numero de documento.'); return }
     if (!form.cobrador) { toast.error('Selecciona un cobrador.'); return }
-
-    if (viewTarget) {
-      // Edicion — pendiente de implementar persistencia
-      setReservas((prev) => prev.map((r) => r.id === viewTarget.id
-        ? { ...r, ...form, monto: montoNum }
-        : r,
-      ))
-      toast.success('Reserva actualizada.')
-      setDialogOpen(false)
-      return
-    }
 
     // ── Creacion con persistencia en BD ────────────────────────────────────
     setIsSaving(true)
@@ -836,7 +899,7 @@ export function ReservasClient({
         num_cuenta:       form.num_cuenta,
         num_documento:    form.num_documento,
         cuenta_bancaria:  form.cuenta_bancaria,
-        moneda:           loteSeleccionado?.moneda ?? '',
+        moneda:           form.moneda,
       },
       loteLastModified,
     )
@@ -854,16 +917,8 @@ export function ReservasClient({
 
   // ── Render ────────────────────────────────────────────────────────────
 
-  const iconBadgeBg = isEditing && !viewTarget
-    ? 'bg-teal-100'
-    : isEditing
-      ? 'bg-amber-100'
-      : 'bg-teal-100'
-  const iconColor   = isEditing && !viewTarget
-    ? 'text-teal-600'
-    : isEditing
-      ? 'text-amber-600'
-      : 'text-teal-600'
+  const iconBadgeBg = 'bg-teal-100'
+  const iconColor   = 'text-teal-600'
 
   return (
     <div className="flex flex-col gap-6 p-6 md:p-8">
@@ -879,29 +934,44 @@ export function ReservasClient({
             <p className="text-sm text-muted-foreground">Registro de reservas de lotes por proyecto</p>
           </div>
         </div>
-        <Button onClick={openCreate} disabled={!puedeAgregar} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nueva Reserva
-        </Button>
+        {puedeAgregar && (
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              onClick={openCreate}
+              disabled={lotesDisponibles.length === 0}
+              title={lotesDisponibles.length === 0 ? 'No hay lotes disponibles en este momento' : undefined}
+              className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva Reserva
+            </Button>
+            {lotesDisponibles.length === 0 && (
+              <p className="text-xs text-muted-foreground">No hay lotes disponibles.</p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── Busqueda + ColumnManager ── */}
+      {/* ── Busqueda + Export + ColumnManager ── */}
       <div className="flex items-center gap-2">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+        <div className="relative max-w-xs">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input variant="underline"
             placeholder="Buscar reservas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-8 h-8 text-sm"
           />
         </div>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta(''); setVendedorFiltro(0) }} className="gap-1.5 text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta('') }} className="gap-1.5 text-muted-foreground">
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
           <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
         </div>
       </div>
@@ -910,7 +980,7 @@ export function ReservasClient({
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground shrink-0">Desde</span>
-          <Input
+          <Input variant="underline"
             type="date"
             value={fechaDesde}
             onChange={(e) => setFechaDesde(e.target.value)}
@@ -919,25 +989,13 @@ export function ReservasClient({
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground shrink-0">Hasta</span>
-          <Input
+          <Input variant="underline"
             type="date"
             value={fechaHasta}
             onChange={(e) => setFechaHasta(e.target.value)}
             className="h-8 w-36 text-xs"
           />
         </div>
-        <Select value={vendedorFiltro === 0 ? '' : String(vendedorFiltro)} onValueChange={(v) => setVendedorFiltro(v === '' ? 0 : Number(v))}>
-          <SelectTrigger className="h-8 w-52 text-xs">
-            <SelectValue placeholder="Todos los vendedores">
-              {(v: string) => v ? (vendedorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {vendedores.map((v) => (
-              <SelectItem key={v.codigo} value={String(v.codigo)}>{v.nombre}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* ── Tabla ── */}
@@ -946,12 +1004,12 @@ export function ReservasClient({
         className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
       >
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Numero</span></TableHead>
               {visibleCols.map((col) => {
                 const def = ALL_COLUMNS.find((c) => c.key === col.key)!
                 if (col.key === '__empresa') {
@@ -1098,6 +1156,28 @@ export function ReservasClient({
                     </TableHead>
                   )
                 }
+                if (col.key === 'monto') {
+                  return (
+                    <TableHead key="monto" className="w-36 text-right">
+                      <span className="text-xs font-medium text-muted-foreground">Monto</span>
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__estado') {
+                  return (
+                    <TableHead key="__estado">
+                      <ColumnFilter
+                        label="Estado"
+                        values={Object.entries(RESERVA_ESTADOS).map(([, v]) => v.label)}
+                        active={new Set([...(colFilters['__estado'] ?? new Set())].map((k) => RESERVA_ESTADOS[Number(k)]?.label ?? k))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(Object.entries(RESERVA_ESTADOS).map(([k, v]) => [v.label, k]))
+                          setColFilter('__estado', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
                 return (
                   <TableHead key={col.key}>
                     <ColumnFilter
@@ -1113,7 +1193,7 @@ export function ReservasClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {pagedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
@@ -1122,13 +1202,14 @@ export function ReservasClient({
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((r, rowIdx) => {
-                const isActive = cursorIdx === rowIdx
+              pagedRows.map((r, rowIdx) => {
+                const globalIdx = page * PAGE_SIZE + rowIdx
+                const isActive = cursorIdx === globalIdx
                 return (
                   <TableRow
                     key={r.id}
                     className={`group cursor-pointer transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'hover:bg-muted/40'}`}
-                    onClick={() => setCursorIdx(rowIdx)}
+                    onClick={() => setCursorIdx(globalIdx)}
                     onDoubleClick={() => openView(r)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
@@ -1136,7 +1217,7 @@ export function ReservasClient({
                         ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
-                      #{rowIdx + 1}
+                      {r.numero}
                     </TableCell>
 
                     {visibleCols.map((col) => {
@@ -1156,7 +1237,7 @@ export function ReservasClient({
                         case '__vendedor':
                           return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`}</TableCell>
                         case 'fecha':
-                          return <TableCell key="fecha" className="text-muted-foreground">{r.fecha}</TableCell>
+                          return <TableCell key="fecha" className="text-muted-foreground">{r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</TableCell>
                         case '__moneda': {
                           const flag = CURRENCY_FLAG_MAP.get(r.moneda)
                           return (
@@ -1176,20 +1257,9 @@ export function ReservasClient({
                           )
                         }
                         case 'monto': {
-                          const flag = CURRENCY_FLAG_MAP.get(r.moneda)
                           return (
-                            <TableCell key="monto" className="w-32 text-right font-mono text-sm">
-                              <span className="inline-flex items-center justify-end gap-1.5">
-                                {flag && (
-                                  <img
-                                    src={`https://flagcdn.com/w20/${flag}.png`}
-                                    width={20} height={14}
-                                    alt={r.moneda}
-                                    className="rounded-[2px] shrink-0"
-                                  />
-                                )}
-                                {fmt(r.monto)}
-                              </span>
+                            <TableCell key="monto" className="w-36 text-right text-sm">
+                              {fmt(r.monto)}
                             </TableCell>
                           )
                         }
@@ -1208,8 +1278,8 @@ export function ReservasClient({
                           return (
                             <TableCell key="__estado">
                               {est
-                                ? <Badge variant="secondary" className={`font-normal ${est.cls}`}>{est.label}</Badge>
-                                : <Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">{r.estado}</Badge>}
+                                ? <Badge variant="outline" className={`font-normal ${est.cls}`}>{est.label}</Badge>
+                                : <Badge variant="outline" className="font-normal">{r.estado}</Badge>}
                             </TableCell>
                           )
                         }
@@ -1225,7 +1295,10 @@ export function ReservasClient({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openView(r)}>
-                            <Eye className="mr-2 h-4 w-4" /> Ver / Editar
+                            <Eye className="mr-2 h-4 w-4" /> Ver
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAuditTarget(r)}>
+                            <History className="mr-2 h-4 w-4" /> Historial
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1238,7 +1311,28 @@ export function ReservasClient({
         </Table>
       </div>
 
-      {/* ── Dialogo Nueva / Ver / Editar Reserva ── */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {filtered.length > 0
+            ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} reserva${filtered.length !== 1 ? 's' : ''}`
+            : '0 reservas'}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button type="button" aria-label="Página anterior" disabled={page === 0} onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
+            <button type="button" aria-label="Página siguiente" disabled={page >= totalPages - 1} onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Dialogo Nueva / Ver Reserva ── */}
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open)
         if (!open) { setIsEditing(false) }
@@ -1252,7 +1346,7 @@ export function ReservasClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Reserva' : isEditing ? 'Editar Reserva' : 'Detalle de Reserva'}
+                  {isEditing ? 'Nueva Reserva' : 'Detalle de Reserva'}
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -1266,70 +1360,66 @@ export function ReservasClient({
           <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
             <TabsList className="shrink-0">
               <TabsTrigger value="general" className="gap-1.5">
-                <ClipboardList className="h-3.5 w-3.5" /> General
+                <MapPin className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+              <TabsTrigger value="pago" className="gap-1.5">
+                <Receipt className="h-3.5 w-3.5" /> Pago
               </TabsTrigger>
             </TabsList>
 
+            {/* ── Tab General ── */}
             <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
-              {/* ── Vista ─────────────────────────────────────────── */}
+              {/* Vista: modo readonly */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-3">
+
+                  <SectionDivider label="Identificacion" />
                   <div className="col-span-2">
-                    <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)}  />
+                    <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)} />
                   </div>
                   <div className="col-span-2">
                     <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} />
                   </div>
+                  <ViewField label="Numero" value={String(viewTarget.numero)} />
+                  <div />{/* spacer */}
 
-                  <SectionDivider label="Ubicacion del Lote" />
-                  <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`)} />
-                  <ViewField label="Manzana" value={viewTarget.manzana} />
+                  <SectionDivider label="General" />
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <ViewField label="Fecha" value={viewTarget.fecha ? viewTarget.fecha.split('-').reverse().join('/') : ''} />
+                    <div />{/* spacer */}
+                    <div className="grid gap-1">
+                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Estado</span>
+                      <div className="h-8 flex items-center px-1">
+                        {(() => {
+                          const est = RESERVA_ESTADOS[viewTarget.estado]
+                          return est
+                            ? <Badge variant="outline" className={`font-normal ${est.cls}`}>{est.label}</Badge>
+                            : <Badge variant="outline" className="font-normal">{viewTarget.estado}</Badge>
+                        })()}
+                      </div>
+                    </div>
+                  </div>
                   <div className="col-span-2">
-                    <ViewField label="Lote" value={viewTarget.lote} />
+                    <ViewField label="Cliente" value={clienteMap.get(viewTarget.cliente)} />
+                  </div>
+                  <ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`)} />
+
+                  <SectionDivider label="Lote" />
+                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`)} />
+                    <ViewField label="Manzana" value={viewTarget.manzana} />
+                    <ViewField label="Lote"    value={viewTarget.lote} />
                   </div>
 
-                  <SectionDivider label="Datos Reserva" />
-                  <div className="col-span-2">
-                    <ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`)} />
-                  </div>
-                  <ViewField label="Cliente" value={clienteMap.get(viewTarget.cliente)} />
-                  <ViewField label="Fecha"   value={viewTarget.fecha} />
-                  <div className="col-span-2">
-                    <ViewField label="Monto" value={viewTarget.monto ? fmt(viewTarget.monto) : ''} />
-                  </div>
 
-                  <SectionDivider label="Forma Pago" />
-                  <div className="col-span-2">
-                    <ViewField label="Forma de Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? `#${viewTarget.forma_pago}`} />
-                  </div>
-                  {viewTarget.forma_pago === 2 && (
-                    <>
-                      <ViewField label="Banco"         value={bancoMap.get(viewTarget.banco)} />
-                      <ViewField label="No. Cuenta"    value={viewTarget.num_cuenta || '—'} />
-                      <div className="col-span-2">
-                        <ViewField label="No. Documento" value={viewTarget.num_documento || '—'} />
-                      </div>
-                    </>
-                  )}
-                  {(viewTarget.forma_pago === 3 || viewTarget.forma_pago === 4) && (
-                    <>
-                      <div className="col-span-2">
-                        <ViewField label="Cuenta Bancaria" value={cuentaBancariaMap.get(viewTarget.cuenta_bancaria)} />
-                      </div>
-                      <div className="col-span-2">
-                        <ViewField label="No. Documento" value={viewTarget.num_documento || '—'} />
-                      </div>
-                    </>
-                  )}
-                  <div className="col-span-2">
-                    <ViewField label="Cobrador" value={cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`)} />
-                  </div>
                 </div>
 
               ) : (
-              /* ── Edicion / Creacion ──────────────────────────── */
+              /* Creacion */
                 <div className="grid grid-cols-2 gap-4">
+
+                  <SectionDivider label="Identificacion" />
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
@@ -1340,7 +1430,7 @@ export function ReservasClient({
                       value={form.empresa ? String(form.empresa) : ''}
                       onValueChange={(v) => f('empresa', Number(v))}
                     >
-                      <SelectTrigger id="res-empresa" className="w-full">
+                      <SelectTrigger variant="underline" id="res-empresa" className="w-full">
                         <SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1361,8 +1451,8 @@ export function ReservasClient({
                       onValueChange={(v) => f('proyecto', Number(v))}
                       disabled={!form.empresa}
                     >
-                      <SelectTrigger id="res-proyecto" className="w-full">
-                        <SelectValue placeholder={form.empresa ? 'Selecciona proyecto' : 'Primero selecciona empresa'}>{(v: string) => v ? (proyectoMap.get(Number(v)) ?? v) : null}</SelectValue>
+                      <SelectTrigger variant="underline" id="res-proyecto" className="w-full">
+                        <SelectValue placeholder={form.empresa ? 'Selecciona proyecto' : 'Primero selecciona empresa'}>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {proyectosPorEmpresa.map((p) => (
@@ -1388,9 +1478,9 @@ export function ReservasClient({
                         onValueChange={(v) => f('fase', Number(v))}
                         disabled={!form.proyecto}
                       >
-                        <SelectTrigger id="res-fase" className="w-full">
+                        <SelectTrigger variant="underline" id="res-fase" className="w-full">
                           <SelectValue placeholder={form.proyecto ? fasesConLotes.length === 0 ? 'Sin fases' : 'Selecciona fase' : '—'}>
-                            {(v: string) => v ? (faseMap.get(Number(v)) ?? v) : null}
+                            {(v: string) => v ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1408,10 +1498,10 @@ export function ReservasClient({
                       </Label>
                       <Select
                         value={form.manzana}
-                        onValueChange={(v) => f('manzana', v)}
+                        onValueChange={(v) => f('manzana', v ?? '')}
                         disabled={!form.fase}
                       >
-                        <SelectTrigger id="res-manzana" className="w-full">
+                        <SelectTrigger variant="underline" id="res-manzana" className="w-full">
                           <SelectValue placeholder={form.fase ? manzanasConLotes.length === 0 ? '—' : 'Manzana' : '—'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1429,10 +1519,10 @@ export function ReservasClient({
                       </Label>
                       <Select
                         value={form.lote}
-                        onValueChange={(v) => f('lote', v)}
+                        onValueChange={(v) => f('lote', v ?? '')}
                         disabled={!form.manzana}
                       >
-                        <SelectTrigger id="res-lote" className="w-full">
+                        <SelectTrigger variant="underline" id="res-lote" className="w-full">
                           <SelectValue placeholder={form.manzana ? lotesEnManzana.length === 0 ? '—' : 'Lote' : '—'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1459,28 +1549,81 @@ export function ReservasClient({
                     </div>
                   )}
 
-                  {/* Transaccion */}
-                  <SectionDivider label="Datos Reserva" />
+                  <SectionDivider label="Generales" />
 
-                  {/* Vendedor */}
-                  <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-vendedor" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                      Vendedor *
-                    </Label>
-                    <Select
-                      value={form.vendedor ? String(form.vendedor) : ''}
-                      onValueChange={(v) => f('vendedor', Number(v))}
-                      disabled={!form.proyecto}
-                    >
-                      <SelectTrigger id="res-vendedor" className="w-full">
-                        <SelectValue placeholder={form.proyecto ? 'Selecciona vendedor' : 'Primero selecciona proyecto'}>{(v: string) => v ? (vendedorMap.get(Number(v)) ?? v) : null}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vendedoresPorProyecto.map((vend) => (
-                          <SelectItem key={vend.codigo} value={String(vend.codigo)}>{vend.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Fecha + Moneda + Monto en 3 columnas */}
+                  <div className="col-span-2 grid grid-cols-3 gap-4">
+
+                    {/* Fecha */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="res-fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        Fecha *
+                      </Label>
+                      <Input variant="underline"
+                        id="res-fecha"
+                        type="date"
+                        value={form.fecha}
+                        onChange={(e) => f('fecha', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Moneda */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="res-moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        Moneda *
+                      </Label>
+                      <Select
+                        value={form.moneda}
+                        onValueChange={(v) => f('moneda', v ?? '')}
+                        disabled={!form.proyecto}
+                      >
+                        <SelectTrigger variant="underline" id="res-moneda" className="w-full">
+                          <SelectValue placeholder={form.proyecto ? (monedasPorProyecto.length === 0 ? 'Sin monedas' : 'Selecciona moneda') : '—'}>
+                            {(v: string) => {
+                              if (!v) return null
+                              const flag = CURRENCY_FLAG_MAP.get(v)
+                              return (
+                                <span className="flex items-center gap-1.5">
+                                  {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt={v} className="rounded-[2px] shrink-0" />}
+                                  {v}
+                                </span>
+                              )
+                            }}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monedasPorProyecto.map((m) => {
+                            const flag = CURRENCY_FLAG_MAP.get(m.moneda)
+                            return (
+                              <SelectItem key={m.moneda} value={m.moneda}>
+                                <span className="flex items-center gap-1.5">
+                                  {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt={m.moneda} className="rounded-[2px]" />}
+                                  {m.moneda}
+                                </span>
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Monto */}
+                    <div className="grid gap-1">
+                      <Label htmlFor="res-monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        Monto *
+                      </Label>
+                      <Input variant="underline"
+                        id="res-monto"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={form.monto}
+                        onChange={(e) => f('monto', e.target.value)}
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
                   </div>
 
                   {/* Cliente */}
@@ -1497,51 +1640,110 @@ export function ReservasClient({
                     />
                   </div>
 
-                  {/* Fecha */}
-                  <div className="grid gap-1">
-                    <Label htmlFor="res-fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                      Fecha *
+                  {/* Vendedor */}
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="res-vendedor" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      Vendedor *
                     </Label>
-                    <Input
-                      id="res-fecha"
-                      type="date"
-                      value={form.fecha}
-                      onChange={(e) => f('fecha', e.target.value)}
-                    />
+                    <Select
+                      value={form.vendedor ? String(form.vendedor) : ''}
+                      onValueChange={(v) => f('vendedor', Number(v))}
+                      disabled={!form.proyecto}
+                    >
+                      <SelectTrigger variant="underline" id="res-vendedor" className="w-full">
+                        <SelectValue placeholder={form.proyecto ? 'Selecciona vendedor' : 'Primero selecciona proyecto'}>{(v: string) => v ? (vendedorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendedoresPorProyecto.map((vend) => (
+                          <SelectItem key={vend.codigo} value={String(vend.codigo)}>{vend.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  {/* Monto */}
+                </div>
+              )}
+
+            </TabsContent>
+
+            {/* ── Tab Pago ── */}
+            <TabsContent value="pago" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+
+              {/* Vista: modo readonly */}
+              {!isEditing && viewTarget ? (
+                <div className="grid grid-cols-2 gap-3">
+
+                  <SectionDivider label="Recibo" />
+                  <ViewField label="Serie"  value={viewTarget.serie_recibo} />
+                  <ViewField label="Numero" value={viewTarget.recibo} />
                   <div className="grid gap-1">
-                    <Label htmlFor="res-monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                      Monto *
-                    </Label>
-                    <Input
-                      id="res-monto"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={form.monto}
-                      onChange={(e) => f('monto', e.target.value)}
-                    />
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
+                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3 gap-1.5">
+                      {(() => {
+                        const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                        return (
+                          <>
+                            {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt={viewTarget.moneda} className="rounded-[2px] shrink-0" />}
+                            <span className="text-[13px] font-medium text-foreground">{viewTarget.moneda}</span>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                  <ViewField label="Monto" value={viewTarget.monto ? fmt(viewTarget.monto) : ''} />
+                  <div className="col-span-2">
+                    <ViewField label="Cobrador" value={cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`)} />
                   </div>
 
-                  {/* ── Forma Pago ───────────────────────────────── */}
-                  <SectionDivider label="Forma Pago" />
+                  {viewTarget.forma_pago !== 1 && (
+                    <>
+                      <SectionDivider label="Forma Pago" />
+                      <div className="col-span-2">
+                        <ViewField label="Forma de Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? `#${viewTarget.forma_pago}`} />
+                      </div>
+                      {viewTarget.forma_pago === 2 && (
+                        <>
+                          <ViewField label="Banco"         value={bancoMap.get(viewTarget.banco)} />
+                          <ViewField label="No. Cuenta"    value={viewTarget.num_cuenta} />
+                          <div className="col-span-2">
+                            <ViewField label="No. Documento" value={viewTarget.num_documento} />
+                          </div>
+                        </>
+                      )}
+                      {(viewTarget.forma_pago === 3 || viewTarget.forma_pago === 4) && (
+                        <>
+                          <div className="col-span-2">
+                            <ViewField label="Cuenta Bancaria" value={cuentaBancariaMap.get(viewTarget.cuenta_bancaria)} />
+                          </div>
+                          <div className="col-span-2">
+                            <ViewField label="No. Documento" value={viewTarget.num_documento} />
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
 
-                  {/* Serie Recibo + Recibo + Forma Pago en la misma fila (3 columnas) */}
+                </div>
+
+              ) : (
+              /* Creacion — tab Pago */
+                <div className="grid grid-cols-2 gap-4">
+
+                  <SectionDivider label="Recibo" />
+
+                  {/* Serie + Recibo en grid-cols-3 */}
                   <div className="col-span-2 grid grid-cols-3 gap-4">
 
-                    {/* Serie Recibo */}
+                    {/* Serie */}
                     <div className="grid gap-1">
                       <Label htmlFor="res-serie-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                        Serie Recibo *
+                        Serie *
                       </Label>
                       <Select
                         value={form.serie_recibo}
-                        onValueChange={(v) => f('serie_recibo', v)}
+                        onValueChange={(v) => f('serie_recibo', v ?? '')}
                       >
-                        <SelectTrigger id="res-serie-recibo" className="w-full">
+                        <SelectTrigger variant="underline" id="res-serie-recibo" className="w-full">
                           <SelectValue placeholder={seriesReciboPorProyecto.length === 0 ? 'Sin series' : 'Selecciona serie'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1552,41 +1754,68 @@ export function ReservasClient({
                       </Select>
                     </div>
 
-                    {/* Recibo */}
-                    <div className="grid gap-1">
-                      <Label htmlFor="res-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                        Recibo{!reciboAutomatico && ' *'}
-                      </Label>
-                      <Input
-                        id="res-recibo"
-                        placeholder={reciboAutomatico ? 'Automatico' : 'No. recibo'}
-                        disabled={reciboAutomatico}
-                        value={form.recibo}
-                        onChange={(e) => f('recibo', e.target.value)}
-                      />
-                    </div>
+                    {/* Numero Recibo */}
+                    {!reciboAutomatico ? (
+                      <div className="grid gap-1">
+                        <Label htmlFor="res-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                          Numero Recibo *
+                        </Label>
+                        <Input variant="underline"
+                          id="res-recibo"
+                          placeholder="No. recibo"
+                          value={form.recibo}
+                          onChange={(e) => f('recibo', e.target.value)}
+                        />
+                      </div>
+                    ) : <div />}
 
-                    {/* Forma Pago */}
-                    <div className="grid gap-1">
-                      <Label htmlFor="res-forma-pago" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                        Forma Pago *
-                      </Label>
-                      <Select
-                        value={form.forma_pago ? String(form.forma_pago) : ''}
-                        onValueChange={(v) => f('forma_pago', Number(v))}
-                      >
-                        <SelectTrigger id="res-forma-pago" className="w-full">
-                          <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(FORMAS_PAGO).map(([k, label]) => (
-                            <SelectItem key={k} value={k}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Spacer */}
+                    <div />
 
-                  </div>{/* fin fila Serie/Recibo/FormaPago */}
+                  </div>
+
+                  {/* Cobrador */}
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="res-cobrador" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      Cobrador *
+                    </Label>
+                    <Select
+                      value={form.cobrador ? String(form.cobrador) : ''}
+                      onValueChange={(v) => f('cobrador', Number(v))}
+                      disabled={!form.proyecto}
+                    >
+                      <SelectTrigger variant="underline" id="res-cobrador" className="w-full">
+                        <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cobradoresPorProyecto.map((cob) => (
+                          <SelectItem key={cob.codigo} value={String(cob.codigo)}>{cob.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <SectionDivider label="Forma Pago" />
+
+                  {/* Forma Pago */}
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="res-forma-pago" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      Forma de Pago *
+                    </Label>
+                    <Select
+                      value={form.forma_pago ? String(form.forma_pago) : ''}
+                      onValueChange={(v) => f('forma_pago', Number(v))}
+                    >
+                      <SelectTrigger variant="underline" id="res-forma-pago" className="w-full">
+                        <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(FORMAS_PAGO).map(([k, label]) => (
+                          <SelectItem key={k} value={k}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Cheque: Banco */}
                   {form.forma_pago === 2 && (
@@ -1598,7 +1827,7 @@ export function ReservasClient({
                         value={form.banco ? String(form.banco) : ''}
                         onValueChange={(v) => f('banco', Number(v))}
                       >
-                        <SelectTrigger id="res-banco" className="w-full">
+                        <SelectTrigger variant="underline" id="res-banco" className="w-full">
                           <SelectValue placeholder={bancosPorProyecto.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1617,7 +1846,7 @@ export function ReservasClient({
                         <Label htmlFor="res-num-cuenta" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
                           No. Cuenta *
                         </Label>
-                        <Input
+                        <Input variant="underline"
                           id="res-num-cuenta"
                           placeholder="Numero de cuenta"
                           value={form.num_cuenta}
@@ -1628,7 +1857,7 @@ export function ReservasClient({
                         <Label htmlFor="res-num-doc-cheque" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
                           No. Documento *
                         </Label>
-                        <Input
+                        <Input variant="underline"
                           id="res-num-doc-cheque"
                           placeholder="Numero de cheque"
                           value={form.num_documento}
@@ -1648,7 +1877,7 @@ export function ReservasClient({
                         value={form.cuenta_bancaria ? String(form.cuenta_bancaria) : ''}
                         onValueChange={(v) => f('cuenta_bancaria', Number(v))}
                       >
-                        <SelectTrigger id="res-cuenta-bancaria" className="w-full">
+                        <SelectTrigger variant="underline" id="res-cuenta-bancaria" className="w-full">
                           <SelectValue placeholder={cuentasActivas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1666,7 +1895,7 @@ export function ReservasClient({
                       <Label htmlFor="res-num-doc" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
                         No. Documento *
                       </Label>
-                      <Input
+                      <Input variant="underline"
                         id="res-num-doc"
                         placeholder="Numero de documento"
                         value={form.num_documento}
@@ -1675,27 +1904,6 @@ export function ReservasClient({
                     </div>
                   )}
 
-                  {/* Cobrador */}
-                  <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-cobrador" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
-                      Cobrador *
-                    </Label>
-                    <Select
-                      value={form.cobrador ? String(form.cobrador) : ''}
-                      onValueChange={(v) => f('cobrador', Number(v))}
-                      disabled={!form.proyecto}
-                    >
-                      <SelectTrigger id="res-cobrador" className="w-full">
-                        <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cobradoresPorProyecto.map((cob) => (
-                          <SelectItem key={cob.codigo} value={String(cob.codigo)}>{cob.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                 </div>
               )}
 
@@ -1703,14 +1911,11 @@ export function ReservasClient({
           </Tabs>
 
           <DialogFooter className="mt-4 shrink-0">
-            {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                <Button onClick={startEdit} className="gap-2">Editar</Button>
-              </>
+            {!isEditing ? (
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={cancelEdit} disabled={isSaving}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                <Button variant="outline" onClick={cancelEdit} disabled={isSaving}>Cancelar</Button>
                 <Button onClick={() => void handleSave()} disabled={isSaving}>
                   {isSaving ? 'Guardando…' : 'Guardar'}
                 </Button>
@@ -1720,6 +1925,18 @@ export function ReservasClient({
 
         </DialogContent>
       </Dialog>
+
+      {/* Audit log */}
+      {auditTarget && (
+        <AuditLogDialog
+          open={!!auditTarget}
+          onOpenChange={(o) => !o && setAuditTarget(null)}
+          tabla="t_reserva"
+          cuenta={auditTarget.cuenta}
+          registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, numero: auditTarget.numero }}
+          titulo={String(auditTarget.numero)}
+        />
+      )}
 
     </div>
   )

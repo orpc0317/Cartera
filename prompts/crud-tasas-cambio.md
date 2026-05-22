@@ -13,6 +13,7 @@
 | PERMISO        | `TSC_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | `teal-100 / teal-600`                                        |
 | ICONO_LUCIDE   | `ArrowLeftRight`                                             |
+| MODAL_LAYOUT   | estandar                                           |
 | MODO           | nuevo                                                        |
 
 > **Nota migración:** la tabla `cartera.t_moneda_tasa_cambio` no existe en el schema actual. Se debe crear antes de implementar la pantalla:
@@ -201,6 +202,10 @@ El Modal Ver no muestra campos individuales. Muestra:
 
 ---
 
+**PAGINACION:** NO (contador)
+
+---
+
 ## REGLAS_ESPECIFICAS
 
 1. La fecha ingresada debe ser estrictamente posterior a todas las fechas ya registradas para la misma combinación `(cuenta, empresa, proyecto, moneda)`. Validar en frontend (prop `tasas`) y en backend antes del INSERT.
@@ -249,5 +254,15 @@ const grupos = useMemo(() => {
 
 ## CAMBIOS_PENDIENTES
 
-_(sin cambios pendientes)_
+> Solo se aplica cuando `MODO = actualizar`. Describe el delta exacto a aplicar sobre los archivos ya existentes.
+> Vaciar esta sección (dejar solo esta instrucción) después de aplicar los cambios y devolver `MODO` a `nuevo`.
+> Una vez aplicados todos los cambios se debe actualizar este archivo de specs reflejando los cambios descritos en esta seccion.
+> Ejemplo de como se deberia especificar puntualmente los cambios realizados:
+> [ENTIDAD] Agregar campo `campoXX` (string) a `EstructuraForm`
+> [TABS_MODAL / General / GENERAL] Agregar fila: campoXX | Lable | half | ViewField | Input |
+> [COLUMNAS_TABLA] Agregar columna `campoXX`, defaultVisible=false
+
+### Cambios a aplicar:
+
+> _(sin cambios pendientes)_
 

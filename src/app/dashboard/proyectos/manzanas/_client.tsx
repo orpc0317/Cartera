@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -87,8 +87,8 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">{label}</span>
+    <div className="grid gap-1.5">
+      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
       <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
         <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
       </div>
@@ -428,7 +428,7 @@ export function ManzanasClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <Input variant="underline"
             placeholder="Buscar manzanas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -548,6 +548,8 @@ export function ManzanasClient({
         </Table>
       </div>
 
+      <p className="text-xs text-muted-foreground">{filtered.length} manzana{filtered.length !== 1 ? 's' : ''}</p>
+
       {/* Ver / Crear Dialog */}
       <Dialog
         open={dialogOpen}
@@ -590,7 +592,7 @@ export function ManzanasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v && Number(v) ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -603,7 +605,7 @@ export function ManzanasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v && Number(v) ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -616,7 +618,7 @@ export function ManzanasClient({
                   <div className="grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fase *</Label>
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                      <SelectTrigger className="w-full">
+                      <SelectTrigger variant="underline" className="w-full">
                         <SelectValue placeholder="Selecciona fase">
                           {(v: string) => v && Number(v) ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -628,7 +630,7 @@ export function ManzanasClient({
                   </div>
                   <div className="grid gap-1">
                     <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo *</Label>
-                    <Input
+                    <Input variant="underline"
                       value={form.codigo}
                       onChange={(e) => f('codigo', e.target.value)}
                       placeholder="Ej: A, B, 1, 2..."
@@ -692,7 +694,7 @@ export function ManzanasClient({
           onOpenChange={(o) => !o && setAuditTarget(null)}
           tabla="t_manzana"
           cuenta={auditTarget.cuenta}
-          codigo={auditTarget.codigo}
+          registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, fase: auditTarget.fase, codigo: auditTarget.codigo }}
           titulo={`Manzana ${auditTarget.codigo}`}
         />
       )}
