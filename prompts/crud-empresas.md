@@ -13,8 +13,8 @@
 | PERMISO        | `EMP_CAT` — agregar en `src/lib/permisos.ts` si no existe    |
 | COLOR_ACENTO   | `emerald`                                                    |
 | ICONO_LUCIDE   | `Building2`                                                  |
-| MODAL_LAYOUT   | ancho                                              |
-| MODO           | actualizar                                                   |
+| MODAL_LAYOUT   | ancho                                                        |
+| MODO           | nuevo                                                        |
 
 ---
 

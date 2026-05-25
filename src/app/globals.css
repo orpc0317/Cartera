@@ -49,6 +49,16 @@
 }
 
 :root {
+  /* ── UI Scale ─────────────────────────────────────────────────────── */
+  --ui-viewfield-label:  10px;  /* ViewField: etiqueta encima del recuadro */
+  --ui-viewfield-value:  11px;  /* ViewField: valor dentro del recuadro    */
+  --ui-section-divider:  11px;  /* SectionDivider: texto uppercase         */
+  --ui-form-label:       10px;  /* Labels de campos en modo edición        */
+  --ui-input:            11px;  /* Input, Select, textarea/select nativos  */
+  --ui-field-height:     calc(var(--ui-input) * 2.18);  /* ≈24px @ 11px — escala con el font */
+  --ui-table-head-h:     32px;  /* Alto del encabezado de tabla (era h-10 = 40px) */
+  --ui-table-cell-py:    6px;   /* Padding vertical de celdas (era p-2 = 8px) */
+
   /* Superficie */
   --background: oklch(0.975 0.004 240);
   --foreground: oklch(0.13 0.02 260);
@@ -141,5 +151,19 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Native textarea/select using the underline-variant form style */
+  textarea[class~="rounded-t-sm"],
+  select[class~="rounded-t-sm"] {
+    font-size: var(--ui-input);
+  }
+
+  /* Table density — controlled via CSS variables */
+  [data-slot="table-head"] {
+    height: var(--ui-table-head-h);
+  }
+  [data-slot="table-cell"] {
+    padding-top:    var(--ui-table-cell-py);
+    padding-bottom: var(--ui-table-cell-py);
   }
 }

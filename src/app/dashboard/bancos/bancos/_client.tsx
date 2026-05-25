@@ -77,10 +77,10 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -90,8 +90,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -429,7 +428,7 @@ export function BancosClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar bancos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -557,7 +556,7 @@ export function BancosClient({
         modal={false}
       >
         <DialogContent className="flex flex-col w-full max-w-md max-h-[80vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-teal-100' : isEditing ? 'bg-amber-100' : 'bg-teal-100'}`}>
                 {isEditing && !viewTarget
@@ -580,18 +579,20 @@ export function BancosClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-1 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
-                <MapPin className="h-3.5 w-3.5" />
-                General
-              </TabsTrigger>
-            </TabsList>
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full">
+              <TabsList variant="line" className="">
+                <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+                  <MapPin className="h-3.5 w-3.5" />
+                  General
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto pr-1">
               {!isEditing && viewTarget ? (
                 /* ── View mode ── */
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
@@ -601,26 +602,26 @@ export function BancosClient({
                 </div>
               ) : (
                 /* ── Edit / Create mode ── */
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <SectionDivider label="GENERAL" />
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Input variant="l-border"
                       id="nombre"
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}

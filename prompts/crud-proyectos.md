@@ -67,7 +67,6 @@ Proyecto {
   inicio_abono_capital_estricto:    string        -- fecha del recibo (YYYY-MM-DD), default '1900-01-01'
   promesa_vencida:                  smallint      -- 1 = si, 0 = no
   promesa_correlativo:              smallint      -- 1 = si, 0 = no
-  promesa_alfanumerico:             smallint      -- 1 = si, 0 = no
   logo_url:                         string        -- ubicacion del archivo logo
   agrego_usuario:                   uuid          -- gestionado por sistema
   agrego_fecha:                     timestamptz   -- gestionado por sistema
@@ -101,7 +100,6 @@ ProyectoForm {          	-- campos editables por el usuario
   moneda:                       string
   promesa_vencida:              smallint
   promesa_correlativo:          smallint
-  promesa_alfanumerico:         smallint
   logo_url:                     string
 }
 
@@ -236,7 +234,6 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 |-----------------------|----------------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|-----------------|-------|
 | promesa_vencida       | Promesa Vencida      | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               |       |
 | promesa_correlativo   | Promesa Correlativo  | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; Nuevo: siempre habilitado; Edit: siempre desabilitado                                                     | 0               | Una vez grabado el registro este campo no es editable      |
-| promesa_alfanumerico  | Promesa Alfanumerico | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; Nuevo: siempre habilitado; Edit: siempre desabilitado                                                     | 0               | Una vez grabado el registro este campo no es editable      |
 | moneda                | Moneda               | third | _(no se renderiza — ver pestaña Monedas)_ | Select FK [§F]; req; **solo visible en modo Nuevo** (en Ver/Editar se gestiona desde pestaña Monedas)     | primer elemento de `monedas` | prop `monedas`; muestra código ISO; usar `CURRENCY_FLAG_MAP` si disponible |
 | logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
 

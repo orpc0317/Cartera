@@ -53,7 +53,7 @@ Cliente {
   codigo_postal:            string        -- codigo postal de la direccion
   telefono1:                string        -- 1er telefono de contacto
   telefono2:                string        -- 2do telefono de contacto
-  correo:                   string        -- correo electronico del cliente
+  correo:                   string        -- correo electronico del cliente; OBLIGATORIO; formato valido /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   tipo_identificacion:      smallint      -- tipo identificacion tributaria (0 No Aplica, 1 NIT, 2 DPI, 3 Extranjero)
   nombre_factura:           string        -- nombre a facturar
   identificacion_tributaria:string        -- identificacion tributaria (NIT)
@@ -75,7 +75,7 @@ ClienteForm {          	      -- campos editables por el usuario
   codigo_postal:              string
   telefono1:                  string
   telefono2:                  string
-  correo:                     string
+  correo:                     string      -- OBLIGATORIO; validacion email en cliente y servidor
   tipo_identificacion:        smallint
   nombre_factura:             string
   identificacion_tributaria:  string
@@ -104,9 +104,13 @@ getMunicipios()     -> prop 'municipios'     -> alimenta el Select de municipios
 
 Cascada: empresa → proyecto.
 - Al cambiar empresa: resetear proyecto al primero disponible, y si no hubiera uno disponible resetear en blanco con valor 0.
+- Al cambiar empresa: auto-seleccionar primer departamento y primer municipio del pais del proyecto resultante.
 Cascada: pais → departamento → municipio.
 - Al cambiar pais: resetear departamento al primero disponible, y si no hubiera uno disponible resetear en blanco, resetear municipio al primero disponible, y si no hubiera uno disponible resetear en blanco
 - Al cambiar departamento: resetear municipio al primero disponible, y si no hubiera uno disponible resetear en blanco
+- Al cambiar proyecto (directamente): auto-seleccionar primer departamento y primer municipio del pais del proyecto.
+
+Modal Nuevo — estado inicial: pais/departamento/municipio se pre-populan desde el primer proyecto (o empresa si el proyecto no tiene pais); si ninguno tiene pais se usa la IP para detectar el pais y se pre-populan las cascadas.
 
 ```
 > `getEmpresas` y `getProyectos` aplican `.eq('cuenta', cuenta)` internamente — el campo `cuenta` no aparece en ningún Select ni prop visible.
@@ -168,29 +172,36 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ### Tab: General  (icono: MapPin)
 
-**[IDENTIFICACION]**
+> **Layout 2 columnas (§ AG):** Columna izquierda = `[IDENTIFICACION]` + `[GENERAL]`. Columna derecha = `[DIRECCION]` + `[FACTURACION]`.
+
+**[IDENTIFICACION]** — columna izquierda
 
 | Campo    | Label    | Ancho | View      | Nuevo       | Edit             | Default (Nuevo)    | Notas |
 |----------|----------|-------|-----------|-------------|------------------|--------------------|-------|
 | empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible | prop `empresas` |
 | proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa | prop `proyectos` |
-| codigo   | Codigo   | full  | ViewField | —                   | —                        | — (auto-asignado)  |                 |
+| codigo   | Codigo   | full  | ViewField | —                   | —                        | — (auto-asignado)  | solo en vista   |
 
-**[GENERAL]**
+**[GENERAL]** — columna izquierda
 
-| Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo)              | Notas |
-|--------------------------|-----------------|-------|---------------|-----------------------------------------------|------------------------------|-------|
-| nombre                   | Nombre          | full  | ViewField     | Input [§D]; req                             | ''                                    |                                               |
-| direccion                | Direccion       | full  | ViewField     | Input [§D]; req                             | ''                                    |                                               |
-| direccion_pais           | Pais            | half  | ViewField     | Select geo [§X]; req                        | proyecto.pais → empresa.pais → IP geo |                                               |
-| direccion_departamento   | Departamento    | half  | ViewField     | Select geo [§X]; disabled si no hay pais    | por pais                              |                                               |
-| direccion_municipio      | Municipio       | half  | ViewField     | Select geo [§X]; disabled si no hay departamento | por depto                         |                                               |
-| codigo_postal            | Codigo Postal   | half  | ViewField     | Input [§D]                                  | ''                                    |                                               |
-| telefono1                | Telefono 1      | full  | ViewField     | PhoneField [crud-screens§PhoneField]; req    | ''                                    |                                               |
-| telefono2                | Telefono 2      | full  | ViewField     | PhoneField [crud-screens§PhoneField]        | ''                                    | Opcional                                      |
-| correo                   | Correo          | full  | ViewField     | Input [§D]                                  | ''                                    |                                               |
+| Campo     | Label      | Ancho | View      | Nuevo / Edit                               | Default (Nuevo) | Notas    |
+|-----------|------------|-------|-----------|--------------------------------------------|-----------------|----------|
+| nombre    | Nombre     | full  | ViewField | Input [§D]; req                            | ''              |          |
+| telefono1 | Telefono 1 | half  | ViewField | PhoneField [crud-screens§PhoneField]; req  | ''              |          |
+| telefono2 | Telefono 2 | half  | ViewField | PhoneField [crud-screens§PhoneField]       | ''              | Opcional |
+| correo    | Correo     | full  | ViewField | Input [§D]                                 | ''              |          |
 
-**[FACTURACION]**
+**[DIRECCION]** — columna derecha
+
+| Campo                  | Label         | Ancho | View      | Nuevo / Edit                                          | Default (Nuevo)                       | Notas |
+|------------------------|---------------|-------|-----------|-------------------------------------------------------|---------------------------------------|-------|
+| direccion              | Direccion     | full  | ViewField | Input [§D]; req                                       | ''                                    |       |
+| direccion_pais         | Pais          | half  | ViewField | Select geo [§X]; req                                  | proyecto.pais → empresa.pais → IP geo |       |
+| direccion_departamento | Departamento  | half  | ViewField | Select geo [§X]; disabled si no hay pais              | por pais                              |       |
+| direccion_municipio    | Municipio     | half  | ViewField | Select geo [§X]; disabled si no hay departamento      | por depto                             |       |
+| codigo_postal          | Cod. Postal   | half  | ViewField | Input [§D]                                            | ''                                    |       |
+
+**[FACTURACION]** — columna derecha
 
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
 |--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|

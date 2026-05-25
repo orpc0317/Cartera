@@ -120,7 +120,7 @@ const EMPTY_FORM: PromesaForm = {
   fijo_mora: 0,
   mora_enganche: 0,
   dias_gracia: 0,
-  dias_afecto: 0,
+  dias_afectos: 0,
   forma_financiamiento: 1,
   fecha_financiamiento: null,
   monto_financiamiento: 0,
@@ -158,10 +158,10 @@ type ColFilters = Record<string, Set<string>>
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -171,8 +171,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -288,7 +287,7 @@ function ClienteCombobox({
           <button
             type="button"
             disabled={disabled}
-            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 text-[13px] transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:border-dashed disabled:bg-muted/20"
+            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:border-dashed disabled:bg-muted/20"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -303,7 +302,7 @@ function ClienteCombobox({
         >
           <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <Input variant="underline"
+            <Input variant="l-border"
               ref={inputRef}
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               placeholder="Buscar cliente..."
@@ -554,7 +553,7 @@ export function PromesasClient({
         next.interes_mora = firstPro?.interes_mora ?? 0
         next.fijo_mora    = firstPro?.fijo_mora    ?? 0
         next.dias_gracia  = firstPro?.dias_gracia  ?? 0
-        next.dias_afecto  = firstPro?.dias_afectos ?? 0
+        next.dias_afectos  = firstPro?.dias_afectos ?? 0
       }
       if (key === 'proyecto') {
         const pCod = v as number
@@ -576,7 +575,7 @@ export function PromesasClient({
         next.interes_mora = proObj?.interes_mora ?? 0
         next.fijo_mora    = proObj?.fijo_mora    ?? 0
         next.dias_gracia  = proObj?.dias_gracia  ?? 0
-        next.dias_afecto  = proObj?.dias_afectos ?? 0
+        next.dias_afectos  = proObj?.dias_afectos ?? 0
       }
       if (key === 'fase') {
         const fCod = v as number
@@ -646,7 +645,7 @@ export function PromesasClient({
       interes_mora: firstPro?.interes_mora ?? 0,
       fijo_mora:    firstPro?.fijo_mora    ?? 0,
       dias_gracia:  firstPro?.dias_gracia  ?? 0,
-      dias_afecto:  firstPro?.dias_afectos ?? 0,
+      dias_afectos:  firstPro?.dias_afectos ?? 0,
     })
     setTipoCalculo((firstPro?.fijo_mora ?? 0) > 0 ? 1 : 0)
     setViewTarget(null)
@@ -680,7 +679,7 @@ export function PromesasClient({
       fijo_mora:            viewTarget.fijo_mora,
       mora_enganche:        viewTarget.mora_enganche,
       dias_gracia:          viewTarget.dias_gracia,
-      dias_afecto:          viewTarget.dias_afecto,
+      dias_afectos:          viewTarget.dias_afectos,
       forma_financiamiento: viewTarget.forma_financiamiento,
       fecha_financiamiento: viewTarget.fecha_financiamiento,
       monto_financiamiento: viewTarget.monto_financiamiento,
@@ -827,7 +826,7 @@ export function PromesasClient({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="relative max-w-xs flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input variant="underline"
+            <Input variant="l-border"
               placeholder="Buscar promesas..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -1006,7 +1005,7 @@ export function PromesasClient({
         }}
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-fuchsia-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-fuchsia-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
               <div className="flex-1 min-w-0">
@@ -1022,28 +1021,28 @@ export function PromesasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <FileSignature className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
             {/* Tab General */}
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* View mode */}
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Numero" value={String(viewTarget.numero)} />
                   </div>
                   <SectionDivider label="GENERAL" />
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Referencia" value={viewTarget.referencia} />
                     <div />
                     <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
@@ -1052,7 +1051,7 @@ export function PromesasClient({
                   <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
                   <ViewField label="Es Venta" value={viewTarget.venta === 1 ? 'SÃ­' : 'No'} />
                   <SectionDivider label="LOTE" />
-                  <div className="col-span-2 grid grid-cols-4 gap-3">
+                  <div className="col-span-2 grid grid-cols-4 gap-2">
                     <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
                     <ViewField label="Manzana" value={viewTarget.manzana} />
                     <ViewField label="Lote"    value={viewTarget.lote} />
@@ -1061,13 +1060,13 @@ export function PromesasClient({
                   <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="ENGANCHE" />
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <ViewField label="Monto"  value={viewTarget.monto_enganche  ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_enganche)}`  : ''} />
                       <ViewField label="Plazo"  value={viewTarget.plazo_enganche  ? String(viewTarget.plazo_enganche)  : ''} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="1er Pago"    value={viewTarget.primer_enganche ? `${viewTarget.moneda} ${fmtNum(viewTarget.primer_enganche)}` : ''} />
                       <ViewField label="Cuotas"      value={engancheCalcVista.cuotas      ? String(engancheCalcVista.cuotas)     : ''} />
                       <ViewField label="Monto Cuota" value={engancheCalcVista.montoCuota  ? fmtNum(engancheCalcVista.montoCuota)  : ''} />
@@ -1077,40 +1076,40 @@ export function PromesasClient({
                       <ViewField label="Mora" value={viewTarget.mora_enganche === 1 ? 'SÃ­' : 'No'} />
                     </div>
                     <SectionDivider label="FINANCIAMIENTO" />
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <div className="col-span-2">
                         <ViewField label="Forma Calculo" value={FORMAS_CALCULO[viewTarget.forma_financiamiento] ?? `#${viewTarget.forma_financiamiento}`} />
                       </div>
                       <ViewField label="Interés Anual (%)"    value={viewTarget.interes_anual    ? fmtNum(viewTarget.interes_anual)              : ''} />
-                      <ViewField label="Fecha 1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
+                      <ViewField label="1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <ViewField label="Monto Financiamiento" value={viewTarget.monto_financiamiento ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_financiamiento)}` : ''} />
                       <ViewField label="Plazo"                value={viewTarget.plazo_financiamiento ? String(viewTarget.plazo_financiamiento) : ''} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField label="Cuotas"       value={financiamientoCalcVista.cuotas      ? String(financiamientoCalcVista.cuotas)     : ''} />
                       <ViewField label="Monto Cuota"  value={financiamientoCalcVista.montoCuota  ? fmtNum(financiamientoCalcVista.montoCuota)  : ''} />
                       <ViewField label="Ultima Cuota" value={financiamientoCalcVista.ultimaCuota ? fmtNum(financiamientoCalcVista.ultimaCuota) : ''} />
                     </div>
                     <SectionDivider label="MORA" />
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="Tipo Calculo"  value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
                       {tipoCalculo === 0
                         ? <ViewField label="Tasa (%)" value={viewTarget.interes_mora ? fmtNum(viewTarget.interes_mora) : ''} />
                         : <ViewField label="Monto"    value={viewTarget.fijo_mora    ? fmtNum(viewTarget.fijo_mora)    : ''} />
                       }
                       <ViewField label="Dias Gracia"  value={viewTarget.dias_gracia ? String(viewTarget.dias_gracia) : ''} />
-                      <ViewField label="Dias Afectos" value={viewTarget.dias_afecto === 1 ? 'Un Mes' : 'Todos Los Dias'} />
+                      <ViewField label="Dias Afectos" value={viewTarget.dias_afectos === 1 ? 'Un Mes' : 'Todos Los Dias'} />
                     </div>
                     <SectionDivider label="OTROS" />
                     <div className="col-span-2 grid gap-1.5">
-                      <span className="text-sm font-medium leading-none text-muted-foreground">Observacion</span>
-                      <div className="min-h-[2.5rem] flex items-start rounded-lg bg-muted/50 border border-border/40 px-3 py-2">
-                        <span className="text-[13px] font-medium text-foreground whitespace-pre-wrap">{viewTarget.observacion || ''}</span>
+                      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Observacion</span>
+                      <div className="min-h-[2.5rem] flex items-start rounded-none bg-transparent border-0 border-b border-primary/50 px-3 py-2">
+                        <span className="font-medium text-foreground whitespace-pre-wrap" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.observacion || ''}</span>
                       </div>
                     </div>
                   </div>
@@ -1119,12 +1118,12 @@ export function PromesasClient({
               /* Edit mode */
               ) : isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2 space-y-1.5">
                     <Label>Empresa</Label>
                     <Select value={String(form.empresa)} disabled>
-                      <SelectTrigger variant="underline" className="w-full">
+                      <SelectTrigger variant="l-border" className="w-full">
                         <SelectValue>
                           {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -1137,7 +1136,7 @@ export function PromesasClient({
                   <div className="col-span-2 space-y-1.5">
                     <Label>Proyecto</Label>
                     <Select value={String(form.proyecto)} disabled>
-                      <SelectTrigger variant="underline" className="w-full">
+                      <SelectTrigger variant="l-border" className="w-full">
                         <SelectValue>
                           {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -1147,11 +1146,11 @@ export function PromesasClient({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Numero" value={String(viewTarget.numero)} />
                   </div>
                   <SectionDivider label="GENERAL" />
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Referencia" value={viewTarget.referencia} />
                     <div />
                     <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
@@ -1163,7 +1162,7 @@ export function PromesasClient({
                     <Label htmlFor="es-venta-edit">Es Venta</Label>
                   </div>
                   <SectionDivider label="LOTE" />
-                  <div className="col-span-2 grid grid-cols-4 gap-3">
+                  <div className="col-span-2 grid grid-cols-4 gap-2">
                     <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
                     <ViewField label="Manzana" value={viewTarget.manzana} />
                     <ViewField label="Lote"    value={viewTarget.lote} />
@@ -1172,13 +1171,13 @@ export function PromesasClient({
                   <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="ENGANCHE" />
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <ViewField label="Monto"  value={viewTarget.monto_enganche  ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_enganche)}`  : ''} />
                       <ViewField label="Plazo"  value={viewTarget.plazo_enganche  ? String(viewTarget.plazo_enganche)  : ''} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="1er Pago"    value={viewTarget.primer_enganche ? `${viewTarget.moneda} ${fmtNum(viewTarget.primer_enganche)}` : ''} />
                       <ViewField label="Cuotas"      value={engancheCalcVista.cuotas      ? String(engancheCalcVista.cuotas)     : ''} />
                       <ViewField label="Monto Cuota" value={engancheCalcVista.montoCuota  ? fmtNum(engancheCalcVista.montoCuota)  : ''} />
@@ -1188,38 +1187,38 @@ export function PromesasClient({
                       <ViewField label="Mora" value={viewTarget.mora_enganche === 1 ? 'SÃ­' : 'No'} />
                     </div>
                     <SectionDivider label="FINANCIAMIENTO" />
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <div className="col-span-2">
                         <ViewField label="Forma Calculo" value={FORMAS_CALCULO[viewTarget.forma_financiamiento] ?? `#${viewTarget.forma_financiamiento}`} />
                       </div>
                       <ViewField label="Interés Anual (%)"    value={viewTarget.interes_anual    ? fmtNum(viewTarget.interes_anual)              : ''} />
-                      <ViewField label="Fecha 1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
+                      <ViewField label="1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <ViewField label="Monto Financiamiento" value={viewTarget.monto_financiamiento ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_financiamiento)}` : ''} />
                       <ViewField label="Plazo"                value={viewTarget.plazo_financiamiento ? String(viewTarget.plazo_financiamiento) : ''} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField label="Cuotas"       value={financiamientoCalcVista.cuotas      ? String(financiamientoCalcVista.cuotas)     : ''} />
                       <ViewField label="Monto Cuota"  value={financiamientoCalcVista.montoCuota  ? fmtNum(financiamientoCalcVista.montoCuota)  : ''} />
                       <ViewField label="Ultima Cuota" value={financiamientoCalcVista.ultimaCuota ? fmtNum(financiamientoCalcVista.ultimaCuota) : ''} />
                     </div>
                     <SectionDivider label="MORA" />
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="Tipo Calculo"  value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
                       {tipoCalculo === 0
                         ? <ViewField label="Tasa (%)" value={viewTarget.interes_mora ? fmtNum(viewTarget.interes_mora) : ''} />
                         : <ViewField label="Monto"    value={viewTarget.fijo_mora    ? fmtNum(viewTarget.fijo_mora)    : ''} />
                       }
                       <ViewField label="Dias Gracia"  value={viewTarget.dias_gracia ? String(viewTarget.dias_gracia) : ''} />
-                      <ViewField label="Dias Afectos" value={viewTarget.dias_afecto === 1 ? 'Un Mes' : 'Todos Los Dias'} />
+                      <ViewField label="Dias Afectos" value={viewTarget.dias_afectos === 1 ? 'Un Mes' : 'Todos Los Dias'} />
                     </div>
                     <SectionDivider label="OTROS" />
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="observacion-edit" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Observacion</Label>
+                      <Label htmlFor="observacion-edit" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Observacion</Label>
                       <textarea
                         id="observacion-edit"
                         value={form.observacion ?? ''}
@@ -1235,12 +1234,12 @@ export function PromesasClient({
               /* Create mode */
               ) : (
                 <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2 space-y-1.5">
                     <Label>Empresa</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                      <SelectTrigger variant="underline" className="w-full">
+                      <SelectTrigger variant="l-border" className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -1253,7 +1252,7 @@ export function PromesasClient({
                   <div className="col-span-2 space-y-1.5">
                     <Label>Proyecto</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                      <SelectTrigger variant="underline" className="w-full">
+                      <SelectTrigger variant="l-border" className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -1263,24 +1262,28 @@ export function PromesasClient({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="space-y-1.5">
                       <Label>Numero</Label>
-                      <Input variant="underline"
+                      <Input variant="l-border"
                         type="number"
                         min={1}
                         step={1}
                         value={form.numero === 0 ? '' : form.numero}
                         onChange={(e) => setForm((prev) => ({ ...prev, numero: Number(e.target.value) || 0 }))}
-                        placeholder="Ej: 1001"
+                        placeholder={proyectoActivo?.promesa_correlativo === 1 ? 'Asignado automáticamente' : 'Ej: 1001'}
+                        disabled={proyectoActivo?.promesa_correlativo === 1}
                       />
+                      {proyectoActivo?.promesa_correlativo === 1 && (
+                        <p className="text-[11px] text-muted-foreground">El sistema asigna el número automáticamente.</p>
+                      )}
                     </div>
                   </div>
                   <SectionDivider label="GENERAL" />
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="space-y-1.5">
                       <Label>Referencia</Label>
-                      <Input variant="underline"
+                      <Input variant="l-border"
                         value={form.referencia}
                         onChange={(e) => f('referencia', e.target.value)}
                         placeholder="No. de contrato o referencia"
@@ -1289,7 +1292,7 @@ export function PromesasClient({
                     <div />
                     <div className="space-y-1.5">
                       <Label>Fecha</Label>
-                      <Input variant="underline"
+                      <Input variant="l-border"
                         type="date"
                         value={form.fecha}
                         onChange={(e) => setForm((prev) => ({ ...prev, fecha: e.target.value }))}
@@ -1308,7 +1311,7 @@ export function PromesasClient({
                   <div className="col-span-2 space-y-1.5">
                     <Label>Vendedor</Label>
                     <Select value={String(form.vendedor)} onValueChange={(v) => setForm((prev) => ({ ...prev, vendedor: Number(v) }))}>
-                      <SelectTrigger variant="underline" className="w-full">
+                      <SelectTrigger variant="l-border" className="w-full">
                         <SelectValue placeholder="Selecciona vendedor">
                           {(v: string) => v && v !== '0' ? (vendedorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -1327,11 +1330,11 @@ export function PromesasClient({
                     <Label htmlFor="es-venta">Es Venta</Label>
                   </div>
                   <SectionDivider label="LOTE" />
-                  <div className="col-span-2 grid grid-cols-4 gap-3">
+                  <div className="col-span-2 grid grid-cols-4 gap-2">
                     <div className="col-span-2 space-y-1.5">
                       <Label>Fase</Label>
                       <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona fase">
                             {(v: string) => v && v !== '0' ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -1344,7 +1347,7 @@ export function PromesasClient({
                     <div className="space-y-1.5"> {/* Manzana â€” 1/4 */}
                       <Label>Manzana</Label>
                       <Select value={form.manzana} onValueChange={(v) => f('manzana', v)}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona manzana">
                             {(v: string) => v || null}
                           </SelectValue>
@@ -1357,7 +1360,7 @@ export function PromesasClient({
                     <div className="space-y-1.5">
                       <Label>Lote</Label>
                       <Select value={form.lote} onValueChange={(v) => f('lote', v)}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona lote">
                             {(v: string) => v || null}
                           </SelectValue>
@@ -1372,12 +1375,12 @@ export function PromesasClient({
                   <ViewField label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="ENGANCHE" />
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <Label>Monto</Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           type="number" min={0} step={0.01}
                           value={form.monto_enganche || ''}
                           onChange={(e) => setForm((prev) => ({ ...prev, monto_enganche: Number(e.target.value) || 0 }))}
@@ -1386,7 +1389,7 @@ export function PromesasClient({
                       </div>
                       <div className="space-y-1.5">
                         <Label>Plazo</Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           type="number" min={0} step={1}
                           value={form.plazo_enganche || ''}
                           onChange={(e) => setForm((prev) => ({ ...prev, plazo_enganche: Number(e.target.value) || 0 }))}
@@ -1394,10 +1397,10 @@ export function PromesasClient({
                         />
                       </div>
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <div className="space-y-1.5">
                         <Label>1er Pago</Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           type="number" min={0} step={0.01}
                           value={form.primer_enganche || ''}
                           onChange={(e) => setForm((prev) => ({ ...prev, primer_enganche: Number(e.target.value) || 0 }))}
@@ -1417,11 +1420,11 @@ export function PromesasClient({
                       <Label htmlFor="mora-enganche">Mora</Label>
                     </div>
                     <SectionDivider label="FINANCIAMIENTO" />
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <div className="col-span-2 space-y-1.5">
                         <Label>Forma Calculo</Label>
                         <Select value={String(form.forma_financiamiento)} onValueChange={(v) => setForm((prev) => ({ ...prev, forma_financiamiento: Number(v) }))}>
-                          <SelectTrigger variant="underline" className="w-full">
+                          <SelectTrigger variant="l-border" className="w-full">
                             <SelectValue placeholder="Selecciona forma de calculo">
                               {(v: string) => v ? (FORMAS_CALCULO[Number(v)] ?? v) : null}
                             </SelectValue>
@@ -1435,7 +1438,7 @@ export function PromesasClient({
                       </div>
                       <div className="space-y-1.5">
                         <Label>Interés Anual (%)</Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           type="number" min={0} step={0.01}
                           value={form.interes_anual || ''}
                           onChange={(e) => setForm((prev) => ({ ...prev, interes_anual: Number(e.target.value) || 0 }))}
@@ -1443,19 +1446,19 @@ export function PromesasClient({
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Fecha 1era Cuota</Label>
-                        <Input variant="underline"
+                        <Label>1era Cuota</Label>
+                        <Input variant="l-border"
                           type="date"
                           value={form.fecha_financiamiento ?? ''}
                           onChange={(e) => setForm((prev) => ({ ...prev, fecha_financiamiento: e.target.value || null }))}
                         />
                       </div>
                     </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <ViewField label="Monto Financiamiento" value={montoFinancCalc ? `${form.moneda} ${fmtNum(montoFinancCalc)}` : ''} />
                       <div className="space-y-1.5">
                         <Label>Plazo</Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           type="number" min={0} step={1}
                           value={form.plazo_financiamiento || ''}
                           onChange={(e) => setForm((prev) => ({ ...prev, plazo_financiamiento: Number(e.target.value) || 0 }))}
@@ -1463,17 +1466,17 @@ export function PromesasClient({
                         />
                       </div>
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField label="Cuotas"       value={financiamientoCalcForm.cuotas      ? String(financiamientoCalcForm.cuotas)     : ''} />
                       <ViewField label="Monto Cuota"  value={financiamientoCalcForm.montoCuota  ? fmtNum(financiamientoCalcForm.montoCuota)  : ''} />
                       <ViewField label="Ultima Cuota" value={financiamientoCalcForm.ultimaCuota ? fmtNum(financiamientoCalcForm.ultimaCuota) : ''} />
                     </div>
                     <SectionDivider label="MORA" />
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
-                      <div className="grid gap-1.5">
-                        <Label className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`}>Forma Calculo</Label>
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
+                      <div className="grid gap-1">
+                        <Label className={`font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Forma Calculo</Label>
                         <Select value={String(form.forma_mora)} onValueChange={(v) => setForm((prev) => ({ ...prev, forma_mora: Number(v) }))} disabled={!moraEditable}>
-                          <SelectTrigger variant="underline" className="w-full">
+                          <SelectTrigger variant="l-border" className="w-full">
                             <SelectValue>{(v: string) => v === '1' ? 'Diario' : 'Mensual'}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
@@ -1483,9 +1486,9 @@ export function PromesasClient({
                         </Select>
                       </div>
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
-                      <div className="grid gap-1.5">
-                        <Label className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`}>Tipo Calculo</Label>
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
+                      <div className="grid gap-1">
+                        <Label className={`font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Tipo Calculo</Label>
                         <Select
                           value={String(tipoCalculo)}
                           onValueChange={(v) => {
@@ -1496,7 +1499,7 @@ export function PromesasClient({
                           }}
                           disabled={!moraEditable}
                         >
-                          <SelectTrigger variant="underline" className="w-full">
+                          <SelectTrigger variant="l-border" className="w-full">
                             <SelectValue>{(v: string) => v === '1' ? 'Valor Fijo' : 'Tasa'}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
@@ -1506,24 +1509,24 @@ export function PromesasClient({
                         </Select>
                       </div>
                       {tipoCalculo === 0 ? (
-                        <div className="grid gap-1.5">
-                          <Label className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`}>Tasa (%)</Label>
-                          <Input variant="underline" type="number" step="0.01" value={form.interes_mora || ''} onChange={(e) => setForm((prev) => ({ ...prev, interes_mora: Number(e.target.value) || 0 }))} disabled={!moraEditable} placeholder="0.00" />
+                        <div className="grid gap-1">
+                          <Label className={`font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Tasa (%)</Label>
+                          <Input variant="l-border" type="number" step="0.01" value={form.interes_mora || ''} onChange={(e) => setForm((prev) => ({ ...prev, interes_mora: Number(e.target.value) || 0 }))} disabled={!moraEditable} placeholder="0.00" />
                         </div>
                       ) : (
-                        <div className="grid gap-1.5">
-                          <Label className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`}>Monto</Label>
-                          <Input variant="underline" type="number" step="0.01" value={form.fijo_mora || ''} onChange={(e) => setForm((prev) => ({ ...prev, fijo_mora: Number(e.target.value) || 0 }))} disabled={!moraEditable} placeholder="0.00" />
+                        <div className="grid gap-1">
+                          <Label className={`font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Monto</Label>
+                          <Input variant="l-border" type="number" step="0.01" value={form.fijo_mora || ''} onChange={(e) => setForm((prev) => ({ ...prev, fijo_mora: Number(e.target.value) || 0 }))} disabled={!moraEditable} placeholder="0.00" />
                         </div>
                       )}
-                      <div className="grid gap-1.5">
-                        <Label className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`}>Dias Gracia</Label>
-                        <Input variant="underline" type="number" value={form.dias_gracia || ''} onChange={(e) => setForm((prev) => ({ ...prev, dias_gracia: Number(e.target.value) || 0 }))} disabled={!moraEditable} placeholder="0" />
+                      <div className="grid gap-1">
+                        <Label className={`font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Dias Gracia</Label>
+                        <Input variant="l-border" type="number" value={form.dias_gracia || ''} onChange={(e) => setForm((prev) => ({ ...prev, dias_gracia: Number(e.target.value) || 0 }))} disabled={!moraEditable} placeholder="0" />
                       </div>
-                      <div className="grid gap-1.5">
-                        <Label className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`}>Dias Afectos</Label>
-                        <Select value={String(form.dias_afecto ?? 0)} onValueChange={(v) => setForm((prev) => ({ ...prev, dias_afecto: Number(v) }))} disabled={!moraEditable}>
-                          <SelectTrigger variant="underline" className="w-full">
+                      <div className="grid gap-1">
+                        <Label className={`font-semibold tracking-wider whitespace-nowrap${!moraEditable ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Dias Afectos</Label>
+                        <Select value={String(form.dias_afectos ?? 0)} onValueChange={(v) => setForm((prev) => ({ ...prev, dias_afectos: Number(v) }))} disabled={!moraEditable}>
+                          <SelectTrigger variant="l-border" className="w-full">
                             <SelectValue>{(v: string) => v === '1' ? 'Un Mes' : 'Todos Los Dias'}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
@@ -1535,7 +1538,7 @@ export function PromesasClient({
                     </div>
                     <SectionDivider label="OTROS" />
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="observacion-create" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Observacion</Label>
+                      <Label htmlFor="observacion-create" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Observacion</Label>
                       <textarea
                         id="observacion-create"
                         value={form.observacion ?? ''}

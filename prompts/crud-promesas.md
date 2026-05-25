@@ -44,7 +44,7 @@ Promesa {
   cuenta:                   varchar       -- gestionado por sistema (cuenta activa del usuario)
   empresa:                  number        -- FK -> cartera.t_empresa.codigo
   proyecto:                 number        -- FK -> cartera.t_proyecto.codigo, filtrado por empresa
-  numero:                   number        -- parte del PK, ingresado por el usuario
+  numero:                   number        -- parte del PK; asignado automáticamente por trigger si t_proyecto.promesa_correlativo = 1; ingresado por el usuario si = 0
   referencia:               string        -- numero externo de contrato
   fecha:                    date          -- fecha promesa
   cliente:                  number        -- FK -> cartera.t_cliente.codigo, filtrado por proyecto
@@ -65,9 +65,9 @@ Promesa {
   fijo_mora:                numeric       -- valor mora fijo, puede ser mayor o igual a 0.00
   mora_enganche:            smallint      -- indica si hay que calcular mora al enganche
   dias_gracia:              numeric       -- indica los dias de gracia antes de calcular mora
-  dias_afecto:              smallint      -- indica los dias afectos a mora (0 todos los dias, 1 un mes)
+  dias_afectos:              smallint      -- indica los dias afectos a mora (0 todos los dias, 1 un mes)
   forma_financiamiento:     smallint      -- indica la forma de financiamiento (1 cuota nivelada)
-  fecha_financiamiento:     date          -- fecha de la primera cuota del financiamiento
+  fecha_financiamiento:     date          -- fecha de la primera cuota del financiamiento; label UI: "1era Cuota"
   monto_financiamiento:     numeric       -- monto a financiar, puede ser mayor o igual a 0.00, su valor inicial es monto lote - monto enganche
   plazo_financiamiento:     numeric       -- numero de cuotas para pagar el financiamiento, no puede ser 0 si monto financiamiento es mayor a 0.00
   fecha_cancelacion:        date          -- fecha en que la promesa se cancelo (se termino de pagar)
@@ -104,7 +104,7 @@ PromesaForm {          	    -- campos editables por el usuario
   fijo_mora:                numeric
   mora_enganche:            smallint
   dias_gracia:              numeric
-  dias_afecto:              smallint
+  dias_afectos:              smallint
   forma_financiamiento:     smallint
   fecha_financiamiento:     date
   monto_financiamiento:     numeric
@@ -213,7 +213,7 @@ Sticky izquierdo: `numero` (label: `"Numero"`, es el identificador visible del P
 |----------|----------|-------|-----------|---------------------|--------------------------|---------------------|-----------------------------------------------------|
 | empresa  | Empresa  | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primera disponible  | prop `empresas`                                     |
 | proyecto | Proyecto | full  | ViewField | Select FK [§F]; req | Select FK [§F]; disabled | primero de empresa  | prop `proyectos`                                    |
-| numero   | Numero   | third | ViewField | Input [§D]; req     | ViewField                |                     | solo en su fila (wrapped en grid-cols-3); inmutable tras creación |
+| numero   | Numero   | third | ViewField | Input [§D]; req si `proyecto.promesa_correlativo = 0`; disabled con placeholder _"Asignado automáticamente"_ si `promesa_correlativo = 1` (el trigger DB asigna el correlativo) | ViewField | | solo en su fila (wrapped en grid-cols-3); inmutable tras creación |
 
 **[GENERAL]**
 
@@ -245,14 +245,17 @@ Sticky izquierdo: `numero` (label: `"Numero"`, es el identificador visible del P
 ## REGLAS_ESPECIFICAS
 
 1. `numero` es inmutable tras la creacion (parte del PK compuesto). No puede editarse.
-2. No puede existir duplicado de `numero` dentro del mismo `(cuenta, empresa, proyecto, numero)`. Validar en backend antes del INSERT con `.eq('cuenta', cuenta).eq('empresa', ...).eq('proyecto', ...).eq('numero', ...)`.
-3. Mostrar advertencia si `proyecto.length === 0` deshabilitar el boton "Nueva Promesa".
+2. El campo `numero` en el formulario de creacion se comporta segun `t_proyecto.promesa_correlativo`:
+   - `promesa_correlativo = 1`: el sistema asigna el correlativo automáticamente vía trigger `fn_correlativo_promesa`; el campo se muestra **disabled** con placeholder _"Asignado automáticamente"_; no se valida ni se requiere valor del usuario.
+   - `promesa_correlativo = 0`: el usuario ingresa el número manualmente; el campo es **requerido** y debe ser mayor a 0.
+3. No puede existir duplicado de `numero` dentro del mismo `(cuenta, empresa, proyecto)`. Validar en backend antes del INSERT únicamente cuando `promesa_correlativo = 0` (cuando es 1 el trigger garantiza unicidad).
+4. Todos los `<Input type="number">` de esta pantalla **no muestran spinner** (flechitas de incremento). El componente `Input` lo suprime globalmente con `[appearance:textfield]` cuando `type="number"`; no se necesita clase adicional por campo.
 
 ---
 
 ## VALIDACIONES_BACKEND
 
-- Duplicado: `numero` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe una promesa con ese numero en este proyecto.'`
+- Duplicado de `numero`: solo validar cuando `t_proyecto.promesa_correlativo = 0`. Si `numero` ya existe en el mismo `(cuenta, empresa, proyecto)` -> `'Ya existe una promesa con ese numero en este proyecto.'`
 - Concurrencia optimista en UPDATE: usar `modifico_fecha` como token. Si no hay filas actualizadas -> `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
 - **Restriccion de eliminacion:** antes del DELETE, verificar que no existan registros en:
    1. `cartera.t_recibo_caja` con el mismo `(cuenta, empresa, proyecto, promesa)`. Si existen -> `'No se puede eliminar esta promesa porque tiene recibos caja asociados.'` La verificacion usa `.select('*', { count: 'exact', head: true })` para no traer datos, solo el conteo.

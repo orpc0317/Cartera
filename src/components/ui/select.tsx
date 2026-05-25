@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
@@ -33,19 +33,22 @@ function SelectTrigger({
   size = "default",
   variant = "default",
   children,
+  style,
   ...props
 }: SelectPrimitive.Trigger.Props & {
   size?: "sm" | "default"
-  variant?: "default" | "underline"
+  variant?: "default" | "underline" | "l-border"
 }) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
+      style={{ height: size === 'sm' ? '1.5rem' : 'var(--ui-field-height)', fontSize: 'var(--ui-input)', ...style }}
       className={cn(
-        "flex w-fit items-center justify-between gap-1.5 text-[13px] whitespace-nowrap transition-colors outline-none select-none disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        variant === "default" && "rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:rounded-[min(var(--radius-md),10px)] dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        variant === "underline" && "rounded-t-sm border-0 border-b border-input bg-muted/30 py-2 pr-2 pl-2.5 focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:border-dashed disabled:bg-muted/20 aria-invalid:border-b-2 aria-invalid:border-destructive",
+        "flex w-fit items-center justify-between gap-1.5 whitespace-nowrap transition-colors outline-none select-none disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        variant === "default" && "rounded-lg border border-input bg-transparent py-1 pr-2 pl-2.5 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:rounded-[min(var(--radius-md),10px)] dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        variant === "underline" && "rounded-t-sm border-0 border-b border-input bg-muted/30 py-1 pr-2 pl-2.5 focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:border-dashed disabled:bg-muted/20 aria-invalid:border-b-2 aria-invalid:border-destructive",
+        variant === "l-border" && "rounded-none border-0 border-b border-primary/50 bg-transparent py-1 pr-2 pl-2 focus-visible:border-b-2 focus-visible:border-primary focus-visible:outline-none disabled:opacity-50 aria-invalid:border-b-2 aria-invalid:border-destructive",
         className
       )}
       {...props}

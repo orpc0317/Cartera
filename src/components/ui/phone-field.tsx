@@ -54,7 +54,7 @@ export function PhoneField({
   return (
     <div className="flex gap-2">
       <Select value={iso} onValueChange={(v: string | null) => onIsoChange(v ?? '')}>
-        <SelectTrigger className="w-[110px] shrink-0 px-2">
+        <SelectTrigger variant="underline" className="w-[110px] shrink-0 px-2">
           <SelectValue placeholder="País">
             {(v: string) => v && DIAL_CODES[v] ? (
               <span className="flex items-center gap-1">
@@ -75,7 +75,7 @@ export function PhoneField({
           ))}
         </SelectContent>
       </Select>
-      <Input className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
+      <Input variant="underline" className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
 }

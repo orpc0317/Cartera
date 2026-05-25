@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Eye, Plus, Users, Search,
-  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Receipt, Download,
+  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -129,10 +129,10 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -142,8 +142,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -434,16 +433,22 @@ export function ClientesClient({
         const isoFromProyecto = fp?.direccion_pais ?? ''
         if (!next.telefono1) { setTel1Iso(isoFromProyecto); setTel1Local('') }
         if (!next.telefono2) { setTel2Iso(isoFromProyecto); setTel2Local('') }
-        next.direccion_pais = isoFromProyecto; next.direccion_departamento = ''; next.direccion_municipio = ''
-        setPaisCodigo(isoFromProyecto); setDeptoCodigo('')
+        const empDepto = departamentos.find((d) => d.pais === isoFromProyecto)
+        const empDCode = empDepto?.codigo ?? ''
+        const empMCode = empDepto ? (municipios.find((m) => m.pais === isoFromProyecto && m.departamento === empDCode)?.codigo ?? '') : ''
+        next.direccion_pais = isoFromProyecto; next.direccion_departamento = empDCode; next.direccion_municipio = empMCode
+        setPaisCodigo(isoFromProyecto); setDeptoCodigo(empDCode)
       }
       if (key === 'proyecto') {
         const fp = proyectos.find((p) => p.codigo === Number(value))
         const isoFromProyecto = fp?.direccion_pais ?? ''
         if (!next.telefono1) { setTel1Iso(isoFromProyecto); setTel1Local('') }
         if (!next.telefono2) { setTel2Iso(isoFromProyecto); setTel2Local('') }
-        next.direccion_pais = isoFromProyecto; next.direccion_departamento = ''; next.direccion_municipio = ''
-        setPaisCodigo(isoFromProyecto); setDeptoCodigo('')
+        const prjDepto = departamentos.find((d) => d.pais === isoFromProyecto)
+        const prjDCode = prjDepto?.codigo ?? ''
+        const prjMCode = prjDepto ? (municipios.find((m) => m.pais === isoFromProyecto && m.departamento === prjDCode)?.codigo ?? '') : ''
+        next.direccion_pais = isoFromProyecto; next.direccion_departamento = prjDCode; next.direccion_municipio = prjMCode
+        setPaisCodigo(isoFromProyecto); setDeptoCodigo(prjDCode)
       }
       if (key === 'direccion_pais') {
         const newPais = value as string
@@ -502,50 +507,44 @@ export function ClientesClient({
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)
     const firstProyectoCodigo = firstProyecto?.codigo ?? 0
 
-    function applyWithPais(paisCode: string) {
-      const resolved = paises.find((p) => p.codigo === paisCode) ? paisCode : (paises[0]?.codigo ?? '')
+    const paisFromProject = firstProyecto?.direccion_pais ?? ''
+    const paisFromEmpresa = empresas[0]?.direccion_pais ?? ''
+    const initPais = paisFromProject || paisFromEmpresa
+
+    if (initPais) {
+      const resolved = paises.find((p) => p.codigo === initPais) ? initPais : (paises[0]?.codigo ?? '')
       const firstDepto = departamentos.find((d) => d.pais === resolved)
       const deptoCod = firstDepto?.codigo ?? ''
       const municipioCod = firstDepto
         ? (municipios.find((m) => m.pais === resolved && m.departamento === deptoCod)?.codigo ?? '')
         : ''
-      setForm((prev) => ({
-        ...prev,
-        direccion_pais: resolved,
-        direccion_departamento: deptoCod,
-        direccion_municipio: municipioCod,
-      }))
-      setPaisCodigo(resolved)
-      setDeptoCodigo(deptoCod)
-      setTel1Iso(resolved)
-      setTel2Iso(resolved)
-    }
-
-    setForm({
-      ...EMPTY_FORM,
-      empresa: firstEmpresa,
-      proyecto: firstProyectoCodigo,
-      tipo_identificacion: 0,
-      regimen_iva: 0,
-    })
-    setPaisCodigo('')
-    setDeptoCodigo('')
-    setTel1Iso(''); setTel1Local('')
-    setTel2Iso(''); setTel2Local('')
-    setDialogOpen(true)
-
-    const paisFromProject = firstProyecto?.direccion_pais ?? ''
-    const paisFromEmpresa = empresas[0]?.direccion_pais ?? ''
-    if (paisFromProject) {
-      applyWithPais(paisFromProject)
-    } else if (paisFromEmpresa) {
-      applyWithPais(paisFromEmpresa)
+      setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyectoCodigo, tipo_identificacion: 0, regimen_iva: 0,
+        direccion_pais: resolved, direccion_departamento: deptoCod, direccion_municipio: municipioCod })
+      setPaisCodigo(resolved); setDeptoCodigo(deptoCod)
+      setTel1Iso(resolved); setTel1Local('')
+      setTel2Iso(resolved); setTel2Local('')
     } else {
+      function applyWithPais(paisCode: string) {
+        const resolved = paises.find((p) => p.codigo === paisCode) ? paisCode : (paises[0]?.codigo ?? '')
+        const firstDepto = departamentos.find((d) => d.pais === resolved)
+        const deptoCod = firstDepto?.codigo ?? ''
+        const municipioCod = firstDepto
+          ? (municipios.find((m) => m.pais === resolved && m.departamento === deptoCod)?.codigo ?? '')
+          : ''
+        setForm((prev) => ({ ...prev, direccion_pais: resolved, direccion_departamento: deptoCod, direccion_municipio: municipioCod }))
+        setPaisCodigo(resolved); setDeptoCodigo(deptoCod)
+        setTel1Iso(resolved); setTel2Iso(resolved)
+      }
+      setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyectoCodigo, tipo_identificacion: 0, regimen_iva: 0 })
+      setPaisCodigo(''); setDeptoCodigo('')
+      setTel1Iso(''); setTel1Local('')
+      setTel2Iso(''); setTel2Local('')
       fetch('https://ipapi.co/json/')
         .then((r) => r.json())
         .then((d: Record<string, unknown>) => { if (d.country_code) applyWithPais(d.country_code as string) })
         .catch(() => {})
     }
+    setDialogOpen(true)
   }
 
   function openView(cliente: Cliente) {
@@ -589,6 +588,8 @@ export function ClientesClient({
   function handleSave() {
     if (!form.nombre.trim())    { toast.error('El nombre es requerido.'); return }
     if (!form.telefono1.trim()) { toast.error('El telefono es requerido.'); return }
+    if (!form.correo.trim())    { toast.error('El correo es requerido.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) { toast.error('El correo electr\u00f3nico no tiene un formato v\u00e1lido.'); return }
     if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && (form.identificacion_tributaria ?? '').trim() && !validarNIT(form.identificacion_tributaria ?? '')) {
       toast.error('El NIT no tiene una estructura valida.')
       return
@@ -674,7 +675,7 @@ export function ClientesClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar clientes..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -1026,10 +1027,10 @@ export function ClientesClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
 
           {/* Header */}
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-indigo-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-indigo-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-indigo-100' : isEditing ? 'bg-amber-100' : 'bg-indigo-100'}`}>
                 {isEditing && !viewTarget
@@ -1053,233 +1054,241 @@ export function ClientesClient({
           </DialogHeader>
 
           {/* Tabs */}
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-              <TabsTrigger value="facturacion" className="gap-1.5">
-                <Receipt className="h-3.5 w-3.5" /> Facturacion
-              </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
-            <TabsContent value="general" className="mt-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
-
-              {/* ── Vista ── */}
+            <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex gap-6 items-start">
 
-                  <div className="col-span-2">
-                    <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Nombre Cliente" value={viewTarget.nombre} />
-                  </div>
-
-                  <SectionDivider label="Contacto" />
-
-                  <ViewField label="Telefono" value={viewTarget.telefono1} />
-                  <ViewField label="Telefono 2" value={viewTarget.telefono2} />
-                  <div className="col-span-2">
-                    <ViewField label="Correo" value={viewTarget.correo} />
-                  </div>
-
-                  <SectionDivider label="Direccion" />
-
-                  <div className="col-span-2">
-                    <ViewField label="Direccion" value={viewTarget.direccion} />
-                  </div>
-
-                  {/* Pais con bandera */}
-                  <div className="grid gap-1">
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
-                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-                      {viewTarget.direccion_pais ? (() => {
-                        const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
-                        return (
-                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
-                            {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                            {p?.nombre ?? viewTarget.direccion_pais}
-                          </span>
-                        )
-                      })() : <span className="block text-[13px] font-medium text-foreground">—</span>}
+                  {/* Columna izquierda */}
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SectionDivider label="IDENTIFICACION" />
+                    <div className="col-span-2">
+                      <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
+                    </div>
+                    <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
+                    <SectionDivider label="GENERAL" />
+                    <div className="col-span-2">
+                      <ViewField label="Nombre" value={viewTarget.nombre} />
+                    </div>
+                    {/* Telefono 1 — bandera + codigo + numero */}
+                    <div className="col-span-2 grid gap-1.5">
+                      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Telefono</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                        {viewTarget.telefono1 ? (() => {
+                          const { iso, local } = splitPhone(viewTarget.telefono1)
+                          return (
+                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                              {iso && <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {iso && DIAL_CODES[iso] ? `+${DIAL_CODES[iso]} ${local}` : viewTarget.telefono1}
+                            </span>
+                          )
+                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>—</span>}
+                      </div>
+                    </div>
+                    {/* Telefono 2 — bandera + codigo + numero */}
+                    <div className="col-span-2 grid gap-1.5">
+                      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Telefono 2</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                        {viewTarget.telefono2 ? (() => {
+                          const { iso, local } = splitPhone(viewTarget.telefono2)
+                          return (
+                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                              {iso && <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {iso && DIAL_CODES[iso] ? `+${DIAL_CODES[iso]} ${local}` : viewTarget.telefono2}
+                            </span>
+                          )
+                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>—</span>}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField label="Correo" value={viewTarget.correo} />
                     </div>
                   </div>
 
-                  <ViewField
-                    label="Departamento"
-                    value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
-                  />
-                  <ViewField
-                    label="Municipio"
-                    value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
-                  />
-                  <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
+                  {/* Separador vertical */}
+                  <div className="w-px self-stretch bg-primary/30" />
+
+                  {/* Columna derecha */}
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SectionDivider label="DIRECCION" />
+                    <div className="col-span-2">
+                      <ViewField label="Direccion" value={viewTarget.direccion} />
+                    </div>
+                    {/* Pais con bandera */}
+                    <div className="grid gap-1">
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                        {viewTarget.direccion_pais ? (() => {
+                          const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
+                          return (
+                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                              {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {p?.nombre ?? viewTarget.direccion_pais}
+                            </span>
+                          )
+                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>—</span>}
+                      </div>
+                    </div>
+                    <ViewField
+                      label="Departamento"
+                      value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
+                    />
+                    <ViewField
+                      label="Municipio"
+                      value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
+                    />
+                    <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
+                    <SectionDivider label="FACTURACION" />
+                    <div className="col-span-2">
+                      <ViewField label="Nombre Factura" value={viewTarget.nombre_factura} />
+                    </div>
+                    <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
+                    <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
+                    <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
+                  </div>
 
                 </div>
-
               ) : (
               /* ── Edicion / Creacion ── */
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex gap-6 items-start">
 
-                {/* Empresa */}
-                <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
-                  <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                    <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-
-                {/* Proyecto */}
-                <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
-                  <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
-                    <SelectContent>{proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Cliente *</Label>
-                  <Input variant="underline" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
-                </div>
-
-                <div className="col-span-2 flex items-center gap-2 pt-1">
-                  <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">Contacto</span>
-                  <div className="flex-1 border-t border-primary/30" />
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Telefono *</Label>
-                  <PhoneField
-                    iso={tel1Iso}
-                    local={tel1Local}
-                    onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
-                    onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
-                    placeholder="Numero local"
-                  />
-                </div>
-                <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Telefono 2</Label>
-                  <PhoneField
-                    iso={tel2Iso}
-                    local={tel2Local}
-                    onIsoChange={(v) => { setTel2Iso(v); f('telefono2', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel2Local}` : tel2Local) }}
-                    onLocalChange={(v) => { setTel2Local(v); f('telefono2', tel2Iso && DIAL_CODES[tel2Iso] ? `+${DIAL_CODES[tel2Iso]}${v}` : v) }}
-                    placeholder="Numero local"
-                  />
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="correo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Correo</Label>
-                  <Input variant="underline" id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="Correo@ejemplo.com" />
-                </div>
-
-                <div className="col-span-2 flex items-center gap-2 pt-1">
-                  <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">Direccion</span>
-                  <div className="flex-1 border-t border-primary/30" />
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                  <Input variant="underline" id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
-                </div>
-
-                <div className="grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
-                  <CountrySelect
-                    paises={paises}
-                    value={paisCodigo}
-                    onChange={(codigo) => {
-                      const firstDepto = departamentos.find((d) => d.pais === codigo)
-                      const dCode = firstDepto?.codigo ?? ''
-                      const mCode = firstDepto
-                        ? (municipios.find((m) => m.pais === codigo && m.departamento === dCode)?.codigo ?? '')
-                        : ''
-                      setPaisCodigo(codigo)
-                      setDeptoCodigo(dCode)
-                      setForm((p) => ({ ...p, direccion_pais: codigo, direccion_departamento: dCode, direccion_municipio: mCode }))
-                    }}
-                  />
-                </div>
-
-                <div className="grid gap-1">
-                  <Label htmlFor="depto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento *</Label>
-                  <select
-                    id="depto"
-                    title="Departamento"
-                    value={deptoCodigo}
-                    disabled={!paisCodigo}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      const mCode = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''
-                      setDeptoCodigo(v)
-                      setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: mCode }))
-                    }}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
-                    {deptosFiltrados.map((d) => (
-                      <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-1">
-                  <Label htmlFor="municipio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio *</Label>
-                  <select
-                    id="municipio"
-                    title="Municipio"
-                    value={form.direccion_municipio}
-                    disabled={!deptoCodigo}
-                    onChange={(e) => setForm((p) => ({ ...p, direccion_municipio: e.target.value }))}
-                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
-                    {municipiosFiltrados.map((m) => (
-                      <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-1">
-                  <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Cod. Postal</Label>
-                  <Input variant="underline" id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Codigo postal" />
-                </div>
-
-              </div>
-            )}
-            </TabsContent>
-
-            {/* ── Tab Facturacion ── */}
-            <TabsContent value="facturacion" className="mt-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
-              {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <SectionDivider label="Facturacion" />
-                  <div className="col-span-2">
-                    <ViewField label="Nombre Factura" value={viewTarget.nombre_factura} />
-                  </div>
-                  <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
-                  <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
-                  <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
+                {/* Columna izquierda */}
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre_factura" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Factura</Label>
-                    <Input variant="underline" id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturacion (si difiere)" />
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                    <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectContent>{proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <SectionDivider label="GENERAL" />
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
+                  </div>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono *</Label>
+                    <PhoneField
+                      iso={tel1Iso}
+                      local={tel1Local}
+                      onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
+                      onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
+                      placeholder="Numero local"
+                    />
+                  </div>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
+                    <PhoneField
+                      iso={tel2Iso}
+                      local={tel2Local}
+                      onIsoChange={(v) => { setTel2Iso(v); f('telefono2', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel2Local}` : tel2Local) }}
+                      onLocalChange={(v) => { setTel2Local(v); f('telefono2', tel2Iso && DIAL_CODES[tel2Iso] ? `+${DIAL_CODES[tel2Iso]}${v}` : v) }}
+                      placeholder="Numero local"
+                    />
+                  </div>
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="correo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Correo *</Label>
+                    <Input variant="l-border" id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="Correo@ejemplo.com" />
+                  </div>
+                </div>
 
+                {/* Separador vertical */}
+                <div className="w-px self-stretch bg-primary/30" />
+
+                {/* Columna derecha */}
+                <div className="flex-1 grid grid-cols-2 gap-2">
+                  <SectionDivider label="DIRECCION" />
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                    <Input variant="l-border" id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
+                  </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="tipo_id" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Identificacion</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+                    <CountrySelect
+                      paises={paises}
+                      value={paisCodigo}
+                      variant="l-border"
+                      onChange={(codigo) => {
+                        const firstDepto = departamentos.find((d) => d.pais === codigo)
+                        const dCode = firstDepto?.codigo ?? ''
+                        const mCode = firstDepto
+                          ? (municipios.find((m) => m.pais === codigo && m.departamento === dCode)?.codigo ?? '')
+                          : ''
+                        setPaisCodigo(codigo)
+                        setDeptoCodigo(dCode)
+                        setForm((p) => ({ ...p, direccion_pais: codigo, direccion_departamento: dCode, direccion_municipio: mCode }))
+                      }}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento *</Label>
+                    <select
+                      id="depto"
+                      title="Departamento"
+                      value={deptoCodigo}
+                      disabled={!paisCodigo}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        const mCode = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''
+                        setDeptoCodigo(v)
+                        setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: mCode }))
+                      }}
+                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
+                    >
+                      <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
+                      {deptosFiltrados.map((d) => (
+                        <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio *</Label>
+                    <select
+                      id="municipio"
+                      title="Municipio"
+                      value={form.direccion_municipio}
+                      disabled={!deptoCodigo}
+                      onChange={(e) => setForm((p) => ({ ...p, direccion_municipio: e.target.value }))}
+                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
+                    >
+                      <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
+                      {municipiosFiltrados.map((m) => (
+                        <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="codigo_postal" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cod. Postal</Label>
+                    <Input variant="l-border" id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Codigo postal" />
+                  </div>
+                  <SectionDivider label="FACTURACION" />
+                  <div className="col-span-2 grid gap-1">
+                    <Label htmlFor="nombre_factura" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Factura</Label>
+                    <Input variant="l-border" id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturacion (si difiere)" />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label htmlFor="tipo_id" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Identificacion</Label>
                     <Select value={String(form.tipo_identificacion)} onValueChange={(v) => f('tipo_identificacion', Number(v))}>
-                      <SelectTrigger variant="underline" id="tipo_id" className="w-full">
+                      <SelectTrigger variant="l-border" id="tipo_id" className="w-full">
                         <SelectValue>
                           {(v: string) => v !== '' ? (TIPO_IDENTIFICACION[Number(v)] ?? v) : null}
                         </SelectValue>
@@ -1291,16 +1300,14 @@ export function ClientesClient({
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="grid gap-1">
-                    <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria</Label>
-                    <Input variant="underline" id="id_trib" value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
+                    <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria</Label>
+                    <Input variant="l-border" id="id_trib" value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
                   </div>
-
                   <div className="grid gap-1">
-                    <Label htmlFor="regimen_iva" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen IVA</Label>
+                    <Label htmlFor="regimen_iva" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Regimen IVA</Label>
                     <Select value={String(form.regimen_iva)} onValueChange={(v) => f('regimen_iva', Number(v))}>
-                      <SelectTrigger variant="underline" id="regimen_iva" className="w-full">
+                      <SelectTrigger variant="l-border" id="regimen_iva" className="w-full">
                         <SelectValue>
                           {(v: string) => v !== '' ? (REGIMENES_IVA[Number(v)] ?? v) : null}
                         </SelectValue>
@@ -1312,10 +1319,10 @@ export function ClientesClient({
                       </SelectContent>
                     </Select>
                   </div>
-
-
                 </div>
-              )}
+
+              </div>
+            )}
             </TabsContent>
           </Tabs>
 

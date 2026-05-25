@@ -103,10 +103,10 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -116,8 +116,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -627,7 +626,7 @@ export function TiposIngresosClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="underline" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+          <Input variant="l-border" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
         </div>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
@@ -770,7 +769,7 @@ export function TiposIngresosClient({
         if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
       }}>
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-yellow-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-yellow-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${
                 isEditing && !viewTarget ? 'bg-yellow-100' :
@@ -797,36 +796,36 @@ export function TiposIngresosClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-            </TabsList>
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            </TabsList></div>
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
                 // ── View mode ──────────────────────────────────────────────
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda: IDENTIFICACION + GENERAL */}
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
                   <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa)} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} /></div>
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Codigo" value={String(viewTarget.codigo)} />
                     <div /><div />
                   </div>
 
                   <SectionDivider label="GENERAL" />
                   <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Etiqueta" value={viewTarget.etiqueta} />
                     <div /><div />
                   </div>
                   </div>
                   {/* Separador + columna derecha: FORMA PAGO, FACTURACION, OTROS PARAMETROS */}
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
 
                   <SectionDivider label="FORMA PAGO" />
                   {/* Selection Buttons — view mode always disabled */}
@@ -841,13 +840,13 @@ export function TiposIngresosClient({
 
                   {viewTarget.forma_pago === 0 ? (
                     // Eventual view
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <div>
                         {viewTarget.moneda && (
                           <div className="grid gap-1">
-                            <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
-                            <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-                              <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                            <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                              <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                                 {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
                                   <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`} width={20} height={14} alt="" className="rounded-sm shrink-0" />
                                 )}
@@ -866,13 +865,13 @@ export function TiposIngresosClient({
                       <div className="col-span-2">
                         <ViewField label="Forma Calculo" value={FORMA_CALCULO_OTROS[viewTarget.forma_pago]} />
                       </div>
-                      <div className="col-span-2 grid grid-cols-3 gap-3">
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
                         <div>
                           {viewTarget.moneda && (
                             <div className="grid gap-1">
-                              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
-                              <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-                                <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                              <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                              <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                                <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                                   {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
                                     <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`} width={20} height={14} alt="" className="rounded-sm shrink-0" />
                                   )}
@@ -896,26 +895,26 @@ export function TiposIngresosClient({
                   <ViewField label="Descripcion" value={viewTarget.facturacion_descripcion} />
 
                   <SectionDivider label="OTROS PARAMETROS" />
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.fijo} disabled />
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fijo</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fijo</span>
                     </div>
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.editable} disabled />
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Editable</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Editable</span>
                     </div>
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.impuesto} disabled />
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Impuestos</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Impuestos</span>
                     </div>
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.mora} disabled />
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora</span>
                     </div>
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.activo} disabled />
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
                     </div>
                     <div />
                   </div>
@@ -925,17 +924,17 @@ export function TiposIngresosClient({
                 // ── Edit / Create mode ─────────────────────────────────────
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda: IDENTIFICACION + GENERAL */}
-                  <div className="flex-1 grid grid-cols-2 gap-4">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                   <SectionDivider label="IDENTIFICACION" />
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
+                    <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     {viewTarget ? (
                       <ViewField label="" value={empresaMap.get(form.empresa)} />
                     ) : (
                       <Select value={String(form.empresa)} onValueChange={(v) => handleEmpresaChange(Number(v))}>
-                        <SelectTrigger variant="underline" id="empresa" className="w-full"><SelectValue>{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="empresa" className="w-full"><SelectValue>{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                         </SelectContent>
@@ -945,12 +944,12 @@ export function TiposIngresosClient({
 
                   {/* Proyecto */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="proyecto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
+                    <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                     {viewTarget ? (
                       <ViewField label="" value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
                       <Select value={String(form.proyecto)} onValueChange={(v) => handleProyectoChange(Number(v))}>
-                        <SelectTrigger variant="underline" id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                         </SelectContent>
@@ -960,7 +959,7 @@ export function TiposIngresosClient({
 
                   {/* Codigo (solo edicion) */}
                   {viewTarget && (
-                    <div className="col-span-2 grid grid-cols-3 gap-4">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField label="Codigo" value={String(viewTarget.codigo)} />
                       <div /><div />
                     </div>
@@ -970,22 +969,22 @@ export function TiposIngresosClient({
 
                   {/* Nombre */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
-                    <Input variant="underline" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
                   </div>
 
                   {/* Etiqueta */}
-                  <div className="col-span-2 grid grid-cols-3 gap-4">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
-                      <Label htmlFor="etiqueta" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Etiqueta *</Label>
-                      <Input variant="underline" id="etiqueta" maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
+                      <Label htmlFor="etiqueta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Etiqueta *</Label>
+                      <Input variant="l-border" id="etiqueta" maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
                     </div>
                     <div /><div />
                   </div>
                   </div>
                   {/* Separador + columna derecha: FORMA PAGO, FACTURACION, OTROS PARAMETROS */}
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-4">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
 
                   <SectionDivider label="FORMA PAGO" />
 
@@ -1005,11 +1004,11 @@ export function TiposIngresosClient({
 
                   {/* Eventual fields */}
                   {modo === 'eventual' && (
-                    <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+                    <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                       <div className="grid gap-1">
-                        <Label htmlFor="eventual_moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
+                        <Label htmlFor="eventual_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
                         <Select value={eventualMoneda} onValueChange={(v) => setEventualMoneda(v ?? '')}>
-                          <SelectTrigger variant="underline" id="eventual_moneda" className="w-full">
+                          <SelectTrigger variant="l-border" id="eventual_moneda" className="w-full">
                             <SelectValue>
                               {(v: string) => {
                                 const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1038,8 +1037,8 @@ export function TiposIngresosClient({
                         </Select>
                       </div>
                       <div className="grid gap-1">
-                        <Label htmlFor="eventual_monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Monto *</Label>
-                        <Input variant="underline" id="eventual_monto" type="number" min={0} value={eventualMonto || ''} onChange={(e) => setEventualMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                        <Label htmlFor="eventual_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Monto *</Label>
+                        <Input variant="l-border" id="eventual_monto" type="number" min={0} value={eventualMonto || ''} onChange={(e) => setEventualMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                       </div>
                       <div />
                     </div>
@@ -1048,11 +1047,11 @@ export function TiposIngresosClient({
                   {/* Estado Cuenta fields */}
                   {modo === 'estado_cuenta' && (
                     <>
-                      <div className="col-span-2 grid grid-cols-2 gap-4">
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
-                          <Label htmlFor="forma_calculo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Forma Calculo *</Label>
+                          <Label htmlFor="forma_calculo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Forma Calculo *</Label>
                           <Select value={String(formaCalculo)} onValueChange={(v) => setFormaCalculo(Number(v))}>
-                            <SelectTrigger variant="underline" id="forma_calculo" className="w-full"><SelectValue>{(v: string) => v ? (FORMA_CALCULO_OTROS[Number(v)] ?? v) : null}</SelectValue></SelectTrigger>
+                            <SelectTrigger variant="l-border" id="forma_calculo" className="w-full"><SelectValue>{(v: string) => v ? (FORMA_CALCULO_OTROS[Number(v)] ?? v) : null}</SelectValue></SelectTrigger>
                             <SelectContent>
                               {Object.entries(FORMA_CALCULO_OTROS).map(([k, v]) => (
                                 <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -1062,11 +1061,11 @@ export function TiposIngresosClient({
                         </div>
                         <div />
                       </div>
-                      <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+                      <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                         <div className="grid gap-1">
-                          <Label htmlFor="ec_moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
+                          <Label htmlFor="ec_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
                           <Select value={estadoCuentaMoneda} onValueChange={(v) => setEstadoCuentaMoneda(v ?? '')}>
-                            <SelectTrigger variant="underline" id="ec_moneda" className="w-full">
+                            <SelectTrigger variant="l-border" id="ec_moneda" className="w-full">
                               <SelectValue>
                                 {(v: string) => {
                                   const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1095,12 +1094,12 @@ export function TiposIngresosClient({
                           </Select>
                         </div>
                         <div className="grid gap-1">
-                          <Label htmlFor="ec_monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">{montoLabel} *</Label>
-                          <Input variant="underline" id="ec_monto" type="number" min={0} value={estadoCuentaMonto || ''} onChange={(e) => setEstadoCuentaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                          <Label htmlFor="ec_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>{montoLabel} *</Label>
+                          <Input variant="l-border" id="ec_monto" type="number" min={0} value={estadoCuentaMonto || ''} onChange={(e) => setEstadoCuentaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                         </div>
                         <div className="grid gap-1">
-                          <Label htmlFor="hasta_monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Hasta Monto</Label>
-                          <Input variant="underline" id="hasta_monto" type="number" min={0} value={hastaMonto || ''} onChange={(e) => setHastaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                          <Label htmlFor="hasta_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Hasta Monto</Label>
+                          <Input variant="l-border" id="hasta_monto" type="number" min={0} value={hastaMonto || ''} onChange={(e) => setHastaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                         </div>
                       </div>
                     </>
@@ -1108,10 +1107,10 @@ export function TiposIngresosClient({
 
                   <SectionDivider label="FACTURACION" />
                   <div className="grid gap-1">
-                    <Label htmlFor="facturacion_item" className={`text-[11px] font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`}>
+                    <Label htmlFor="facturacion_item" className={`font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`} style={{ fontSize: 'var(--ui-form-label)' }}>
                       Item {form.impuesto === 1 && '*'}
                     </Label>
-                    <Input variant="underline"
+                    <Input variant="l-border"
                       id="facturacion_item"
                       value={form.facturacion_item}
                       onChange={(e) => f('facturacion_item', e.target.value)}
@@ -1120,10 +1119,10 @@ export function TiposIngresosClient({
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="facturacion_descripcion" className={`text-[11px] font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`}>
+                    <Label htmlFor="facturacion_descripcion" className={`font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`} style={{ fontSize: 'var(--ui-form-label)' }}>
                       Descripcion {form.impuesto === 1 && '*'}
                     </Label>
-                    <Input variant="underline"
+                    <Input variant="l-border"
                       id="facturacion_descripcion"
                       value={form.facturacion_descripcion}
                       onChange={(e) => f('facturacion_descripcion', e.target.value)}
@@ -1133,14 +1132,14 @@ export function TiposIngresosClient({
                   </div>
 
                   <SectionDivider label="OTROS PARAMETROS" />
-                  <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+                  <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox id="fijo" checked={false} disabled />
-                      <Label htmlFor="fijo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fijo</Label>
+                      <Label htmlFor="fijo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fijo</Label>
                     </div>
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox id="editable" checked={!!form.editable} onCheckedChange={(v) => setForm((p) => ({ ...p, editable: v ? 1 : 0 }))} />
-                      <Label htmlFor="editable" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Editable</Label>
+                      <Label htmlFor="editable" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Editable</Label>
                     </div>
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox
@@ -1156,15 +1155,15 @@ export function TiposIngresosClient({
                           }))
                         }}
                       />
-                      <Label htmlFor="impuesto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Impuestos</Label>
+                      <Label htmlFor="impuesto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Impuestos</Label>
                     </div>
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox id="mora" checked={!!form.mora} onCheckedChange={(v) => setForm((p) => ({ ...p, mora: v ? 1 : 0 }))} />
-                      <Label htmlFor="mora" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora</Label>
+                      <Label htmlFor="mora" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora</Label>
                     </div>
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox id="activo" checked={!!form.activo} onCheckedChange={(v) => setForm((p) => ({ ...p, activo: v ? 1 : 0 }))} />
-                      <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
+                      <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
                     </div>
                     <div />
                   </div>

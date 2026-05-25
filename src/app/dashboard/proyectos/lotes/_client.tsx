@@ -104,10 +104,10 @@ type ColFilters = Record<string, Set<string>>
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -117,8 +117,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -653,7 +652,7 @@ export function LotesClient({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="relative max-w-xs flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input variant="underline"
+            <Input variant="l-border"
               placeholder="Buscar lotes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -842,7 +841,7 @@ export function LotesClient({
         }}
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-rose-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-rose-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
               <div className="flex-1 min-w-0">
@@ -859,23 +858,23 @@ export function LotesClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
               {!isEditing && viewTarget && (
-                <TabsTrigger value="promesas" className="gap-1.5">
+                <TabsTrigger value="promesas" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                   <ClipboardList className="h-3.5 w-3.5" /> Promesas
                 </TabsTrigger>
               )}
-            </TabsList>
+            </TabsList></div>
 
             {/* Tab General */}
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="IDENTIFICACION" />
                     <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
                     <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
@@ -884,16 +883,16 @@ export function LotesClient({
                     <ViewField label="Codigo"  value={viewTarget.codigo}  />
                     <SectionDivider label="GENERAL" />
                     <div className="grid gap-1">
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
-                      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                         {(() => {
                           const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
                           return flag ? (
-                            <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                               <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                               {viewTarget.moneda}
                             </span>
-                          ) : <span className="block text-[13px] font-medium text-foreground">{viewTarget.moneda}</span>
+                          ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
                         })()}
                       </div>
                     </div>
@@ -901,7 +900,7 @@ export function LotesClient({
                     <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="REGISTRO" />
                     <ViewField label="Finca" value={viewTarget.finca} />
                     <ViewField label="Folio" value={viewTarget.folio} />
@@ -916,12 +915,12 @@ export function LotesClient({
                 </div>
               ) : (
                 <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="IDENTIFICACION" />
                     <div className="col-span-2 space-y-1.5">
                       <Label>Empresa</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona empresa">
                             {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                           </SelectValue>
@@ -934,7 +933,7 @@ export function LotesClient({
                     <div className="col-span-2 space-y-1.5">
                       <Label>Proyecto</Label>
                       <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona proyecto">
                             {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -947,7 +946,7 @@ export function LotesClient({
                     <div className="space-y-1.5">
                       <Label>Fase</Label>
                       <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona fase">
                             {(v: string) => v && v !== '0' ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -960,7 +959,7 @@ export function LotesClient({
                     <div className="space-y-1.5">
                       <Label>Manzana</Label>
                       <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona manzana">
                             {(v: string) => v || null}
                           </SelectValue>
@@ -973,7 +972,7 @@ export function LotesClient({
                     {!viewTarget ? (
                       <div className="space-y-1.5">
                         <Label>Codigo</Label>
-                        <Input variant="underline" value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
+                        <Input variant="l-border" value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
                       <ViewField label="Codigo" value={viewTarget.codigo} />
@@ -982,7 +981,7 @@ export function LotesClient({
                     <div className="space-y-1.5">
                       <Label>Moneda</Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-                        <SelectTrigger variant="underline" className="w-full">
+                        <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona moneda">
                             {(v: string) => {
                               const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1014,51 +1013,51 @@ export function LotesClient({
                     </div>
                     <div className="space-y-1.5">
                       <Label>Valor</Label>
-                      <Input variant="underline" type="number" min={0} step="0.01" value={valorStr} onChange={(e) => setValorStr(e.target.value)} placeholder="0.00" />
+                      <Input variant="l-border" type="number" min={0} step="0.01" value={valorStr} onChange={(e) => setValorStr(e.target.value)} placeholder="0.00" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Extension</Label>
                       <div className="flex gap-2 items-center">
-                        <Input variant="underline" type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => setExtensionStr(e.target.value)} placeholder="0.00" className="flex-1" />
+                        <Input variant="l-border" type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => setExtensionStr(e.target.value)} placeholder="0.00" className="flex-1" />
                         {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
                       </div>
                     </div>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="REGISTRO" />
                     <div className="space-y-1.5">
                       <Label>Finca</Label>
-                      <Input variant="underline" value={form.finca ?? ''} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" />
+                      <Input variant="l-border" value={form.finca ?? ''} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Folio</Label>
-                      <Input variant="underline" value={form.folio ?? ''} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" />
+                      <Input variant="l-border" value={form.folio ?? ''} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Libro</Label>
-                      <Input variant="underline" value={form.libro ?? ''} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" />
+                      <Input variant="l-border" value={form.libro ?? ''} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" />
                     </div>
                     <SectionDivider label="COLINDANCIAS" />
                     <div className="space-y-1.5">
                       <Label>Norte</Label>
-                      <Input variant="underline" value={form.norte ?? ''} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia norte" />
+                      <Input variant="l-border" value={form.norte ?? ''} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia norte" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Sur</Label>
-                      <Input variant="underline" value={form.sur ?? ''} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia sur" />
+                      <Input variant="l-border" value={form.sur ?? ''} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia sur" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Este</Label>
-                      <Input variant="underline" value={form.este ?? ''} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia este" />
+                      <Input variant="l-border" value={form.este ?? ''} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia este" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Oeste</Label>
-                      <Input variant="underline" value={form.oeste ?? ''} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia oeste" />
+                      <Input variant="l-border" value={form.oeste ?? ''} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia oeste" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Otros</Label>
-                      <Input variant="underline" value={form.otro ?? ''} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias" />
+                      <Input variant="l-border" value={form.otro ?? ''} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias" />
                     </div>
                   </div>
                 </div>
@@ -1067,12 +1066,12 @@ export function LotesClient({
 
             {/* Tab Promesas — solo en modo Ver */}
             {!isEditing && viewTarget && (
-              <TabsContent value="promesas" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              <TabsContent value="promesas" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda — RESERVA */}
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="RESERVA" />
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField
                         label="Reserva"
                         value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}

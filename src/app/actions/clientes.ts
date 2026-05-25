@@ -85,9 +85,8 @@ export async function getClientes(empresa?: number, proyecto?: number): Promise<
 export async function createCliente(form: ClienteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  if (form.correo && !isValidEmail(form.correo)) return { error: 'El correo electrónico no tiene un formato válido.' }
+  if (!form.correo || !isValidEmail(form.correo)) return { error: form.correo ? 'El correo electrónico no tiene un formato válido.' : 'El correo electrónico es requerido.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
-  const now = new Date().toISOString()
 
   // Validar nombre duplicado dentro del mismo proyecto
   const { data: existente } = await admin
@@ -140,7 +139,7 @@ export async function updateCliente(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  if (form.correo && !isValidEmail(form.correo)) return { error: 'El correo electrónico no tiene un formato válido.' }
+  if (!form.correo || !isValidEmail(form.correo)) return { error: form.correo ? 'El correo electrónico no tiene un formato válido.' : 'El correo electrónico es requerido.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

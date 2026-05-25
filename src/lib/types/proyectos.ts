@@ -48,7 +48,6 @@ export type Proyecto = {
   inicio_abono_capital_estricto: string
   promesa_vencida: number
   promesa_correlativo: number
-  promesa_alfanumerico: number
   logo_url?: string
   agrego_usuario?: string
   agrego_fecha?: string

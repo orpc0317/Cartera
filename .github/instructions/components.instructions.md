@@ -1,4 +1,4 @@
----
+﻿---
 description: "Cartera — copy-verbatim snippets for every UI primitive used in _client.tsx: modal state/functions, form inputs, selects, checkboxes, alert dialog, row dropdown, table utilities. Single source of truth — no imagination needed."
 applyTo: "src/app/dashboard/**/_client.tsx"
 ---
@@ -174,11 +174,12 @@ Requires `f()` helper (see `ui-conventions.instructions.md § Text input normali
 
 ```tsx
 <div className="grid gap-1">
-  <Label htmlFor="<field>" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+  <Label htmlFor="<field>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
     <Label text> *
   </Label>
   <Input
     id="<field>"
+    variant="l-border"
     value={form.<field>}
     onChange={(e) => f('<field>', e.target.value)}
     placeholder="<Sentence case placeholder>"
@@ -217,17 +218,7 @@ Requires `f()` helper (see `ui-conventions.instructions.md § Text input normali
 
 ```tsx
 <Select value={String(form.<field>)} onValueChange={(v) => f('<field>', Number(v))}>
-  <SelectTrigger className="w-full">
-    <SelectValue placeholder="<Selecciona opcion>">
-      {(v: string) => v && v !== '0' ? (<entityMap>.get(Number(v)) ?? v) : null}
-    </SelectValue>
-  </SelectTrigger>
-  <SelectContent>
-    {<entities>.map((e) => (
-      <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+  <SelectTrigger variant="l-border" className="w-full">
 ```
 
 ---
@@ -242,7 +233,7 @@ const <LABELS>: Record<number, string> = { 1: 'Opción A', 2: 'Opción B' }
 
 ```tsx
 <Select value={String(form.<field>)} onValueChange={(v) => f('<field>', Number(v))}>
-  <SelectTrigger className="w-full">
+  <SelectTrigger variant="l-border" className="w-full">
     <SelectValue placeholder="<Selecciona opcion>">
       {(v: string) => v !== '' ? (<LABELS>[Number(v)] ?? v) : null}
     </SelectValue>
@@ -266,7 +257,7 @@ Regla: si el `<SelectItem value={x}>` y su texto visible son el mismo string, us
 
 ```tsx
 <Select value={form.<field>} onValueChange={(v) => f('<field>', v)}>
-  <SelectTrigger className="w-full">
+  <SelectTrigger variant="l-border" className="w-full">
     <SelectValue placeholder="<Selecciona opcion>" />
   </SelectTrigger>
   <SelectContent>
@@ -288,7 +279,7 @@ Regla: si el `<SelectItem value={x}>` y su texto visible son el mismo string, us
     checked={!!form.<field>}
     onCheckedChange={(c) => setForm((p) => ({ ...p, <field>: c ? 1 : 0 }))}
   />
-  <Label htmlFor="<field>" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+  <Label htmlFor="<field>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
     <Label text>
   </Label>
 </div>
@@ -304,7 +295,7 @@ Parent **must** have `items-end`. Checkbox wrapper **must** have `pb-1`. Without
 {/* Parent — note items-end */}
 <div className="grid grid-cols-2 gap-4 items-end">
   <div className="grid gap-1">
-    <Label htmlFor="<field1>" className="text-[11px] font-semibold tracking-wider text-muted-foreground"><Label 1></Label>
+    <Label htmlFor="<field1>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}><Label 1></Label>
     <Select ...>...</Select>
   </div>
   {/* Checkbox wrapper — note pb-1 */}
@@ -314,7 +305,7 @@ Parent **must** have `items-end`. Checkbox wrapper **must** have `pb-1`. Without
       checked={!!form.<field2>}
       onCheckedChange={(c) => setForm((p) => ({ ...p, <field2>: c ? 1 : 0 }))}
     />
-    <Label htmlFor="<field2>" className="text-[11px] font-semibold tracking-wider text-muted-foreground"><Label 2></Label>
+    <Label htmlFor="<field2>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}><Label 2></Label>
   </div>
 </div>
 ```
@@ -514,13 +505,17 @@ useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
 Definir **dentro de cada `_client.tsx`** (no son componentes compartidos).
 
+> **Fuente única de tamaños** — los `style={{ fontSize: 'var(--ui-xxx)' }}` referencian variables CSS definidas en `src/app/globals.css :root`:
+> `--ui-viewfield-label: 10px` · `--ui-viewfield-value: 11px` · `--ui-section-divider: 11px` · `--ui-form-label: 10px` · `--ui-input: 11px`.
+> Para cambiar todos los tamaños a la vez, editar solo ese bloque en `globals.css`.
+
 ```tsx
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -530,8 +525,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -548,7 +542,7 @@ function SectionDivider({ label }: { label: string }) {
 ## O · Grid modo vista (view mode)
 
 ```tsx
-<div className="grid grid-cols-2 gap-3">
+<div className="grid grid-cols-2 gap-2">
   <SectionDivider label="SECCION" />
 
   {/* full — ocupa toda la fila */}
@@ -559,7 +553,7 @@ function SectionDivider({ label }: { label: string }) {
   <ViewField label="Campo B" value={viewTarget.campo_b} />
 
   {/* third — tres campos por fila; inner grid dentro de col-span-2 */}
-  <div className="col-span-2 grid grid-cols-3 gap-3">
+  <div className="col-span-2 grid grid-cols-3 gap-2">
     <ViewField label="Dia"  value={String(viewTarget.dia)} />
     <ViewField label="Mes"  value={String(viewTarget.mes)} />
     <ViewField label="Anio" value={String(viewTarget.anio)} />
@@ -568,7 +562,7 @@ function SectionDivider({ label }: { label: string }) {
   {/* boolean — checkbox libre, sin card container */}
   <div className="flex items-center gap-2 py-1">
     <Checkbox checked={!!viewTarget.activo} disabled />
-    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
+    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
   </div>
 </div>
 ```
@@ -578,46 +572,47 @@ function SectionDivider({ label }: { label: string }) {
 ## P · Grid modo edición (edit mode)
 
 ```tsx
-<div className="grid grid-cols-2 gap-4">
+<div className="grid grid-cols-2 gap-2">
   <SectionDivider label="SECCION" />
 
   {/* full */}
   <div className="col-span-2 grid gap-1">
-    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
-    <Input id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del registro" />
+    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+    <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del registro" />
   </div>
 
   {/* half */}
   <div className="grid gap-1">
-    <Label htmlFor="campo_a" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Campo A</Label>
-    <Input id="campo_a" value={form.campo_a} onChange={(e) => f('campo_a', e.target.value)} placeholder="..." />
+    <Label htmlFor="campo_a" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Campo A</Label>
+    <Input variant="l-border" id="campo_a" value={form.campo_a} onChange={(e) => f('campo_a', e.target.value)} placeholder="..." />
   </div>
   <div className="grid gap-1">
-    <Label htmlFor="campo_b" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Campo B</Label>
-    <Input id="campo_b" value={form.campo_b} onChange={(e) => f('campo_b', e.target.value)} placeholder="..." />
+    <Label htmlFor="campo_b" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Campo B</Label>
+    <Input variant="l-border" id="campo_b" value={form.campo_b} onChange={(e) => f('campo_b', e.target.value)} placeholder="..." />
   </div>
 
   {/* third — inner grid dentro de col-span-2 */}
-  <div className="col-span-2 grid grid-cols-3 gap-4">
+  <div className="col-span-2 grid grid-cols-3 gap-2">
     <div className="grid gap-1">
-      <Label htmlFor="dia" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Dia</Label>
-      <Input id="dia" type="number" value={form.dia} onChange={(e) => f('dia', Number(e.target.value))} />
+      <Label htmlFor="dia" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Dia</Label>
+      <Input variant="l-border" id="dia" type="number" value={form.dia} onChange={(e) => f('dia', Number(e.target.value))} />
     </div>
     <div className="grid gap-1">
-      <Label htmlFor="mes" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mes</Label>
-      <Input id="mes" type="number" value={form.mes} onChange={(e) => f('mes', Number(e.target.value))} />
+      <Label htmlFor="mes" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mes</Label>
+      <Input variant="l-border" id="mes" type="number" value={form.mes} onChange={(e) => f('mes', Number(e.target.value))} />
     </div>
     <div className="grid gap-1">
-      <Label htmlFor="anio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Anio</Label>
-      <Input id="anio" type="number" value={form.anio} onChange={(e) => f('anio', Number(e.target.value))} />
+      <Label htmlFor="anio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Anio</Label>
+      <Input variant="l-border" id="anio" type="number" value={form.anio} onChange={(e) => f('anio', Number(e.target.value))} />
     </div>
   </div>
 </div>
 ```
 
 **Reglas:**
-- `gap-4` entre campos, `gap-1` dentro de cada wrapper label+input.
-- Todos los `<Label>`: `className="text-[11px] font-semibold tracking-wider text-muted-foreground"`.
+- `gap-2` entre campos, `gap-1` dentro de cada wrapper label+input.
+- Todos los `<Label>`: `className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}`.
+- Todos los `<Input>`: `variant="l-border"`.
 - Checkbox en fila mixta → ver **§ J**.
 - Geo cascade (pais/depto/municipio) → `<select>` nativo, ver **§ X**.
 
@@ -676,7 +671,7 @@ return (
 }}>
   <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
 
-    <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-<accent>-50/70 to-transparent border-b border-border/50 shrink-0">
+    <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-<accent>-50/70 to-transparent border-b border-border/50 shrink-0">
       <div className="flex items-center gap-3 pr-8">
         <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
         <div className="flex-1 min-w-0">
@@ -693,21 +688,23 @@ return (
       </div>
     </DialogHeader>
 
-    <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-      <TabsList className="shrink-0">
-        <TabsTrigger value="general" className="gap-1.5">
-          <MapPin className="h-3.5 w-3.5" /> General
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="general" className="mt-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+    <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+      <div className="shrink-0 w-full">
+        <TabsList variant="line" className="">
+          <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+            <MapPin className="h-3.5 w-3.5" /> General
+          </TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
         {!isEditing && viewTarget ? (
           /* ── View mode — § O ── */
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {/* ViewField blocks */}
           </div>
         ) : (
           /* ── Edit mode — § P ── */
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2">
             {/* form fields */}
           </div>
         )}
@@ -994,7 +991,7 @@ case 'moneda': {
 **Edit mode:**
 ```tsx
 <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-  <SelectTrigger className="w-full">
+  <SelectTrigger variant="l-border" className="w-full">
     <SelectValue placeholder="Selecciona moneda">
       {(v: string) => {
         const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1029,8 +1026,8 @@ case 'moneda': {
   const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda ?? '')
   return (
     <div className="grid gap-1">
-      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
-      <div className="rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5">
+      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+      <div className="rounded-none bg-muted/50 border border-border/40 px-3 py-2.5">
         {flag ? (
           <span className="flex items-center gap-1.5 text-[13px] font-medium">
             <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
@@ -1064,13 +1061,16 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
 
 **IMPORTANTE — Cascada en los onChange:** cada nivel debe auto-seleccionar el primer elemento del nivel inferior. Los `onChange` no deben simplemente resetear a `''` — deben buscar el primer item disponible y pre-seleccionarlo.
 
-```tsx
-{/* Clase estándar para los tres niveles */}
-{/* className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50" */}
+Clase estándar (l-border, igual que los inputs del modal):
+```
+w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50
+```
+Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}`.
 
+```tsx
 {/* País — al cambiar, auto-selecciona primer depto y primer municipio */}
 <div className="grid gap-1">
-  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</Label>
   <select
     value={form.pais}
     onChange={(e) => {
@@ -1084,7 +1084,8 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
       setDeptoCodigo(dCode)
       setForm((p) => ({ ...p, pais: codigo, departamento: dCode, municipio: mCode }))
     }}
-    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+    style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">Selecciona país</option>
     {paises.map((p) => <option key={p.codigo} value={p.codigo}>{p.nombre}</option>)}
@@ -1093,7 +1094,7 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
 
 {/* Departamento — filtrado por pais; al cambiar, auto-selecciona primer municipio */}
 <div className="grid gap-1">
-  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento</Label>
   <select
     value={form.departamento}
     disabled={!paisCodigo}
@@ -1103,7 +1104,8 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
       setDeptoCodigo(v)
       setForm((p) => ({ ...p, departamento: v, municipio: mCode }))
     }}
-    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+    style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un país'}</option>
     {departamentos.filter((d) => d.pais === paisCodigo).map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
@@ -1112,12 +1114,13 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
 
 {/* Municipio — filtrado por pais + departamento */}
 <div className="grid gap-1">
-  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio</Label>
   <select
     value={form.municipio}
     disabled={!deptoCodigo}
     onChange={(e) => setForm((p) => ({ ...p, municipio: e.target.value }))}
-    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+    style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
     {municipios.filter((m) => m.pais === paisCodigo && m.departamento === deptoCodigo).map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
@@ -1160,7 +1163,7 @@ case 'activo':
 {/* Si activo es el único campo en su fila — § I */}
 <div className="col-span-2 flex items-center gap-2 py-1">
   <Checkbox id="activo" checked={!!form.activo} onCheckedChange={(c) => setForm((p) => ({ ...p, activo: c ? 1 : 0 }))} />
-  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
+  <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
 </div>
 
 {/* Si activo comparte fila con otro campo — § J (requiere items-end en padre y pb-1 en wrapper) */}
@@ -1180,7 +1183,7 @@ if (col === 'activo') return vals.has(r.activo === 1 ? 'Sí' : 'No')
 **Textarea:**
 ```tsx
 <div className="col-span-2 grid gap-1">
-  <Label htmlFor="<field>" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+  <Label htmlFor="<field>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
     <Label text>
   </Label>
   <textarea
@@ -1197,7 +1200,7 @@ if (col === 'activo') return vals.has(r.activo === 1 ? 'Sí' : 'No')
 **Input fecha (ISO string `YYYY-MM-DD`):**
 ```tsx
 <div className="grid gap-1">
-  <Label htmlFor="<field>" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+  <Label htmlFor="<field>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
     <Label text>
   </Label>
   <Input
@@ -1236,7 +1239,7 @@ Estos son **separados** de `form.direccion_pais` / `form.direccion_departamento`
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
   <CountrySelect
     paises={paises}
     value={paisCodigo}
@@ -1273,12 +1276,42 @@ Usar un `ViewField` con bandera construida desde el código ISO:
 
 ### Inicialización en openCreate()
 
+Usar `applyWithPais` para pre-seleccionar el primer depto y municipio del país (ver `crud-screens.instructions.md § Country/Geo pre-selection`):
+
 ```ts
-const defIso = empresa?.direccion_pais ?? ''
-const defMoneda = countryToCurrency[defIso] ?? 'GTQ'
-setPaisCodigo(defIso)
-setDeptoCodigo('')
-setForm((prev) => ({ ...prev, direccion_pais: defIso, direccion_departamento: '', direccion_municipio: '', moneda: defMoneda }))
+function applyWithPais(paisCode: string) {
+  const resolved = paises.find((p) => p.codigo === paisCode) ? paisCode : (paises[0]?.codigo ?? '')
+  const firstDepto = departamentos.find((d) => d.pais === resolved)
+  const deptoCod = firstDepto?.codigo ?? ''
+  const municipioCod = firstDepto
+    ? (municipios.find((m) => m.pais === resolved && m.departamento === deptoCod)?.codigo ?? '')
+    : ''
+  const autoMoneda = countryToCurrency[resolved] ?? 'GTQ'
+  setPaisCodigo(resolved)
+  setDeptoCodigo(deptoCod)
+  setForm((prev) => ({
+    ...prev,
+    direccion_pais: resolved,
+    direccion_departamento: deptoCod,
+    direccion_municipio: municipioCod,
+    moneda: autoMoneda,
+  }))
+}
+
+// In openCreate() — priority: project pais > empresa pais > IP geolocation
+const paisFromProject = firstProyecto?.pais ?? ''
+const paisFromEmpresa = firstEmpresa?.pais ?? ''
+if (paisFromProject) {
+  applyWithPais(paisFromProject)
+} else if (paisFromEmpresa) {
+  applyWithPais(paisFromEmpresa)
+} else {
+  applyWithPais(paises[0]?.codigo ?? '')
+  fetch('https://ipapi.co/json/')
+    .then((r) => r.json())
+    .then((d: Record<string, unknown>) => { if (d.country_code) applyWithPais(d.country_code as string) })
+    .catch(() => {})
+}
 ```
 
 ### Inicialización en openView() y cancelEdit()
@@ -1414,7 +1447,7 @@ const clientesFiltrados = useMemo(
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Cliente *</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente *</Label>
   <ClienteCombobox
     clientes={clientesFiltrados}
     value={form.cliente}
@@ -1658,7 +1691,7 @@ set<Field>Str(String(viewTarget.<field>))
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground"><Label text> *</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}><Label text> *</Label>
   <div className="flex gap-2 items-center">
     <Input
       type="number"
@@ -1920,7 +1953,7 @@ Cuando una pestaña todavía no tiene contenido en la columna derecha, usar un `
 - **`gap-6`** en el flex exterior — provee 24 px a cada lado del separador. No reducir.
 - **`SectionDivider`** tiene `col-span-2` hardcodeado → funciona correctamente dentro de `flex-1 grid grid-cols-2`.
 - **Anchos de campo** dentro de cada columna: `(full)` = `col-span-2`, `(half)` = una celda, `(third)` = igual que el estándar (ver `crud-screens.instructions.md`). Las reglas no cambian respecto al modal estrecho.
-- **Color del separador:** `bg-primary/30` — mismo tono que la línea horizontal del `SectionDivider` (`border-primary/30`). **No** usar colores de acento de módulo.
+- **Color del separador:** `bg-primary/30` — mismo tono que el acento del módulo. **No** usar colores de acento de módulo distintos.
 - **Distribución de secciones:** máximo ~3 secciones por columna. Distribuir equilibrando la altura visual entre columnas izquierda y derecha.
-- El `TabsContent` que envuelve este layout mantiene `className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1"` sin cambios.
+- El `TabsContent` que envuelve este layout mantiene `className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1"` sin cambios.
 

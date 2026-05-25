@@ -114,10 +114,10 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -127,8 +127,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -547,7 +546,7 @@ export function EmpresasClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar empresas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -760,7 +759,7 @@ export function EmpresasClient({
         }}
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
               <div className="flex-1 min-w-0">
@@ -777,20 +776,20 @@ export function EmpresasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* -- Modo Vista -- */}
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda — IDENTIFICACION + GENERAL */}
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="IDENTIFICACION" />
                     <div className="col-span-2">
                       <ViewField label="Codigo" value={String(viewTarget.codigo)} />
@@ -809,18 +808,18 @@ export function EmpresasClient({
                   {/* Separador vertical */}
                   <div className="w-px self-stretch bg-primary/30" />
                   {/* Columna derecha — DIRECCION + OTROS */}
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="DIRECCION" />
                     <div className="col-span-2">
                       <ViewField label="Direccion" value={viewTarget.direccion} />
                     </div>
                     <div className="grid gap-1">
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
-                      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                         {viewTarget.direccion_pais ? (() => {
                           const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                           return (
-                            <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                               <img
                                 src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
                                 alt={viewTarget.direccion_pais}
@@ -831,7 +830,7 @@ export function EmpresasClient({
                               {p?.nombre ?? viewTarget.direccion_pais}
                             </span>
                           )
-                        })() : <span className="block text-[13px] font-medium text-foreground"></span>}
+                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}></span>}
                       </div>
                     </div>
                     <ViewField
@@ -855,7 +854,7 @@ export function EmpresasClient({
               /* -- Modo Edicion / Creacion -- */
               <div className="flex gap-6 items-start">
                 {/* Columna izquierda — IDENTIFICACION + GENERAL */}
-                <div className="flex-1 grid grid-cols-2 gap-4">
+                <div className="flex-1 grid grid-cols-2 gap-2">
                   {viewTarget && (
                     <>
                       <SectionDivider label="IDENTIFICACION" />
@@ -867,8 +866,8 @@ export function EmpresasClient({
                   <SectionDivider label="GENERAL" />
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Input variant="l-border"
                       id="nombre"
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}
@@ -877,8 +876,8 @@ export function EmpresasClient({
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="razon_social" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Razon Social *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="razon_social" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Razon Social *</Label>
+                    <Input variant="l-border"
                       id="razon_social"
                       value={form.razon_social}
                       onChange={(e) => f('razon_social', e.target.value)}
@@ -887,8 +886,8 @@ export function EmpresasClient({
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="id_trib" className="text-[11px] font-semibold tracking-wider text-muted-foreground">ID Tributaria *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria *</Label>
+                    <Input variant="l-border"
                       id="id_trib"
                       value={form.identificacion_tributaria}
                       onChange={(e) => f('identificacion_tributaria', e.target.value)}
@@ -901,12 +900,12 @@ export function EmpresasClient({
                 <div className="w-px self-stretch bg-primary/30" />
 
                 {/* Columna derecha — DIRECCION + OTROS */}
-                <div className="flex-1 grid grid-cols-2 gap-4">
+                <div className="flex-1 grid grid-cols-2 gap-2">
                   <SectionDivider label="DIRECCION" />
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="direccion" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                    <Input variant="l-border"
                       id="direccion"
                       value={form.direccion}
                       onChange={(e) => f('direccion', e.target.value)}
@@ -915,7 +914,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
                     <CountrySelect
                       paises={paises}
                       value={paisCodigo}
@@ -937,7 +936,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="grid gap-1">
-                    <Label htmlFor="departamento" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento</Label>
+                    <Label htmlFor="departamento" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento</Label>
                     <select
                       id="departamento"
                       title="Departamento"
@@ -959,7 +958,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="grid gap-1">
-                    <Label htmlFor="municipio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio</Label>
+                    <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio</Label>
                     <select
                       id="municipio"
                       title="Municipio"
@@ -978,8 +977,8 @@ export function EmpresasClient({
                   </div>
 
                   <div className="grid gap-1">
-                    <Label htmlFor="codigo_postal" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo Postal</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="codigo_postal" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo Postal</Label>
+                    <Input variant="l-border"
                       id="codigo_postal"
                       value={form.codigo_postal}
                       onChange={(e) => f('codigo_postal', e.target.value)}
@@ -990,12 +989,12 @@ export function EmpresasClient({
                   <SectionDivider label="OTROS" />
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="regimen_isr" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Regimen ISR</Label>
+                    <Label htmlFor="regimen_isr" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Regimen ISR</Label>
                     <Select
                       value={String(form.regimen_isr)}
                       onValueChange={(v) => f('regimen_isr', Number(v))}
                     >
-                      <SelectTrigger variant="underline" id="regimen_isr" className="w-full">
+                      <SelectTrigger variant="l-border" id="regimen_isr" className="w-full">
                         <SelectValue>
                           {(v: string) => v !== '' ? (REGIMENES_ISR[Number(v)] ?? v) : null}
                         </SelectValue>

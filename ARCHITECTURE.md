@@ -115,46 +115,12 @@ El cliente admin usa `SUPABASE_SERVICE_ROLE_KEY` — **nunca exponer al browser*
 
 ## 6. Patrones de Server Actions
 
-### Patrón obligatorio en todo archivo `actions/*.ts`
+> Patrones completos en `server-actions.instructions.md`. Resumen:
 
-```ts
-// 1. Obtener cuenta activa
-async function getCuentaActiva(): Promise<string> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
-}
-
-// 2. Guard en toda mutación
-const cuenta = await getCuentaActiva()
-if (!cuenta) return { error: 'Sesión no válida.' }
-
-// 3. Toda query filtrada por tenant
-.eq('cuenta', cuenta)
-```
-
-### Data fetching en page.tsx
-
-Usar `Promise.all` con `.catch()` **por llamada individual** — nunca un try/catch global:
-
-```ts
-const [empresas, proyectos] = await Promise.all([
-  getEmpresas().catch(() => []),
-  getProyectos().catch(() => []),
-])
-```
-
-### Concurrencia optimista (`modifico_fecha`)
-
-Toda tabla editable tiene `modifico_fecha: timestamp`. El update verifica que no haya cambiado desde que se cargó:
-
-```ts
-.eq('modifico_fecha', modificoFecha)  // si ya cambió → 0 rows updated → error de concurrencia
-```
-
-### Restricción de exports en archivos `"use server"`
-
-Solo se pueden exportar funciones `async` y `export type`. **Prohibido** re-exportar valores de otros módulos desde un archivo `"use server"` — rompe el build en tiempo de compilación (no detectable por `get_errors`).
+- **`getCuentaActiva()`**: obtener `user.app_metadata.cuenta_activa` via `supabase.auth.getUser()`. Guard `if (!cuenta) return { error: ... }` en toda mutación. Toda query filtra `.eq('cuenta', cuenta)`.
+- **`page.tsx`**: `Promise.all` con `.catch(() => [])` **por llamada individual** — nunca un try/catch global.
+- **`modifico_fecha`**: toda tabla editable tiene este campo; el update lleva `.eq('modifico_fecha', modificoFecha)` para detectar concurrencia.
+- **Exports**: solo `async function` y `export type`. Prohibido re-exportar valores desde `"use server"` — rompe el build (no detectable por `get_errors`).
 
 ---
 

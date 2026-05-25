@@ -178,10 +178,10 @@ const fmt = (n: number) =>
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -191,8 +191,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -956,7 +955,7 @@ export function ReservasClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar reservas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -980,7 +979,7 @@ export function ReservasClient({
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground shrink-0">Desde</span>
-          <Input variant="underline"
+          <Input variant="l-border"
             type="date"
             value={fechaDesde}
             onChange={(e) => setFechaDesde(e.target.value)}
@@ -989,7 +988,7 @@ export function ReservasClient({
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-muted-foreground shrink-0">Hasta</span>
-          <Input variant="underline"
+          <Input variant="l-border"
             type="date"
             value={fechaHasta}
             onChange={(e) => setFechaHasta(e.target.value)}
@@ -1339,7 +1338,7 @@ export function ReservasClient({
       }}>
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[38rem] h-[700px] max-h-[90vh] overflow-hidden">
 
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>
                 <ClipboardList className={`h-5 w-5 ${iconColor}`} />
@@ -1357,22 +1356,22 @@ export function ReservasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-              <TabsTrigger value="pago" className="gap-1.5">
+              <TabsTrigger value="pago" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <Receipt className="h-3.5 w-3.5" /> Pago
               </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
             {/* ── Tab General ── */}
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* Vista: modo readonly */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
 
                   <SectionDivider label="Identificacion" />
                   <div className="col-span-2">
@@ -1385,11 +1384,11 @@ export function ReservasClient({
                   <div />{/* spacer */}
 
                   <SectionDivider label="General" />
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Fecha" value={viewTarget.fecha ? viewTarget.fecha.split('-').reverse().join('/') : ''} />
                     <div />{/* spacer */}
                     <div className="grid gap-1">
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Estado</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Estado</span>
                       <div className="h-8 flex items-center px-1">
                         {(() => {
                           const est = RESERVA_ESTADOS[viewTarget.estado]
@@ -1406,7 +1405,7 @@ export function ReservasClient({
                   <ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`)} />
 
                   <SectionDivider label="Lote" />
-                  <div className="col-span-2 grid grid-cols-3 gap-3">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`)} />
                     <ViewField label="Manzana" value={viewTarget.manzana} />
                     <ViewField label="Lote"    value={viewTarget.lote} />
@@ -1417,20 +1416,20 @@ export function ReservasClient({
 
               ) : (
               /* Creacion */
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
 
                   <SectionDivider label="Identificacion" />
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    <Label htmlFor="res-empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                       Empresa *
                     </Label>
                     <Select
                       value={form.empresa ? String(form.empresa) : ''}
                       onValueChange={(v) => f('empresa', Number(v))}
                     >
-                      <SelectTrigger variant="underline" id="res-empresa" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-empresa" className="w-full">
                         <SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1443,7 +1442,7 @@ export function ReservasClient({
 
                   {/* Proyecto */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-proyecto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    <Label htmlFor="res-proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                       Proyecto *
                     </Label>
                     <Select
@@ -1451,7 +1450,7 @@ export function ReservasClient({
                       onValueChange={(v) => f('proyecto', Number(v))}
                       disabled={!form.empresa}
                     >
-                      <SelectTrigger variant="underline" id="res-proyecto" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-proyecto" className="w-full">
                         <SelectValue placeholder={form.empresa ? 'Selecciona proyecto' : 'Primero selecciona empresa'}>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1466,11 +1465,11 @@ export function ReservasClient({
                   <SectionDivider label="Seleccion Lote" />
 
                   {/* Fase + Manzana + Lote en una fila (4 cols: Fase=2, Manzana=1, Lote=1) */}
-                  <div className="col-span-2 grid grid-cols-4 gap-4">
+                  <div className="col-span-2 grid grid-cols-4 gap-2">
 
                     {/* Fase */}
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-fase" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-fase" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Fase *
                       </Label>
                       <Select
@@ -1478,7 +1477,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('fase', Number(v))}
                         disabled={!form.proyecto}
                       >
-                        <SelectTrigger variant="underline" id="res-fase" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-fase" className="w-full">
                           <SelectValue placeholder={form.proyecto ? fasesConLotes.length === 0 ? 'Sin fases' : 'Selecciona fase' : '—'}>
                             {(v: string) => v ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -1493,7 +1492,7 @@ export function ReservasClient({
 
                     {/* Manzana */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-manzana" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-manzana" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Manzana *
                       </Label>
                       <Select
@@ -1501,7 +1500,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('manzana', v ?? '')}
                         disabled={!form.fase}
                       >
-                        <SelectTrigger variant="underline" id="res-manzana" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-manzana" className="w-full">
                           <SelectValue placeholder={form.fase ? manzanasConLotes.length === 0 ? '—' : 'Manzana' : '—'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1514,7 +1513,7 @@ export function ReservasClient({
 
                     {/* Lote */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-lote" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-lote" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Lote *
                       </Label>
                       <Select
@@ -1522,7 +1521,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('lote', v ?? '')}
                         disabled={!form.manzana}
                       >
-                        <SelectTrigger variant="underline" id="res-lote" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-lote" className="w-full">
                           <SelectValue placeholder={form.manzana ? lotesEnManzana.length === 0 ? '—' : 'Lote' : '—'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1537,7 +1536,7 @@ export function ReservasClient({
 
                   {/* Resumen del lote seleccionado */}
                   {loteSeleccionado && (
-                    <div className="col-span-2 rounded-lg border border-teal-200 bg-teal-50/60 px-4 py-3 grid grid-cols-2 gap-3">
+                    <div className="col-span-2 rounded-lg border border-teal-200 bg-teal-50/60 px-4 py-3 grid grid-cols-2 gap-2">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-teal-600/70">Extension</p>
                         <p className="text-sm font-semibold text-teal-900">{loteSeleccionado.extension} m²</p>
@@ -1552,14 +1551,14 @@ export function ReservasClient({
                   <SectionDivider label="Generales" />
 
                   {/* Fecha + Moneda + Monto en 3 columnas */}
-                  <div className="col-span-2 grid grid-cols-3 gap-4">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
 
                     {/* Fecha */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Fecha *
                       </Label>
-                      <Input variant="underline"
+                      <Input variant="l-border"
                         id="res-fecha"
                         type="date"
                         value={form.fecha}
@@ -1569,7 +1568,7 @@ export function ReservasClient({
 
                     {/* Moneda */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Moneda *
                       </Label>
                       <Select
@@ -1577,7 +1576,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('moneda', v ?? '')}
                         disabled={!form.proyecto}
                       >
-                        <SelectTrigger variant="underline" id="res-moneda" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-moneda" className="w-full">
                           <SelectValue placeholder={form.proyecto ? (monedasPorProyecto.length === 0 ? 'Sin monedas' : 'Selecciona moneda') : '—'}>
                             {(v: string) => {
                               if (!v) return null
@@ -1609,10 +1608,10 @@ export function ReservasClient({
 
                     {/* Monto */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-monto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Monto *
                       </Label>
-                      <Input variant="underline"
+                      <Input variant="l-border"
                         id="res-monto"
                         type="number"
                         min="0"
@@ -1628,7 +1627,7 @@ export function ReservasClient({
 
                   {/* Cliente */}
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                       Cliente *
                     </Label>
                     <ClienteCombobox
@@ -1642,7 +1641,7 @@ export function ReservasClient({
 
                   {/* Vendedor */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-vendedor" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    <Label htmlFor="res-vendedor" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                       Vendedor *
                     </Label>
                     <Select
@@ -1650,7 +1649,7 @@ export function ReservasClient({
                       onValueChange={(v) => f('vendedor', Number(v))}
                       disabled={!form.proyecto}
                     >
-                      <SelectTrigger variant="underline" id="res-vendedor" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-vendedor" className="w-full">
                         <SelectValue placeholder={form.proyecto ? 'Selecciona vendedor' : 'Primero selecciona proyecto'}>{(v: string) => v ? (vendedorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1667,24 +1666,24 @@ export function ReservasClient({
             </TabsContent>
 
             {/* ── Tab Pago ── */}
-            <TabsContent value="pago" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="pago" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* Vista: modo readonly */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
 
                   <SectionDivider label="Recibo" />
                   <ViewField label="Serie"  value={viewTarget.serie_recibo} />
                   <ViewField label="Numero" value={viewTarget.recibo} />
                   <div className="grid gap-1">
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
-                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3 gap-1.5">
+                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                    <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2 gap-1.5" style={{ height: 'var(--ui-field-height)' }}>
                       {(() => {
                         const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
                         return (
                           <>
                             {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt={viewTarget.moneda} className="rounded-[2px] shrink-0" />}
-                            <span className="text-[13px] font-medium text-foreground">{viewTarget.moneda}</span>
+                            <span className="font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
                           </>
                         )
                       })()}
@@ -1727,23 +1726,23 @@ export function ReservasClient({
 
               ) : (
               /* Creacion — tab Pago */
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
 
                   <SectionDivider label="Recibo" />
 
                   {/* Serie + Recibo en grid-cols-3 */}
-                  <div className="col-span-2 grid grid-cols-3 gap-4">
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
 
                     {/* Serie */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-serie-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-serie-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Serie *
                       </Label>
                       <Select
                         value={form.serie_recibo}
                         onValueChange={(v) => f('serie_recibo', v ?? '')}
                       >
-                        <SelectTrigger variant="underline" id="res-serie-recibo" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-serie-recibo" className="w-full">
                           <SelectValue placeholder={seriesReciboPorProyecto.length === 0 ? 'Sin series' : 'Selecciona serie'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1757,10 +1756,10 @@ export function ReservasClient({
                     {/* Numero Recibo */}
                     {!reciboAutomatico ? (
                       <div className="grid gap-1">
-                        <Label htmlFor="res-recibo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        <Label htmlFor="res-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                           Numero Recibo *
                         </Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           id="res-recibo"
                           placeholder="No. recibo"
                           value={form.recibo}
@@ -1776,7 +1775,7 @@ export function ReservasClient({
 
                   {/* Cobrador */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-cobrador" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    <Label htmlFor="res-cobrador" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                       Cobrador *
                     </Label>
                     <Select
@@ -1784,7 +1783,7 @@ export function ReservasClient({
                       onValueChange={(v) => f('cobrador', Number(v))}
                       disabled={!form.proyecto}
                     >
-                      <SelectTrigger variant="underline" id="res-cobrador" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-cobrador" className="w-full">
                         <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1799,14 +1798,14 @@ export function ReservasClient({
 
                   {/* Forma Pago */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-forma-pago" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                    <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                       Forma de Pago *
                     </Label>
                     <Select
                       value={form.forma_pago ? String(form.forma_pago) : ''}
                       onValueChange={(v) => f('forma_pago', Number(v))}
                     >
-                      <SelectTrigger variant="underline" id="res-forma-pago" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-forma-pago" className="w-full">
                         <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1820,14 +1819,14 @@ export function ReservasClient({
                   {/* Cheque: Banco */}
                   {form.forma_pago === 2 && (
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-banco" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-banco" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Banco *
                       </Label>
                       <Select
                         value={form.banco ? String(form.banco) : ''}
                         onValueChange={(v) => f('banco', Number(v))}
                       >
-                        <SelectTrigger variant="underline" id="res-banco" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-banco" className="w-full">
                           <SelectValue placeholder={bancosPorProyecto.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1843,10 +1842,10 @@ export function ReservasClient({
                   {form.forma_pago === 2 && (
                     <>
                       <div className="grid gap-1">
-                        <Label htmlFor="res-num-cuenta" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        <Label htmlFor="res-num-cuenta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                           No. Cuenta *
                         </Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           id="res-num-cuenta"
                           placeholder="Numero de cuenta"
                           value={form.num_cuenta}
@@ -1854,10 +1853,10 @@ export function ReservasClient({
                         />
                       </div>
                       <div className="grid gap-1">
-                        <Label htmlFor="res-num-doc-cheque" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                        <Label htmlFor="res-num-doc-cheque" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                           No. Documento *
                         </Label>
-                        <Input variant="underline"
+                        <Input variant="l-border"
                           id="res-num-doc-cheque"
                           placeholder="Numero de cheque"
                           value={form.num_documento}
@@ -1870,14 +1869,14 @@ export function ReservasClient({
                   {/* Deposito / Transferencia: Cuenta Bancaria */}
                   {(form.forma_pago === 3 || form.forma_pago === 4) && (
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-cuenta-bancaria" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-cuenta-bancaria" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         Cuenta Bancaria *
                       </Label>
                       <Select
                         value={form.cuenta_bancaria ? String(form.cuenta_bancaria) : ''}
                         onValueChange={(v) => f('cuenta_bancaria', Number(v))}
                       >
-                        <SelectTrigger variant="underline" id="res-cuenta-bancaria" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-cuenta-bancaria" className="w-full">
                           <SelectValue placeholder={cuentasActivas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1892,10 +1891,10 @@ export function ReservasClient({
                   {/* Deposito / Transferencia: No. Documento */}
                   {(form.forma_pago === 3 || form.forma_pago === 4) && (
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-num-doc" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                      <Label htmlFor="res-num-doc" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                         No. Documento *
                       </Label>
-                      <Input variant="underline"
+                      <Input variant="l-border"
                         id="res-num-doc"
                         placeholder="Numero de documento"
                         value={form.num_documento}

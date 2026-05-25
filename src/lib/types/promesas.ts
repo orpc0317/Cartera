@@ -25,7 +25,7 @@ export type Promesa = {
   fijo_mora: number
   mora_enganche: number
   dias_gracia: number
-  dias_afecto: number
+  dias_afectos: number
   forma_financiamiento: number
   fecha_financiamiento: string | null
   monto_financiamiento: number
@@ -64,7 +64,7 @@ export type PromesaForm = {
   fijo_mora: number
   mora_enganche: number
   dias_gracia: number
-  dias_afecto: number
+  dias_afectos: number
   forma_financiamiento: number
   fecha_financiamiento: string | null
   monto_financiamiento: number

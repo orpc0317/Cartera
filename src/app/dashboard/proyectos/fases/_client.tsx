@@ -109,10 +109,10 @@ function exportCsv(rows: Fase[], colPrefs: ColPref[]) {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -122,8 +122,7 @@ function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="text-xs font-semibold uppercase tracking-wider text-primary">{label}</span>
-      <div className="flex-1 border-t border-primary/30" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
     </div>
   )
 }
@@ -504,7 +503,7 @@ export function FasesClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar fases..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -677,7 +676,7 @@ export function FasesClient({
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
 
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-violet-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-violet-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
               <div className="flex-1 min-w-0">
@@ -694,18 +693,18 @@ export function FasesClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* -- View mode -- */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <SectionDivider label="Identificacion" />
                   <div className="col-span-2">
                     <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
@@ -727,12 +726,12 @@ export function FasesClient({
               ) : (
 
               /* -- Edit / Create mode -- */
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 <SectionDivider label="Identificacion" />
 
                 {/* Empresa */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                     Empresa *
                   </Label>
                   <Select
@@ -740,7 +739,7 @@ export function FasesClient({
                     onValueChange={(v) => f('empresa', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger variant="underline" id="empresa" className="w-full">
+                    <SelectTrigger variant="l-border" id="empresa" className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -755,7 +754,7 @@ export function FasesClient({
 
                 {/* Proyecto */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="proyecto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                     Proyecto *
                   </Label>
                   <Select
@@ -763,7 +762,7 @@ export function FasesClient({
                     onValueChange={(v) => f('proyecto', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger variant="underline" id="proyecto" className="w-full">
+                    <SelectTrigger variant="l-border" id="proyecto" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -780,10 +779,10 @@ export function FasesClient({
 
                 {/* Nombre */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                     Nombre *
                   </Label>
-                  <Input variant="underline"
+                  <Input variant="l-border"
                     id="nombre"
                     value={form.nombre}
                     onChange={(e) => f('nombre', e.target.value)}
@@ -793,14 +792,14 @@ export function FasesClient({
 
                 {/* Medida */}
                 <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="medida" className="text-[11px] font-semibold tracking-wider text-muted-foreground">
+                  <Label htmlFor="medida" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                     Medida *
                   </Label>
                   <Select
                     value={form.medida}
                     onValueChange={(v) => f('medida', v ?? '')}
                   >
-                    <SelectTrigger variant="underline" id="medida" className="w-full">
+                    <SelectTrigger variant="l-border" id="medida" className="w-full">
                       <SelectValue placeholder="Selecciona medida">
                         {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
                       </SelectValue>

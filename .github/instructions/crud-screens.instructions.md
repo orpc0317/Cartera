@@ -18,39 +18,12 @@ Mutations in `src/app/actions/<entity>.ts`. After mutations: `router.refresh()`.
 
 ## Page header
 
-Every CRUD screen `_client.tsx` **must** start its `return` with a `{/* Header */}` block before the toolbar. The outer container uses `gap-6 p-6 md:p-8` (not `gap-4 p-6`).
+→ **Copiar verbatim de `components.instructions.md § Q · Page header`**
 
-```tsx
-return (
-  <div className="flex flex-col gap-6 p-6 md:p-8">
-
-    {/* ── Header ── */}
-    <div className="flex items-start justify-between">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-{accent}-100 p-2.5">
-          <{Icon} className="h-5 w-5 text-{accent}-600" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{Entidad en plural}</h1>
-          <p className="text-sm text-muted-foreground">{Descripción breve}</p>
-        </div>
-      </div>
-      {puedeAgregar && (
-        <Button onClick={openCreate} className="gap-2 bg-{accent}-600 hover:bg-{accent}-700 text-white">
-          <Plus className="h-4 w-4" />
-          Nuevo {Entidad singular}
-        </Button>
-      )}
-    </div>
-
-    {/* ── Toolbar ── (search + column manager + export — sin el botón "Nuevo") */}
-    ...
-```
-
-- The `<Button>Nuevo…</Button>` lives **only** in the header — do **not** duplicate it in the toolbar.
-- Use the module's accent color (see `ui-conventions.instructions.md`) for the icon badge and the button.
-- The `<Icon>` is the entity icon (same one used in the sidebar and in the modal icon badge).
-- `h1` always has `className="text-xl font-bold tracking-tight text-foreground"` — never accent-colored.
+- The outer container uses `gap-6 p-6 md:p-8` — **not** `gap-4 p-6`.
+- `<Button>Nuevo…</Button>` lives **only** in the header — do **not** duplicate it in the toolbar.
+- `h1` always `className="text-xl font-bold tracking-tight text-foreground"` — never accent-colored.
+- Use the module's accent color (see `ui-conventions.instructions.md`) for icon badge and button.
 
 ---
 

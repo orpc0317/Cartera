@@ -105,10 +105,10 @@ function ColumnFilter({
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -184,7 +184,7 @@ function PhoneField({
   return (
     <div className="flex gap-2">
       <Select value={iso} onValueChange={(v: string | null) => onIsoChange(v ?? '')}>
-        <SelectTrigger variant="underline" className="w-[110px] shrink-0 px-2">
+        <SelectTrigger variant="l-border" className="w-[110px] shrink-0 px-2">
           <SelectValue placeholder="Pais">
             {(v: string) => v && DIAL_CODES[v] ? (
               <span className="flex items-center gap-1">
@@ -205,7 +205,7 @@ function PhoneField({
           ))}
         </SelectContent>
       </Select>
-      <Input variant="underline" className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
+      <Input variant="l-border" className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
 }
@@ -312,7 +312,6 @@ const EMPTY_FORM: ProyectoForm = {
   moneda: '',
   promesa_vencida: 0,
   promesa_correlativo: 0,
-  promesa_alfanumerico: 0,
   logo_url: '',
 }
 
@@ -638,7 +637,6 @@ export function ProyectosClient({
         moneda: proyecto.moneda ?? '',
         promesa_vencida: proyecto.promesa_vencida ?? 0,
         promesa_correlativo: proyecto.promesa_correlativo ?? 0,
-        promesa_alfanumerico: proyecto.promesa_alfanumerico ?? 0,
         logo_url: proyecto.logo_url ?? '',
       } satisfies ProyectoForm,
     }
@@ -924,7 +922,7 @@ export function ProyectosClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar proyectos..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -1092,7 +1090,7 @@ export function ProyectosClient({
         modal={false}
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${
                 isEditing && !viewTarget ? 'bg-sky-100' : isEditing ? 'bg-amber-100' : 'bg-sky-100'
@@ -1117,37 +1115,35 @@ export function ProyectosClient({
             </div>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" />
                 General
               </TabsTrigger>
               {viewTarget && (
-              <TabsTrigger value="monedas" className="gap-1.5">
+              <TabsTrigger value="monedas" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <Coins className="h-3.5 w-3.5" />
                 Monedas
               </TabsTrigger>
               )}
-            </TabsList>
+            </TabsList></div>
 
             {/* ── Tab General ── */}
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-auto pr-1">
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
                   {/* Left column — IDENTIFICACION + GENERAL */}
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Identificacion</span>
                     </div>
                     <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
                     <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>General</span>
                     </div>
                     <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
                     <div className="col-span-2"><ViewField label="Direccion" value={viewTarget.direccion} /></div>
@@ -1155,14 +1151,14 @@ export function ProyectosClient({
                       const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                       return (
                         <div className="grid gap-1">
-                          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais</span>
-                          <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                          <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
+                          <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                             {p ? (
-                              <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                              <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                                 <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                                 {p.nombre}
                               </span>
-                            ) : <span className="block text-[13px] font-medium text-foreground">{viewTarget.direccion_pais ?? '—'}</span>}
+                            ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.direccion_pais ?? '—'}</span>}
                           </div>
                         </div>
                       )
@@ -1175,17 +1171,16 @@ export function ProyectosClient({
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   {/* Right column — MORA + ABONO CAPITAL + OTROS PARAMETROS */}
-                  <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Mora</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Mora</span>
                     </div>
                     <div className="col-span-2 flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.mora_automatica} disabled />
-                      <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Automatica</span>
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora Automatica</span>
                     </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-3">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
                       <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
                       <ViewField label="Tipo Calculo" value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
                       {tipoCalculo === 0
@@ -1193,48 +1188,42 @@ export function ProyectosClient({
                         : <ViewField label="Monto Mora" value={formatMora(viewTarget.fijo_mora ?? 0)} />}
                       <ViewField label="Dias Gracia" value={String(viewTarget.dias_gracia ?? 0)} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField label="Dias Afectos" value={(viewTarget.dias_afectos ?? 0) === 1 ? 'Un Mes' : 'Todos Los Dias'} />
                       <ViewField label="Mora Minima" value={formatMora(viewTarget.minimo_mora ?? 0)} />
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={!!viewTarget.mora_enganche} disabled />
-                        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Enganche</span>
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora Enganche</span>
                       </div>
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={!!viewTarget.fijar_parametros_mora} disabled />
-                        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Parametros Editables</span>
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Parametros Editables</span>
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Abono Capital</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Abono Capital</span>
                     </div>
                     <ViewField label="Minimo Abono Capital" value={formatMora(viewTarget.minimo_abono_capital ?? 0)} />
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parametros</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Otros Parametros</span>
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-3">
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
-                        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Promesa Vencida</span>
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Promesa Vencida</span>
                       </div>
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={!!viewTarget.promesa_correlativo} disabled />
-                        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Promesa Correlativo</span>
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox checked={!!viewTarget.promesa_alfanumerico} disabled />
-                        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Promesa Alfanumerico</span>
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Promesa Correlativo</span>
                       </div>
                     </div>
                     {viewTarget.logo_url ? (
-                      <div className="col-span-2 rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5 space-y-2">
-                        <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground/70">Logo</span>
+                      <div className="col-span-2 rounded-none bg-transparent border-0 border-b border-primary/50 px-3 py-2.5 space-y-2">
+                        <span className="block font-semibold tracking-wide text-muted-foreground/70" style={{ fontSize: 'var(--ui-form-label)' }}>Logo</span>
                         <img src={viewTarget.logo_url} alt="Logo del proyecto"
                           className="max-h-20 max-w-[200px] rounded border border-border object-contain bg-white p-1" />
                       </div>
@@ -1246,16 +1235,15 @@ export function ProyectosClient({
               ) : (
                 <div className="flex gap-6 items-start">
                   {/* Left column — IDENTIFICACION + GENERAL */}
-                  <div className="flex-1 grid grid-cols-2 gap-4">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Identificacion</span>
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
+                      <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="underline" id="empresa" className="w-full">
+                        <SelectTrigger variant="l-border" id="empresa" className="w-full">
                           <SelectValue placeholder="Selecciona una empresa">
                             {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                           </SelectValue>
@@ -1270,20 +1258,19 @@ export function ProyectosClient({
                     )}
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>General</span>
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Proyecto *</Label>
-                      <Input variant="underline" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
+                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto *</Label>
+                      <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="direccion_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Direccion *</Label>
-                      <Input variant="underline" id="direccion_p" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
+                      <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                      <Input variant="l-border" id="direccion_p" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
                     </div>
                     <div className="grid gap-1">
-                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Pais *</Label>
-                      <CountrySelect paises={paises} value={paisCodigo}
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+                      <CountrySelect paises={paises} value={paisCodigo} variant="l-border"
                         onChange={(codigo, _nombre) => {
                           const firstDepto = departamentos.find((d) => d.pais === codigo)?.codigo ?? ''
                           const firstMunicipio = municipios.find((m) => m.pais === codigo && m.departamento === firstDepto)?.codigo ?? ''
@@ -1293,31 +1280,33 @@ export function ProyectosClient({
                       />
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor="departamento_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Departamento *</Label>
+                      <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento *</Label>
                       <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo}
                         onChange={(e) => { const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
-                        className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50">
+                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                         {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
                       </select>
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor="municipio_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Municipio *</Label>
+                      <Label htmlFor="municipio_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio *</Label>
                       <select id="municipio_p" title="Municipio"
                         value={form.direccion_municipio}
                         disabled={!deptoCodigo}
                         onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
-                        className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50">
+                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                         {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
                       </select>
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor="codigo_postal_p" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Codigo postal</Label>
-                      <Input variant="underline" id="codigo_postal_p" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Ej: 01001" />
+                      <Label htmlFor="codigo_postal_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo postal</Label>
+                      <Input variant="l-border" id="codigo_postal_p" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Ej: 01001" />
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Telefono 1 *</Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 *</Label>
                       <PhoneField
                         iso={tel1Iso}
                         local={tel1Local}
@@ -1327,7 +1316,7 @@ export function ProyectosClient({
                       />
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Telefono 2</Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
                       <PhoneField
                         iso={tel2Iso}
                         local={tel2Local}
@@ -1339,11 +1328,10 @@ export function ProyectosClient({
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   {/* Right column — MORA + ABONO CAPITAL + OTROS PARAMETROS */}
-                  <div className="flex-1 grid grid-cols-2 gap-4">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Mora</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Mora</span>
                     </div>
                     <div className="col-span-2 flex items-center gap-2 py-1">
                       <Checkbox
@@ -1351,18 +1339,18 @@ export function ProyectosClient({
                         checked={form.mora_automatica === 1}
                         onCheckedChange={(checked: boolean) => f('mora_automatica', checked ? 1 : 0)}
                       />
-                      <Label htmlFor="mora_automatica" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Mora Automatica</Label>
+                      <Label htmlFor="mora_automatica" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Mora Automatica</Label>
                     </div>
                     <div className="col-span-2 grid grid-cols-[1fr_minmax(10rem,1fr)_1fr_1fr] gap-6">
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="forma_mora" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>Forma Calculo</Label>
+                      <div className="grid gap-1">
+                        <Label htmlFor="forma_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Forma Calculo</Label>
                         <div className="w-full">
                           <Select
                             value={String(form.forma_mora)}
                             onValueChange={(v) => f('forma_mora', Number(v))}
                             disabled={form.mora_automatica !== 1}
                           >
-                            <SelectTrigger variant="underline" id="forma_mora" className="w-full">
+                            <SelectTrigger variant="l-border" id="forma_mora" className="w-full">
                               <SelectValue>
                                 {(v: string) => v === '1' ? 'Diario' : 'Mensual'}
                               </SelectValue>
@@ -1374,8 +1362,8 @@ export function ProyectosClient({
                           </Select>
                         </div>
                       </div>
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="tipo_calculo" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>Tipo Calculo</Label>
+                      <div className="grid gap-1">
+                        <Label htmlFor="tipo_calculo" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>Tipo Calculo</Label>
                         <div className="w-full">
                           <Select
                             value={String(tipoCalculo)}
@@ -1387,7 +1375,7 @@ export function ProyectosClient({
                             }}
                             disabled={form.mora_automatica !== 1}
                           >
-                            <SelectTrigger variant="underline" id="tipo_calculo" className="w-full">
+                            <SelectTrigger variant="l-border" id="tipo_calculo" className="w-full">
                               <SelectValue>
                                 {(v: string) => v === '1' ? 'Valor Fijo' : 'Tasa'}
                               </SelectValue>
@@ -1400,26 +1388,26 @@ export function ProyectosClient({
                         </div>
                       </div>
                       {tipoCalculo === 0 ? (
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="interes_mora" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? '% Mora *' : '% Mora'}</Label>
-                          <Input variant="underline" id="interes_mora" type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                        <div className="grid gap-1">
+                          <Label htmlFor="interes_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? '% Mora *' : '% Mora'}</Label>
+                          <Input variant="l-border" id="interes_mora" type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                         </div>
                       ) : (
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="fijo_mora" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? 'Monto Mora *' : 'Monto Mora'}</Label>
-                          <Input variant="underline" id="fijo_mora" type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                        <div className="grid gap-1">
+                          <Label htmlFor="fijo_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? 'Monto Mora *' : 'Monto Mora'}</Label>
+                          <Input variant="l-border" id="fijo_mora" type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                         </div>
                       )}
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="dias_gracia" className={`text-[11px] font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`}>{form.mora_automatica === 1 ? 'Dias Gracia *' : 'Dias Gracia'}</Label>
-                        <Input variant="underline" id="dias_gracia" type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                      <div className="grid gap-1">
+                        <Label htmlFor="dias_gracia" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? 'Dias Gracia *' : 'Dias Gracia'}</Label>
+                        <Input variant="l-border" id="dias_gracia" type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                       </div>
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+                    <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                       <div className="grid gap-1">
-                        <Label htmlFor="dias_afectos" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Dias Afectos</Label>
+                        <Label htmlFor="dias_afectos" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Dias Afectos</Label>
                         <Select value={String(form.dias_afectos ?? 0)} onValueChange={(v) => f('dias_afectos', Number(v))}>
-                          <SelectTrigger variant="underline" id="dias_afectos" className="w-full"><SelectValue>{(v: string) => v === '1' ? 'Un Mes' : 'Todos Los Dias'}</SelectValue></SelectTrigger>
+                          <SelectTrigger variant="l-border" id="dias_afectos" className="w-full"><SelectValue>{(v: string) => v === '1' ? 'Un Mes' : 'Todos Los Dias'}</SelectValue></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="0">Todos Los Dias</SelectItem>
                             <SelectItem value="1">Un Mes</SelectItem>
@@ -1427,8 +1415,8 @@ export function ProyectosClient({
                         </Select>
                       </div>
                       <div className="grid gap-1">
-                        <Label htmlFor="minimo_mora" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Mora Minima</Label>
-                        <Input variant="underline"
+                        <Label htmlFor="minimo_mora" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora Minima</Label>
+                        <Input variant="l-border"
                           id="minimo_mora"
                           type="text"
                           inputMode="decimal"
@@ -1442,14 +1430,14 @@ export function ProyectosClient({
                         />
                       </div>
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-4 items-center">
+                    <div className="col-span-2 grid grid-cols-3 gap-2 items-center">
                       <div className="flex items-center gap-2 pb-1">
                         <Checkbox
                           id="mora_enganche"
                           checked={form.mora_enganche === 1}
                           onCheckedChange={(checked: boolean) => f('mora_enganche', checked ? 1 : 0)}
                         />
-                        <Label htmlFor="mora_enganche" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Mora Enganche</Label>
+                        <Label htmlFor="mora_enganche" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Mora Enganche</Label>
                       </div>
                       <div className="flex items-center gap-2 pb-1">
                         <Checkbox
@@ -1457,28 +1445,26 @@ export function ProyectosClient({
                           checked={form.fijar_parametros_mora === 1}
                           onCheckedChange={(checked: boolean) => f('fijar_parametros_mora', checked ? 1 : 0)}
                         />
-                        <Label htmlFor="fijar_parametros_mora" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Parametros Editables</Label>
+                        <Label htmlFor="fijar_parametros_mora" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Parametros Editables</Label>
                       </div>
                     </div>
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Abono Capital</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Abono Capital</span>
                     </div>
-                    <div className="grid gap-1 w-3/4"><Label htmlFor="minimo_abono" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Minimo Abono Capital</Label><Input variant="underline" id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
+                    <div className="grid gap-1 w-3/4"><Label htmlFor="minimo_abono" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Minimo Abono Capital</Label><Input variant="l-border" id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="text-xs font-semibold uppercase tracking-wider text-primary">Otros Parametros</span>
-                      <div className="flex-1 border-t border-primary/30" />
+                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Otros Parametros</span>
                     </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-4 items-end">
+                    <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                       <div className="flex items-center gap-2 pb-1">
                         <Checkbox
                           id="promesa_vencida"
                           checked={form.promesa_vencida === 1}
                           onCheckedChange={(checked: boolean) => f('promesa_vencida', checked ? 1 : 0)}
                         />
-                        <Label htmlFor="promesa_vencida" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Promesa Vencida</Label>
+                        <Label htmlFor="promesa_vencida" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Promesa Vencida</Label>
                       </div>
                       <div className="flex items-center gap-2 pb-1">
                         <Checkbox
@@ -1487,22 +1473,13 @@ export function ProyectosClient({
                           onCheckedChange={(checked: boolean) => f('promesa_correlativo', checked ? 1 : 0)}
                           disabled={!!viewTarget}
                         />
-                        <Label htmlFor="promesa_correlativo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Promesa Correlativo</Label>
-                      </div>
-                      <div className="flex items-center gap-2 pb-1">
-                        <Checkbox
-                          id="promesa_alfanumerico"
-                          checked={form.promesa_alfanumerico === 1}
-                          onCheckedChange={(checked: boolean) => f('promesa_alfanumerico', checked ? 1 : 0)}
-                          disabled={!!viewTarget}
-                        />
-                        <Label htmlFor="promesa_alfanumerico" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Promesa Alfanumerico</Label>
+                        <Label htmlFor="promesa_correlativo" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Promesa Correlativo</Label>
                       </div>
                       {!viewTarget && (
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</Label>
+                        <div className="grid gap-1">
+                          <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
                           <Select value={form.moneda} onValueChange={(v: string | null) => setForm((prev) => ({ ...prev, moneda: v ?? '' }))}>
-                            <SelectTrigger variant="underline" id="moneda" className="w-full">
+                            <SelectTrigger variant="l-border" id="moneda" className="w-full">
                               <SelectValue placeholder="Selecciona moneda">
                                 {(v: string) => v ? (
                                   <span className="flex items-center gap-1.5">
@@ -1544,14 +1521,13 @@ export function ProyectosClient({
               )}
             </TabsContent>
             {/* ── Tab Monedas ── */}
-            <TabsContent value="monedas" className="mt-4 flex-1 overflow-y-auto overflow-x-auto pr-1">
+            <TabsContent value="monedas" className="mt-0 flex-1 overflow-y-auto overflow-x-auto pr-1">
               <div className="flex gap-6 items-start">
                 {/* Left column — MONEDAS */}
                 <div className="flex-1 space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-primary">Monedas</span>
-                  <div className="flex-1 border-t border-primary/30" />
+                  <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Monedas</span>
                 </div>
 
                 {!viewTarget ? (
@@ -1574,9 +1550,9 @@ export function ProyectosClient({
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="bg-muted/30 border-b border-border">
-                              <th className="px-3 py-2 text-left text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</th>
-                              <th className="px-3 py-2 text-center text-[11px] font-semibold tracking-wider text-muted-foreground">Predeterminada</th>
-                              <th className="px-3 py-2 text-center text-[11px] font-semibold tracking-wider text-muted-foreground">Estado</th>
+                              <th className="px-3 py-2 text-left text-[10px] font-semibold tracking-wider text-muted-foreground">Moneda</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-semibold tracking-wider text-muted-foreground">Predeterminada</th>
+                              <th className="px-3 py-2 text-center text-[10px] font-semibold tracking-wider text-muted-foreground">Estado</th>
                               {puedeModificar && isEditing && <th className="px-3 py-2 w-24" />}
                             </tr>
                           </thead>
@@ -1641,7 +1617,7 @@ export function ProyectosClient({
                     {puedeModificar && isEditing && monedasDisponibles.length > 0 && (
                       <div className="flex items-center gap-2 pt-1">
                         <Select value={addMonedaValue} onValueChange={(v) => setAddMonedaValue(v ?? '')}>
-                          <SelectTrigger variant="underline" className="w-full">
+                          <SelectTrigger variant="l-border" className="w-full">
                             <SelectValue placeholder="Seleccionar moneda para agregar...">
                               {(v: string) => {
                                 if (!v) return null

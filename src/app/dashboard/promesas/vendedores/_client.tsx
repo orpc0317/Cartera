@@ -113,10 +113,10 @@ const EMPTY_FORM: VendedorForm = {
 
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -478,7 +478,7 @@ export function VendedoresClient({
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar vendedor…"
@@ -733,7 +733,7 @@ export function VendedoresClient({
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[32rem] max-h-[90vh] overflow-hidden">
 
           {/* Header */}
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-lime-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-lime-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-lime-100' : isEditing ? 'bg-amber-100' : 'bg-lime-100'}`}>
                 {isEditing && !viewTarget
@@ -757,18 +757,18 @@ export function VendedoresClient({
           </DialogHeader>
 
           {/* Tabs */}
-          <Tabs defaultValue="general" className="mt-2 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
 
               {/* ── Vista ── */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2">
                     <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
                   </div>
@@ -786,18 +786,18 @@ export function VendedoresClient({
                   </div>
                   <div className="col-span-2 flex items-center gap-2 py-1">
                     <Checkbox checked={viewTarget.activo === 1} disabled />
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
+                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
                   </div>
                 </div>
 
               ) : (
               /* ── Edicion / Creacion ── */
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
+                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                   <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger variant="underline" className="w-full">
+                    <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
                       </SelectValue>
@@ -809,9 +809,9 @@ export function VendedoresClient({
                 </div>
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
+                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                   <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger variant="underline" className="w-full">
+                    <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {proyectoMap.get(`${form.empresa}-${form.proyecto}`) ?? 'Selecciona proyecto'}
                       </SelectValue>
@@ -823,18 +823,18 @@ export function VendedoresClient({
                 </div>
 
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Vendedor *</Label>
-                  <Input variant="underline" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
+                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Vendedor *</Label>
+                  <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
                 </div>
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Coordinador</Label>
+                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Coordinador</Label>
                   <Select
                     value={form.coordinador != null ? String(form.coordinador) : '__none__'}
                     onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? null : Number(v) }))}
                     disabled={!form.proyecto}
                   >
-                    <SelectTrigger variant="underline" className="w-full">
+                    <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue>
                         {form.coordinador != null
                           ? (coordinadorMap.get(`${form.empresa}-${form.proyecto}-${form.coordinador}`) ?? `#${form.coordinador}`)
@@ -856,7 +856,7 @@ export function VendedoresClient({
                     checked={form.activo === 1}
                     onCheckedChange={(checked) => setForm((prev) => ({ ...prev, activo: checked ? 1 : 0 }))}
                   />
-                  <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</Label>
+                  <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
                 </div>
 
               </div>

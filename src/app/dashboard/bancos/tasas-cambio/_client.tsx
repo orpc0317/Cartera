@@ -443,7 +443,7 @@ export default function TasasCambioClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar tasas..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -573,7 +573,7 @@ export default function TasasCambioClient({
       }}>
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
 
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
               <div className="flex-1 min-w-0">
@@ -644,11 +644,11 @@ export default function TasasCambioClient({
 
             {/* ── Nuevo mode — form ── */}
             {isEditing && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2">
 
                 {/* Empresa */}
                 <div className="col-span-3 grid gap-1">
-                  <Label htmlFor="empresa" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                   <Select
                     value={String(form.empresa)}
                     onValueChange={(v) => {
@@ -658,7 +658,7 @@ export default function TasasCambioClient({
                       setForm((p) => ({ ...p, empresa: emp, proyecto: firstProyecto, moneda: firstMoneda }))
                     }}
                   >
-                    <SelectTrigger variant="underline" className="w-full">
+                    <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -673,7 +673,7 @@ export default function TasasCambioClient({
 
                 {/* Proyecto */}
                 <div className="col-span-3 grid gap-1">
-                  <Label htmlFor="proyecto" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                   <Select
                     value={String(form.proyecto)}
                     onValueChange={(v) => {
@@ -682,7 +682,7 @@ export default function TasasCambioClient({
                       setForm((p) => ({ ...p, proyecto: proy, moneda: firstMoneda }))
                     }}
                   >
-                    <SelectTrigger variant="underline" className="w-full">
+                    <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -697,9 +697,9 @@ export default function TasasCambioClient({
 
                 {/* Moneda */}
                 <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="moneda" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
+                  <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
                   <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
-                    <SelectTrigger variant="underline" className="w-full">
+                    <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona moneda">
                         {(v: string) => {
                           const flag = CURRENCY_FLAG_MAP.get(v)
@@ -730,8 +730,8 @@ export default function TasasCambioClient({
 
                 {/* Moneda / Fecha / Tasa — third width each */}
                 <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="fecha" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Fecha *</Label>
-                  <Input variant="underline"
+                  <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha *</Label>
+                  <Input variant="l-border"
                     id="fecha"
                     type="date"
                     value={form.fecha}
@@ -739,8 +739,8 @@ export default function TasasCambioClient({
                   />
                 </div>
                 <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="tasa_cambio" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Tasa Cambio *</Label>
-                  <Input variant="underline"
+                  <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio *</Label>
+                  <Input variant="l-border"
                     id="tasa_cambio"
                     type="number"
                     value={form.tasa_cambio}

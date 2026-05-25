@@ -90,10 +90,10 @@ function ColumnFilter({ label, values, active, onChange }: {
 
 function ViewField({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-sm font-medium leading-none text-muted-foreground">{label}</span>
-      <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
-        <span className="block text-[13px] font-medium text-foreground">{value || ''}</span>
+    <div className="grid gap-1">
+      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -471,7 +471,7 @@ export function CuentasBancariasClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="underline"
+          <Input variant="l-border"
             placeholder="Buscar cuentas bancarias..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -631,7 +631,7 @@ export function CuentasBancariasClient({
         modal={false}
       >
         <DialogContent className="flex flex-col w-full max-w-lg max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-3 bg-gradient-to-br from-cyan-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-cyan-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${isEditing && !viewTarget ? 'bg-cyan-100' : isEditing ? 'bg-amber-100' : 'bg-cyan-100'}`}>
                 {isEditing && !viewTarget
@@ -654,22 +654,21 @@ export function CuentasBancariasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-1 flex flex-col flex-1 min-h-0">
-            <TabsList className="shrink-0">
-              <TabsTrigger value="general" className="gap-1.5">
+          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
                 <MapPin className="h-3.5 w-3.5" />
                 General
               </TabsTrigger>
-            </TabsList>
+            </TabsList></div>
 
-            <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto pr-1">
               {!isEditing && viewTarget ? (
                 /* ── View mode ── */
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
-                    <div className="flex-1 border-t border-primary/30" />
+                    <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Identificacion</span>
                   </div>
                   <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
@@ -677,65 +676,62 @@ export function CuentasBancariasClient({
 
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
-                    <div className="flex-1 border-t border-primary/30" />
+                    <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>General</span>
                   </div>
 
                   <div className="col-span-2"><ViewField label="Banco"    value={bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`} /></div>
                   <div className="col-span-2"><ViewField label="Nombre Cuenta"  value={viewTarget.nombre} /></div>
                   <ViewField label="Numero Cuenta" value={viewTarget.numero} />
                   <div className="grid gap-1">
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda</span>
-                    <div className="h-8 flex items-center rounded-lg bg-muted/50 border border-border/40 px-3">
+                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                    <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                       {(() => {
                         const flagIso = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
                         return flagIso ? (
-                          <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                          <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                             <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
                             {viewTarget.moneda}
                           </span>
-                        ) : <span className="block text-[13px] font-medium text-foreground">{viewTarget.moneda || '—'}</span>
+                        ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda || '—'}</span>
                       })()}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 py-1">
                     <Checkbox checked={!!viewTarget.activo} disabled />
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Activo</span>
+                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
                   </div>
                 </div>
               ) : (
                 /* ── Edit / Create mode ── */
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">Identificacion</span>
-                    <div className="flex-1 border-t border-primary/30" />
+                    <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Identificacion</span>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Empresa *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Proyecto *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
 
                   <div className="col-span-2 flex items-center gap-2 pt-1">
                     <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-primary">General</span>
-                    <div className="flex-1 border-t border-primary/30" />
+                    <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>General</span>
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Banco *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco *</Label>
                     <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
-                      <SelectTrigger variant="underline" className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>
                         {bancosFiltrados.length === 0
                           ? <SelectItem value="0" disabled>Sin bancos para este proyecto</SelectItem>
@@ -745,8 +741,8 @@ export function CuentasBancariasClient({
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Nombre Cuenta *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Cuenta *</Label>
+                    <Input variant="l-border"
                       id="nombre"
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}
@@ -754,8 +750,8 @@ export function CuentasBancariasClient({
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="numero" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Numero Cuenta *</Label>
-                    <Input variant="underline"
+                    <Label htmlFor="numero" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Cuenta *</Label>
+                    <Input variant="l-border"
                       id="numero"
                       value={form.numero}
                       onChange={(e) => f('numero', e.target.value)}
@@ -763,9 +759,9 @@ export function CuentasBancariasClient({
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label className="text-[11px] font-semibold tracking-wider text-muted-foreground">Moneda *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
                     <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
-                      <SelectTrigger variant="underline" className="w-full">
+                      <SelectTrigger variant="l-border" className="w-full">
                         <SelectValue placeholder="Selecciona moneda">
                           {(v: string) => {
                             const flagIso = CURRENCY_FLAG_MAP.get(v)
@@ -799,7 +795,7 @@ export function CuentasBancariasClient({
                       checked={form.activo === 1}
                       onCheckedChange={(v: boolean) => setForm((p) => ({ ...p, activo: v ? 1 : 0 }))}
                     />
-                    <Label htmlFor="activo" className="text-[11px] font-semibold tracking-wider text-muted-foreground cursor-pointer">Activo</Label>
+                    <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
                   </div>
                 </div>
               )}
