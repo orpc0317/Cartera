@@ -1225,7 +1225,8 @@ export function PromesasClient({
                         onChange={(e) => f('observacion', e.target.value)}
                         placeholder="Observaciones"
                         rows={2}
-                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                        style={{ fontSize: 'var(--ui-input)' }}
+                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                       />
                     </div>
                   </div>
@@ -1545,7 +1546,8 @@ export function PromesasClient({
                         onChange={(e) => f('observacion', e.target.value)}
                         placeholder="Observaciones"
                         rows={2}
-                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                        style={{ fontSize: 'var(--ui-input)' }}
+                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                       />
                     </div>
                   </div>

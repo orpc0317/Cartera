@@ -53,13 +53,14 @@ export function CountrySelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        style={{ fontSize: 'var(--ui-input)' }}
         className={cn(
-          'flex h-8 w-full items-center justify-between gap-1.5 px-2.5 text-sm outline-none',
+          'flex h-8 w-full items-center justify-between gap-1.5 px-2.5 outline-none',
           variant === 'underline'
             ? 'rounded-t-sm border-0 border-b border-input bg-muted/30 focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40'
             : variant === 'l-border'
             ? 'rounded-none border-0 border-b border-primary/50 bg-transparent focus-visible:border-b-2 focus-visible:border-primary'
-            : 'rounded-lg border border-input bg-transparent focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
+            : 'rounded-none border border-input bg-transparent focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
         )}
       >
         {selected ? (

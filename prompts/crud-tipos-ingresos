@@ -147,6 +147,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nuevo Tipo Ingreso      |
+| editar | Editar Tipo Ingreso     |
+| ver    | {nombre}                |
+
+---
+
 ## TABS_MODAL
 
 > **Ancho:** `full` = col-span-2 · `half` = 1 columna · `third` = grupos de 3 · `spacer` = celda vacía para completar el grupo

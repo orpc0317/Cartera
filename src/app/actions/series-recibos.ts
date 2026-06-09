@@ -57,10 +57,10 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getSeriesFactura(): Promise<SerieFactura[]> {
+export async function getSeriesFactura(empresa?: number, proyecto?: number): Promise<SerieFactura[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  const { data, error } = await admin
+  let query = admin
     .schema('cartera')
     .from('t_serie_factura')
     .select('empresa, proyecto, serie')
@@ -68,14 +68,17 @@ export async function getSeriesFactura(): Promise<SerieFactura[]> {
     .order('empresa')
     .order('proyecto')
     .order('serie')
+  if (empresa !== undefined) query = query.eq('empresa', empresa)
+  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as SerieFactura[]
 }
 
-export async function getSeriesRecibos(): Promise<SerieRecibo[]> {
+export async function getSeriesRecibos(empresa?: number, proyecto?: number): Promise<SerieRecibo[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  const { data, error } = await admin
+  let query = admin
     .schema('cartera')
     .from('t_serie_recibo')
     .select('*')
@@ -83,6 +86,9 @@ export async function getSeriesRecibos(): Promise<SerieRecibo[]> {
     .order('empresa')
     .order('proyecto')
     .order('serie')
+  if (empresa !== undefined) query = query.eq('empresa', empresa)
+  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as SerieRecibo[]
 }

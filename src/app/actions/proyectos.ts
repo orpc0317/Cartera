@@ -71,6 +71,55 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   return data as Proyecto[]
 }
 
+/**
+ * Proyectos a los que el usuario autenticado tiene acceso según t_usuario_proyecto.
+ * Sin filas en esa tabla → array vacío (sin acceso).
+ * El usuario Admin de la cuenta tiene acceso irrestricto (su setup no usa esta tabla).
+ * Opcionalmente filtrar por empresa.
+ */
+export async function getProyectosUsuario(empresa?: number): Promise<Proyecto[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  if (!cuenta) return []
+
+  const admin = createAdminClient()
+
+  // Obtener los proyectos a los que este usuario tiene acceso explícito
+  let accesoQuery = admin
+    .schema('cartera')
+    .from('t_usuario_proyecto')
+    .select('empresa, proyecto')
+    .eq('cuenta', cuenta)
+    .eq('userid', user.id)
+  if (empresa !== undefined) accesoQuery = accesoQuery.eq('empresa', empresa)
+
+  const { data: accesos, error: accesoError } = await accesoQuery
+  if (accesoError) throw new Error(accesoError.message)
+  if (!accesos || accesos.length === 0) return []
+
+  // Construir filtro: traer solo los proyectos permitidos
+  // Agrupamos por empresa para construir el filtro OR compuesto
+  const filters = accesos
+    .map((a) => `and(empresa.eq.${a.empresa},codigo.eq.${a.proyecto})`)
+    .join(',')
+
+  let proyQuery = admin
+    .schema('cartera')
+    .from('t_proyecto')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .or(filters)
+    .order('nombre')
+  if (empresa !== undefined) proyQuery = proyQuery.eq('empresa', empresa)
+
+  const { data, error } = await proyQuery
+  if (error) throw new Error(error.message)
+  return data as Proyecto[]
+}
+
 export async function createProyecto(form: ProyectoForm): Promise<{ error?: string; codigo?: number }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }

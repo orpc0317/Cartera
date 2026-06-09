@@ -58,10 +58,10 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getPromesas(): Promise<Promesa[]> {
+export async function getPromesas(empresa?: number, proyecto?: number): Promise<Promesa[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  const { data, error } = await admin
+  let query = admin
     .schema('cartera')
     .from('t_promesa')
     .select('*')
@@ -69,6 +69,9 @@ export async function getPromesas(): Promise<Promesa[]> {
     .order('empresa')
     .order('proyecto')
     .order('numero')
+  if (empresa !== undefined) query = query.eq('empresa', empresa)
+  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const { data, error } = await query
   if (error) throw new Error(error.message)
   return (data ?? []) as Promesa[]
 }

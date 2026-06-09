@@ -298,27 +298,33 @@ export type ReservaRow = {
   cobrador:         number
 }
 
-export async function getReservas(): Promise<ReservaRow[]> {
+export async function getReservas(empresa?: number, proyecto?: number): Promise<ReservaRow[]> {
   const cuenta = await getCuentaActiva()
   const admin  = createAdminClient()
 
-  const { data: reservas, error: err1 } = await admin
+  let reservaQuery = admin
     .schema('cartera')
     .from('t_reserva')
     .select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
     .eq('cuenta', cuenta)
     .order('numero', { ascending: false })
+  if (empresa !== undefined) reservaQuery = reservaQuery.eq('empresa', empresa)
+  if (proyecto !== undefined) reservaQuery = reservaQuery.eq('proyecto', proyecto)
+  const { data: reservas, error: err1 } = await reservaQuery
   if (err1) throw new Error(err1.message)
   if (!reservas || reservas.length === 0) return []
 
   const numerosRecibo = [...new Set(reservas.map((r) => r.recibo_numero).filter((n) => n > 0))]
 
-  const { data: recibos, error: err2 } = await admin
+  let reciboQuery = admin
     .schema('cartera')
     .from('t_recibo_caja')
     .select('empresa, proyecto, serie, numero, fecha, monto, moneda, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, cobrador')
     .eq('cuenta', cuenta)
     .in('numero', numerosRecibo)
+  if (empresa !== undefined) reciboQuery = reciboQuery.eq('empresa', empresa)
+  if (proyecto !== undefined) reciboQuery = reciboQuery.eq('proyecto', proyecto)
+  const { data: recibos, error: err2 } = await reciboQuery
   if (err2) throw new Error(err2.message)
 
   // Composite key: empresa-proyecto-serie-numero

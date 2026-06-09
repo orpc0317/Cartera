@@ -190,6 +190,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_detalle_factura (
 
 -- Detalle de aplicación de recibo de caja a cuotas
 CREATE TABLE IF NOT EXISTS cartera.t_detalle_recibo_caja (
+  cuenta              varchar       NOT NULL,
   empresa             integer       NOT NULL DEFAULT 0,
   proyecto            integer       NOT NULL DEFAULT 0,
   serie_recibo        varchar(3)    NOT NULL,
@@ -201,11 +202,12 @@ CREATE TABLE IF NOT EXISTS cartera.t_detalle_recibo_caja (
   intereses           numeric(18,2) NOT NULL DEFAULT 0,
   mora                numeric(18,2) NOT NULL DEFAULT 0,
   otros               numeric(18,2) NOT NULL DEFAULT 0,
-  PRIMARY KEY (empresa, proyecto, serie_recibo, recibo, tipo_cuota, cuota)
+  PRIMARY KEY (cuenta, empresa, proyecto, serie_recibo, recibo, tipo_cuota, cuota)
 );
 
 -- Detalle de recibo para cargos adicionales
 CREATE TABLE IF NOT EXISTS cartera.t_detalle_recibo_otros (
+  cuenta              varchar       NOT NULL,
   empresa             integer       NOT NULL DEFAULT 0,
   proyecto            integer       NOT NULL DEFAULT 0,
   serie_recibo        varchar(3)    NOT NULL,
@@ -215,7 +217,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_detalle_recibo_otros (
   cuota               integer       NOT NULL DEFAULT 0,
   secuencia           integer       NOT NULL DEFAULT 0,
   otro                numeric(18,2) NOT NULL DEFAULT 0,
-  PRIMARY KEY (empresa, proyecto, serie_recibo, recibo, tipo_cuota, cuota, secuencia)
+  PRIMARY KEY (cuenta, empresa, proyecto, serie_recibo, recibo, tipo_cuota, cuota, secuencia)
 );
 
 -- Empresas (tenants de primer nivel)
@@ -238,11 +240,15 @@ CREATE TABLE IF NOT EXISTS cartera.t_empresa (
   PRIMARY KEY (cuenta, codigo)
 );
 
--- Relación usuario–empresa (control de acceso)
-CREATE TABLE IF NOT EXISTS cartera.t_empresa_usuario (
+-- Acceso de usuario a empresas y proyectos (control de acceso obligatorio)
+-- Sin filas para un usuario = sin acceso (Opción A: siempre debe configurarse)
+-- El usuario Admin de la cuenta tiene acceso irrestricto (se gestiona aparte en la creación de cuenta)
+CREATE TABLE IF NOT EXISTS cartera.t_usuario_proyecto (
+  cuenta              varchar       NOT NULL,
   userid              uuid          NOT NULL,
-  empresa             integer       NOT NULL,
-  PRIMARY KEY (userid, empresa)
+  empresa             integer       NOT NULL DEFAULT 0,
+  proyecto            integer       NOT NULL DEFAULT 0,
+  PRIMARY KEY (cuenta, userid, empresa, proyecto)
 );
 
 -- Cabecera de facturas
@@ -595,9 +601,9 @@ CREATE TABLE IF NOT EXISTS cartera.t_proyecto (
   empresa                       integer     NOT NULL DEFAULT 0,
   codigo                        integer     NOT NULL DEFAULT 0,
   nombre                        varchar     NOT NULL,
-  pais                          varchar     NOT NULL,
-  departamento                  varchar     NOT NULL,
-  municipio                     varchar     NOT NULL,
+  direccion_pais                varchar     NOT NULL,
+  direccion_departamento        varchar     NOT NULL,
+  direccion_municipio           varchar     NOT NULL,
   direccion                     varchar     NOT NULL,
   codigo_postal                 varchar     NOT NULL,
   telefono1                     varchar     NOT NULL,
@@ -616,11 +622,13 @@ CREATE TABLE IF NOT EXISTS cartera.t_proyecto (
   minimo_abono_capital          numeric     NOT NULL DEFAULT 0,
   inicio_abono_capital_estricto date        NOT NULL DEFAULT '1900-01-01',
   promesa_vencida               smallint    NOT NULL DEFAULT 0,
+  promesa_correlativo           smallint    NOT NULL DEFAULT 0,
+  visibilidad_ventas            smallint    NOT NULL DEFAULT 0,  -- 0=granular (cada quien ve solo lo suyo), 1=abierto (todos ven todo)
+  visibilidad_cobros            smallint    NOT NULL DEFAULT 0,  -- 0=granular, 1=abierto
   agrego_usuario                uuid        NOT NULL,
   agrego_fecha                  timestamptz NOT NULL DEFAULT '1900-01-01 00:00:00+00',
   modifico_usuario              uuid        NOT NULL,
   modifico_fecha                timestamptz NOT NULL DEFAULT '1900-01-01 00:00:00+00',
-  moneda                        varchar     NOT NULL DEFAULT 'GTQ',
   logo_url                      varchar     NULL,
   PRIMARY KEY (cuenta, empresa, codigo)
 );
@@ -838,7 +846,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
   agrego_fecha        timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
   modifico_usuario    uuid          NOT NULL,
   modifico_fecha      timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
-  supervisor          integer       NULL,      -- FK lógica a t_supervisor.codigo (mismo empresa/proyecto)
+  coordinador         integer       NULL,      -- FK lógica a t_coordinador.codigo (mismo cuenta/empresa/proyecto)
   PRIMARY KEY (cuenta, empresa, proyecto, codigo)
 );
 
@@ -853,9 +861,13 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 --   "timestamptz".
 -- * t_recibo_caja.secuencia es timestamptz, se usa como tiebreaker
 --   de orden, no como secuencia numérica.
--- * t_vendedor.supervisor es FK lógica a t_supervisor; no existe
---   FOREIGN KEY declarada en la DB.
--- * t_coordinador.supervisor ídem.
+-- * t_vendedor.coordinador es FK lógica a t_coordinador.codigo (mismo cuenta/empresa/proyecto);
+--   no existe FOREIGN KEY declarada en la DB.
+-- * t_coordinador.supervisor es FK lógica a t_supervisor.codigo (mismo cuenta/empresa/proyecto);
+--   no existe FOREIGN KEY declarada en la DB.
+-- * t_empresa_usuario fue eliminada; reemplazada por t_usuario_proyecto.
+-- * t_usuario_proyecto: sin filas para un usuario = sin acceso (no hay fallback libre).
+--   El usuario Admin de la cuenta tiene acceso irrestricto (se gestiona en creación de cuenta).
 -- * La secuencia t_audit_log_id_seq debe existir antes del CREATE TABLE.
 -- * La función cartera.fn_genera_cuentaid() debe existir antes del
 --   CREATE TABLE t_cuenta.

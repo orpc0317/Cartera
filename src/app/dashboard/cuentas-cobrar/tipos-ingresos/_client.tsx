@@ -626,7 +626,7 @@ export function TiposIngresosClient({
       <div className="flex items-center gap-2">
         <div className="relative max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="l-border" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+          <Input variant="l-border" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8" style={{ fontSize: 'var(--ui-input)' }} />
         </div>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">

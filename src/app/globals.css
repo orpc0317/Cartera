@@ -56,6 +56,7 @@
   --ui-form-label:       10px;  /* Labels de campos en modo edición        */
   --ui-input:            11px;  /* Input, Select, textarea/select nativos  */
   --ui-field-height:     calc(var(--ui-input) * 2.18);  /* ≈24px @ 11px — escala con el font */
+  --ui-table-font:       13px;  /* Font size de celdas y cabeceras de tabla         */
   --ui-table-head-h:     32px;  /* Alto del encabezado de tabla (era h-10 = 40px) */
   --ui-table-cell-py:    6px;   /* Padding vertical de celdas (era p-2 = 8px) */
 
@@ -159,6 +160,9 @@
   }
 
   /* Table density — controlled via CSS variables */
+  [data-slot="table"] {
+    font-size: var(--ui-table-font);
+  }
   [data-slot="table-head"] {
     height: var(--ui-table-head-h);
   }

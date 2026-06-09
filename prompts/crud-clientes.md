@@ -168,6 +168,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nuevo Cliente           |
+| editar | Editar Cliente          |
+| ver    | {nombre}                |
+
+---
+
 ## TABS_MODAL
 
 ### Tab: General  (icono: MapPin)
@@ -196,9 +205,9 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | Campo                  | Label         | Ancho | View      | Nuevo / Edit                                          | Default (Nuevo)                       | Notas |
 |------------------------|---------------|-------|-----------|-------------------------------------------------------|---------------------------------------|-------|
 | direccion              | Direccion     | full  | ViewField | Input [§D]; req                                       | ''                                    |       |
-| direccion_pais         | Pais          | half  | ViewField | Select geo [§X]; req                                  | proyecto.pais → empresa.pais → IP geo |       |
-| direccion_departamento | Departamento  | half  | ViewField | Select geo [§X]; disabled si no hay pais              | por pais                              |       |
-| direccion_municipio    | Municipio     | half  | ViewField | Select geo [§X]; disabled si no hay departamento      | por depto                             |       |
+| direccion_pais         | Pais          | half  | ViewField | CountrySelect [§AA]; req                              | proyecto.pais → empresa.pais → IP geo | rounded-none; font-size: var(--ui-input) |
+| direccion_departamento | Departamento  | half  | ViewField | Select geo [§X]; disabled si no hay pais              | por pais                              | rounded-none; font-size: var(--ui-input) |
+| direccion_municipio    | Municipio     | half  | ViewField | Select geo [§X]; disabled si no hay departamento      | por depto                             | rounded-none; font-size: var(--ui-input) |
 | codigo_postal          | Cod. Postal   | half  | ViewField | Input [§D]                                            | ''                                    |       |
 
 **[FACTURACION]** — columna derecha

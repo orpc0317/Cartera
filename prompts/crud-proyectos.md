@@ -67,6 +67,8 @@ Proyecto {
   inicio_abono_capital_estricto:    string        -- fecha del recibo (YYYY-MM-DD), default '1900-01-01'
   promesa_vencida:                  smallint      -- 1 = si, 0 = no
   promesa_correlativo:              smallint      -- 1 = si, 0 = no
+  visibilidad_ventas:               smallint      -- 0 = granular (cada usuario ve solo lo suyo segun jerarquia), 1 = abierto (todos ven todo el proyecto)
+  visibilidad_cobros:               smallint      -- 0 = granular (cobrador ve solo sus recibos), 1 = abierto (todos los cobradores ven todo)
   logo_url:                         string        -- ubicacion del archivo logo
   agrego_usuario:                   uuid          -- gestionado por sistema
   agrego_fecha:                     timestamptz   -- gestionado por sistema
@@ -136,7 +138,7 @@ Cascada: pais → departamento → municipio.
 
 - Crear (INSERT) — requiere `puedeAgregar`
 - Ver
-- Editar (UPDATE — campos editables: `empresa`, `nombre`, `direccion`, `direccion_pais`, `direccion_departamento`, `direccion_municipio`, `codigo_postal`, `telefono1`, `telefono2`, `mora_automatica`, `fijar_parametros_mora`, `forma_mora`, `interes_mora`, `fijo_mora`, `mora_enganche`, `dias_gracia`, `dias_afectos`, `inicio_calculo_mora`, `calcular_mora_antes`, `minimo_mora`, `minimo_abono_capital`, `inicio_abono_capital_estricto`, `promesa_vencida`, `logo_url`) — requiere `puedeModificar`
+- Editar (UPDATE — campos editables: `empresa`, `nombre`, `direccion`, `direccion_pais`, `direccion_departamento`, `direccion_municipio`, `codigo_postal`, `telefono1`, `telefono2`, `mora_automatica`, `fijar_parametros_mora`, `forma_mora`, `interes_mora`, `fijo_mora`, `mora_enganche`, `dias_gracia`, `dias_afectos`, `inicio_calculo_mora`, `calcular_mora_antes`, `minimo_mora`, `minimo_abono_capital`, `inicio_abono_capital_estricto`, `promesa_vencida`, `visibilidad_ventas`, `visibilidad_cobros`, `logo_url`) — requiere `puedeModificar`
 - Eliminar (DELETE) — requiere `puedeEliminar`
 - Listar con busqueda de texto y filtros por columna
 - Exportar a CSV
@@ -170,6 +172,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | direccion_departamento  | Departamento | false          | nombre FK (prop `departamentos`)                               |
 | direccion_municipio     | Municipio    | false          | nombre FK (prop `municipios`)                                  |
 | telefono1               | Telefono     | false          | valor directo                                                  |
+
+---
+
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nuevo Proyecto          |
+| editar | Editar Proyecto         |
+| ver    | {nombre}                |
 
 ---
 
@@ -234,6 +245,8 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 |-----------------------|----------------------|-------|---------------------------------------|------------------------------------------------------------------------------------------------------------|-----------------|-------|
 | promesa_vencida       | Promesa Vencida      | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               |       |
 | promesa_correlativo   | Promesa Correlativo  | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; Nuevo: siempre habilitado; Edit: siempre desabilitado                                                     | 0               | Una vez grabado el registro este campo no es editable      |
+| visibilidad_ventas    | Visibilidad Ventas   | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               | 0=granular (cada quien ve solo lo suyo), 1=abierto (todos ven todo) |
+| visibilidad_cobros    | Visibilidad Cobros   | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               | 0=granular (cobrador ve solo sus recibos), 1=abierto |
 | moneda                | Moneda               | third | _(no se renderiza — ver pestaña Monedas)_ | Select FK [§F]; req; **solo visible en modo Nuevo** (en Ver/Editar se gestiona desde pestaña Monedas)     | primer elemento de `monedas` | prop `monedas`; muestra código ISO; usar `CURRENCY_FLAG_MAP` si disponible |
 | logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
 
@@ -405,5 +418,13 @@ No requiere RPC ni queries especiales. Orden: `.order('empresa').order('nombre')
 ### Cambios a aplicar:
 
 > _(sin cambios pendientes)_
+
+---
+
+## CAMBIOS
+
+| Fecha      | Descripción |
+|------------|-------------|
+| 2026-06-09 | Agregados campos `visibilidad_ventas` y `visibilidad_cobros` (smallint, default 0) en ENTIDAD, ProyectoForm, ACCIONES y TABS_MODAL/OTROS PARAMETROS. Controlan la visibilidad de datos dentro del proyecto para roles de ventas y cobros respectivamente. |
 
 

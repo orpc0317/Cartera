@@ -58,7 +58,17 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
 - **`get_errors` puede devolver resultados obsoletos** si el language server de VS Code aún no re-analizó el archivo tras la escritura (funciona de forma asíncrona). Para errores **sintácticos** (comas dobles, llaves desbalanceadas, tokens inesperados), `get_errors` no es suficiente. Tras cualquier edición que modifique la estructura de un object literal, array, o bloque de código, ejecutar adicionalmente en terminal: `npx tsc --noEmit 2>&1 | Select-String "error TS"` y corregir antes de dar la tarea por terminada.
 - **Comentarios JSX:** siempre usar la forma completa `{/* texto */}` con el `}` de cierre. La forma `{/* texto */` sin `}` deja un bloque de expresión abierto y produce el error de parsing `Expected '</', got '{'`. Tras crear o modificar cualquier `_client.tsx`, verificar con: `Select-String -Pattern '\{/\*[^}]*\*/\s*$' -Path <archivo>` — si retorna resultados, corregir antes de continuar.
 - **Regla de contexto en reemplazos de object literals:** al eliminar una propiedad de un object literal (`key: value,`), el `oldString` DEBE incluir al menos una línea **después** de la propiedad eliminada (la línea siguiente del objeto) para garantizar que la coma de separación quede correcta y no se genere coma doble.
-- **Actualización de spec obligatoria:** cada vez que se modifique cualquier archivo de una pantalla CRUD (`_client.tsx`, `page.tsx`, `actions/<entidad>.ts`, `src/lib/types/<entidad>.ts`), el spec correspondiente en `prompts/crud-<entidad>.md` **debe actualizarse para reflejar el cambio** antes de dar la tarea por terminada. Esto aplica a: campos añadidos/eliminados, labels renombrados, comportamiento condicional nuevo, validaciones, y reglas de negocio.
+- **Actualización de spec obligatoria:** cada vez que se modifique cualquier archivo de una pantalla CRUD (`_client.tsx`, `page.tsx`, `actions/<entidad>.ts`, `src/lib/types/<entidad>.ts`), el spec correspondiente en `prompts/crud-<entidad>.md` **debe actualizarse para reflejar el cambio** antes de dar la tarea por terminada. Esto aplica a: campos añadidos/eliminados, labels renombrados, comportamiento condicional nuevo, validaciones, reglas de negocio, **y también cambios de estilo o className en campos del modal** (p.ej. rounded, variantes de input/select).
+  - **El trigger es por archivo, no por tipo de cambio.** Si se tocó `actions/<entidad>.ts` o `src/lib/types/<entidad>.ts`, abrir el spec correspondiente, revisarlo campo por campo contra los cambios realizados, y **siempre producir un resultado explícito**: o bien actualizar el spec, o bien declarar en el mensaje al usuario que se revisó y no hay cambio necesario (por qué). La omisión silenciosa — no revisar el spec — no es aceptable aunque el cambio parezca "solo infraestructura". Los cambios de firma de funciones (`empresa?`, `proyecto?`) no requieren actualización de spec salvo que cambien el comportamiento visible en UI. Los campos nuevos en un tipo sí requieren siempre revisión.
+
+### ✅ Checklist obligatorio antes de dar cualquier tarea por terminada
+
+Recorrer esta lista mentalmente en cada cierre de tarea — sin excepción:
+
+1. **`get_errors`** sobre todo archivo TS/TSX creado o modificado.
+2. **`npx tsc --noEmit`** si se modificó la estructura de un object literal, array o bloque de código.
+3. **Comentarios JSX cerrados** — verificar que no exista `{/* texto */` sin `}` de cierre.
+4. **Spec actualizado** — si se tocó cualquier archivo de una pantalla CRUD (incluyendo cambios de estilo en campos del modal), abrir el spec, revisarlo campo por campo, y **declarar explícitamente** si se actualizó o si no hay cambio necesario (con justificación). Nunca omitir en silencio.
 
 ---
 
@@ -87,3 +97,35 @@ Si un campo de la spec no coincide con ningún § de `components.instructions.md
 | `image-upload.instructions.md` | Solo cuando el spec incluya un campo de tipo imagen (`logo_url` u otro) — magic bytes, SVG risk, cleanup, patrón `LogoUploadField` (§ AC). |
 
 ### Los prompts en `prompts/crud-*.md` son la especificación de cada pantalla; seguirlos al pie de la letra.
+
+---
+
+## 5. Convención MODAL_TITLES en los specs
+
+Cada spec puede declarar una sección `## MODAL_TITLES` con los títulos exactos que debe mostrar el `DialogTitle` en cada modo del modal principal.
+
+### Regla de resolución (en orden de precedencia)
+
+1. **Spec tiene `MODAL_TITLES`** → usar los títulos definidos ahí (fuente de verdad).
+2. **Spec NO tiene `MODAL_TITLES`** → usar la etiqueta del sidebar que navega a esa pantalla (fallback por convención; NO escribir este valor en el spec).
+
+### Formato en el spec
+
+```markdown
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nueva Empresa           |
+| editar | Editar Empresa          |
+| ver    | {nombre}                |
+```
+
+- `nuevo`  → modal en modo creación (`isEditing && !viewTarget`).
+- `editar` → modal en modo edición (`isEditing && viewTarget`).
+- `ver`    → modal en modo vista (`!isEditing && viewTarget`). Usar `{nombre}` cuando se muestra el campo nombre del registro, o una cadena fija si corresponde.
+
+### Flujo al construir o modificar un `_client.tsx`
+
+- Leer `MODAL_TITLES` del spec y codificar exactamente esos textos en el `DialogTitle`.
+- Si el desarrollador quiere cambiar un título: actualizar primero el spec (`MODAL_TITLES`), luego el código.
+- El cambio se registra en la sección `## CAMBIOS` del spec con fecha y descripción.

@@ -137,6 +137,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nueva Empresa           |
+| editar | Editar Empresa          |
+| ver    | {nombre}                |
+
+---
+
 ## TABS_MODAL
 
 ### Tab: General  (icono: MapPin)
@@ -164,9 +173,9 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | Campo                    | Label           | Ancho | View          | Nuevo / Edit                                  | Default (Nuevo) | Notas |
 |--------------------------|-----------------|-------|---------------|-----------------------------------------------|-----------------|-------|
 | direccion                | Direccion       | full  | ViewField     | Input [§D]; req                        | ''          |                                               |
-| direccion_pais           | Pais            | half  | ViewField     | Select geo [§X]; req                   | ''          | filtrado por paises disponibles               |
-| direccion_departamento   | Departamento    | half  | ViewField     | Select geo [§X]; disabled si no hay pais | ''        | filtrado por pais                             |
-| direccion_municipio      | Municipio       | half  | ViewField     | Select geo [§X]; disabled si no hay departamento | '' | filtrado por pais+departamento         |
+| direccion_pais           | Pais            | half  | ViewField     | CountrySelect [§AA]; req               | ''          | filtrado por paises disponibles; rounded-none; font-size: var(--ui-input) |
+| direccion_departamento   | Departamento    | half  | ViewField     | Select geo [§X]; disabled si no hay pais | ''        | filtrado por pais; rounded-none; font-size: var(--ui-input)               |
+| direccion_municipio      | Municipio       | half  | ViewField     | Select geo [§X]; disabled si no hay departamento | '' | filtrado por pais+departamento; rounded-none; font-size: var(--ui-input) |
 | codigo_postal            | Codigo Postal   | half  | ViewField     | Input [§D]                             | ''          |                                               |
 
 **[OTROS]** — columna derecha

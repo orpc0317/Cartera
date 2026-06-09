@@ -161,6 +161,14 @@ La tabla principal muestra un agregado: una fila por `(empresa, proyecto, moneda
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nueva Tasa de Cambio    |
+| ver    | Historial de Tasas      |
+
+---
+
 ## TABS_MODAL
 
 ### Tab: General  (icono: ArrowLeftRight)

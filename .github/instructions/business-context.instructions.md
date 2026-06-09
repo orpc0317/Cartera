@@ -17,7 +17,7 @@ Cartera gestiona las ventas, los planes de pago y los estados de cuenta de esos 
 
 El cliente de Cartera es la **empresa lotificadora** — no el comprador final del lote. Cada empresa lotificadora tiene una `cuenta` en el sistema, que es el identificador raíz de toda su información.
 
-- **Un usuario Administrador por cuenta.** Es quien crea la cuenta y gestiona usuarios, empresas y proyectos.
+- **Un usuario Administrador por cuenta.** Es quien crea la cuenta y gestiona usuarios, empresas y proyectos. Tiene acceso irrestricto a todo. Su creación se gestiona en el proceso de alta de cuenta (pendiente de implementar).
 - **El Administrador crea los usuarios internos** del sistema (personal administrativo) y les asigna permisos por proyecto y por funcionalidad.
 - El campo `cuenta` actúa como **tenant ID** multi-tenant: toda tabla del schema `cartera` lo tiene y **toda query debe filtrarlo**.
 
@@ -38,6 +38,47 @@ Entidades transversales al proyecto (no pertenecen a una fase específica):
 - `cliente` — comprador de lotes
 - `cobrador`, `supervisor`, `coordinador`, `vendedor` — personal del proyecto
 - `banco`, `cuenta_bancaria`, `serie_recibo` — catálogos financieros
+
+---
+
+## Control de acceso por usuario
+
+El acceso a datos se controla en tres capas que se aplican siempre en orden:
+
+### Capa 1 — Tenant (obligatorio, inviolable)
+Toda query filtra por `cuenta`. Un usuario de cuenta A nunca puede ver datos de cuenta B.
+El valor se obtiene de `user.app_metadata.cuenta_activa` (JWT, seteado por Supabase Auth en login).
+
+### Capa 2 — Empresa y Proyecto (`t_usuario_proyecto`)
+Tabla: `cartera.t_usuario_proyecto (cuenta, userid, empresa, proyecto)`.
+- **Sin filas para el usuario → sin acceso** (no hay fallback libre; el admin debe configurarlo siempre).
+- **Con filas → solo esos proyectos** son visibles para ese usuario.
+- El usuario Admin de la cuenta es la única excepción: tiene acceso irrestricto (gestionado en el proceso de creación de cuenta, aún pendiente).
+- `t_empresa_usuario` fue eliminada; `t_usuario_proyecto` cubre tanto empresa como proyecto.
+
+### Capa 3 — Visibilidad de datos dentro del proyecto (ventas y cobros)
+Controlada por dos flags en `t_proyecto`:
+- `visibilidad_ventas`: `0` = granular, `1` = abierto (todos ven todo el proyecto)
+- `visibilidad_cobros`: `0` = granular, `1` = abierto
+
+Con visibilidad granular (`0`), la visibilidad de datos sigue la jerarquía de roles operativos:
+
+**Rama de ventas** (`t_supervisor` → `t_coordinador` → `t_vendedor`):
+- Cada tabla tiene un campo `userid uuid NULL` que vincula al usuario de Supabase Auth.
+- `t_vendedor.coordinador` → FK lógica a `t_coordinador.codigo` (mismo cuenta/empresa/proyecto).
+- `t_coordinador.supervisor` → FK lógica a `t_supervisor.codigo` (mismo cuenta/empresa/proyecto).
+- **Supervisor**: ve todo lo del proyecto (todas las promesas, recibos, reservas).
+- **Coordinador**: ve las promesas/recibos/reservas de todos los vendedores bajo su coordinador.
+- **Vendedor**: ve solo las promesas/recibos/reservas donde `vendedor = su código`.
+
+**Rama de cobros** (`t_cobrador`):
+- `t_cobrador.userid` vincula al usuario de Supabase Auth.
+- **Cobrador**: ve solo los recibos de caja donde `cobrador = su código`.
+- Permisos de anulación/eliminación de recibos propios: pendiente de implementar.
+
+**Usuario administrativo sin rol operativo**: si el usuario tiene acceso al proyecto vía `t_usuario_proyecto` pero no aparece en ninguna tabla de rol operativo (`t_supervisor`, `t_coordinador`, `t_vendedor`, `t_cobrador`), ve todos los datos del proyecto.
+
+Con visibilidad abierta (`1`): todos los usuarios con acceso al proyecto ven todos los datos, sin importar el rol operativo.
 
 ---
 

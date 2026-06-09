@@ -76,6 +76,45 @@ export async function getEmpresas(): Promise<Empresa[]> {
   return data as Empresa[]
 }
 
+/**
+ * Empresas a las que el usuario autenticado tiene acceso según t_usuario_proyecto.
+ * Deduplica en código porque PostgREST no soporta DISTINCT y t_usuario_proyecto
+ * puede tener N filas con el mismo empresa (una por proyecto).
+ * Sin filas en t_usuario_proyecto → array vacío (sin acceso).
+ */
+export async function getEmpresasUsuario(): Promise<Empresa[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  if (!cuenta) return []
+
+  const admin = createAdminClient()
+
+  const { data: accesos, error: accesoError } = await admin
+    .schema('cartera')
+    .from('t_usuario_proyecto')
+    .select('empresa')
+    .eq('cuenta', cuenta)
+    .eq('userid', user.id)
+  if (accesoError) throw new Error(accesoError.message)
+  if (!accesos || accesos.length === 0) return []
+
+  // Deduplicar — un usuario con 3 proyectos en empresa 1 genera 3 filas
+  const empresasUnicas = [...new Set(accesos.map((a) => a.empresa as number))]
+
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_empresa')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .in('codigo', empresasUnicas)
+    .order('nombre')
+  if (error) throw new Error(error.message)
+  return data as Empresa[]
+}
+
 export async function getEmpresa(codigo: number): Promise<Empresa> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()

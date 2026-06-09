@@ -48,6 +48,8 @@ export type Proyecto = {
   inicio_abono_capital_estricto: string
   promesa_vencida: number
   promesa_correlativo: number
+  visibilidad_ventas: number
+  visibilidad_cobros: number
   logo_url?: string
   agrego_usuario?: string
   agrego_fecha?: string
@@ -56,6 +58,15 @@ export type Proyecto = {
 }
 
 export type ProyectoForm = Omit<Proyecto, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+// Acceso de usuario a empresa+proyecto (t_usuario_proyecto)
+// Sin filas para el usuario = sin acceso (no hay fallback libre)
+export type UsuarioProyecto = {
+  cuenta: string
+  userid: string
+  empresa: number
+  proyecto: number
+}
 
 export type Fase = {
   cuenta: string

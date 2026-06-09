@@ -948,7 +948,8 @@ export function EmpresasClient({
                         setDeptoCodigo(v)
                         setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
                       }}
-                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ fontSize: 'var(--ui-input)' }}
+                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
                       {deptosFiltrados.map((d) => (
@@ -967,7 +968,8 @@ export function EmpresasClient({
                       onChange={(e) => {
                         setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
                       }}
-                      className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-0 text-sm outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{ fontSize: 'var(--ui-input)' }}
+                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
                       {municipiosFiltrados.map((m) => (

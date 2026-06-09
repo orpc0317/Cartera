@@ -203,6 +203,15 @@ Sticky izquierdo: `numero` (label: `"Numero"`, es el identificador visible del P
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nueva Promesa           |
+| editar | Editar Promesa          |
+| ver    | Promesa {numero}        |
+
+---
+
 ## TABS_MODAL
 
 ### Tab: General  (icono: MapPin)
@@ -235,6 +244,12 @@ Sticky izquierdo: `numero` (label: `"Numero"`, es el identificador visible del P
 | lote     | Lote       | quarter | ViewField | Select FK [§F]; req   | ViewField                | primera de manzana  | prop `lotes`; filtrado por empresa+proyecto+fase+manzana; 1/4 del ancho |
 | —        | Extensión  | half    | ViewField | ViewField (ro)        | ViewField (ro)           | —                   | read-only; `t_lote.extension` + `t_fase.medida` como sufijo; `loteActivoVista`/`loteActivoForm` |
 | —        | Precio de venta | half | ViewField | ViewField (ro)   | ViewField (ro)           | —                   | read-only; `moneda + fmtNum(valor_lote)`; auto-rellenado al seleccionar lote |
+
+**[OTROS]**
+
+| Campo       | Label       | Ancho | View      | Nuevo              | Edit               | Default (Nuevo) | Notas                                    |
+|-------------|-------------|-------|-----------|--------------------|--------------------|-----------------|------------------------------------------|
+| observacion | Observacion | full  | ViewField | textarea [§?]; rows=2 | textarea [§?]; rows=2 | ''          | font-size: var(--ui-input); resize-none |
 
 ---
 

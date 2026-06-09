@@ -224,6 +224,14 @@ const RESERVA_ESTADOS: Record<number, { label: string; cls: string }> = {
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nueva Reserva           |
+| ver    | Detalle de Reserva      |
+
+---
+
 ## TABS_MODAL
 
 Dos tabs: **General** (icono: `MapPin`) y **Pago** (icono: `Receipt`).

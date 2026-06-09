@@ -123,6 +123,14 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nueva Manzana           |
+| ver    | Manzana {codigo}        |
+
+---
+
 ## TABS_MODAL
 
 ### Tab: General  (icono: MapPin)

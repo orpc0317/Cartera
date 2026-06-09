@@ -66,13 +66,13 @@ For documents that have a header, one or more line-item tables, computed totals,
 
 ```
 ┌──────────────────────────────────────────┐
-│  Header — document data + status badge  │
+│  Header — document data + status badge   │
 ├──────────────────────────────────────────┤
-│  Tabs: General │ Detalle │ Auditoría    │
+│  Tabs: General │ Detalle │ Auditoría     │
 ├──────────────────────────────────────────┤
-│  Tab content (scrollable)               │
+│  Tab content (scrollable)                │
 ├──────────────────────────────────────────┤
-│  Footer — totals + action buttons       │  ← sticky
+│  Footer — totals + action buttons        │  ← sticky
 └──────────────────────────────────────────┘
 ```
 
@@ -93,11 +93,11 @@ Analytical listing optimized for filtering and export. No create/edit modals.
 
 ```
 ┌──────────────────────────────────────────┐
-│  Header — title + export button (right) │
+│  Header — title + export button (right)  │
 ├──────────────────────────────────────────┤
-│  Toolbar — multiple filter controls     │
+│  Toolbar — multiple filter controls      │
 ├──────────────────────────────────────────┤
-│  Large data table (overflow-x-auto)     │
+│  Large data table (overflow-x-auto)      │
 └──────────────────────────────────────────┘
 ```
 

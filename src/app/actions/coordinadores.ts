@@ -57,15 +57,18 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getCoordinadores(): Promise<Coordinador[]> {
+export async function getCoordinadores(empresa?: number, proyecto?: number): Promise<Coordinador[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  const { data, error } = await admin
+  let query = admin
     .schema('cartera')
     .from('t_coordinador')
     .select('*')
     .eq('cuenta', cuenta)
     .order('empresa').order('proyecto').order('nombre')
+  if (empresa !== undefined) query = query.eq('empresa', empresa)
+  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Coordinador[]
 }

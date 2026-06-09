@@ -57,15 +57,18 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getVendedores(): Promise<Vendedor[]> {
+export async function getVendedores(empresa?: number, proyecto?: number): Promise<Vendedor[]> {
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
-  const { data, error } = await admin
+  let query = admin
     .schema('cartera')
     .from('t_vendedor')
     .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .order('empresa').order('proyecto').order('nombre')
+  if (empresa !== undefined) query = query.eq('empresa', empresa)
+  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Vendedor[]
 }

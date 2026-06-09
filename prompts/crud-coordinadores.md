@@ -129,6 +129,15 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 ---
 
+## MODAL_TITLES
+| Modo   | Título                  |
+|--------|-------------------------|
+| nuevo  | Nuevo Coordinador       |
+| editar | Editar Coordinador      |
+| ver    | {nombre}                |
+
+---
+
 ## TABS_MODAL
 
 ### Tab: General  (icono: MapPin)

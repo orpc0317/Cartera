@@ -13,23 +13,23 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 > 2. Elegir un tono de Tailwind que no figure en la columna "Token pair".
 > 3. Agregar la fila del nuevo modulo a esta tabla al final de los archivos generados.
 
-| Module           | Token pair                    |
-|------------------|-------------------------------|
-| Empresas         | `emerald-100 / emerald-600`   |
-| Proyectos        | `sky-100 / sky-600`           |
-| Fases            | `violet-100 / violet-600`     |
-| Manzanas         | `amber-100 / amber-600`       |
-| Lotes            | `rose-100 / rose-600`         |
-| Clientes         | `indigo-100 / indigo-600`     |
-| Supervisores     | `purple-100 / purple-600`     |
-| Cobradores       | `orange-100 / orange-600`     |
-| Bancos           | `teal-100 / teal-600`         |
-| Cuentas Bancarias | `cyan-100 / cyan-600`        |
-| Serie Recibos    | `green-100 / green-600`       |
-| Coordinadores    | `blue-100 / blue-600`         |
-| Vendedores       | `lime-100 / lime-600`         |
-| Tipos Ingresos   | `yellow-100 / yellow-600`     |
-| Tasas de Cambio  | `teal-100 / teal-600`         |
+| Module            | Token pair                    |
+|-------------------|-------------------------------|
+| Empresas          | `emerald-100 / emerald-600`   |
+| Proyectos         | `sky-100 / sky-600`           |
+| Fases             | `violet-100 / violet-600`     |
+| Manzanas          | `amber-100 / amber-600`       |
+| Lotes             | `rose-100 / rose-600`         |
+| Clientes          | `indigo-100 / indigo-600`     |
+| Supervisores      | `purple-100 / purple-600`     |
+| Cobradores        | `orange-100 / orange-600`     |
+| Bancos            | `teal-100 / teal-600`         |
+| Cuentas Bancarias | `cyan-100 / cyan-600`         |
+| Serie Recibos     | `green-100 / green-600`       |
+| Coordinadores     | `blue-100 / blue-600`         |
+| Vendedores        | `lime-100 / lime-600`         |
+| Tipos Ingresos    | `yellow-100 / yellow-600`     |
+| Tasas de Cambio   | `teal-100 / teal-600`         |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
@@ -74,10 +74,10 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Bancos            | `Landmark`       |
 | Cuentas Bancarias | `CreditCard`     |
 | Serie Recibos     | `Receipt`        |
-| Coordinadores    | `Network`        |
-| Vendedores       | `UserCheck`      |
-| Tipos Ingresos   | `Tags`           |
-| Tasas de Cambio  | `ArrowLeftRight` |
+| Coordinadores     | `Network`        |
+| Vendedores        | `UserCheck`      |
+| Tipos Ingresos    | `Tags`           |
+| Tasas de Cambio   | `ArrowLeftRight` |
 
 ---
 
@@ -190,15 +190,47 @@ const fmt = (n: number) =>
 
 ---
 
+## UI Scale — CSS variables
+
+All component sizes are controlled via CSS variables defined in `globals.css (:root)`. **Never hardcode pixel values** for these elements — always use the variable.
+
+| Variable | Value | Applies to |
+|---|---|---|
+| `--ui-viewfield-label` | 10px | `ViewField` label (etiqueta encima del recuadro) |
+| `--ui-viewfield-value` | 11px | `ViewField` value (texto dentro del recuadro) |
+| `--ui-section-divider` | 11px | `SectionDivider` uppercase text |
+| `--ui-form-label` | 10px | `<Label>` en formularios de edición |
+| `--ui-input` | 11px | `<Input>`, `<Select>`, `<textarea>`, `<select>` nativos, `CountrySelect` trigger |
+| `--ui-field-height` | ≈24px | Alto de inputs/selects (calculado: `--ui-input × 2.18`) |
+| `--ui-table-font` | 13px | Font size de todas las celdas y cabeceras de tabla (`[data-slot="table"]`) |
+| `--ui-table-head-h` | 32px | Alto del `<thead>` |
+| `--ui-table-cell-py` | 6px | Padding vertical de cada `<td>` |
+
+**Usage pattern:**
+```tsx
+// Form labels
+<Label style={{ fontSize: 'var(--ui-form-label)' }}>...</Label>
+
+// Inputs/selects con variante nativa
+<select style={{ fontSize: 'var(--ui-input)' }} ...>
+
+// CountrySelect — ya aplicado en el componente shared
+<CountrySelect ... />   {/* usa --ui-input internamente */}
+```
+
+La variable `--ui-table-font` se aplica automáticamente desde `globals.css` al `[data-slot="table"]` — no se necesita estilo inline en el JSX.
+
+---
+
 ## Typography scale
 
 Consistent type sizes used across all components. Do not introduce sizes outside this scale without a documented reason.
 
 | Token | Tailwind class | Size | Usage |
 |-------|---------------|------|-------|
-| `xs`   | `text-[11px]`  | 11 px | Labels above inputs (`font-semibold tracking-wider`), table header text, badge text |
+| `xs`   | `text-[11px]`  | 11 px | Labels above inputs (`font-semibold tracking-wider`), badge text |
 | `sm`   | `text-xs`      | 12 px | Secondary labels, subtitles, `SectionDivider` text |
-| `base` | `text-sm`      | 14 px | Body text, input values, table cell content, `ViewField` values (`text-[13px]` ≈ base) |
+| `base` | `text-sm`      | 14 px | Body text, button labels |
 | `lg`   | `text-base`    | 16 px | Modal titles, section headings |
 | `2xl`  | `text-xl`      | 20 px | Page `<h1>` — always paired with `font-bold tracking-tight` |
 
