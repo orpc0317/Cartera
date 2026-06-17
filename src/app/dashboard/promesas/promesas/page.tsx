@@ -24,7 +24,7 @@ export default async function PromesasPage() {
     getLotes().catch((e: Error) => { console.error('getLotes:', e.message); return [] }),
     getClientes().catch((e: Error) => { console.error('getClientes:', e.message); return [] }),
     getVendedores().catch((e: Error) => { console.error('getVendedores:', e.message); return [] }),
-    getPermisosDetalle(PERMISOS.PRO_CAT),
+    getPermisosDetalle(PERMISOS.PRE_OPE),
   ])
 
   return (

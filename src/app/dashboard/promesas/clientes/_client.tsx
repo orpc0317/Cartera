@@ -588,8 +588,8 @@ export function ClientesClient({
   function handleSave() {
     if (!form.nombre.trim())    { toast.error('El nombre es requerido.'); return }
     if (!form.telefono1.trim()) { toast.error('El telefono es requerido.'); return }
-    if (!form.correo.trim())    { toast.error('El correo es requerido.'); return }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) { toast.error('El correo electr\u00f3nico no tiene un formato v\u00e1lido.'); return }
+    if (!form.correo || !form.correo.trim()) { toast.error('El correo es requerido.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) { toast.error('El correo electrónico no tiene un formato válido.'); return }
     if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && (form.identificacion_tributaria ?? '').trim() && !validarNIT(form.identificacion_tributaria ?? '')) {
       toast.error('El NIT no tiene una estructura valida.')
       return

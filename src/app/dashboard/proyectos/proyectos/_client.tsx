@@ -312,6 +312,8 @@ const EMPTY_FORM: ProyectoForm = {
   moneda: '',
   promesa_vencida: 0,
   promesa_correlativo: 0,
+  visibilidad_ventas: 0,
+  visibilidad_cobros: 0,
   logo_url: '',
 }
 
@@ -637,6 +639,8 @@ export function ProyectosClient({
         moneda: proyecto.moneda ?? '',
         promesa_vencida: proyecto.promesa_vencida ?? 0,
         promesa_correlativo: proyecto.promesa_correlativo ?? 0,
+        visibilidad_ventas: proyecto.visibilidad_ventas ?? 0,
+        visibilidad_cobros: proyecto.visibilidad_cobros ?? 0,
         logo_url: proyecto.logo_url ?? '',
       } satisfies ProyectoForm,
     }

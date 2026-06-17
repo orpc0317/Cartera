@@ -49,14 +49,24 @@ El acceso a datos se controla en tres capas que se aplican siempre en orden:
 Toda query filtra por `cuenta`. Un usuario de cuenta A nunca puede ver datos de cuenta B.
 El valor se obtiene de `user.app_metadata.cuenta_activa` (JWT, seteado por Supabase Auth en login).
 
-### Capa 2 — Empresa y Proyecto (`t_usuario_proyecto`)
+### Capa 2 — Pantallas y funcionalidades (`t_menu_usuario`)
+Tabla: `cartera.t_menu_usuario (cuenta, userid, indice, agregar, modificar, eliminar, consultar)`.
+- Controla a qué pantallas/funcionalidades tiene acceso cada usuario y con qué nivel de permiso (CRUD).
+- `indice` corresponde a las constantes de `src/lib/permisos.ts` (ej. `PRO.CAT`, `RES.OPE`).
+- **Sin filas para el usuario → acceso total** (modo Admin: el usuario raíz de la cuenta nunca tiene filas aquí).
+- **Con filas → solo los índices con `consultar = 1`** son accesibles; los demás quedan ocultos en el sidebar.
+- Los flags `agregar`, `modificar`, `eliminar` controlan qué acciones puede ejecutar dentro de cada pantalla.
+- RLS: políticas SELECT/INSERT/UPDATE/DELETE filtran por `cuenta_activa` del JWT.
+
+### Capa 3 — Empresa y Proyecto (`t_usuario_proyecto`)
 Tabla: `cartera.t_usuario_proyecto (cuenta, userid, empresa, proyecto)`.
 - **Sin filas para el usuario → sin acceso** (no hay fallback libre; el admin debe configurarlo siempre).
 - **Con filas → solo esos proyectos** son visibles para ese usuario.
 - El usuario Admin de la cuenta es la única excepción: tiene acceso irrestricto (gestionado en el proceso de creación de cuenta, aún pendiente).
 - `t_empresa_usuario` fue eliminada; `t_usuario_proyecto` cubre tanto empresa como proyecto.
+- RLS: políticas SELECT/INSERT/UPDATE/DELETE filtran por `cuenta_activa` del JWT.
 
-### Capa 3 — Visibilidad de datos dentro del proyecto (ventas y cobros)
+### Capa 4 — Visibilidad de datos dentro del proyecto (ventas y cobros)
 Controlada por dos flags en `t_proyecto`:
 - `visibilidad_ventas`: `0` = granular, `1` = abierto (todos ven todo el proyecto)
 - `visibilidad_cobros`: `0` = granular, `1` = abierto

@@ -1,8 +1,11 @@
 'use client'
 
 import { useActionState } from 'react'
+import Script from 'next/script'
 import { login, setCuentaActiva, type Cuenta, type LoginState, type ActionState } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 export default function LoginPage() {
   const [loginState, loginAction, loginPending] = useActionState<LoginState, FormData>(
@@ -54,53 +57,66 @@ export default function LoginPage() {
 
   // Pantalla de login principal
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">Cartera</h1>
-          <p className="text-sm text-muted-foreground">Ingresa con tu cuenta</p>
+    <>
+      {TURNSTILE_SITE_KEY && (
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async />
+      )}
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
+          <div className="space-y-1">
+            <h1 className="text-xl font-semibold">Cartera</h1>
+            <p className="text-sm text-muted-foreground">Ingresa con tu cuenta</p>
+          </div>
+
+          <form action={loginAction} className="space-y-4">
+            {loginState?.error && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {loginState.error}
+              </p>
+            )}
+
+            <div className="space-y-1">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="password" className="text-sm font-medium">
+                Contraseña
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {TURNSTILE_SITE_KEY && (
+              <div
+                className="cf-turnstile"
+                data-sitekey={TURNSTILE_SITE_KEY}
+                data-theme="auto"
+              />
+            )}
+
+            <Button type="submit" className="w-full" disabled={loginPending}>
+              {loginPending ? 'Ingresando...' : 'Ingresar'}
+            </Button>
+          </form>
         </div>
-
-        <form action={loginAction} className="space-y-4">
-          {loginState?.error && (
-            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {loginState.error}
-            </p>
-          )}
-
-          <div className="space-y-1">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="password" className="text-sm font-medium">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={loginPending}>
-            {loginPending ? 'Ingresando...' : 'Ingresar'}
-          </Button>
-        </form>
-      </div>
-    </main>
+      </main>
+    </>
   )
 }

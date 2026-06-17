@@ -100,6 +100,8 @@ export async function createCliente(form: ClienteForm): Promise<{ error?: string
     .maybeSingle()
   if (existente) return { error: 'Ya existe un cliente con ese nombre en este proyecto.' }
 
+  const now = new Date().toISOString()
+
   const { data, error } = await admin
     .schema('cartera')
     .from('t_cliente')

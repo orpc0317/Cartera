@@ -55,6 +55,7 @@ type NavChild = {
   icon: React.ComponentType<{ className?: string }>
   separator?: string   // Encabezado de sección mostrado encima de este item
   comingSoon?: boolean
+  permiso?: string
 }
 
 type NavItem = {
@@ -73,6 +74,7 @@ const NAV: NavItem[] = [
     label: 'Inicio',
     href: '/dashboard/home',
     icon: Home,
+    permiso: PERMISOS.DASH_HOME,
   },
   {
     label: 'Dashboard KPIs',
@@ -84,44 +86,44 @@ const NAV: NavItem[] = [
     label: 'Proyectos',
     icon: FolderKanban,
     children: [
-      { label: 'Empresas',  href: '/dashboard/proyectos/empresas',  icon: Building2 },
-      { label: 'Proyectos', href: '/dashboard/proyectos/proyectos', icon: FolderKanban },
-      { label: 'Fases',     href: '/dashboard/proyectos/fases',     icon: Layers },
-      { label: 'Manzanas',  href: '/dashboard/proyectos/manzanas',  icon: Grid3x3 },
-      { label: 'Lotes',     href: '/dashboard/proyectos/lotes',     icon: MapPin },
+      { label: 'Empresas',  href: '/dashboard/proyectos/empresas',  icon: Building2,    permiso: PERMISOS.EMP_CAT },
+      { label: 'Proyectos', href: '/dashboard/proyectos/proyectos', icon: FolderKanban, permiso: PERMISOS.PRO_CAT },
+      { label: 'Fases',     href: '/dashboard/proyectos/fases',     icon: Layers,       permiso: PERMISOS.FAS_CAT },
+      { label: 'Manzanas',  href: '/dashboard/proyectos/manzanas',  icon: Grid3x3,      permiso: PERMISOS.MAN_CAT },
+      { label: 'Lotes',     href: '/dashboard/proyectos/lotes',     icon: MapPin,       permiso: PERMISOS.LOT_CAT },
     ],
   },
   {
     label: 'Bancos',
     icon: Landmark,
     children: [
-      { label: 'Bancos',            href: '/dashboard/bancos/bancos',             icon: Landmark,      separator: 'Catálogos' },
-      { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias',  icon: CreditCard },
-      { label: 'Tasas Cambio',      href: '/dashboard/bancos/tasas-cambio',       icon: ArrowLeftRight, separator: 'Operaciones' },
+      { label: 'Bancos',            href: '/dashboard/bancos/bancos',             icon: Landmark,      separator: 'Catálogos',    permiso: PERMISOS.BAN_CAT },
+      { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias',  icon: CreditCard,                             permiso: PERMISOS.CUE_BAN },
+      { label: 'Tasas Cambio',      href: '/dashboard/bancos/tasas-cambio',       icon: ArrowLeftRight, separator: 'Operaciones', permiso: PERMISOS.TSC_CAT },
     ],
   },
   {
     label: 'Promesas',
     icon: FileText,
     children: [
-      { label: 'Clientes',     href: '/dashboard/promesas/clientes',     icon: Users,          separator: 'Catálogos' },
-      { label: 'Supervisores',  href: '/dashboard/promesas/supervisores',  icon: UserCog },
-      { label: 'Coordinadores', href: '/dashboard/promesas/coordinadores', icon: Network },
-      { label: 'Vendedores',    href: '/dashboard/promesas/vendedores',    icon: UserCheck },
-      { label: 'Cobradores',   href: '/dashboard/promesas/cobradores',   icon: Banknote },
-      { label: 'Reservas',     href: '/dashboard/promesas/reservas',     icon: ClipboardList,  separator: 'Operaciones' },
-      { label: 'Promesas',     href: '/dashboard/promesas/promesas',     icon: FileSignature },
-      { label: 'Balance',      href: '#',                                icon: Scale,          separator: 'Consultas', comingSoon: true },
+      { label: 'Clientes',      href: '/dashboard/promesas/clientes',      icon: Users,         separator: 'Catálogos',    permiso: PERMISOS.CLI_CAT },
+      { label: 'Supervisores',  href: '/dashboard/promesas/supervisores',  icon: UserCog,                                    permiso: PERMISOS.SUP_CAT },
+      { label: 'Coordinadores', href: '/dashboard/promesas/coordinadores', icon: Network,                                    permiso: PERMISOS.COO_CAT },
+      { label: 'Vendedores',    href: '/dashboard/promesas/vendedores',    icon: UserCheck,                                  permiso: PERMISOS.VEN_CAT },
+      { label: 'Cobradores',    href: '/dashboard/promesas/cobradores',    icon: Banknote,                                   permiso: PERMISOS.COB_CAT },
+      { label: 'Reservas',      href: '/dashboard/promesas/reservas',      icon: ClipboardList, separator: 'Operaciones',   permiso: PERMISOS.RES_OPE },
+      { label: 'Promesas',      href: '/dashboard/promesas/promesas',      icon: FileSignature,                              permiso: PERMISOS.PRE_OPE },
+      { label: 'Balance',       href: '#',                                 icon: Scale,         separator: 'Consultas', comingSoon: true },
     ],
   },
   {
     label: 'Cuentas Cobrar',
     icon: BookOpen,
     children: [
-      { label: 'Serie Recibos',    href: '/dashboard/cuentas-cobrar/series-recibos',   icon: Receipt,       separator: 'Catalogo' },
-      { label: 'Tipos Ingresos',   href: '/dashboard/cuentas-cobrar/tipos-ingresos',   icon: Tags },
-      { label: 'Operaciones',      href: '#', icon: ClipboardList, separator: 'Operaciones', comingSoon: true },
-      { label: 'Consultas',        href: '#', icon: BarChart3,     separator: 'Consultas',   comingSoon: true },
+      { label: 'Serie Recibos',  href: '/dashboard/cuentas-cobrar/series-recibos', icon: Receipt,       separator: 'Catalogo',     permiso: PERMISOS.SER_REC },
+      { label: 'Tipos Ingresos', href: '/dashboard/cuentas-cobrar/tipos-ingresos', icon: Tags,                                     permiso: PERMISOS.TIN_CAT },
+      { label: 'Operaciones',    href: '#', icon: ClipboardList, separator: 'Operaciones', comingSoon: true },
+      { label: 'Consultas',      href: '#', icon: BarChart3,     separator: 'Consultas',   comingSoon: true },
     ],
   },
   {
@@ -250,9 +252,23 @@ export function AppSidebar({
   userEmail?: string
   permisos: string[]
 }) {
-  const visibleNav = NAV.filter(
-    (item) => !item.permiso || permisos.includes(item.permiso)
-  )
+  const visibleNav = NAV
+    .map((item) => {
+      if (!item.children) return item
+      // Filtrar children por permiso; los comingSoon siempre visibles
+      const visibleChildren = item.children.filter(
+        (c) => c.comingSoon || !c.permiso || permisos.includes(c.permiso)
+      )
+      return { ...item, children: visibleChildren }
+    })
+    .filter((item) => {
+      if (item.comingSoon) return true
+      // Ocultar item top-level si no tiene el permiso requerido
+      if (item.permiso && !permisos.includes(item.permiso)) return false
+      // Ocultar grupos donde todos los children con permiso fueron filtrados
+      if (item.children) return item.children.some((c) => c.comingSoon || !c.permiso || permisos.includes(c.permiso))
+      return true
+    })
   return (
     <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
       {/* Logo / Brand */}

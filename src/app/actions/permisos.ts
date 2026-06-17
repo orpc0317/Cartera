@@ -4,6 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PERMISOS } from '@/lib/permisos'
 
+async function getCuentaActiva(): Promise<string> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+}
+
 export type PermisosDetalle = {
   consultar: boolean
   agregar: boolean
@@ -27,6 +33,9 @@ export async function getPermisosUsuario(): Promise<string[]> {
 
   if (!user) return []
 
+  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  if (!cuenta) return []
+
   const admin = createAdminClient()
 
   // Contar cuántas filas tiene este usuario en t_menu_usuario
@@ -34,9 +43,10 @@ export async function getPermisosUsuario(): Promise<string[]> {
     .schema('cartera')
     .from('t_menu_usuario')
     .select('indice', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
     .eq('userid', user.id)
 
-  // Sin configuración = acceso completo (modo setup)
+  // Sin configuración = acceso completo (modo Admin)
   if (!count || count === 0) {
     return Object.values(PERMISOS)
   }
@@ -46,6 +56,7 @@ export async function getPermisosUsuario(): Promise<string[]> {
     .schema('cartera')
     .from('t_menu_usuario')
     .select('indice')
+    .eq('cuenta', cuenta)
     .eq('userid', user.id)
     .eq('consultar', 1)
 
@@ -68,6 +79,9 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
 
   if (!user) return { consultar: false, agregar: false, modificar: false, eliminar: false }
 
+  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  if (!cuenta) return { consultar: false, agregar: false, modificar: false, eliminar: false }
+
   const admin = createAdminClient()
 
   // Contar cuántas filas tiene este usuario en t_menu_usuario
@@ -75,15 +89,17 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
     .schema('cartera')
     .from('t_menu_usuario')
     .select('indice', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
     .eq('userid', user.id)
 
-  // Sin configuración = acceso completo (modo setup)
+  // Sin configuración = acceso completo (modo Admin)
   if (!count || count === 0) return fullAccess
 
   const { data } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
     .select('consultar, agregar, modificar, eliminar')
+    .eq('cuenta', cuenta)
     .eq('userid', user.id)
     .eq('indice', indice)
     .maybeSingle()

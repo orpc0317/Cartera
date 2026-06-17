@@ -31,10 +31,11 @@ CREATE TABLE IF NOT EXISTS cartera.t_acceso_directo (
 );
 
 -- Log de auditoría (INSERT / UPDATE / DELETE en tablas de negocio)
+-- RLS habilitado sin policies = solo service_role puede acceder.
 CREATE TABLE IF NOT EXISTS cartera.t_audit_log (
   id                  bigint        NOT NULL DEFAULT nextval('cartera.t_audit_log_id_seq'::regclass),
   tabla               text          NOT NULL,
-  operacion           text          NOT NULL,
+  operacion           text          NOT NULL,  -- 'INSERT'|'UPDATE'|'DELETE'|'SECURITY_ALERT'
   cuenta              text          NULL,
   registro_id         jsonb         NULL,
   datos_antes         jsonb         NULL,
@@ -45,6 +46,20 @@ CREATE TABLE IF NOT EXISTS cartera.t_audit_log (
   usuario_nombre      text          NULL,
   PRIMARY KEY (id)
 );
+
+-- Intentos de login (exitosos y fallidos) para lockout y alertas de seguridad
+-- RLS habilitado sin policies = solo service_role puede acceder.
+-- Se auto-limpia entradas con más de 7 días en cada intento de login.
+CREATE TABLE IF NOT EXISTS cartera.t_login_attempt (
+  id       bigserial    NOT NULL,
+  email    text         NOT NULL,
+  ip       text         NOT NULL DEFAULT '',
+  exitoso  boolean      NOT NULL DEFAULT false,
+  fecha    timestamptz  NOT NULL DEFAULT now(),
+  PRIMARY KEY (id)
+);
+-- Índice para consultas de lockout: email + fecha DESC
+-- CREATE INDEX idx_login_attempt_email_fecha ON cartera.t_login_attempt (email, fecha DESC);
 
 -- Catálogo de bancos por proyecto
 CREATE TABLE IF NOT EXISTS cartera.t_banco (
@@ -421,13 +436,14 @@ CREATE TABLE IF NOT EXISTS cartera.t_menu_modulo (
 
 -- Permisos de menú por usuario
 CREATE TABLE IF NOT EXISTS cartera.t_menu_usuario (
+  cuenta              varchar       NOT NULL,
   userid              uuid          NOT NULL,
   indice              varchar(8)    NOT NULL,
   agregar             smallint      NOT NULL DEFAULT 0,
   modificar           smallint      NOT NULL DEFAULT 0,
   eliminar            smallint      NOT NULL DEFAULT 0,
   consultar           smallint      NOT NULL DEFAULT 0,
-  PRIMARY KEY (userid, indice)
+  PRIMARY KEY (cuenta, userid, indice)
 );
 
 -- Catálogo de monedas
@@ -869,6 +885,15 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 -- * t_usuario_proyecto: sin filas para un usuario = sin acceso (no hay fallback libre).
 --   El usuario Admin de la cuenta tiene acceso irrestricto (se gestiona en creación de cuenta).
 -- * La secuencia t_audit_log_id_seq debe existir antes del CREATE TABLE.
+-- * t_audit_log.operacion puede ser 'INSERT'|'UPDATE'|'DELETE'|'SECURITY_ALERT'.
+--   Los registros SECURITY_ALERT los genera auth.ts cuando hay >=10 intentos
+--   fallidos de login en 60 minutos para el mismo email.
+-- * t_login_attempt: registra cada intento de login (exitoso o fallido).
+--   El lockout se activa con 5 fallos en 15 minutos (constantes en auth.ts).
+--   Se auto-purga entradas con más de 7 días en cada intento.
+--   Solo accesible via service_role (RLS sin policies).
+-- * cartera_cuentas_usuario_by_id (RPC pública): REVOKE EXECUTE FROM anon.
+--   Solo authenticated y service_role pueden invocarla.
 -- * La función cartera.fn_genera_cuentaid() debe existir antes del
 --   CREATE TABLE t_cuenta.
 -- =============================================================
