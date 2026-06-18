@@ -1,9 +1,11 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Cobrador, CobradorForm } from '@/lib/types/proyectos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -78,6 +80,8 @@ export async function getCobradores(empresa?: number, proyecto?: number): Promis
 export async function createCobrador(form: CobradorForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.COB_CAT, 'agregar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -132,6 +136,8 @@ export async function updateCobrador(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.COB_CAT, 'modificar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -199,6 +205,8 @@ export async function deleteCobrador(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.COB_CAT, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

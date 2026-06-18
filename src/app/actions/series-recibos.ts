@@ -1,9 +1,11 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { SerieRecibo, SerieReciboForm, SerieFactura } from '@/lib/types/proyectos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -98,6 +100,8 @@ export async function getSeriesRecibos(empresa?: number, proyecto?: number): Pro
 export async function createSerieRecibo(form: SerieReciboForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.SER_REC, 'agregar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const serie = toDbString(form.serie)
@@ -171,6 +175,8 @@ export async function updateSerieRecibo(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.SER_REC, 'modificar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -243,6 +249,8 @@ export async function deleteSerieRecibo(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.SER_REC, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Restriction: cannot delete if there are associated recibos de caja

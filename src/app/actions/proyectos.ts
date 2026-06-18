@@ -1,10 +1,12 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyectos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -123,6 +125,8 @@ export async function getProyectosUsuario(empresa?: number): Promise<Proyecto[]>
 export async function createProyecto(form: ProyectoForm): Promise<{ error?: string; codigo?: number }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'agregar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -212,6 +216,8 @@ export async function updateProyecto(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -280,6 +286,8 @@ export async function updateProyecto(
 export async function deleteProyecto(empresa: number, codigo: number): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar restricciones referenciales antes de eliminar
@@ -394,6 +402,8 @@ export async function uploadProjectLogo(
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
+  if (permCheck) return permCheck
 
   // Leer bytes antes de subir para verificar magic bytes
   const arrayBuffer = await file.arrayBuffer()

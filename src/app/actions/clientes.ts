@@ -1,9 +1,11 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Cliente, ClienteForm } from '@/lib/types/proyectos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -85,6 +87,8 @@ export async function getClientes(empresa?: number, proyecto?: number): Promise<
 export async function createCliente(form: ClienteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.CLI_CAT, 'agregar')
+  if (permCheck) return permCheck
   if (!form.correo || !isValidEmail(form.correo)) return { error: form.correo ? 'El correo electrónico no tiene un formato válido.' : 'El correo electrónico es requerido.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
@@ -141,6 +145,8 @@ export async function updateCliente(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.CLI_CAT, 'modificar')
+  if (permCheck) return permCheck
   if (!form.correo || !isValidEmail(form.correo)) return { error: form.correo ? 'El correo electrónico no tiene un formato válido.' : 'El correo electrónico es requerido.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
@@ -209,6 +215,8 @@ export async function deleteCliente(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.CLI_CAT, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

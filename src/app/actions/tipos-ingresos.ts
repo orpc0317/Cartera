@@ -1,9 +1,11 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 // ─── Helpers privados ─────────────────────────────────────────────────────
 
@@ -80,6 +82,8 @@ export async function createTipoIngreso(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'agregar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar duplicado de nombre
@@ -139,6 +143,8 @@ export async function updateTipoIngreso(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'modificar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar duplicado de nombre excluyendo el registro actual
@@ -208,6 +214,8 @@ export async function deleteTipoIngreso(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Restricción: verificar recibos asociados

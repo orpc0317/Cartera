@@ -1,10 +1,12 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 // Obtiene cuenta_activa del usuario en sesión
 async function getCuentaActiva(): Promise<string> {
@@ -134,6 +136,8 @@ export async function getEmpresa(codigo: number): Promise<Empresa> {
 export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'agregar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const normalized: EmpresaForm = {
@@ -190,6 +194,8 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
 export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, lastModified?: string): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'modificar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Capturar estado anterior para auditoría
@@ -253,6 +259,8 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
 export async function deleteEmpresa(codigo: number): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar restricción de cascada: no eliminar si hay proyectos asociados

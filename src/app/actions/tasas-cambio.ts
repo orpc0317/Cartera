@@ -1,8 +1,10 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { TasaCambio, TasaCambioForm } from '@/lib/types/tasas-cambio'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 export type { TasaCambio, TasaCambioForm } from '@/lib/types/tasas-cambio'
 
 async function getCuentaActiva(): Promise<string> {
@@ -74,6 +76,8 @@ export async function getTasasCambio(): Promise<TasaCambio[]> {
 export async function createTasaCambio(form: TasaCambioForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.TSC_CAT, 'agregar')
+  if (permCheck) return permCheck
 
   // Validate tasa_cambio > 0
   if (!form.tasa_cambio || Number(form.tasa_cambio) <= 0)
@@ -136,6 +140,8 @@ export async function deleteTasaCambio(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.TSC_CAT, 'eliminar')
+  if (permCheck) return permCheck
 
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 

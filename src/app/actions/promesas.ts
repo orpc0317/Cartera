@@ -1,8 +1,10 @@
-'use server'
+﻿'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -81,6 +83,8 @@ export async function getPromesas(empresa?: number, proyecto?: number): Promise<
 export async function createPromesa(form: PromesaForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'agregar')
+  if (permCheck) return permCheck
 
   const admin = createAdminClient()
 
@@ -140,6 +144,8 @@ export async function updatePromesa(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'modificar')
+  if (permCheck) return permCheck
 
   const admin = createAdminClient()
 
@@ -201,6 +207,8 @@ export async function deletePromesa(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'eliminar')
+  if (permCheck) return permCheck
 
   const admin = createAdminClient()
 

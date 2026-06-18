@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Lote, LoteForm, SerieRecibo } from '@/lib/types/proyectos'
+import { requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
 
 async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
@@ -107,6 +109,8 @@ export async function getLotesDisponibles(empresa?: number, proyecto?: number): 
 export async function createLote(form: LoteForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'agregar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -146,6 +150,8 @@ export async function updateLote(
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'modificar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -195,6 +201,8 @@ export async function updateLote(
 export async function deleteLote(empresa: number, proyecto: number, fase: number, manzana: string, codigo: string): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'eliminar')
+  if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Cascade checks
@@ -399,6 +407,8 @@ export async function createReserva(
 ): Promise<CreateReservaResult> {
   const cuenta    = await getCuentaActiva()
   if (!cuenta) return { ok: false, error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.RES_OPE, 'agregar')
+  if (permCheck) return { ok: false, error: permCheck.error }
   const auditUser = await getAuditUser()
   if (!auditUser.userId) return { ok: false, error: 'Usuario no autenticado.' }
 

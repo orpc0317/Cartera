@@ -114,3 +114,55 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
     eliminar:  data.eliminar  === 1,
   }
 }
+
+/**
+ * Guard para server actions de escritura.
+ *
+ * Verifica que el usuario autenticado tenga el permiso requerido para el
+ * índice de menú indicado. Devuelve `{ error }` si el acceso está denegado,
+ * o `null` si está permitido.
+ *
+ * Aplica la misma regla de fallback que getPermisosDetalle:
+ *   - Sin filas en t_menu_usuario → Admin, acceso completo.
+ *   - Con filas pero sin el índice, o con el flag en 0 → denegado.
+ */
+export async function requirePermiso(
+  indice: string,
+  operacion: 'agregar' | 'modificar' | 'eliminar',
+): Promise<{ error: string } | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'Sesión no válida.' }
+
+  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  if (!cuenta) return { error: 'Sesión no válida.' }
+
+  const admin = createAdminClient()
+
+  const { count } = await admin
+    .schema('cartera')
+    .from('t_menu_usuario')
+    .select('indice', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('userid', user.id)
+
+  // Sin configuración = Admin → acceso completo
+  if (!count || count === 0) return null
+
+  const { data } = await admin
+    .schema('cartera')
+    .from('t_menu_usuario')
+    .select(operacion)
+    .eq('cuenta', cuenta)
+    .eq('userid', user.id)
+    .eq('indice', indice)
+    .maybeSingle()
+
+  const row = data as Record<string, boolean | null> | null
+  if (!row || !row[operacion]) {
+    return { error: 'No tienes permiso para realizar esta acción.' }
+  }
+
+  return null
+}
