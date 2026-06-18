@@ -150,6 +150,20 @@ export async function requirePermiso(
 
   const admin = createAdminClient()
 
+  // Verificar que el usuario pertenece a esta cuenta antes de cualquier
+  // comprobación de permisos. Sin esta guarda, un atacante que falsifique
+  // el valor de la cookie 'cartera-cuenta' a una cuenta ajena obtendría
+  // count=0 en t_menu_usuario y quedaría clasificado como "Admin sin
+  // restricciones", obteniendo escritura total sobre esa cuenta.
+  const { count: membership } = await admin
+    .schema('cartera')
+    .from('t_usuario')
+    .select('userid', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('userid', user.id)
+
+  if (!membership) return { error: 'Acceso denegado.' }
+
   const { count } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
