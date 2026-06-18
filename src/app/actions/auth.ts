@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -31,7 +31,7 @@ const VENTANA_ALERTA_MIN    = 60  // ventana de tiempo para alerta (minutos)
 // Helpers privados
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function getCuentasDelUsuario(userId: string): Promise<Cuenta[]> {
+export async function getCuentasDelUsuario(userId: string): Promise<Cuenta[]> {
   const admin = createAdminClient()
   const { data, error } = await admin.rpc('cartera_cuentas_usuario_by_id', {
     p_userid: userId,
@@ -57,6 +57,16 @@ async function setCuentaActivaInterna(
     app_metadata: { cuenta_activa: cuentaId },
   })
   if (error) return { error: 'No se pudo establecer la cuenta activa.' }
+
+  // Cookie cartera-cuenta: aislamiento por navegador/perfil (no afecta otros navegadores)
+  const cookieStore = await cookies()
+  cookieStore.set('cartera-cuenta', cuentaId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  })
 
   return null
 }
@@ -219,7 +229,25 @@ export async function setCuentaActiva(
   redirect('/dashboard')
 }
 
+/**
+ * Cambia la cuenta activa sin redirigir (para el switcher del sidebar).
+ * El cliente es responsable de notificar otras pestañas y navegar.
+ */
+export async function switchCuenta(cuentaId: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No hay sesión activa.' }
+
+  const err = await setCuentaActivaInterna(user.id, cuentaId)
+  if (err) return err
+
+  await supabase.auth.refreshSession()
+  return {}
+}
+
 export async function logout() {
+  const cookieStore = await cookies()
+  cookieStore.delete('cartera-cuenta')
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')

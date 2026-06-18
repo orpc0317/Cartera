@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Cliente, ClienteForm } from '@/lib/types/proyectos'
-import { requirePermiso } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -12,12 +12,6 @@ import { PERMISOS } from '@/lib/permisos'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function isValidEmail(value: string): boolean {
   return EMAIL_RE.test(value.trim())
-}
-
-async function getCuentaActiva(): Promise<string> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
 }
 
 async function getAuditUser() {

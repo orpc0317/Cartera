@@ -5,15 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
-import { requirePermiso } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
-
-// Obtiene cuenta_activa del usuario en sesión
-async function getCuentaActiva(): Promise<string> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
-}
 
 // Obtiene info del usuario para auditoría
 async function getAuditUser() {

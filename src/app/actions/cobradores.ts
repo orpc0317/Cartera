@@ -4,14 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Cobrador, CobradorForm } from '@/lib/types/proyectos'
-import { requirePermiso } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
-
-async function getCuentaActiva(): Promise<string> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
-}
 
 async function getAuditUser() {
   const supabase = await createClient()

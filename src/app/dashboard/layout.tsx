@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppSidebar } from '@/components/layout/app-sidebar'
-import { getPermisosUsuario } from '@/app/actions/permisos'
+import { CuentaChangeListener } from '@/components/layout/cuenta-change-listener'
+import { getPermisosUsuario, getCuentaActiva } from '@/app/actions/permisos'
+import { getCuentasDelUsuario } from '@/app/actions/auth'
 
 export default async function DashboardLayout({
   children,
@@ -17,17 +19,20 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const meta = user.app_metadata as Record<string, string>
-  const cuentaActiva = meta?.cuenta_activa
   const userEmail = user.email
-
-  const permisos = await getPermisosUsuario()
+  const [cuentaActiva, cuentas, permisos] = await Promise.all([
+    getCuentaActiva(),
+    getCuentasDelUsuario(user.id),
+    getPermisosUsuario(),
+  ])
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <CuentaChangeListener />
       {/* Sidebar fijo */}
       <AppSidebar
         cuentaActiva={cuentaActiva}
+        cuentas={cuentas}
         userEmail={userEmail}
         permisos={permisos}
       />

@@ -1,10 +1,20 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PERMISOS } from '@/lib/permisos'
 
-async function getCuentaActiva(): Promise<string> {
+/**
+ * Devuelve la cuenta activa del usuario.
+ * Lee primero la cookie `cartera-cuenta` (aislada por navegador/perfil);
+ * si no existe, recurre al JWT app_metadata como fallback.
+ */
+export async function getCuentaActiva(): Promise<string> {
+  const cookieStore = await cookies()
+  const fromCookie = cookieStore.get('cartera-cuenta')?.value
+  if (fromCookie) return fromCookie
+  // Fallback: JWT app_metadata (sesión sin cookie, p.ej. primer login)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
@@ -33,7 +43,7 @@ export async function getPermisosUsuario(): Promise<string[]> {
 
   if (!user) return []
 
-  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  const cuenta = await getCuentaActiva()
   if (!cuenta) return []
 
   const admin = createAdminClient()
@@ -79,7 +89,7 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
 
   if (!user) return { consultar: false, agregar: false, modificar: false, eliminar: false }
 
-  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  const cuenta = await getCuentaActiva()
   if (!cuenta) return { consultar: false, agregar: false, modificar: false, eliminar: false }
 
   const admin = createAdminClient()
@@ -135,7 +145,7 @@ export async function requirePermiso(
 
   if (!user) return { error: 'Sesión no válida.' }
 
-  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
   const admin = createAdminClient()

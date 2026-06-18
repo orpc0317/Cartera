@@ -3,16 +3,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
-import { requirePermiso } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-async function getCuentaActiva(): Promise<string> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
-}
 
 async function getAuditUser() {
   const supabase = await createClient()
