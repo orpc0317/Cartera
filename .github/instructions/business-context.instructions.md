@@ -47,7 +47,16 @@ El acceso a datos se controla en tres capas que se aplican siempre en orden:
 
 ### Capa 1 — Tenant (obligatorio, inviolable)
 Toda query filtra por `cuenta`. Un usuario de cuenta A nunca puede ver datos de cuenta B.
-El valor se obtiene de `user.app_metadata.cuenta_activa` (JWT, seteado por Supabase Auth en login).
+
+**Modelo multi-cuenta**: un mismo `userid` (mismo email / fila en `auth.users`) puede pertenecer a múltiples cuentas. `t_usuario` tiene PK `(cuenta, userid)`. El usuario puede cambiar de cuenta activa sin cerrar sesión mediante el selector de cuenta del sidebar.
+
+**Fuente del tenant ID** — en orden de precedencia:
+1. Cookie `cartera-cuenta` (HttpOnly, Secure, SameSite=lax) — aislamiento por navegador/perfil. Permite que Chrome use Cuenta A y Edge use Cuenta B simultáneamente.
+2. JWT `app_metadata.cuenta_activa` — fallback para sesiones sin cookie (compatibilidad con sesiones anteriores al mecanismo de cookie).
+
+La función `getCuentaActiva()` exportada desde `src/app/actions/permisos.ts` encapsula esta lógica. **Nunca leer la cookie ni el app_metadata directamente en los action files.**
+
+**RLS hardening**: todas las políticas INSERT tienen `WITH CHECK` basado en `fn_cuenta_del_usuario()` (que lee el JWT). Esto previene inyección cross-tenant por llamada directa a la API REST de Supabase, independientemente del valor de la cookie.
 
 ### Capa 2 — Pantallas y funcionalidades (`t_menu_usuario`)
 Tabla: `cartera.t_menu_usuario (cuenta, userid, indice, agregar, modificar, eliminar, consultar)`.
@@ -57,6 +66,7 @@ Tabla: `cartera.t_menu_usuario (cuenta, userid, indice, agregar, modificar, elim
 - **Con filas → solo los índices con `consultar = 1`** son accesibles; los demás quedan ocultos en el sidebar.
 - Los flags `agregar`, `modificar`, `eliminar` controlan qué acciones puede ejecutar dentro de cada pantalla.
 - RLS: políticas SELECT/INSERT/UPDATE/DELETE filtran por `cuenta_activa` del JWT.
+- **Protección anti cookie-tampering**: `requirePermiso()` verifica membresía en `t_usuario` antes de evaluar `t_menu_usuario`. Un usuario que falsifique la cookie a otra cuenta recibe `Acceso denegado.` — no puede explotar el fallback "sin filas = Admin" para obtener escritura cross-tenant.
 
 ### Capa 3 — Empresa y Proyecto (`t_usuario_proyecto`)
 Tabla: `cartera.t_usuario_proyecto (cuenta, userid, empresa, proyecto)`.
