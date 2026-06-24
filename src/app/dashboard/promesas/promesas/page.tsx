@@ -1,6 +1,6 @@
 import { getPromesas } from '@/app/actions/promesas'
-import { getEmpresas } from '@/app/actions/empresas'
-import { getProyectos } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
+import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getFases } from '@/app/actions/fases'
 import { getManzanas } from '@/app/actions/manzanas'
 import { getLotes } from '@/app/actions/lotes'
@@ -17,8 +17,8 @@ export default async function PromesasPage() {
 
   const [promesas, empresas, proyectos, fases, manzanas, lotes, clientes, vendedores, permisos] = await Promise.all([
     getPromesas().catch((e: Error) => { console.error('getPromesas:', e.message); return [] }),
-    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] }),
-    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] }),
     getFases().catch((e: Error) => { console.error('getFases:', e.message); return [] }),
     getManzanas().catch((e: Error) => { console.error('getManzanas:', e.message); return [] }),
     getLotes().catch((e: Error) => { console.error('getLotes:', e.message); return [] }),

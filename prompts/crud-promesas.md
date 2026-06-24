@@ -242,7 +242,7 @@ Sticky izquierdo: `numero` (label: `"Numero"`, es el identificador visible del P
 | fase     | Fase       | half    | ViewField | Select FK [§F]; req   | ViewField                | primera de proyecto | prop `fases`; filtrado por proyecto; misma fila que manzana y lote (grid-cols-4, col-span-2) |
 | manzana  | Manzana    | quarter | ViewField | Select FK [§F]; req   | ViewField                | primera de fase     | prop `manzanas`; filtrado por empresa+proyecto+fase; 1/4 del ancho |
 | lote     | Lote       | quarter | ViewField | Select FK [§F]; req   | ViewField                | primera de manzana  | prop `lotes`; filtrado por empresa+proyecto+fase+manzana; 1/4 del ancho |
-| —        | Extensión  | half    | ViewField | ViewField (ro)        | ViewField (ro)           | —                   | read-only; `t_lote.extension` + `t_fase.medida` como sufijo; `loteActivoVista`/`loteActivoForm` |
+| —        | Extension  | half    | ViewField | ViewField (ro)        | ViewField (ro)           | —                   | read-only; `t_lote.extension` + `t_fase.medida` como sufijo; `loteActivoVista`/`loteActivoForm` |
 | —        | Precio de venta | half | ViewField | ViewField (ro)   | ViewField (ro)           | —                   | read-only; `moneda + fmtNum(valor_lote)`; auto-rellenado al seleccionar lote |
 
 **[OTROS]**

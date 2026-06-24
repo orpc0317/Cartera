@@ -105,7 +105,7 @@ type ColFilters = Record<string, Set<string>>
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="grid gap-1">
-      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
         <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
@@ -650,7 +650,7 @@ export function LotesClient({
       {/* -- Toolbar -- */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="relative max-w-xs flex-1">
+          <div className="relative max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input variant="l-border"
               placeholder="Buscar lotes..."
@@ -682,7 +682,7 @@ export function LotesClient({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-10 bg-muted/30 whitespace-nowrap w-[90px]">
+              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">
                 <span className="text-xs font-medium text-muted-foreground">Codigo</span>
               </TableHead>
               {colPrefs.filter((p) => p.visible).map((pref) => {
@@ -707,14 +707,16 @@ export function LotesClient({
                   </TableHead>
                 )
               })}
-              <TableHead className="w-[48px]" />
+              <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {pagedRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={colPrefs.filter((p) => p.visible).length + 2} className="h-24 text-center text-muted-foreground">
-                  Sin resultados
+                <TableCell colSpan={colPrefs.filter((p) => p.visible).length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters
+                    ? 'No se encontraron lotes con ese criterio.'
+                    : 'Todavia no hay lotes. Haz clic en "Nuevo Lote" para comenzar.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -776,10 +778,10 @@ export function LotesClient({
                         }
                       }
                     })}
-                    <TableCell>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-rose-50 dark:bg-rose-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none">
-                            <MoreHorizontal className="h-4 w-4" />
+                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                          <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openView(lote)}>
@@ -860,11 +862,11 @@ export function LotesClient({
 
           <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
               {!isEditing && viewTarget && (
-                <TabsTrigger value="promesas" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+                <TabsTrigger value="promesas" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                   <ClipboardList className="h-3.5 w-3.5" /> Promesas
                 </TabsTrigger>
               )}
@@ -917,8 +919,8 @@ export function LotesClient({
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="IDENTIFICACION" />
-                    <div className="col-span-2 space-y-1.5">
-                      <Label>Empresa</Label>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona empresa">
@@ -930,8 +932,8 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="col-span-2 space-y-1.5">
-                      <Label>Proyecto</Label>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto</Label>
                       <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona proyecto">
@@ -943,8 +945,8 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Fase</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase</Label>
                       <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona fase">
@@ -956,8 +958,8 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Manzana</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana</Label>
                       <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona manzana">
@@ -970,16 +972,16 @@ export function LotesClient({
                       </Select>
                     </div>
                     {!viewTarget ? (
-                      <div className="space-y-1.5">
-                        <Label>Codigo</Label>
+                      <div className="grid gap-1">
+                        <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo</Label>
                         <Input variant="l-border" value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
                       <ViewField label="Codigo" value={viewTarget.codigo} />
                     )}
                     <SectionDivider label="GENERAL" />
-                    <div className="space-y-1.5">
-                      <Label>Moneda</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
                         <SelectTrigger variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona moneda">
@@ -1011,12 +1013,12 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Valor</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Valor</Label>
                       <Input variant="l-border" type="number" min={0} step="0.01" value={valorStr} onChange={(e) => setValorStr(e.target.value)} placeholder="0.00" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Extension</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Extension</Label>
                       <div className="flex gap-2 items-center">
                         <Input variant="l-border" type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => setExtensionStr(e.target.value)} placeholder="0.00" className="flex-1" />
                         {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
@@ -1026,37 +1028,37 @@ export function LotesClient({
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SectionDivider label="REGISTRO" />
-                    <div className="space-y-1.5">
-                      <Label>Finca</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Finca</Label>
                       <Input variant="l-border" value={form.finca ?? ''} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Folio</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Folio</Label>
                       <Input variant="l-border" value={form.folio ?? ''} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Libro</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Libro</Label>
                       <Input variant="l-border" value={form.libro ?? ''} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" />
                     </div>
                     <SectionDivider label="COLINDANCIAS" />
-                    <div className="space-y-1.5">
-                      <Label>Norte</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Norte</Label>
                       <Input variant="l-border" value={form.norte ?? ''} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia norte" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Sur</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Sur</Label>
                       <Input variant="l-border" value={form.sur ?? ''} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia sur" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Este</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Este</Label>
                       <Input variant="l-border" value={form.este ?? ''} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia este" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Oeste</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Oeste</Label>
                       <Input variant="l-border" value={form.oeste ?? ''} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia oeste" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>Otros</Label>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Otros</Label>
                       <Input variant="l-border" value={form.otro ?? ''} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias" />
                     </div>
                   </div>

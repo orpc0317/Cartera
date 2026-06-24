@@ -104,7 +104,7 @@ function ColumnFilter({ label, values, active, onChange }: {
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="grid gap-1">
-      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
         <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
@@ -624,7 +624,7 @@ export function TiposIngresosClient({
 
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2">
-        <div className="relative max-w-xs">
+        <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input variant="l-border" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8" style={{ fontSize: 'var(--ui-input)' }} />
         </div>
@@ -676,7 +676,7 @@ export function TiposIngresosClient({
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={visibleCols.length + 2} className="h-32 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
                   {search || hasActiveFilters
                     ? 'No se encontraron tipos de ingresos con ese criterio.'
                     : 'Todavia no hay tipos de ingresos. Haz clic en "Nuevo Tipo Ingreso" para comenzar.'}
@@ -798,7 +798,7 @@ export function TiposIngresosClient({
 
           <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -934,7 +934,7 @@ export function TiposIngresosClient({
                       <ViewField label="" value={empresaMap.get(form.empresa)} />
                     ) : (
                       <Select value={String(form.empresa)} onValueChange={(v) => handleEmpresaChange(Number(v))}>
-                        <SelectTrigger variant="l-border" id="empresa" className="w-full"><SelectValue>{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="empresa" className="w-full"><SelectValue>{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                         </SelectContent>
@@ -949,7 +949,7 @@ export function TiposIngresosClient({
                       <ViewField label="" value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
                       <Select value={String(form.proyecto)} onValueChange={(v) => handleProyectoChange(Number(v))}>
-                        <SelectTrigger variant="l-border" id="proyecto" className="w-full"><SelectValue>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="proyecto" className="w-full"><SelectValue>{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                         </SelectContent>

@@ -85,19 +85,6 @@ export async function createCuentaBancaria(
   const permCheck = await requirePermiso(PERMISOS.CUE_BAN, 'agregar')
   if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
-
-  const { data: max } = await admin
-    .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('codigo')
-    .eq('cuenta', cuenta)
-    .eq('empresa', form.empresa)
-    .eq('proyecto', form.proyecto)
-    .order('codigo', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
   // Validar que la combinación banco + número de cuenta no se repita en el mismo proyecto
@@ -120,7 +107,6 @@ export async function createCuentaBancaria(
       cuenta,
       empresa: form.empresa,
       proyecto: form.proyecto,
-      codigo,
       numero: toDbString(form.numero),
       nombre: toDbString(form.nombre),
       banco: form.banco,
@@ -138,7 +124,7 @@ export async function createCuentaBancaria(
 
   await writeAudit(admin, {
     tabla: 't_cuenta_bancaria', operacion: 'INSERT', cuenta,
-    registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo },
+    registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo: (data as CuentaBancaria).codigo },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
     ...auditUser,
   })

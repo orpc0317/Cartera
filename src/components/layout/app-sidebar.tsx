@@ -33,6 +33,7 @@ import {
   ArrowLeftRight,
   FileSignature,
   Check,
+  CircleDollarSign,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -100,7 +101,8 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Bancos',            href: '/dashboard/bancos/bancos',             icon: Landmark,      separator: 'Catálogos',    permiso: PERMISOS.BAN_CAT },
       { label: 'Cuentas Bancarias', href: '/dashboard/bancos/cuentas-bancarias',  icon: CreditCard,                             permiso: PERMISOS.CUE_BAN },
-      { label: 'Tasas Cambio',      href: '/dashboard/bancos/tasas-cambio',       icon: ArrowLeftRight, separator: 'Operaciones', permiso: PERMISOS.TSC_CAT },
+      { label: 'Tasas Cambio',      href: '/dashboard/bancos/tasas-cambio',                                 icon: ArrowLeftRight,    separator: 'Operaciones', permiso: PERMISOS.TSC_CAT },
+      { label: 'Depositar Pagos',   href: '/dashboard/bancos/operaciones/depositar-pagos',                 icon: CircleDollarSign,                             permiso: PERMISOS.DEP_BAN },
     ],
   },
   {

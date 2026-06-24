@@ -1,6 +1,6 @@
 import { getCobradores } from '@/app/actions/cobradores'
-import { getEmpresas } from '@/app/actions/empresas'
-import { getProyectos } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
+import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
@@ -12,8 +12,8 @@ export default async function CobradoresPage() {
 
   const [data, empresas, proyectos, permisos] = await Promise.all([
     getCobradores().catch((e: Error) => { console.error('getCobradores:', e.message); return [] as Awaited<ReturnType<typeof getCobradores>> }),
-    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] as Awaited<ReturnType<typeof getEmpresas>> }),
-    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] as Awaited<ReturnType<typeof getProyectos>> }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
     getPermisosDetalle(PERMISOS.COB_CAT),
   ])
 

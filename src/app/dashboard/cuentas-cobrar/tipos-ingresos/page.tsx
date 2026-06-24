@@ -1,6 +1,6 @@
 import { getTiposIngresos } from '@/app/actions/tipos-ingresos'
-import { getEmpresas } from '@/app/actions/empresas'
-import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
+import { getProyectosUsuario, getProyectoMonedas } from '@/app/actions/proyectos'
 import { getMonedas } from '@/app/actions/geo'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { createClient } from '@/lib/supabase/server'
@@ -13,8 +13,8 @@ export default async function TiposIngresosPage() {
 
   const [tiposIngresos, empresas, proyectos, monedas, proyectoMonedas, permisos] = await Promise.all([
     getTiposIngresos().catch((e: Error) => { console.error('getTiposIngresos:', e.message); return [] }),
-    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] }),
-    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] }),
     getMonedas().catch((e: Error) => { console.error('getMonedas:', e.message); return [] }),
     getProyectoMonedas().catch((e: Error) => { console.error('getProyectoMonedas:', e.message); return [] }),
     getPermisosDetalle(PERMISOS.TIN_CAT),

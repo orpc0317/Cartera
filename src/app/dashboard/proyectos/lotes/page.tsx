@@ -1,8 +1,8 @@
 import { getLotes } from '@/app/actions/lotes'
 import { getManzanas } from '@/app/actions/manzanas'
 import { getFases } from '@/app/actions/fases'
-import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'
-import { getEmpresas } from '@/app/actions/empresas'
+import { getProyectosUsuario, getProyectoMonedas } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
 import { getMonedas } from '@/app/actions/geo'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
@@ -17,8 +17,8 @@ export default async function LotesPage() {
     getLotes().catch((e: Error)              => { console.error('getLotes:', e.message);              return [] as Awaited<ReturnType<typeof getLotes>>              }),
     getManzanas().catch((e: Error)           => { console.error('getManzanas:', e.message);           return [] as Awaited<ReturnType<typeof getManzanas>>           }),
     getFases().catch((e: Error)              => { console.error('getFases:', e.message);              return [] as Awaited<ReturnType<typeof getFases>>              }),
-    getProyectos().catch((e: Error)          => { console.error('getProyectos:', e.message);          return [] as Awaited<ReturnType<typeof getProyectos>>          }),
-    getEmpresas().catch((e: Error)           => { console.error('getEmpresas:', e.message);           return [] as Awaited<ReturnType<typeof getEmpresas>>           }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
     getMonedas().catch((e: Error)            => { console.error('getMonedas:', e.message);            return [] as Awaited<ReturnType<typeof getMonedas>>            }),
     getProyectoMonedas().catch((e: Error)    => { console.error('getProyectoMonedas:', e.message);    return [] as Awaited<ReturnType<typeof getProyectoMonedas>>    }),
     getPermisosDetalle(PERMISOS.LOT_CAT),

@@ -111,7 +111,7 @@ const EMPTY_FORM: SupervisorForm = {
 function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="grid gap-1">
-      <span className="font-medium leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
+      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
         <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
@@ -276,26 +276,25 @@ export function SupervisoresClient({
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `supervisores_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
-
-  useEffect(() => {
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PREFS
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed: ColPref[] = JSON.parse(raw)
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return DEFAULT_PREFS
+      const parsed: ColPref[] = JSON.parse(saved)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      setColPrefs([
+      return [
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ])
-    } catch { /* ignorar */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+      ]
+    } catch { return DEFAULT_PREFS }
+  })
 
-  function saveColPrefs(next: ColPref[]) {
-    setColPrefs(next)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
-  }
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
+  }, [colPrefs, STORAGE_KEY])
+
+  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
   function toggleCol(key: string) { saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p)) }
   function moveCol(key: string, dir: -1 | 1) {
     const idx = colPrefs.findIndex((p) => p.key === key)
@@ -736,7 +735,7 @@ export function SupervisoresClient({
           {/* Tabs */}
           <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>

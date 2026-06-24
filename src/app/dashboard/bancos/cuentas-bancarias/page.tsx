@@ -1,7 +1,7 @@
 import { getCuentasBancarias } from '@/app/actions/cuentas-bancarias'
 import { getMonedas } from '@/app/actions/geo'
-import { getEmpresas } from '@/app/actions/empresas'
-import { getProyectos } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
+import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getBancos } from '@/app/actions/bancos'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
@@ -14,8 +14,8 @@ export default async function CuentasBancariasPage() {
 
   const [data, empresas, proyectos, bancos, monedas, permisos] = await Promise.all([
     getCuentasBancarias().catch((e: Error) => { console.error('getCuentasBancarias:', e.message); return [] as Awaited<ReturnType<typeof getCuentasBancarias>> }),
-    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] as Awaited<ReturnType<typeof getEmpresas>> }),
-    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] as Awaited<ReturnType<typeof getProyectos>> }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
     getBancos().catch((e: Error) => { console.error('getBancos:', e.message); return [] as Awaited<ReturnType<typeof getBancos>> }),
     getMonedas().catch((e: Error) => { console.error('getMonedas:', e.message); return [] as Awaited<ReturnType<typeof getMonedas>> }),
     getPermisosDetalle(PERMISOS.CUE_BAN).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),

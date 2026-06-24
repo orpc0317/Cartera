@@ -1,6 +1,6 @@
 import { getCoordinadores } from '@/app/actions/coordinadores'
-import { getEmpresas } from '@/app/actions/empresas'
-import { getProyectos } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
+import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getSupervisores } from '@/app/actions/supervisores'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
@@ -14,8 +14,8 @@ export default async function CoordinadoresPage() {
 
   const [data, empresas, proyectos, supervisores, permisos] = await Promise.all([
     getCoordinadores().catch((e: Error) => { console.error('getCoordinadores:', e.message); return [] as Coordinador[] }),
-    getEmpresas().catch((e: Error) => { console.error('getEmpresas:', e.message); return [] }),
-    getProyectos().catch((e: Error) => { console.error('getProyectos:', e.message); return [] }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] }),
     getSupervisores().catch((e: Error) => { console.error('getSupervisores:', e.message); return [] }),
     getPermisosDetalle(PERMISOS.COO_CAT),
   ])

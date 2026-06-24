@@ -56,20 +56,17 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
 - **No agregar** manejo de errores para escenarios imposibles. Validar solo en los límites del sistema (entradas de usuario y respuestas de red).
 - **No refactorizar** código existente que no fue solicitado.
 - **Revisión post-edición obligatoria:** después de crear o modificar cualquier archivo TypeScript/TSX, usar `get_errors` sobre ese archivo para detectar errores de compilación (comas faltantes, tipos incorrectos, imports rotos, etc.) y corregirlos antes de dar la tarea por terminada. **Esto incluye ediciones parcialmente fallidas:** si `replace_string_in_file` o `multi_replace_string_in_file` reportan que algún reemplazo falló, el archivo puede haber quedado en estado corrupto — ejecutar `get_errors` de inmediato antes de continuar.
-- **`get_errors` puede devolver resultados obsoletos** si el language server de VS Code aún no re-analizó el archivo tras la escritura (funciona de forma asíncrona). Para errores **sintácticos** (comas dobles, llaves desbalanceadas, tokens inesperados), `get_errors` no es suficiente. Tras cualquier edición que modifique la estructura de un object literal, array, o bloque de código, ejecutar adicionalmente en terminal: `npx tsc --noEmit 2>&1 | Select-String "error TS"` y corregir antes de dar la tarea por terminada.
+- **`get_errors` puede devolver resultados obsoletos** si el language server de VS Code aún no re-analizó el archivo tras la escritura (funciona de forma asíncrona). Para errores **sintácticos** (comas dobles, llaves desbalanceadas, tokens inesperados), `get_errors` puede no ser suficiente. Si la edición fue estructuralmente compleja y hay indicios de error no detectado, ejecutar en terminal: `npx tsc --noEmit 2>&1 | Select-String "error TS"` para confirmar.
 - **Comentarios JSX:** siempre usar la forma completa `{/* texto */}` con el `}` de cierre. La forma `{/* texto */` sin `}` deja un bloque de expresión abierto y produce el error de parsing `Expected '</', got '{'`. Tras crear o modificar cualquier `_client.tsx`, verificar con: `Select-String -Pattern '\{/\*[^}]*\*/\s*$' -Path <archivo>` — si retorna resultados, corregir antes de continuar.
 - **Regla de contexto en reemplazos de object literals:** al eliminar una propiedad de un object literal (`key: value,`), el `oldString` DEBE incluir al menos una línea **después** de la propiedad eliminada (la línea siguiente del objeto) para garantizar que la coma de separación quede correcta y no se genere coma doble.
-- **Actualización de spec obligatoria:** cada vez que se modifique cualquier archivo de una pantalla CRUD (`_client.tsx`, `page.tsx`, `actions/<entidad>.ts`, `src/lib/types/<entidad>.ts`), el spec correspondiente en `prompts/crud-<entidad>.md` **debe actualizarse para reflejar el cambio** antes de dar la tarea por terminada. Esto aplica a: campos añadidos/eliminados, labels renombrados, comportamiento condicional nuevo, validaciones, reglas de negocio, **y también cambios de estilo o className en campos del modal** (p.ej. rounded, variantes de input/select).
-  - **El trigger es por archivo, no por tipo de cambio.** Si se tocó `actions/<entidad>.ts` o `src/lib/types/<entidad>.ts`, abrir el spec correspondiente, revisarlo campo por campo contra los cambios realizados, y **siempre producir un resultado explícito**: o bien actualizar el spec, o bien declarar en el mensaje al usuario que se revisó y no hay cambio necesario (por qué). La omisión silenciosa — no revisar el spec — no es aceptable aunque el cambio parezca "solo infraestructura". Los cambios de firma de funciones (`empresa?`, `proyecto?`) no requieren actualización de spec salvo que cambien el comportamiento visible en UI. Los campos nuevos en un tipo sí requieren siempre revisión.
 
 ### ✅ Checklist obligatorio antes de dar cualquier tarea por terminada
 
 Recorrer esta lista mentalmente en cada cierre de tarea — sin excepción:
 
 1. **`get_errors`** sobre todo archivo TS/TSX creado o modificado.
-2. **`npx tsc --noEmit`** si se modificó la estructura de un object literal, array o bloque de código.
+2. **`npx tsc --noEmit`** solo si `get_errors` pasa limpio pero la edición fue estructuralmente compleja y hay indicios de problema.
 3. **Comentarios JSX cerrados** — verificar que no exista `{/* texto */` sin `}` de cierre.
-4. **Spec actualizado** — si se tocó cualquier archivo de una pantalla CRUD (incluyendo cambios de estilo en campos del modal), abrir el spec, revisarlo campo por campo, y **declarar explícitamente** si se actualizó o si no hay cambio necesario (con justificación). Nunca omitir en silencio.
 
 ---
 
@@ -79,54 +76,19 @@ Recorrer esta lista mentalmente en cada cierre de tarea — sin excepción:
 
 **Antes de escribir cualquier `_client.tsx` (nuevo o modificado), cargar y leer `components.instructions.md` completo.**
 No usar ningún patrón de UI — ningún input, select, checkbox, modal, tabla, toolbar, ni campo especial — que no esté documentado en ese archivo.
-Si un campo de la spec no coincide con ningún § de `components.instructions.md`, detener y preguntar antes de inventar.
-
-**Al leer cualquier spec (`prompts/crud-*.md`) para generar código**, cargar `spec-field-tokens.instructions.md` y verificar que cada token en `TABS_MODAL` y `COLUMNAS_TABLA` sea reconocido. Si hay un token desconocido → **PARADA OBLIGATORIA** (ver regla de parada en ese archivo).
+Si hay un campo que no coincide con ningún § de `components.instructions.md`, detener y preguntar antes de inventar.
 
 ### Archivos de instrucciones — cuándo cargar cada uno
 
 | Archivo | Cargar cuando… |
 |---------|----------------|
-| `components.instructions.md` | **SIEMPRE** — toda `_client.tsx`, sin excepción. Fuente única de verdad para todos los snippets de UI (§§ A–AE). |
-| `spec-field-tokens.instructions.md` | **SIEMPRE** al leer un spec para generar código. Define los tokens canónicos y la regla de parada si hay un token no reconocido. |
+| `components.instructions.md` | **SIEMPRE** — toda `_client.tsx`, sin excepción. Fuente única de verdad para todos los snippets de UI (§§ A–AG, excepto W/X/AA/AB). |
 | `base-ui-gotchas.instructions.md` | **SIEMPRE** junto con `components.instructions.md`. Diferencias críticas Base UI vs Radix: `SelectValue` render prop, `SelectTrigger w-full`, `AlertDialogDescription render={<div />}`, `DropdownMenuTrigger`. |
 | `crud-screens.instructions.md` | Toda pantalla CRUD — modal layout, icon badge, ViewField, SectionDivider, PhoneField pattern, geo pre-selection. |
 | `server-actions.instructions.md` | Todo `page.tsx` y todo `actions/*.ts` — patrón `getCuentaActiva`, `Promise.all` con `.catch()` por llamada, concurrencia optimista con `modifico_fecha`. |
 | `ui-conventions.instructions.md` | Toda `_client.tsx` — color de acento del módulo, iconos Lucide, reglas de labels, formatos numéricos, COUNTRY_CURRENCY_MAP. |
 | `data-tables.instructions.md` | Toda pantalla con tabla — columnas, ColumnFilter, ColumnManager, keyboard nav. |
 | `business-context.instructions.md` | Toda pantalla nueva — jerarquía cuenta→empresa→proyecto, modelo SaaS, reglas de negocio. |
-| `image-upload.instructions.md` | Solo cuando el spec incluya un campo de tipo imagen (`logo_url` u otro) — magic bytes, SVG risk, cleanup, patrón `LogoUploadField` (§ AC). |
+| `image-upload.instructions.md` | Solo cuando la pantalla incluya un campo de tipo imagen (`logo_url` u otro) — magic bytes, SVG risk, cleanup, patrón `LogoUploadField` (§ AC). |
+| `advanced-components.instructions.md` | Solo cuando la pantalla tenga campo `moneda` (§W), cascada geográfica pais/depto/municipio (§X), `CountrySelect` (§AA), o `ClienteCombobox` (§AB). |
 
-### Los prompts en `prompts/crud-*.md` son la especificación de cada pantalla; seguirlos al pie de la letra.
-
----
-
-## 5. Convención MODAL_TITLES en los specs
-
-Cada spec puede declarar una sección `## MODAL_TITLES` con los títulos exactos que debe mostrar el `DialogTitle` en cada modo del modal principal.
-
-### Regla de resolución (en orden de precedencia)
-
-1. **Spec tiene `MODAL_TITLES`** → usar los títulos definidos ahí (fuente de verdad).
-2. **Spec NO tiene `MODAL_TITLES`** → usar la etiqueta del sidebar que navega a esa pantalla (fallback por convención; NO escribir este valor en el spec).
-
-### Formato en el spec
-
-```markdown
-## MODAL_TITLES
-| Modo   | Título                  |
-|--------|-------------------------|
-| nuevo  | Nueva Empresa           |
-| editar | Editar Empresa          |
-| ver    | {nombre}                |
-```
-
-- `nuevo`  → modal en modo creación (`isEditing && !viewTarget`).
-- `editar` → modal en modo edición (`isEditing && viewTarget`).
-- `ver`    → modal en modo vista (`!isEditing && viewTarget`). Usar `{nombre}` cuando se muestra el campo nombre del registro, o una cadena fija si corresponde.
-
-### Flujo al construir o modificar un `_client.tsx`
-
-- Leer `MODAL_TITLES` del spec y codificar exactamente esos textos en el `DialogTitle`.
-- Si el desarrollador quiere cambiar un título: actualizar primero el spec (`MODAL_TITLES`), luego el código.
-- El cambio se registra en la sección `## CAMBIOS` del spec con fecha y descripción.

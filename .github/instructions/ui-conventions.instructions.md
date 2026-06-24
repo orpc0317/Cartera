@@ -30,6 +30,7 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Vendedores        | `lime-100 / lime-600`         |
 | Tipos Ingresos    | `yellow-100 / yellow-600`     |
 | Tasas de Cambio   | `teal-100 / teal-600`         |
+| Depositar Pagos   | `pink-100 / pink-600`         |
 
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
@@ -78,6 +79,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Vendedores        | `UserCheck`      |
 | Tipos Ingresos    | `Tags`           |
 | Tasas de Cambio   | `ArrowLeftRight` |
+| Depositar Pagos   | `CircleDollarSign` |
 
 ---
 
@@ -87,6 +89,32 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 - **Title Case** — every word starts with a capital letter, **except** short prepositions and articles (`de`, `del`, `por`, `la`, `el`, `en`, `a`, `y`, `o`). Examples: `Cod. Postal`, `Razon Social`, `Nombre Factura`, `Regimen IVA`, `Unidad Medida`, `Fecha de Nacimiento`.
 - Applies everywhere: `ALL_COLUMNS[].label`, `<TableHead>` stickies, `<ViewField label=...>`, `<Label>` in forms, toast messages.
 - **Exception:** Section divider titles stay ALL-CAPS (rendered with `uppercase` CSS).
+
+## Label & field-wrapper visual standards
+
+Estos estándares garantizan que labels y bordes de campo se vean consistentes en toda la app, especialmente cuando un `ViewField` (solo lectura) aparece lado a lado con un `Input`/`Select` (editable).
+
+| Elemento | className obligatorio | style |
+|---|---|---|
+| `<Label>` de formulario | `font-semibold tracking-wider text-muted-foreground` | `fontSize: 'var(--ui-form-label)'` |
+| `<Label>` de checkbox (con `htmlFor`) | `font-semibold tracking-wider text-muted-foreground cursor-pointer` | `fontSize: 'var(--ui-form-label)'` |
+| `ViewField` label span | `font-semibold tracking-wider leading-none text-muted-foreground` | `fontSize: 'var(--ui-viewfield-label)'` |
+
+**Wrapper de campo** — usar siempre `<div className="grid gap-1">`. **Nunca** `space-y-1.5`.
+
+```tsx
+// ✅ Correcto
+<div className="grid gap-1">
+  <Label htmlFor="campo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Label</Label>
+  <Input variant="l-border" id="campo" ... />
+</div>
+
+// ❌ Incorrecto (desalinea el borde inferior vs ViewField adyacente)
+<div className="space-y-1.5">
+  <Label>Label</Label>   {/* también falta className */}
+  <Input ... />
+</div>
+```
 
 ## Numeric codigo display rule
 

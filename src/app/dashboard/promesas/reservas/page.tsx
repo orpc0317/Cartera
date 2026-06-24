@@ -1,8 +1,8 @@
 import { getLotesDisponibles, getSeriesRecibo, getReservas } from '@/app/actions/lotes'
 import { getManzanas } from '@/app/actions/manzanas'
 import { getFases } from '@/app/actions/fases'
-import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'
-import { getEmpresas } from '@/app/actions/empresas'
+import { getProyectosUsuario, getProyectoMonedas } from '@/app/actions/proyectos'
+import { getEmpresasUsuario } from '@/app/actions/empresas'
 import { getClientes } from '@/app/actions/clientes'
 import { getBancos } from '@/app/actions/bancos'
 import { getCuentasBancarias } from '@/app/actions/cuentas-bancarias'
@@ -22,8 +22,8 @@ export default async function ReservasPage() {
     getLotesDisponibles().catch((e: Error)          => { console.error('getLotesDisponibles:', e.message);          return [] as Awaited<ReturnType<typeof getLotesDisponibles>>          }),
     getManzanas().catch((e: Error)                  => { console.error('getManzanas:', e.message);                  return [] as Awaited<ReturnType<typeof getManzanas>>                  }),
     getFases().catch((e: Error)                     => { console.error('getFases:', e.message);                     return [] as Awaited<ReturnType<typeof getFases>>                     }),
-    getProyectos().catch((e: Error)                 => { console.error('getProyectos:', e.message);                 return [] as Awaited<ReturnType<typeof getProyectos>>                 }),
-    getEmpresas().catch((e: Error)                  => { console.error('getEmpresas:', e.message);                  return [] as Awaited<ReturnType<typeof getEmpresas>>                  }),
+    getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
+    getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
     getClientes().catch((e: Error)                  => { console.error('getClientes:', e.message);                  return [] as Awaited<ReturnType<typeof getClientes>>                  }),
     getBancos().catch((e: Error)                    => { console.error('getBancos:', e.message);                    return [] as Awaited<ReturnType<typeof getBancos>>                    }),
     getCuentasBancarias().catch((e: Error)          => { console.error('getCuentasBancarias:', e.message);          return [] as Awaited<ReturnType<typeof getCuentasBancarias>>          }),

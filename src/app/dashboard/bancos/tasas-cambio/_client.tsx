@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ArrowLeftRight, Plus, Search, X, ChevronDown, ChevronUp,
-  Settings2, Download, Trash2, Eye,
+  Settings2, Download, Trash2, Eye, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription,
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
@@ -89,6 +90,15 @@ function exportCsv(rows: TasaCambioGrupo[], colPrefs: ColPref[],
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="col-span-3 flex items-center gap-2 pt-1">
+      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+    </div>
+  )
 }
 
 // ── Form constants ───────────────────────────────────────────────────────────
@@ -200,31 +210,29 @@ export default function TasasCambioClient({
 
   // ── Table state ─────────────────────────────────────────────────────────
   const STORAGE_KEY = `tasas_cambio_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PREFS
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) return DEFAULT_PREFS
+      const parsed: ColPref[] = JSON.parse(saved)
+      const knownKeys = new Set(parsed.map((p) => p.key))
+      return [
+        ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
+        ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
+      ]
+    } catch { return DEFAULT_PREFS }
+  })
   const [search, setSearch]     = useState('')
   type ColFilters = Record<string, Set<string>>
   const [colFilters, setColFilters] = useState<ColFilters>({})
   const [cursorIdx, setCursorIdx]   = useState<number | null>(null)
 
-  // Load persisted column prefs
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (!raw) return
-      const parsed: ColPref[] = JSON.parse(raw)
-      const knownKeys = new Set(parsed.map((p) => p.key))
-      setColPrefs([
-        ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
-        ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ])
-    } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
+  }, [colPrefs, STORAGE_KEY])
 
-  function saveColPrefs(next: ColPref[]) {
-    setColPrefs(next)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
-  }
+  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
   function toggleCol(key: string) {
     saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p))
   }
@@ -441,7 +449,7 @@ export default function TasasCambioClient({
 
       {/* ── Toolbar ── */}
       <div className="flex items-center gap-2">
-        <div className="relative max-w-xs">
+        <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input variant="l-border"
             placeholder="Buscar tasas..."
@@ -619,8 +627,8 @@ export default function TasasCambioClient({
                       ) : (
                         historialActual.map((t) => (
                           <TableRow key={t.fecha} className="group">
-                            <TableCell className="font-mono text-sm">{formatDate(t.fecha)}</TableCell>
-                            <TableCell className="text-right font-mono text-sm">{Number(t.tasa_cambio).toFixed(8)}</TableCell>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{formatDate(t.fecha)}</TableCell>
+                            <TableCell className="text-right font-mono text-xs text-muted-foreground">{Number(t.tasa_cambio).toFixed(8)}</TableCell>
                             {puedeEliminar && (
                               <TableCell className="w-10">
                                 <button
@@ -644,10 +652,21 @@ export default function TasasCambioClient({
 
             {/* ── Nuevo mode — form ── */}
             {isEditing && (
-              <div className="grid grid-cols-3 gap-2">
+              <Tabs defaultValue="general" className="flex flex-col">
+                <div className="shrink-0 w-full">
+                  <TabsList variant="line" className="">
+                    <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                      <MapPin className="h-3.5 w-3.5" />
+                      General
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="general" className="mt-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    <SectionDivider label="IDENTIFICACION" />
 
-                {/* Empresa */}
-                <div className="col-span-3 grid gap-1">
+                    {/* Empresa */}
+                    <div className="col-span-3 grid gap-1">
                   <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                   <Select
                     value={String(form.empresa)}
@@ -728,29 +747,33 @@ export default function TasasCambioClient({
                   </Select>
                 </div>
 
-                {/* Moneda / Fecha / Tasa — third width each */}
-                <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha *</Label>
-                  <Input variant="l-border"
-                    id="fecha"
-                    type="date"
-                    value={form.fecha}
-                    onChange={(e) => f('fecha', e.target.value)}
-                  />
-                </div>
-                <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio *</Label>
-                  <Input variant="l-border"
-                    id="tasa_cambio"
-                    type="number"
-                    value={form.tasa_cambio}
-                    onChange={(e) => setForm((p) => ({ ...p, tasa_cambio: e.target.value === '' ? '' : Number(e.target.value) }))}
-                    placeholder="0.00000000"
-                    className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </div>
+                    <SectionDivider label="GENERAL" />
 
-              </div>
+                    {/* Fecha */}
+                    <div className="col-span-1 grid gap-1">
+                      <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha *</Label>
+                      <Input variant="l-border"
+                        id="fecha"
+                        type="date"
+                        value={form.fecha}
+                        onChange={(e) => f('fecha', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-1 grid gap-1">
+                      <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio *</Label>
+                      <Input variant="l-border"
+                        id="tasa_cambio"
+                        type="number"
+                        value={form.tasa_cambio}
+                        onChange={(e) => setForm((p) => ({ ...p, tasa_cambio: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        placeholder="0.00000000"
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
 
           </div>

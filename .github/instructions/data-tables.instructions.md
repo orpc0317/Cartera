@@ -296,7 +296,7 @@ Just add a counter (no navigation controls):
 
 **Reglas:**
 - `hasActiveFilters = Object.keys(colFilters).length > 0` — declarar cerca de los computed values.
-- Search usa `max-w-xs` (fijo), **no** `flex-1`.
+- Search usa `max-w-sm` (fijo, ~50 chars), **no** `flex-1`.
 - Label siempre **"Exportar CSV"**, nunca "Exportar".
 - El wrapper `ml-auto` es obligatorio.
 
