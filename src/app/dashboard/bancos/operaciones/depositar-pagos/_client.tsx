@@ -27,7 +27,7 @@ const FORMAS_PAGO: Record<number, string> = {
   1: 'Efectivo',
   2: 'Cheque',
   3: 'Deposito',
-  4: 'Transferencia',
+  4: 'Transferencia'
 }
 
 const fmt = (n: number) =>

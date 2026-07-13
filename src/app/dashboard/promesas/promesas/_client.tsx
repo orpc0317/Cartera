@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Trash2, Plus, Search, History,
   Settings2, ChevronDown, ChevronUp, X, FileSignature, Download,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, FileText, Upload, Paperclip,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,8 +39,14 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { createPromesa, updatePromesa, deletePromesa } from '@/app/actions/promesas'
+import {
+  getPromesaDocumentos, uploadPromesaDocumento,
+  deletePromesaDocumento, getPromesaDocumentoUrl,
+} from '@/app/actions/promesa-documentos'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Vendedor } from '@/lib/types/proyectos'
+import type { TipoDocumento } from '@/lib/types/tipos-documento'
+import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -64,6 +70,12 @@ const fmtDate = (d: string | null | undefined) => {
 }
 
 const fmtNum = (n: number) => n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const fmtBytes = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 function calcEnganche(monto: number, plazo: number, primer: number) {
   if (!monto || !plazo || plazo < 1) return { cuotas: 0, montoCuota: 0, ultimaCuota: 0 }
@@ -351,6 +363,7 @@ export function PromesasClient({
   lotes,
   clientes,
   vendedores,
+  tiposDocumento,
   puedeAgregar,
   puedeModificar,
   puedeEliminar,
@@ -364,6 +377,7 @@ export function PromesasClient({
   lotes: Lote[]
   clientes: Cliente[]
   vendedores: Vendedor[]
+  tiposDocumento: TipoDocumento[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -382,6 +396,17 @@ export function PromesasClient({
   const [tipoCalculo, setTipoCalculo]   = useState(0)
   const [form, setForm]               = useState<PromesaForm>(EMPTY_FORM)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
+
+  // -- Documentos --------------------------------------------------------------
+  const [documentos, setDocumentos]       = useState<PromesaDocumento[]>([])
+  const [docsLoading, setDocsLoading]     = useState(false)
+  const [docTipo, setDocTipo]             = useState(0)
+  const [docUploading, setDocUploading]   = useState(false)
+  const [docDeleteTarget, setDocDeleteTarget] = useState<PromesaDocumento | null>(null)
+  const [previewDoc, setPreviewDoc]       = useState<PromesaDocumento | null>(null)
+  const [previewUrl, setPreviewUrl]       = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const docInputRef = useRef<HTMLInputElement>(null)
 
   // -- Column prefs ----------------------------------------------------------
   const STORAGE_KEY = `promesas_cols_v1_${userId}`
@@ -424,7 +449,7 @@ export function PromesasClient({
   const proyectosFiltrados  = useMemo(() => proyectos.filter((p) => p.empresa === form.empresa),  [proyectos, form.empresa])
   const fasesFiltradas       = useMemo(() => fases.filter((fa) => fa.empresa === form.empresa && fa.proyecto === form.proyecto), [fases, form.empresa, form.proyecto])
   const manzanasFiltradas    = useMemo(() => manzanas.filter((m) => m.empresa === form.empresa && m.proyecto === form.proyecto && m.fase === form.fase), [manzanas, form.empresa, form.proyecto, form.fase])
-  const lotesFiltrados       = useMemo(() => lotes.filter((l) => l.empresa === form.empresa && l.proyecto === form.proyecto && l.fase === form.fase && l.manzana === form.manzana), [lotes, form.empresa, form.proyecto, form.fase, form.manzana])
+  const lotesFiltrados       = useMemo(() => lotes.filter((l) => l.empresa === form.empresa && l.proyecto === form.proyecto && l.fase === form.fase && l.manzana === form.manzana && l.promesa === 0), [lotes, form.empresa, form.proyecto, form.fase, form.manzana])
   const loteActivoForm       = useMemo(() => lotes.find((l) => l.empresa === form.empresa && l.proyecto === form.proyecto && l.fase === form.fase && l.manzana === form.manzana && l.codigo === form.lote), [lotes, form.empresa, form.proyecto, form.fase, form.manzana, form.lote])
   const medidaForm           = useMemo(() => fases.find((f) => f.empresa === form.empresa && f.proyecto === form.proyecto && f.codigo === form.fase)?.medida ?? '', [fases, form.empresa, form.proyecto, form.fase])
   const loteActivoVista      = useMemo(() => viewTarget ? lotes.find((l) => l.empresa === viewTarget.empresa && l.proyecto === viewTarget.proyecto && l.fase === viewTarget.fase && l.manzana === viewTarget.manzana && l.codigo === viewTarget.lote) : undefined, [lotes, viewTarget])
@@ -438,6 +463,8 @@ export function PromesasClient({
   const vendedoresFiltrados  = useMemo(() => vendedores.filter((v) => v.empresa === form.empresa && v.proyecto === form.proyecto), [vendedores, form.empresa, form.proyecto])
   const proyectoActivo       = useMemo(() => proyectos.find((p) => p.empresa === form.empresa && p.codigo === form.proyecto), [proyectos, form.empresa, form.proyecto])
   const moraEditable         = proyectoActivo?.fijar_parametros_mora === 1
+  const tiposDocumentoFiltrados = useMemo(() => viewTarget ? tiposDocumento.filter((t) => t.empresa === viewTarget.empresa && t.proyecto === viewTarget.proyecto) : [], [tiposDocumento, viewTarget])
+  const tipoDocumentoMap        = useMemo(() => new Map(tiposDocumento.map((t) => [`${t.empresa}-${t.proyecto}-${t.codigo}`, t.descripcion])), [tiposDocumento])
 
   // -- Unique filter values for table columns --------------------------------
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)   ?? ''))].filter(Boolean).sort(), [initialData, empresaMap])
@@ -539,7 +566,7 @@ export function PromesasClient({
         const fCod = firstFa?.codigo ?? 0
         const firstMz = manzanas.find((m) => m.empresa === empCod && m.proyecto === pCod && m.fase === fCod)
         const mzCod = firstMz?.codigo ?? ''
-        const firstLote = lotes.find((l) => l.empresa === empCod && l.proyecto === pCod && l.fase === fCod && l.manzana === mzCod)
+        const firstLote = lotes.find((l) => l.empresa === empCod && l.proyecto === pCod && l.fase === fCod && l.manzana === mzCod && l.promesa === 0)
         const firstVen = vendedores.find((ven) => ven.empresa === empCod && ven.proyecto === pCod)
         next.proyecto  = pCod
         next.fase      = fCod
@@ -562,7 +589,7 @@ export function PromesasClient({
         const fCod = firstFa?.codigo ?? 0
         const firstMz = manzanas.find((m) => m.empresa === prev.empresa && m.proyecto === pCod && m.fase === fCod)
         const mzCod = firstMz?.codigo ?? ''
-        const firstLote = lotes.find((l) => l.empresa === prev.empresa && l.proyecto === pCod && l.fase === fCod && l.manzana === mzCod)
+        const firstLote = lotes.find((l) => l.empresa === prev.empresa && l.proyecto === pCod && l.fase === fCod && l.manzana === mzCod && l.promesa === 0)
         const firstVen = vendedores.find((ven) => ven.empresa === prev.empresa && ven.proyecto === pCod)
         next.fase       = fCod
         next.manzana    = mzCod
@@ -581,7 +608,7 @@ export function PromesasClient({
         const fCod = v as number
         const firstMz = manzanas.find((m) => m.empresa === prev.empresa && m.proyecto === prev.proyecto && m.fase === fCod)
         const mzCod = firstMz?.codigo ?? ''
-        const firstLote = lotes.find((l) => l.empresa === prev.empresa && l.proyecto === prev.proyecto && l.fase === fCod && l.manzana === mzCod)
+        const firstLote = lotes.find((l) => l.empresa === prev.empresa && l.proyecto === prev.proyecto && l.fase === fCod && l.manzana === mzCod && l.promesa === 0)
         next.manzana    = mzCod
         next.lote       = firstLote?.codigo ?? ''
         next.moneda     = firstLote?.moneda ?? ''
@@ -589,7 +616,7 @@ export function PromesasClient({
       }
       if (key === 'manzana') {
         const mzCod = v as string
-        const firstLote = lotes.find((l) => l.empresa === prev.empresa && l.proyecto === prev.proyecto && l.fase === prev.fase && l.manzana === mzCod)
+        const firstLote = lotes.find((l) => l.empresa === prev.empresa && l.proyecto === prev.proyecto && l.fase === prev.fase && l.manzana === mzCod && l.promesa === 0)
         next.lote       = firstLote?.codigo ?? ''
         next.moneda     = firstLote?.moneda ?? ''
         next.valor_lote = firstLote?.valor ?? 0
@@ -621,6 +648,79 @@ export function PromesasClient({
     setDialogOpen(true)
   }
 
+  // -- Documentos --------------------------------------------------------------
+
+  useEffect(() => {
+    if (!viewTarget) { setDocumentos([]); return }
+    setDocsLoading(true)
+    getPromesaDocumentos(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero)
+      .then(setDocumentos)
+      .catch(() => toast.error('No se pudieron cargar los documentos.'))
+      .finally(() => setDocsLoading(false))
+    setPreviewDoc(null)
+    setPreviewUrl('')
+  }, [viewTarget])
+
+  async function refreshDocumentos() {
+    if (!viewTarget) return
+    try {
+      const docs = await getPromesaDocumentos(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero)
+      setDocumentos(docs)
+    } catch {
+      toast.error('No se pudieron cargar los documentos.')
+    }
+  }
+
+  function handleDocFileSelect(file: File) {
+    if (!viewTarget) return
+    if (!docTipo) { toast.error('Selecciona el tipo de documento antes de cargar el archivo.'); return }
+    if (file.type !== 'application/pdf') { toast.error('Solo se aceptan archivos PDF.'); return }
+    if (file.size > 10 * 1024 * 1024) { toast.error('El archivo supera el tamaño máximo de 10 MB.'); return }
+
+    // Se sube de inmediato al seleccionar el archivo — no depende del botón
+    // "Guardar" de la promesa, que solo actualiza referencia/observacion/estado.
+    setDocUploading(true)
+    const fd = new FormData()
+    fd.append('file', file)
+    uploadPromesaDocumento(fd, viewTarget.empresa, viewTarget.proyecto, viewTarget.numero, docTipo)
+      .then(async (res) => {
+        if (res.error) { toast.error(res.error); return }
+        toast.success('Documento cargado.')
+        await refreshDocumentos()
+      })
+      .finally(() => setDocUploading(false))
+  }
+
+  function handleDeleteDocumento() {
+    if (!viewTarget || !docDeleteTarget) return
+    startTransition(async () => {
+      const res = await deletePromesaDocumento(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero, docDeleteTarget.secuencia)
+      if (res.error) { toast.error(res.error); return }
+      toast.success('Documento eliminado.')
+      if (previewDoc?.secuencia === docDeleteTarget.secuencia) { setPreviewDoc(null); setPreviewUrl('') }
+      setDocDeleteTarget(null)
+      await refreshDocumentos()
+    })
+  }
+
+  async function handleViewDocumento(doc: PromesaDocumento) {
+    if (!viewTarget) return
+    const res = await getPromesaDocumentoUrl(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero, doc.secuencia)
+    if (res.error || !res.url) { toast.error(res.error ?? 'No se pudo abrir el documento.'); return }
+    window.open(res.url, '_blank', 'noopener,noreferrer')
+  }
+
+  async function handleSelectDocumento(doc: PromesaDocumento) {
+    if (!viewTarget) return
+    setPreviewDoc(doc)
+    setPreviewUrl('')
+    setPreviewLoading(true)
+    const res = await getPromesaDocumentoUrl(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero, doc.secuencia)
+    setPreviewLoading(false)
+    if (res.error || !res.url) { toast.error(res.error ?? 'No se pudo previsualizar el documento.'); return }
+    setPreviewUrl(res.url)
+  }
+
   function openCreate() {
     const empCod  = empresas[0]?.codigo ?? 0
     const firstPro = proyectos.find((p) => p.empresa === empCod)
@@ -628,7 +728,7 @@ export function PromesasClient({
     const faCod   = fases.find((fa) => fa.empresa === empCod && fa.proyecto === proCod)?.codigo ?? 0
     const firstMz = manzanas.find((m) => m.empresa === empCod && m.proyecto === proCod && m.fase === faCod)
     const mzCod   = firstMz?.codigo ?? ''
-    const firstLote = lotes.find((l) => l.empresa === empCod && l.proyecto === proCod && l.fase === faCod && l.manzana === mzCod)
+    const firstLote = lotes.find((l) => l.empresa === empCod && l.proyecto === proCod && l.fase === faCod && l.manzana === mzCod && l.promesa === 0)
     const firstVen  = vendedores.find((ven) => ven.empresa === empCod && ven.proyecto === proCod)
 
     setForm({
@@ -709,6 +809,57 @@ export function PromesasClient({
       if (noChanges) { setIsEditing(false); return }
     }
 
+    if (!viewTarget) {
+      // -- Validaciones de negocio (solo al crear) ---------------------------
+      if (!form.cliente) {
+        toast.error('El cliente es obligatorio.')
+        return
+      }
+      if (form.subsidio < 0) {
+        toast.error('El subsidio debe ser mayor o igual a cero.')
+        return
+      }
+      if (form.subsidio > (form.valor_lote || 0)) {
+        toast.error('El subsidio no puede ser mayor al Valor Original del lote.')
+        return
+      }
+      if (form.arras < 0) {
+        toast.error('Las arras deben ser mayor o igual a cero.')
+        return
+      }
+      if (form.arras > (form.valor_lote || 0)) {
+        toast.error('Las arras no pueden ser mayor al Valor Original del lote.')
+        return
+      }
+
+      const disponibleEnganche = (form.valor_lote || 0) - (form.subsidio || 0)
+
+      if (form.monto_enganche < 0) {
+        toast.error('El monto de enganche debe ser mayor o igual a cero.')
+        return
+      }
+      if (form.monto_enganche > disponibleEnganche) {
+        toast.error('El monto de enganche no puede ser mayor a Valor Original menos Subsidio.')
+        return
+      }
+      if (form.monto_enganche > 0 && form.plazo_enganche <= 0) {
+        toast.error('El plazo de enganche debe ser mayor a cero cuando el monto de enganche es mayor a cero.')
+        return
+      }
+      if (form.interes_anual < 0) {
+        toast.error('El interes anual debe ser mayor o igual a cero.')
+        return
+      }
+      if (montoFinancCalc > 0 && !form.fecha_financiamiento) {
+        toast.error('La fecha de 1era cuota es obligatoria cuando el monto de financiamiento es mayor a cero.')
+        return
+      }
+      if (montoFinancCalc > 0 && form.plazo_financiamiento <= 0) {
+        toast.error('El plazo de financiamiento debe ser mayor a cero cuando el monto de financiamiento es mayor a cero.')
+        return
+      }
+    }
+
     startTransition(async () => {
       if (viewTarget) {
         const res = await updatePromesa(
@@ -727,7 +878,12 @@ export function PromesasClient({
         setIsEditing(false)
         router.refresh()
       } else {
-        const res = await createPromesa({ ...form, monto_financiamiento: montoFinancCalc })
+        const res = await createPromesa({
+          ...form,
+          plazo_enganche: form.monto_enganche > 0 ? form.plazo_enganche : 0,
+          monto_financiamiento: montoFinancCalc,
+          fecha_financiamiento: montoFinancCalc > 0 ? form.fecha_financiamiento : '1900-01-01',
+        }, loteActivoForm?.modifico_fecha)
         if (res.error) { toast.error(res.error); return }
         toast.success('Promesa creada.')
         setDialogOpen(false)
@@ -1002,6 +1158,7 @@ export function PromesasClient({
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
+            setDocTipo(0)
             if (hadConflict) { setHadConflict(false); router.refresh() }
           }
         }}
@@ -1028,6 +1185,11 @@ export function PromesasClient({
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <FileSignature className="h-3.5 w-3.5" /> General
               </TabsTrigger>
+              {viewTarget && (
+                <TabsTrigger value="documentos" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                  <Paperclip className="h-3.5 w-3.5" /> Documentos
+                </TabsTrigger>
+              )}
             </TabsList></div>
 
             {/* Tab General */}
@@ -1051,7 +1213,12 @@ export function PromesasClient({
                   </div>
                   <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
                   <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
-                  <ViewField label="Es Venta" value={viewTarget.venta === 1 ? 'SÃ­' : 'No'} />
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
+                    <div className="flex items-center gap-2 py-1">
+                      <Checkbox checked={viewTarget.venta === 1} disabled />
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Es Venta</span>
+                    </div>
+                  </div>
                   <SectionDivider label="LOTE" />
                   <div className="col-span-2 grid grid-cols-4 gap-2">
                     <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
@@ -1060,6 +1227,8 @@ export function PromesasClient({
                   </div>
                   <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
                   <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
+                  <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
+                  <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1171,6 +1340,8 @@ export function PromesasClient({
                   </div>
                   <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
                   <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
+                  <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
+                  <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1303,7 +1474,7 @@ export function PromesasClient({
                     </div>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente *</Label>
                     <ClienteCombobox
                       clientes={clientesFiltrados}
                       value={form.cliente}
@@ -1376,6 +1547,24 @@ export function PromesasClient({
                   </div>
                   <ViewField label="Extension"       value={loteActivoForm ? `${loteActivoForm.extension} ${medidaForm}`.trim() : ''} />
                   <ViewField label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
+                  <div className="grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Arras</Label>
+                    <Input variant="l-border"
+                      type="number" min={0} step={0.01}
+                      value={form.arras || ''}
+                      onChange={(e) => setForm((prev) => ({ ...prev, arras: Number(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Subsidio</Label>
+                    <Input variant="l-border"
+                      type="number" min={0} step={0.01}
+                      value={form.subsidio || ''}
+                      onChange={(e) => setForm((prev) => ({ ...prev, subsidio: Number(e.target.value) || 0 }))}
+                      placeholder="0.00"
+                    />
+                  </div>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1556,6 +1745,123 @@ export function PromesasClient({
                 </div>
               )}
             </TabsContent>
+
+            {/* Tab Documentos */}
+            {viewTarget && (
+              <TabsContent value="documentos" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+                <div className="flex gap-4 items-stretch h-full">
+                  <div className="flex-1 min-w-0 flex flex-col gap-3">
+                    {isEditing && (
+                      <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1 grid gap-1">
+                            <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tipo Documento</Label>
+                            <Select value={docTipo ? String(docTipo) : ''} onValueChange={(v) => setDocTipo(Number(v))}>
+                              <SelectTrigger variant="l-border" className="w-full">
+                                <SelectValue placeholder="Selecciona tipo">
+                                  {(v: string) => v ? (tiposDocumentoFiltrados.find((t) => String(t.codigo) === v)?.descripcion ?? v) : null}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {tiposDocumentoFiltrados.map((t) => <SelectItem key={t.codigo} value={String(t.codigo)}>{t.descripcion}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button type="button" variant="outline" disabled={!docTipo || docUploading}
+                            onClick={() => docInputRef.current?.click()} className="shrink-0">
+                            <Upload className="mr-2 h-3.5 w-3.5 shrink-0" />
+                            {docUploading ? 'Subiendo...' : 'Cargar PDF'}
+                          </Button>
+                          <input
+                            ref={docInputRef}
+                            type="file"
+                            accept="application/pdf"
+                            aria-label="Seleccionar documento PDF"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (f) handleDocFileSelect(f)
+                              e.target.value = ''
+                            }}
+                          />
+                        </div>
+                        {!docTipo && (
+                          <p className="mt-1 text-[11px] text-muted-foreground">Selecciona primero el tipo de documento.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {docsLoading ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">Cargando documentos...</p>
+                    ) : documentos.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">No hay documentos cargados.</p>
+                    ) : (
+                      <div className="rounded-lg border border-border/60 divide-y divide-border/60">
+                        {documentos.map((doc) => (
+                          <div
+                            key={doc.secuencia}
+                            onClick={() => handleSelectDocumento(doc)}
+                            onDoubleClick={() => handleViewDocumento(doc)}
+                            className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                              previewDoc?.secuencia === doc.secuencia ? 'bg-accent' : 'hover:bg-accent/50'
+                            }`}
+                            title="Clic para previsualizar · doble clic para abrir"
+                          >
+                            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">{doc.nombre_archivo}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {tipoDocumentoMap.get(`${doc.empresa}-${doc.proyecto}-${doc.tipo_documento}`) ?? `#${doc.tipo_documento}`} · {fmtBytes(doc.tamano)}
+                              </p>
+                            </div>
+                            {puedeEliminar && (
+                              <Button type="button" variant="ghost" size="sm"
+                                onClick={(e) => { e.stopPropagation(); setDocDeleteTarget(doc) }}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="w-px self-stretch bg-primary/30" />
+
+                  <div className="w-[45%] shrink-0 flex flex-col rounded-lg border border-border/60 bg-muted/10 overflow-hidden">
+                    {!previewDoc ? (
+                      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center p-6">
+                        <FileText className="h-8 w-8 text-muted-foreground/50" />
+                        <p className="text-xs text-muted-foreground">Selecciona un documento para previsualizarlo.</p>
+                      </div>
+                    ) : previewLoading ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <p className="text-xs text-muted-foreground">Cargando vista previa...</p>
+                      </div>
+                    ) : previewUrl ? (
+                      <>
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/60 shrink-0">
+                          <p className="truncate text-xs font-medium">{previewDoc.nombre_archivo}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => handleViewDocumento(previewDoc)}
+                            className="h-6 px-2 text-xs shrink-0">Abrir</Button>
+                        </div>
+                        <iframe
+                          src={previewUrl}
+                          title={previewDoc.nombre_archivo}
+                          referrerPolicy="no-referrer"
+                          className="flex-1 w-full border-0"
+                        />
+                      </>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center p-6">
+                        <p className="text-xs text-muted-foreground">No se pudo cargar la vista previa.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
 
           <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
@@ -1599,6 +1905,25 @@ export function PromesasClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              {isPending ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete confirmation - documento */}
+      <AlertDialog open={!!docDeleteTarget} onOpenChange={(open) => { if (!open) setDocDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar documento?</AlertDialogTitle>
+            <AlertDialogDescription render={<div />}>
+              Se eliminará el documento <strong>{docDeleteTarget?.nombre_archivo}</strong>.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDocumento} disabled={isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
               {isPending ? 'Eliminando...' : 'Eliminar'}
             </AlertDialogAction>
           </AlertDialogFooter>

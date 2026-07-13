@@ -163,6 +163,33 @@ The spec for each screen **must** document this mapping in its `ACCIONES` sectio
 
 ---
 
+## Funciones RPC (`SECURITY DEFINER`) — grants obligatorios
+
+Cuando una Server Action necesita lógica transaccional compleja (ej. `fn_crear_reserva`, `fn_depositar_pagos`), se implementa como función Postgres `SECURITY DEFINER` en el schema `cartera` y se invoca así:
+
+```ts
+const admin = createAdminClient() // service_role — nunca el cliente de usuario
+const { data, error } = await admin
+  .schema('cartera')
+  .rpc('fn_nombre_funcion', { p_param1: ..., p_param2: ... })
+```
+
+**Regla obligatoria al crear cualquier función nueva `SECURITY DEFINER`:** por defecto Postgres otorga `EXECUTE` a `PUBLIC`, lo que la hace invocable sin login vía `/rest/v1/rpc/fn_nombre_funcion` (bypass completo de `requirePermiso` y `getCuentaActiva`, ya que la función confía en los parámetros que recibe, no en el JWT). Toda migración que cree una función `SECURITY DEFINER` en `cartera` debe incluir:
+
+```sql
+CREATE OR REPLACE FUNCTION cartera.fn_nombre_funcion(...) ...
+SECURITY DEFINER
+SET search_path = 'pg_catalog', 'cartera'  -- SIEMPRE fijar search_path
+AS $$ ... $$;
+
+REVOKE EXECUTE ON FUNCTION cartera.fn_nombre_funcion(...) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION cartera.fn_nombre_funcion(...) TO service_role;
+```
+
+**Nota:** `REVOKE ... FROM anon, authenticated` (sin `PUBLIC`) es un **no-op** si el grant real está en `PUBLIC` — verificar con `has_function_privilege('anon', oid, 'EXECUTE')` antes y después de aplicar el fix. Verificar también que `service_role` conserve el privilegio tras el `REVOKE FROM PUBLIC` (agregar el `GRANT ... TO service_role` explícito siempre, incluso si ya lo tenía por herencia de `PUBLIC`).
+
+---
+
 ## Optimistic concurrency control (modifico_fecha)
 
 Every UPDATE guards against concurrent edits using `modifico_fecha` as a version token.

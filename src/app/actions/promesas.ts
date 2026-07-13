@@ -75,53 +75,75 @@ export async function getPromesas(empresa?: number, proyecto?: number): Promise<
 
 // ─── Crear ─────────────────────────────────────────────────────────────────
 
-export async function createPromesa(form: PromesaForm): Promise<{ error?: string }> {
+export async function createPromesa(form: PromesaForm, loteModificoFecha?: string): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'agregar')
   if (permCheck) return permCheck
 
   const admin = createAdminClient()
-
-  const { count: dupeCount } = await admin
-    .schema('cartera')
-    .from('t_promesa')
-    .select('*', { count: 'exact', head: true })
-    .eq('cuenta', cuenta)
-    .eq('empresa', form.empresa)
-    .eq('proyecto', form.proyecto)
-    .eq('numero', form.numero)
-
-  if (dupeCount && dupeCount > 0) {
-    return { error: 'Ya existe una promesa con ese numero en este proyecto.' }
-  }
-
   const auditUser = await getAuditUser()
-  const now = new Date().toISOString()
 
-  const { data, error } = await admin
-    .schema('cartera')
-    .from('t_promesa')
-    .insert({
-      ...form,
-      cuenta,
-      agrego_usuario: auditUser.userId,
-      agrego_fecha: now,
-      modifico_usuario: auditUser.userId,
-      modifico_fecha: now,
-    })
-    .select()
-    .single()
+  // fecha_financiamiento debe ser '1900-01-01' si y solo si monto_financiamiento
+  // es 0; se recalcula en el servidor para no depender de lo que envíe el cliente.
+  const fechaFinanciamiento = form.monto_financiamiento > 0
+    ? form.fecha_financiamiento
+    : '1900-01-01'
+
+  // La creación se delega a una función SECURITY DEFINER que bloquea la fila
+  // del lote (FOR UPDATE) antes de insertar: garantiza que un lote solo pueda
+  // asociarse a UNA promesa incluso bajo solicitudes concurrentes.
+  const { data, error } = await admin.schema('cartera').rpc('fn_crear_promesa', {
+    p_cuenta: cuenta,
+    p_empresa: form.empresa,
+    p_proyecto: form.proyecto,
+    p_numero: form.numero,
+    p_referencia: form.referencia,
+    p_fecha: form.fecha,
+    p_cliente: form.cliente,
+    p_vendedor: form.vendedor,
+    p_fase: form.fase,
+    p_manzana: form.manzana,
+    p_lote: form.lote,
+    p_moneda: form.moneda,
+    p_valor_lote: form.valor_lote,
+    p_subsidio: form.subsidio,
+    p_arras: form.arras,
+    p_monto_enganche: form.monto_enganche,
+    p_primer_enganche: form.primer_enganche,
+    p_plazo_enganche: form.plazo_enganche,
+    p_interes_anual: form.interes_anual,
+    p_forma_mora: form.forma_mora,
+    p_interes_mora: form.interes_mora,
+    p_fijo_mora: form.fijo_mora,
+    p_mora_enganche: form.mora_enganche,
+    p_dias_gracia: form.dias_gracia,
+    p_dias_afectos: form.dias_afectos,
+    p_forma_financiamiento: form.forma_financiamiento,
+    p_fecha_financiamiento: fechaFinanciamiento,
+    p_monto_financiamiento: form.monto_financiamiento,
+    p_plazo_financiamiento: form.plazo_financiamiento,
+    p_venta: form.venta,
+    p_observacion: form.observacion,
+    p_estado: form.estado,
+    p_agrego_usuario: auditUser.userId,
+    p_lote_modifico_fecha: loteModificoFecha ?? '1900-01-01T00:00:00',
+  })
 
   if (error) return { error: error.message }
+
+  const result = data as { ok: boolean; error?: string; promesa?: Record<string, unknown> }
+  if (!result.ok) return { error: result.error ?? 'No se pudo crear la promesa.' }
+
+  const numeroCreado = (result.promesa?.numero as number | undefined) ?? form.numero
 
   await writeAudit(admin, {
     tabla: 't_promesa',
     operacion: 'INSERT',
     cuenta,
-    registroId: { empresa: form.empresa, proyecto: form.proyecto, numero: form.numero },
+    registroId: { empresa: form.empresa, proyecto: form.proyecto, numero: numeroCreado },
     datoAntes: null,
-    datoDespues: data as Record<string, unknown>,
+    datoDespues: result.promesa ?? null,
     ...auditUser,
   })
 

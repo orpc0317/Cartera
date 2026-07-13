@@ -29,6 +29,7 @@ Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería 
 - **Cuenta activa:** toda query debe filtrar por `cuenta`, obtenida **siempre** importando `getCuentaActiva()` desde `@/app/actions/permisos`. Esa función lee la cookie `cartera-cuenta` primero y el JWT `app_metadata.cuenta_activa` como fallback. **Nunca** leer `user.app_metadata.cuenta_activa` directamente en un action file. Si `cuenta` está vacía, no operar.
 - **IDOR / permisos en escritura:** toda Server Action de escritura (`create*`, `update*`, `delete*`, `upload*`) debe llamar `requirePermiso(PERMISOS.<KEY>, 'agregar'|'modificar'|'eliminar')` importado de `@/app/actions/permisos` como **primera instrucción**. `requirePermiso` verifica autenticación, membresía de cuenta en `t_usuario` (previene cookie-tampering cross-tenant) y el flag CRUD específico en `t_menu_usuario`. Si retorna `{ error }`, propagar inmediatamente.
 - **Mínimo privilegio:** usar el cliente de usuario para reads/writes normales; el cliente admin (`admin.ts`) solo cuando sea estrictamente necesario y documentado.
+- **Funciones `SECURITY DEFINER`:** toda función nueva en schema `cartera` debe fijar `search_path` y revocar `EXECUTE` de `PUBLIC` (dejando solo `service_role`) — ver detalle y snippet en `server-actions.instructions.md`. Sin esto, la función es invocable sin login vía `/rest/v1/rpc/...`.
 
 ---
 

@@ -21,6 +21,8 @@ export const PERMISOS = {
   TIN_CAT:   'TIN.CAT',
   TSC_CAT:   'TSC.CAT',
   DEP_BAN:   'DEP.BAN',
+  TRX_BAN:   'TRX.BAN',
+  TDO_CAT:   'TDO.CAT',
 } as const
 
 export type Permiso = (typeof PERMISOS)[keyof typeof PERMISOS]

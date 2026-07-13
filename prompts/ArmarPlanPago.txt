@@ -1,0 +1,153 @@
+Public Function ArmarPlanPago(pFecha As Date, pEmpresa As Integer, pProyecto As Integer, pPromesa As Long) As Byte
+' rutina que arma el plan de pagos
+Dim vSql$, vRs As Recordset
+Dim vX%, vFecha As Date, vbEjecuto As Boolean
+Dim vTotal#, vCapital#, vInteres#, vCuota#, vPlazo%
+
+    ' Inicializa Variables
+    vbEjecuto = True ' Variable que lleva el control que cada paso se va ejecutando correctamente
+    
+    ' Elimina el plan de pagos existente
+    vSql$ = "DELETE FROM t_plan_pago"
+    If pEmpresa > 0 Then vSql$ = vSql$ & " WHERE empresa = " & pEmpresa
+    If pProyecto > 0 Then vSql$ = vSql$ & " AND proyecto = " & pProyecto
+    If pPromesa > 0 Then vSql$ = vSql$ & " AND promesa = " & pPromesa
+    vgConn.Execute vSql$, dbExecDirect
+    
+    ' Obtiene los datos de la promesa
+    vSql$ = "SELECT * FROM t_promesa WHERE fecha <= " & Format(pFecha, vgFechaBase$) & f$
+    If pEmpresa > 0 Then vSql$ = vSql$ & " AND empresa = " & pEmpresa
+    If pProyecto > 0 Then vSql$ = vSql$ & " AND proyecto = " & pProyecto
+    If pPromesa > 0 Then vSql$ = vSql$ & " AND numero = " & pPromesa
+    vSql$ = vSql$ & " ORDER BY empresa, proyecto, numero"
+    Set vRs = vgConn.OpenRecordset(vSql$, dbOpenSnapshot, dbExecDirect)
+    If vRs.RecordCount > 0 Then
+        vRs.MoveLast 0: vRs.MoveFirst
+        Do While Not vRs.EOF And vbEjecuto
+            Termometro!Label1 = "ARMANDO PLAN PAGOS PROMESA No. " & vRs("numero") & "..."
+            DoEvents
+            
+            ' Calcula el enganche
+            vPlazo% = vRs("plazo_enganche")
+            vFecha = Format(vRs("fecha"), cgFecha$)
+            vTotal# = Format(vRs("monto_enganche"), cgN2DS$)
+            If vTotal# > 0 Then
+                For vX% = 1 To vRs("plazo_enganche")
+                    If vX% > 1 Then vFecha = SumarMes(Format(vFecha, cgFecha), Day(Format(vRs("fecha"), cgFecha$))) ' La funcion SumarMes agrega un mes a la fecha
+                    If vX% = 1 And vRs("primer_enganche") > 0 Then
+                        vCapital# = vRs("primer_enganche")
+                        vTotal# = vTotal# - Val(Format(vRs("primer_enganche"), cgN2DS$))
+                        vPlazo% = vPlazo% - 1
+                    Else
+                        If vX% < vRs("plazo_enganche") Then
+                            vCapital# = Format((Val(Format(vRs("monto_enganche"), cgN2DS$)) - Val(Format(vRs("primer_enganche"), cgN2DS$))) / vPlazo%, cgN2DS$)
+                            vTotal# = vTotal# - vCapital#
+                        Else: vCapital# = vTotal#: vTotal# = 0
+                        End If
+                    End If
+                    
+                    ' Graba el registro del enganche
+                    vSql$ = "INSERT INTO t_plan_pago (empresa,proyecto,promesa,tipo_cuota,cuota,fecha,capital,estado)" & _
+                    " VALUES (" & vRs("empresa") & "," & vRs("proyecto") & "," & vRs("numero") & ",1," & vX% & _
+                    "," & f$ & Format(vFecha, vgFechaBase$) & f$ & "," & vCapital# & "," & IIf(vX% = 1, 0, 3) & ")"
+                    vgConn.Execute vSql$, dbExecDirect
+                    If vgConn.RecordsAffected <= 0 Then vbEjecuto = False
+                Next vX%
+            End If
+        
+            ' Calcula el financiamiento
+            If vbEjecuto Then
+                If CDate(Format(vRs("fecha_financiamiento"), cgFecha$)) <> CDate(Format(cgFechaNull$, cgFecha$)) Then
+                    vFecha = Format(vRs("fecha_financiamiento"), cgFecha)
+                Else: vFecha = Format(vRs("fecha"), cgFecha$)
+                End If
+                vTotal# = Format(Val(Format(vRs("valor_lote"), cgN2DS$)) - Val(Format(vRs("monto_enganche"), cgN2DS$)) - Val(Format(vRs("subsidio"), cgN2DS$)), cgN2DS$)
+                If vTotal# > 0 Then
+                    For vX% = 1 To vRs("plazo_financiamiento")
+                        If vX% > 1 Then vFecha = SumarMes(Format(vFecha, cgFecha), Day(Format(vRs("fecha_financiamiento"), cgFecha$)))
+                        If vX% = 1 Then
+                            Select Case vRs("forma_financiamiento")
+                                Case 1: ' Cuota Nivelada
+                                    If vRs("interes_anual") > 0 Then
+                                        vCuota# = Format((vTotal# * Val(Format(vRs("interes_anual"), cgNNDS$)) / 1200) / (1 - (1 / ((1 + Val(Format(vRs("interes_anual"), cgNNDS$)) / 1200) ^ vRs("plazo_financiamiento")))), cgN2DS$)
+                                    Else: vCuota# = Format(vTotal# / vRs("plazo_financiamiento"), cgN2DS$)
+                                    End If
+                            End Select
+                        End If
+                        If vX% < vRs("plazo_financiamiento") Then
+                            If vRs("interes_anual") > 0 Then
+                                Select Case vRs("forma_financiamiento")
+                                    Case 1: ' Cuota Nivelada
+                                        vInteres# = Format(vTotal# * Val(Format(vRs("interes_anual"), cgNNDS$)) / 1200, cgN2DS$)
+                                End Select
+                            Else: vInteres# = 0
+                            End If
+                            vCapital# = vCuota# - vInteres#
+                            vTotal# = vTotal# - vCapital#
+                        Else: ' Calcula el valor de la última cuota
+                            If vRs("interes_anual") > 0 Then
+                                Select Case vRs("forma_financiamiento")
+                                    Case 1: ' Cuota Nivelada
+                                        vInteres# = Format(vTotal# * Val(Format(vRs("interes_anual"), cgNNDS$)) / 1200, cgN2DS$)
+                                End Select
+                            Else: vInteres# = 0
+                            End If
+                            vCapital# = vTotal#: vTotal# = 0
+                        End If
+                        
+                        ' Grabar el registro del financiamiento
+                        vSql$ = "INSERT INTO t_plan_pago (empresa,proyecto,promesa,tipo_cuota,cuota,fecha,capital,interes,estado)" & _
+                        " VALUES (" & vRs("empresa") & "," & vRs("proyecto") & "," & vRs("numero") & ",2," & vX% & "," & f$ & Format(vFecha, vgFechaBase$) & f$ & _
+                        "," & vCapital# & "," & vInteres# & "," & IIf(vX% = 1 And Val(Format(vRs("monto_enganche"), cgN2DS$)) = 0, 0, 3) & ")"
+                        If vgODBC% = 1 Then
+                            vgConn.Execute vSql$, dbExecDirect
+                            If vgConn.RecordsAffected <= 0 Then vbEjecuto = False
+                        Else: vgBase.Execute vSql$, dbFailOnError
+                            If vgBase.RecordsAffected <= 0 Then vbEjecuto = False
+                        End If
+                        
+                        ' Pasa al siguiente registro
+                        If pPromesa > 0 Then
+                            vContador& = vContador& + 1
+                            Termometro!gauge1.Value = vContador& / (Val(Format(vRs("plazo_enganche"), cgN0DS$)) + Val(Format(vRs("plazo_financiamiento"), cgN0DS$))) * 100
+                        End If
+                        If Not vbEjecuto Then vX% = vRs("plazo_financiamiento")
+                        DoEvents
+                    Next vX%
+                End If
+            End If
+            
+            ' Pasa al siguiente registro
+            vRs.MoveNext
+            DoEvents
+        Loop
+    End If
+    vRs.Close: Set vRs = Nothing
+
+    ' Devuelve resultado
+    ArmarPlanPago = IIf(vbEjecuto,1,0)
+End Function
+
+
+Public Function SumarMes(pFecha As Date, pDia As Integer) As Date
+' rutina que suma un mes a la fecha
+Dim vDia%, vMes%, vAno%
+
+    vDia% = pDia
+    vMes% = Month(Format(pFecha, cgFecha$))
+    vAno% = Year(Format(pFecha, cgFecha$))
+    
+    vMes% = vMes% + 1
+    If vMes% = 13 Then
+        vMes% = 1
+        vAno% = vAno% + 1
+    End If
+    If vMes% = 2 Then
+        If vDia% >= 29 Then vDia% = 28
+    End If
+    If vDia% = 31 And InStr(1, "4,6,9,11", vMes%) > 0 Then
+        vDia% = 30
+    End If
+    
+    SumarMes = Format(vDia% & "/" & vMes% & "/" & vAno%, cgFecha$)
+End Function

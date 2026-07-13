@@ -313,3 +313,29 @@ export type SerieRecibo = {
 }
 
 export type SerieReciboForm = Omit<SerieRecibo, 'cuenta' | 'agrego_usuario' | 'agrego_fecha' | 'modifico_usuario' | 'modifico_fecha'>
+
+export type TransaccionBancaria = {
+  empresa: number
+  cuenta_bancaria: number
+  numero_transaccion: string
+  tipo_transaccion: number
+  fecha: string
+  numero_documento?: string | null
+  valor: number
+  estado: number
+  origen?: number | null
+  a_nombre_de?: string | null
+  comentario?: string | null
+  partida?: string | null
+  valor_en_letras?: string | null
+  tipo_saldo?: number | null
+  en_circulacion?: number | null
+  fecha_conciliacion?: string | null
+  tasa_cambio?: number | null
+  cuenta_transferencia?: number | null
+  transaccion_transferencia?: string | null
+  usuario_agrego?: string | null
+  fecha_agrego?: string | null
+  usuario_modifico?: string | null
+  fecha_modifico?: string | null
+}

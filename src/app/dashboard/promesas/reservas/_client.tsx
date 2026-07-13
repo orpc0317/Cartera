@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  ClipboardList, MapPin, Receipt, Download,
+  ClipboardList, MapPin, Download,
   Plus, Search, X, Settings2,
   ChevronDown, ChevronUp, MoreHorizontal, Eye, History,
   ChevronLeft, ChevronRight,
@@ -1335,7 +1335,7 @@ export function ReservasClient({
         setDialogOpen(open)
         if (!open) { setIsEditing(false) }
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[38rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
 
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
@@ -1360,27 +1360,27 @@ export function ReservasClient({
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-              <TabsTrigger value="pago" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <Receipt className="h-3.5 w-3.5" /> Pago
-              </TabsTrigger>
             </TabsList></div>
 
             {/* ── Tab General ── */}
-            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
 
-              {/* Vista: modo readonly */}
               {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-6 items-start">
 
-                  <SectionDivider label="Identificacion" />
+                  {/* Columna izquierda */}
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+
+                    <SectionDivider label="Identificacion" />
                   <div className="col-span-2">
                     <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)} />
                   </div>
                   <div className="col-span-2">
                     <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} />
                   </div>
-                  <ViewField label="Numero" value={String(viewTarget.numero)} />
-                  <div />{/* spacer */}
+                  <div className="col-span-2 grid grid-cols-3 gap-2">
+                    <ViewField label="Numero" value={String(viewTarget.numero)} />
+                  </div>
 
                   <SectionDivider label="General" />
                   <div className="col-span-2 grid grid-cols-3 gap-2">
@@ -1410,14 +1410,76 @@ export function ReservasClient({
                     <ViewField label="Lote"    value={viewTarget.lote} />
                   </div>
 
+                  </div>
+
+                  {/* Separador vertical */}
+                  <div className="w-px self-stretch bg-primary/30" />
+
+                  {/* Columna derecha — PAGO */}
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+
+                    <SectionDivider label="PAGO" />
+                    <ViewField label="Serie"  value={viewTarget.serie_recibo} />
+                    <ViewField label="Numero" value={viewTarget.recibo} />
+                    <div className="grid gap-1">
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2 gap-1.5" style={{ height: 'var(--ui-field-height)' }}>
+                        {(() => {
+                          const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                          return (
+                            <>
+                              {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt={viewTarget.moneda} className="rounded-[2px] shrink-0" />}
+                              <span className="font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
+                            </>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                    <ViewField label="Monto" value={viewTarget.monto ? fmt(viewTarget.monto) : ''} />
+                    <div className="col-span-2">
+                      <ViewField label="Cobrador" value={cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`)} />
+                    </div>
+
+                    {viewTarget.forma_pago !== 1 && (
+                      <>
+                        <SectionDivider label="Forma Pago" />
+                        <div className="col-span-2">
+                          <ViewField label="Forma Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? `#${viewTarget.forma_pago}`} />
+                        </div>
+                        {viewTarget.forma_pago === 2 && (
+                          <>
+                            <ViewField label="Banco"         value={bancoMap.get(viewTarget.banco)} />
+                            <ViewField label="No. Cuenta"    value={viewTarget.num_cuenta} />
+                            <div className="col-span-2">
+                              <ViewField label="No. Documento" value={viewTarget.num_documento} />
+                            </div>
+                          </>
+                        )}
+                        {(viewTarget.forma_pago === 3 || viewTarget.forma_pago === 4) && (
+                          <>
+                            <div className="col-span-2">
+                              <ViewField label="Cuenta Bancaria" value={cuentaBancariaMap.get(viewTarget.cuenta_bancaria)} />
+                            </div>
+                            <div className="col-span-2">
+                              <ViewField label="No. Documento" value={viewTarget.num_documento} />
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                  </div>
 
                 </div>
 
               ) : (
               /* Creacion */
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-6 items-start">
 
-                  <SectionDivider label="Identificacion" />
+                  {/* Columna izquierda */}
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+
+                    <SectionDivider label="Identificacion" />
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
@@ -1659,248 +1721,190 @@ export function ReservasClient({
                     </Select>
                   </div>
 
-                </div>
-              )}
-
-            </TabsContent>
-
-            {/* ── Tab Pago ── */}
-            <TabsContent value="pago" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-
-              {/* Vista: modo readonly */}
-              {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-2">
-
-                  <SectionDivider label="Recibo" />
-                  <ViewField label="Serie"  value={viewTarget.serie_recibo} />
-                  <ViewField label="Numero" value={viewTarget.recibo} />
-                  <div className="grid gap-1">
-                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
-                    <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2 gap-1.5" style={{ height: 'var(--ui-field-height)' }}>
-                      {(() => {
-                        const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                        return (
-                          <>
-                            {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt={viewTarget.moneda} className="rounded-[2px] shrink-0" />}
-                            <span className="font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
-                          </>
-                        )
-                      })()}
-                    </div>
-                  </div>
-                  <ViewField label="Monto" value={viewTarget.monto ? fmt(viewTarget.monto) : ''} />
-                  <div className="col-span-2">
-                    <ViewField label="Cobrador" value={cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`)} />
                   </div>
 
-                  {viewTarget.forma_pago !== 1 && (
-                    <>
-                      <SectionDivider label="Forma Pago" />
-                      <div className="col-span-2">
-                        <ViewField label="Forma Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? `#${viewTarget.forma_pago}`} />
-                      </div>
-                      {viewTarget.forma_pago === 2 && (
-                        <>
-                          <ViewField label="Banco"         value={bancoMap.get(viewTarget.banco)} />
-                          <ViewField label="No. Cuenta"    value={viewTarget.num_cuenta} />
-                          <div className="col-span-2">
-                            <ViewField label="No. Documento" value={viewTarget.num_documento} />
-                          </div>
-                        </>
-                      )}
-                      {(viewTarget.forma_pago === 3 || viewTarget.forma_pago === 4) && (
-                        <>
-                          <div className="col-span-2">
-                            <ViewField label="Cuenta Bancaria" value={cuentaBancariaMap.get(viewTarget.cuenta_bancaria)} />
-                          </div>
-                          <div className="col-span-2">
-                            <ViewField label="No. Documento" value={viewTarget.num_documento} />
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
+                  {/* Separador vertical */}
+                  <div className="w-px self-stretch bg-primary/30" />
 
-                </div>
+                  {/* Columna derecha — PAGO */}
+                  <div className="flex-1 grid grid-cols-2 gap-2">
 
-              ) : (
-              /* Creacion — tab Pago */
-                <div className="grid grid-cols-2 gap-2">
+                    <SectionDivider label="PAGO" />
 
-                  <SectionDivider label="Recibo" />
+                    {/* Serie + Recibo en grid-cols-3 */}
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
 
-                  {/* Serie + Recibo en grid-cols-3 */}
-                  <div className="col-span-2 grid grid-cols-3 gap-2">
-
-                    {/* Serie */}
-                    <div className="grid gap-1">
-                      <Label htmlFor="res-serie-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Serie *
-                      </Label>
-                      <Select
-                        value={form.serie_recibo}
-                        onValueChange={(v) => f('serie_recibo', v ?? '')}
-                      >
-                        <SelectTrigger variant="l-border" id="res-serie-recibo" className="w-full">
-                          <SelectValue placeholder={seriesReciboPorProyecto.length === 0 ? 'Sin series' : 'Selecciona serie'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {seriesReciboPorProyecto.map((s) => (
-                            <SelectItem key={s.serie} value={s.serie}>{s.serie}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Numero Recibo */}
-                    {!reciboAutomatico ? (
+                      {/* Serie */}
                       <div className="grid gap-1">
-                        <Label htmlFor="res-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                          Numero Recibo *
+                        <Label htmlFor="res-serie-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                          Serie *
                         </Label>
-                        <Input variant="l-border"
-                          id="res-recibo"
-                          placeholder="No. recibo"
-                          value={form.recibo}
-                          onChange={(e) => f('recibo', e.target.value)}
-                        />
+                        <Select
+                          value={form.serie_recibo}
+                          onValueChange={(v) => f('serie_recibo', v ?? '')}
+                        >
+                          <SelectTrigger variant="l-border" id="res-serie-recibo" className="w-full">
+                            <SelectValue placeholder={seriesReciboPorProyecto.length === 0 ? 'Sin series' : 'Selecciona serie'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {seriesReciboPorProyecto.map((s) => (
+                              <SelectItem key={s.serie} value={s.serie}>{s.serie}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    ) : <div />}
 
-                    {/* Spacer */}
-                    <div />
+                      {/* Numero Recibo */}
+                      {!reciboAutomatico ? (
+                        <div className="grid gap-1">
+                          <Label htmlFor="res-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                            Numero Recibo *
+                          </Label>
+                          <Input variant="l-border"
+                            id="res-recibo"
+                            placeholder="No. recibo"
+                            value={form.recibo}
+                            onChange={(e) => f('recibo', e.target.value)}
+                          />
+                        </div>
+                      ) : <div />}
 
-                  </div>
+                      {/* Spacer */}
+                      <div />
 
-                  {/* Cobrador */}
-                  <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-cobrador" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                      Cobrador *
-                    </Label>
-                    <Select
-                      value={form.cobrador ? String(form.cobrador) : ''}
-                      onValueChange={(v) => f('cobrador', Number(v))}
-                      disabled={!form.proyecto}
-                    >
-                      <SelectTrigger variant="l-border" id="res-cobrador" className="w-full">
-                        <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cobradoresPorProyecto.map((cob) => (
-                          <SelectItem key={cob.codigo} value={String(cob.codigo)}>{cob.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    </div>
 
-                  <SectionDivider label="Forma Pago" />
-
-                  {/* Forma Pago */}
-                  <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                      Forma de Pago *
-                    </Label>
-                    <Select
-                      value={form.forma_pago ? String(form.forma_pago) : ''}
-                      onValueChange={(v) => f('forma_pago', Number(v))}
-                    >
-                      <SelectTrigger variant="l-border" id="res-forma-pago" className="w-full">
-                        <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(FORMAS_PAGO).map(([k, label]) => (
-                          <SelectItem key={k} value={k}>{label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Cheque: Banco */}
-                  {form.forma_pago === 2 && (
+                    {/* Cobrador */}
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-banco" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Banco *
+                      <Label htmlFor="res-cobrador" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                        Cobrador *
                       </Label>
                       <Select
-                        value={form.banco ? String(form.banco) : ''}
-                        onValueChange={(v) => f('banco', Number(v))}
+                        value={form.cobrador ? String(form.cobrador) : ''}
+                        onValueChange={(v) => f('cobrador', Number(v))}
+                        disabled={!form.proyecto}
                       >
-                        <SelectTrigger variant="l-border" id="res-banco" className="w-full">
-                          <SelectValue placeholder={bancosPorProyecto.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
+                        <SelectTrigger variant="l-border" id="res-cobrador" className="w-full">
+                          <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {bancosPorProyecto.map((b) => (
-                            <SelectItem key={b.codigo} value={String(b.codigo)}>{b.nombre}</SelectItem>
+                          {cobradoresPorProyecto.map((cob) => (
+                            <SelectItem key={cob.codigo} value={String(cob.codigo)}>{cob.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
 
-                  {/* Cheque: No. Cuenta + No. Documento */}
-                  {form.forma_pago === 2 && (
-                    <>
-                      <div className="grid gap-1">
-                        <Label htmlFor="res-num-cuenta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                          No. Cuenta *
+                    <SectionDivider label="Forma Pago" />
+
+                    {/* Forma Pago */}
+                    <div className="col-span-2 grid gap-1">
+                      <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                        Forma de Pago *
+                      </Label>
+                      <Select
+                        value={form.forma_pago ? String(form.forma_pago) : ''}
+                        onValueChange={(v) => f('forma_pago', Number(v))}
+                      >
+                        <SelectTrigger variant="l-border" id="res-forma-pago" className="w-full">
+                          <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(FORMAS_PAGO).map(([k, label]) => (
+                            <SelectItem key={k} value={k}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Cheque: Banco */}
+                    {form.forma_pago === 2 && (
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="res-banco" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                          Banco *
                         </Label>
-                        <Input variant="l-border"
-                          id="res-num-cuenta"
-                          placeholder="Numero de cuenta"
-                          value={form.num_cuenta}
-                          onChange={(e) => f('num_cuenta', e.target.value)}
-                        />
+                        <Select
+                          value={form.banco ? String(form.banco) : ''}
+                          onValueChange={(v) => f('banco', Number(v))}
+                        >
+                          <SelectTrigger variant="l-border" id="res-banco" className="w-full">
+                            <SelectValue placeholder={bancosPorProyecto.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {bancosPorProyecto.map((b) => (
+                              <SelectItem key={b.codigo} value={String(b.codigo)}>{b.nombre}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="res-num-doc-cheque" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                    )}
+
+                    {/* Cheque: No. Cuenta + No. Documento */}
+                    {form.forma_pago === 2 && (
+                      <>
+                        <div className="grid gap-1">
+                          <Label htmlFor="res-num-cuenta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                            No. Cuenta *
+                          </Label>
+                          <Input variant="l-border"
+                            id="res-num-cuenta"
+                            placeholder="Numero de cuenta"
+                            value={form.num_cuenta}
+                            onChange={(e) => f('num_cuenta', e.target.value)}
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label htmlFor="res-num-doc-cheque" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                            No. Documento *
+                          </Label>
+                          <Input variant="l-border"
+                            id="res-num-doc-cheque"
+                            placeholder="Numero de cheque"
+                            value={form.num_documento}
+                            onChange={(e) => f('num_documento', e.target.value)}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Deposito / Transferencia: Cuenta Bancaria */}
+                    {(form.forma_pago === 3 || form.forma_pago === 4) && (
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="res-cuenta-bancaria" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                          Cuenta Bancaria *
+                        </Label>
+                        <Select
+                          value={form.cuenta_bancaria ? String(form.cuenta_bancaria) : ''}
+                          onValueChange={(v) => f('cuenta_bancaria', Number(v))}
+                        >
+                          <SelectTrigger variant="l-border" id="res-cuenta-bancaria" className="w-full">
+                            <SelectValue placeholder={cuentasActivas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cuentasActivas.map((cb) => (
+                              <SelectItem key={cb.codigo} value={String(cb.codigo)}>{bancoMap.get(cb.banco) ?? cb.banco}: {cb.numero}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Deposito / Transferencia: No. Documento */}
+                    {(form.forma_pago === 3 || form.forma_pago === 4) && (
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="res-num-doc" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
                           No. Documento *
                         </Label>
                         <Input variant="l-border"
-                          id="res-num-doc-cheque"
-                          placeholder="Numero de cheque"
+                          id="res-num-doc"
+                          placeholder="Numero de documento"
                           value={form.num_documento}
                           onChange={(e) => f('num_documento', e.target.value)}
                         />
                       </div>
-                    </>
-                  )}
+                    )}
 
-                  {/* Deposito / Transferencia: Cuenta Bancaria */}
-                  {(form.forma_pago === 3 || form.forma_pago === 4) && (
-                    <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-cuenta-bancaria" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Cuenta Bancaria *
-                      </Label>
-                      <Select
-                        value={form.cuenta_bancaria ? String(form.cuenta_bancaria) : ''}
-                        onValueChange={(v) => f('cuenta_bancaria', Number(v))}
-                      >
-                        <SelectTrigger variant="l-border" id="res-cuenta-bancaria" className="w-full">
-                          <SelectValue placeholder={cuentasActivas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cuentasActivas.map((cb) => (
-                            <SelectItem key={cb.codigo} value={String(cb.codigo)}>{bancoMap.get(cb.banco) ?? cb.banco}: {cb.numero}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Deposito / Transferencia: No. Documento */}
-                  {(form.forma_pago === 3 || form.forma_pago === 4) && (
-                    <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-num-doc" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        No. Documento *
-                      </Label>
-                      <Input variant="l-border"
-                        id="res-num-doc"
-                        placeholder="Numero de documento"
-                        value={form.num_documento}
-                        onChange={(e) => f('num_documento', e.target.value)}
-                      />
-                    </div>
-                  )}
+                  </div>
 
                 </div>
               )}
