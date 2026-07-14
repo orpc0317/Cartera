@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
+import type { PromesaOtroPayload } from '@/lib/types/promesa-otros'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -75,7 +76,11 @@ export async function getPromesas(empresa?: number, proyecto?: number): Promise<
 
 // ─── Crear ─────────────────────────────────────────────────────────────────
 
-export async function createPromesa(form: PromesaForm, loteModificoFecha?: string): Promise<{ error?: string }> {
+export async function createPromesa(
+  form: PromesaForm,
+  loteModificoFecha?: string,
+  otros: PromesaOtroPayload[] = [],
+): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'agregar')
@@ -128,6 +133,7 @@ export async function createPromesa(form: PromesaForm, loteModificoFecha?: strin
     p_estado: form.estado,
     p_agrego_usuario: auditUser.userId,
     p_lote_modifico_fecha: loteModificoFecha ?? '1900-01-01T00:00:00',
+    p_otros: otros,
   })
 
   if (error) return { error: error.message }
@@ -147,6 +153,18 @@ export async function createPromesa(form: PromesaForm, loteModificoFecha?: strin
     ...auditUser,
   })
 
+  if (otros.length > 0) {
+    await writeAudit(admin, {
+      tabla: 't_promesa_otros',
+      operacion: 'INSERT',
+      cuenta,
+      registroId: { empresa: form.empresa, proyecto: form.proyecto, promesa: numeroCreado },
+      datoAntes: null,
+      datoDespues: { otros },
+      ...auditUser,
+    })
+  }
+
   return {}
 }
 
@@ -158,6 +176,7 @@ export async function updatePromesa(
   numero: number,
   form: Pick<PromesaForm, 'referencia' | 'observacion' | 'estado'>,
   lastModified?: string,
+  otros: PromesaOtroPayload[] = [],
 ): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -209,6 +228,29 @@ export async function updatePromesa(
     registroId: { empresa, proyecto, numero },
     datoAntes: original as Record<string, unknown> | null,
     datoDespues: (data?.[0] ?? null) as Record<string, unknown> | null,
+    ...auditUser,
+  })
+
+  // Sincroniza el detalle de "otros ingresos" (reemplazo completo, delete-then-insert,
+  // con validacion de forma_pago > 0 / activo = 1 dentro de la funcion SECURITY DEFINER).
+  const { data: otrosResult, error: otrosError } = await admin.schema('cartera').rpc('fn_actualizar_promesa_otros', {
+    p_cuenta: cuenta,
+    p_empresa: empresa,
+    p_proyecto: proyecto,
+    p_promesa: numero,
+    p_otros: otros,
+  })
+  if (otrosError) return { error: otrosError.message }
+  const otrosCheck = otrosResult as { ok: boolean; error?: string }
+  if (!otrosCheck.ok) return { error: otrosCheck.error ?? 'No se pudo actualizar el detalle de otros ingresos.' }
+
+  await writeAudit(admin, {
+    tabla: 't_promesa_otros',
+    operacion: 'UPDATE',
+    cuenta,
+    registroId: { empresa, proyecto, promesa: numero },
+    datoAntes: null,
+    datoDespues: { otros },
     ...auditUser,
   })
 

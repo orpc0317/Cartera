@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import {
   MoreHorizontal, Pencil, Trash2, Plus, Search, History,
   Settings2, ChevronDown, ChevronUp, X, FileSignature, Download,
-  ChevronLeft, ChevronRight, FileText, Upload, Paperclip,
+  ChevronLeft, ChevronRight, FileText, Upload, Paperclip, Wallet, Receipt,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,15 +38,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
+import { PlanPagoDialog } from '@/components/ui/plan-pago-dialog'
 import { createPromesa, updatePromesa, deletePromesa } from '@/app/actions/promesas'
 import {
   getPromesaDocumentos, uploadPromesaDocumento,
   deletePromesaDocumento, getPromesaDocumentoUrl,
 } from '@/app/actions/promesa-documentos'
+import { getPromesaOtros } from '@/app/actions/promesa-otros'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Vendedor } from '@/lib/types/proyectos'
 import type { TipoDocumento } from '@/lib/types/tipos-documento'
 import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
+import type { PromesaOtro, PromesaOtroPayload } from '@/lib/types/promesa-otros'
+import type { TipoIngreso } from '@/lib/types/tipos-ingresos'
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -75,6 +79,15 @@ const fmtBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// Clave normalizada de un arreglo de "otros ingresos" — usada para detectar cambios (dirty-check)
+function otrosKey(list: PromesaOtro[]): string {
+  return JSON.stringify(
+    [...list]
+      .sort((a, b) => a.tipo_otros - b.tipo_otros)
+      .map((o) => [o.tipo_otros, o.monto, o.hasta_monto, o.mora, o.partir_de, o.aplicar_hasta])
+  )
 }
 
 function calcEnganche(monto: number, plazo: number, primer: number) {
@@ -106,6 +119,16 @@ function calcFinanciamiento(monto: number, plazo: number) {
 
 const FORMAS_CALCULO: Record<number, string> = {
   1: 'Cuota Nivelada',
+}
+
+// Forma de calculo del tipo de ingreso (t_tipo_ingreso.forma_pago) — misma
+// constante usada en la pantalla de catalogo Tipos de Ingresos.
+const FORMA_CALCULO_OTROS: Record<number, string> = {
+  1: 'Monto Mensual Fijo',
+  2: '% (Anual) Precio Lote',
+  3: '% (Anual) Precio Lote - Enganche',
+  4: '% (Anual) Saldo Capital',
+  5: '% Capital Cuota',
 }
 
 const EMPTY_FORM: PromesaForm = {
@@ -364,6 +387,7 @@ export function PromesasClient({
   clientes,
   vendedores,
   tiposDocumento,
+  tiposIngreso,
   puedeAgregar,
   puedeModificar,
   puedeEliminar,
@@ -378,6 +402,7 @@ export function PromesasClient({
   clientes: Cliente[]
   vendedores: Vendedor[]
   tiposDocumento: TipoDocumento[]
+  tiposIngreso: TipoIngreso[]
   puedeAgregar: boolean
   puedeModificar: boolean
   puedeEliminar: boolean
@@ -393,6 +418,7 @@ export function PromesasClient({
   const [viewTarget, setViewTarget]   = useState<Promesa | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Promesa | null>(null)
   const [auditTarget, setAuditTarget]   = useState<Promesa | null>(null)
+  const [planPagoTarget, setPlanPagoTarget] = useState<Promesa | null>(null)
   const [tipoCalculo, setTipoCalculo]   = useState(0)
   const [form, setForm]               = useState<PromesaForm>(EMPTY_FORM)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
@@ -407,6 +433,12 @@ export function PromesasClient({
   const [previewUrl, setPreviewUrl]       = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
   const docInputRef = useRef<HTMLInputElement>(null)
+
+  // -- Otros ingresos ----------------------------------------------------------
+  const [otros, setOtros]                 = useState<PromesaOtro[]>([])
+  const [otrosOriginal, setOtrosOriginal] = useState<PromesaOtro[]>([])
+  const [otrosLoading, setOtrosLoading]   = useState(false)
+  const [otroSeleccion, setOtroSeleccion] = useState(0)
 
   // -- Column prefs ----------------------------------------------------------
   const STORAGE_KEY = `promesas_cols_v1_${userId}`
@@ -465,6 +497,13 @@ export function PromesasClient({
   const moraEditable         = proyectoActivo?.fijar_parametros_mora === 1
   const tiposDocumentoFiltrados = useMemo(() => viewTarget ? tiposDocumento.filter((t) => t.empresa === viewTarget.empresa && t.proyecto === viewTarget.proyecto) : [], [tiposDocumento, viewTarget])
   const tipoDocumentoMap        = useMemo(() => new Map(tiposDocumento.map((t) => [`${t.empresa}-${t.proyecto}-${t.codigo}`, t.descripcion])), [tiposDocumento])
+
+  // -- Otros ingresos ---------------------------------------------------------
+  const tipoIngresoMap = useMemo(() => new Map(tiposIngreso.map((t) => [`${t.empresa}-${t.proyecto}-${t.codigo}`, t])), [tiposIngreso])
+  const tiposIngresoDisponibles = useMemo(() => tiposIngreso.filter((t) =>
+    t.empresa === form.empresa && t.proyecto === form.proyecto && t.forma_pago > 0 && t.activo === 1 &&
+    !otros.some((o) => o.tipo_otros === t.codigo)
+  ), [tiposIngreso, form.empresa, form.proyecto, otros])
 
   // -- Unique filter values for table columns --------------------------------
   const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)   ?? ''))].filter(Boolean).sort(), [initialData, empresaMap])
@@ -671,6 +710,47 @@ export function PromesasClient({
     }
   }
 
+  // -- Otros ingresos ------------------------------------------------------------
+
+  useEffect(() => {
+    if (!viewTarget) { setOtros([]); setOtrosOriginal([]); setOtroSeleccion(0); return }
+    setOtrosLoading(true)
+    getPromesaOtros(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero)
+      .then((data) => { setOtros(data); setOtrosOriginal(data) })
+      .catch(() => toast.error('No se pudieron cargar los otros ingresos.'))
+      .finally(() => setOtrosLoading(false))
+    setOtroSeleccion(0)
+  }, [viewTarget])
+
+  function handleAgregarOtro() {
+    if (!otroSeleccion) return
+    const tipo = tiposIngreso.find((t) => t.empresa === form.empresa && t.proyecto === form.proyecto && t.codigo === otroSeleccion)
+    if (!tipo) return
+    setOtros((prev) => [...prev, {
+      cuenta: '',
+      empresa: form.empresa,
+      proyecto: form.proyecto,
+      promesa: viewTarget?.numero ?? 0,
+      secuencia: prev.length + 1,
+      tipo_otros: tipo.codigo,
+      monto: tipo.monto,
+      hasta_monto: tipo.hasta_monto,
+      mora: tipo.mora,
+      partir_de: form.fecha || new Date().toISOString().slice(0, 10),
+      aplicar_hasta: '1900-01-01',
+    }])
+    setOtroSeleccion(0)
+  }
+
+  function handleQuitarOtro(idx: number) {
+    setOtros((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function handleOtroChange(idx: number, key: 'monto' | 'hasta_monto' | 'mora' | 'partir_de' | 'aplicar_hasta', value: number | string) {
+    setOtros((prev) => prev.map((o, i) => i === idx ? { ...o, [key]: value } : o))
+  }
+
+
   function handleDocFileSelect(file: File) {
     if (!viewTarget) return
     if (!docTipo) { toast.error('Selecciona el tipo de documento antes de cargar el archivo.'); return }
@@ -805,7 +885,8 @@ export function PromesasClient({
       const noChanges =
         form.referencia  === (viewTarget.referencia  ?? '') &&
         form.observacion === (viewTarget.observacion ?? '') &&
-        form.estado      === viewTarget.estado
+        form.estado      === viewTarget.estado &&
+        otrosKey(otros)  === otrosKey(otrosOriginal)
       if (noChanges) { setIsEditing(false); return }
     }
 
@@ -861,6 +942,14 @@ export function PromesasClient({
     }
 
     startTransition(async () => {
+      const otrosPayload: PromesaOtroPayload[] = otros.map((o) => ({
+        tipo_otros: o.tipo_otros,
+        monto: o.monto,
+        hasta_monto: o.hasta_monto,
+        mora: o.mora,
+        partir_de: o.partir_de,
+        aplicar_hasta: o.aplicar_hasta,
+      }))
       if (viewTarget) {
         const res = await updatePromesa(
           viewTarget.empresa,
@@ -868,6 +957,7 @@ export function PromesasClient({
           viewTarget.numero,
           { referencia: form.referencia, observacion: form.observacion, estado: form.estado },
           viewTarget.modifico_fecha,
+          otrosPayload,
         )
         if (res.error) {
           if (res.error.includes('modificado por otro usuario')) setHadConflict(true)
@@ -883,7 +973,7 @@ export function PromesasClient({
           plazo_enganche: form.monto_enganche > 0 ? form.plazo_enganche : 0,
           monto_financiamiento: montoFinancCalc,
           fecha_financiamiento: montoFinancCalc > 0 ? form.fecha_financiamiento : '1900-01-01',
-        }, loteActivoForm?.modifico_fecha)
+        }, loteActivoForm?.modifico_fecha, otrosPayload)
         if (res.error) { toast.error(res.error); return }
         toast.success('Promesa creada.')
         setDialogOpen(false)
@@ -1104,6 +1194,9 @@ export function PromesasClient({
                           <DropdownMenuItem onClick={() => openView(row)}>
                             {puedeModificar ? 'Ver / Editar' : 'Ver'}
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setPlanPagoTarget(row)}>
+                            <Receipt className="mr-2 h-3.5 w-3.5" /> Plan Pagos
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setAuditTarget(row)}>
                             <History className="mr-2 h-3.5 w-3.5" /> Historial
                           </DropdownMenuItem>
@@ -1184,6 +1277,9 @@ export function PromesasClient({
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <FileSignature className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+              <TabsTrigger value="otros" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <Wallet className="h-3.5 w-3.5" /> Otros
               </TabsTrigger>
               {viewTarget && (
                 <TabsTrigger value="documentos" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -1746,6 +1842,127 @@ export function PromesasClient({
               )}
             </TabsContent>
 
+            {/* Tab Otros */}
+            <TabsContent value="otros" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              <div className="flex flex-col gap-3">
+                {isEditing && (
+                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 grid gap-1">
+                        <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tipo Ingreso</Label>
+                        <Select value={otroSeleccion ? String(otroSeleccion) : ''} onValueChange={(v) => setOtroSeleccion(Number(v))}>
+                          <SelectTrigger variant="l-border" className="w-full">
+                            <SelectValue placeholder={tiposIngresoDisponibles.length === 0 ? 'Sin tipos disponibles' : 'Selecciona tipo de ingreso'}>
+                              {(v: string) => v ? (tipoIngresoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`)?.nombre ?? v) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {tiposIngresoDisponibles.map((t) => (
+                              <SelectItem key={t.codigo} value={String(t.codigo)}>{t.nombre}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button type="button" variant="outline" disabled={!otroSeleccion} onClick={handleAgregarOtro} className="shrink-0">
+                        <Plus className="mr-2 h-3.5 w-3.5" /> Agregar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {otrosLoading ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Cargando otros ingresos...</p>
+                ) : (
+                  <>
+                    <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-x-auto outline-none">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30">
+                            <TableHead className="w-64">Tipo Ingreso</TableHead>
+                            <TableHead>Forma Pago</TableHead>
+                            <TableHead className="text-right">Monto</TableHead>
+                            <TableHead className="text-right">Hasta Monto</TableHead>
+                            <TableHead className="text-center">Mora</TableHead>
+                            <TableHead className="w-28">Partir De</TableHead>
+                            <TableHead className="w-28">Aplicar Hasta</TableHead>
+                            {isEditing && <TableHead className="sticky right-0 z-20 w-10 bg-muted/30" />}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {otros.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={isEditing ? 8 : 7} className="py-8 text-center text-sm text-muted-foreground">
+                                No hay otros ingresos asociados.
+                              </TableCell>
+                            </TableRow>
+                          ) : otros.map((o, idx) => {
+                            const tipo = tipoIngresoMap.get(`${o.empresa}-${o.proyecto}-${o.tipo_otros}`)
+                            const editableFila = isEditing && tipo?.editable === 1
+                            const esPorcentaje = (tipo?.forma_pago ?? 0) !== 1
+                            return (
+                              <TableRow key={o.tipo_otros}>
+                                <TableCell>{tipo?.nombre ?? `#${o.tipo_otros}`}</TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {tipo ? (FORMA_CALCULO_OTROS[tipo.forma_pago] ?? `#${tipo.forma_pago}`) : ''}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {editableFila ? (
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Input variant="l-border" type="number" step="0.01" value={o.monto}
+                                        className="text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        onChange={(e) => handleOtroChange(idx, 'monto', Number(e.target.value) || 0)} />
+                                      {esPorcentaje && <span className="text-sm text-muted-foreground shrink-0">%</span>}
+                                    </div>
+                                  ) : `${fmtNum(o.monto)}${esPorcentaje ? ' %' : ''}`}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {editableFila ? (
+                                    <Input variant="l-border" type="number" step="0.01" value={o.hasta_monto}
+                                      className="text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      onChange={(e) => handleOtroChange(idx, 'hasta_monto', Number(e.target.value) || 0)} />
+                                  ) : fmtNum(o.hasta_monto)}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {editableFila ? (
+                                    <Checkbox checked={!!o.mora} onCheckedChange={(c) => handleOtroChange(idx, 'mora', c ? 1 : 0)} />
+                                  ) : (o.mora ? 'Si' : 'No')}
+                                </TableCell>
+                                <TableCell>
+                                  {isEditing ? (
+                                    <Input variant="l-border" type="date" value={o.partir_de} onChange={(e) => handleOtroChange(idx, 'partir_de', e.target.value)} />
+                                  ) : fmtDate(o.partir_de)}
+                                </TableCell>
+                                <TableCell>
+                                  {isEditing ? (
+                                    <Input variant="l-border" type="date" value={o.aplicar_hasta === '1900-01-01' ? '' : o.aplicar_hasta} onChange={(e) => handleOtroChange(idx, 'aplicar_hasta', e.target.value || '1900-01-01')} />
+                                  ) : (o.aplicar_hasta && o.aplicar_hasta !== '1900-01-01' ? fmtDate(o.aplicar_hasta) : '—')}
+                                </TableCell>
+                                {isEditing && (
+                                  <TableCell className="sticky right-0 z-20 bg-card">
+                                    <button
+                                      type="button"
+                                      aria-label="Quitar otro ingreso"
+                                      onClick={() => handleQuitarOtro(idx)}
+                                      className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            )
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground px-1">
+                      {otros.length} registro{otros.length !== 1 ? 's' : ''}
+                    </p>
+                  </>
+                )}
+              </div>
+            </TabsContent>
+
             {/* Tab Documentos */}
             {viewTarget && (
               <TabsContent value="documentos" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
@@ -1867,9 +2084,14 @@ export function PromesasClient({
           <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
             {!isEditing ? (
               <div className="flex w-full items-center justify-between">
-                <Button variant="ghost" size="sm" onClick={() => setAuditTarget(viewTarget)}>
-                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
-                </Button>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => setAuditTarget(viewTarget)}>
+                    <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setPlanPagoTarget(viewTarget)}>
+                    <Receipt className="mr-1.5 h-3.5 w-3.5" /> Plan Pagos
+                  </Button>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
                   {puedeModificar && (
@@ -1939,6 +2161,19 @@ export function PromesasClient({
           cuenta={auditTarget.cuenta}
           registroId={{ empresa: auditTarget.empresa, proyecto: auditTarget.proyecto, numero: auditTarget.numero }}
           titulo={String(auditTarget.numero)}
+        />
+      )}
+
+      {/* Plan de Pagos */}
+      {planPagoTarget && (
+        <PlanPagoDialog
+          open={!!planPagoTarget}
+          onOpenChange={(o) => !o && setPlanPagoTarget(null)}
+          promesa={planPagoTarget}
+          empresaNombre={empresaMap.get(planPagoTarget.empresa)}
+          proyectoNombre={proyectoMap.get(`${planPagoTarget.empresa}-${planPagoTarget.proyecto}`)}
+          clienteNombre={clienteMap.get(`${planPagoTarget.empresa}-${planPagoTarget.proyecto}-${planPagoTarget.cliente}`)}
+          faseNombre={faseMap.get(`${planPagoTarget.empresa}-${planPagoTarget.proyecto}-${planPagoTarget.fase}`)}
         />
       )}
     </div>

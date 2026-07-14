@@ -7,6 +7,7 @@ import { getLotes } from '@/app/actions/lotes'
 import { getClientes } from '@/app/actions/clientes'
 import { getVendedores } from '@/app/actions/vendedores'
 import { getTiposDocumento } from '@/app/actions/tipos-documento'
+import { getTiposIngresos } from '@/app/actions/tipos-ingresos'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { createClient } from '@/lib/supabase/server'
 import { PERMISOS } from '@/lib/permisos'
@@ -16,7 +17,7 @@ export default async function PromesasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [promesas, empresas, proyectos, fases, manzanas, lotes, clientes, vendedores, tiposDocumento, permisos] = await Promise.all([
+  const [promesas, empresas, proyectos, fases, manzanas, lotes, clientes, vendedores, tiposDocumento, tiposIngreso, permisos] = await Promise.all([
     getPromesas().catch((e: Error) => { console.error('getPromesas:', e.message); return [] }),
     getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] }),
     getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] }),
@@ -26,6 +27,7 @@ export default async function PromesasPage() {
     getClientes().catch((e: Error) => { console.error('getClientes:', e.message); return [] }),
     getVendedores().catch((e: Error) => { console.error('getVendedores:', e.message); return [] }),
     getTiposDocumento().catch((e: Error) => { console.error('getTiposDocumento:', e.message); return [] }),
+    getTiposIngresos().catch((e: Error) => { console.error('getTiposIngresos:', e.message); return [] }),
     getPermisosDetalle(PERMISOS.PRE_OPE),
   ])
 
@@ -40,6 +42,7 @@ export default async function PromesasPage() {
       clientes={clientes}
       vendedores={vendedores}
       tiposDocumento={tiposDocumento}
+      tiposIngreso={tiposIngreso}
       userId={user?.id ?? ''}
       puedeAgregar={permisos.agregar}
       puedeModificar={permisos.modificar}

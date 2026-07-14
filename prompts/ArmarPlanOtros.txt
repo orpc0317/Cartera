@@ -1,0 +1,89 @@
+Public Function ArmarPlanOtros(pFecha As Date, pEmpresa As Integer, pProyecto As Integer, pPromesa As Long, pTrans As Byte) As Byte
+' rutina que arma el plan de pagos
+Dim vX%, vFecha As Date, vbEjecuto As Boolean
+Dim vMonto#, vMontoAcumulado#, vCapitalPagado#
+Dim vSql$, vRs As Recordset, vRs1 As Recordset
+    
+    ' Inicia variables
+    vbEjecuto = True
+    
+    ' Elimina el plan otros existente
+    vSql$ = "DELETE FROM t_plan_otros"
+    If pEmpresa > 0 Then vSql$ = vSql$ & " WHERE empresa = " & pEmpresa
+    If pProyecto > 0 Then vSql$ = vSql$ & " AND proyecto = " & pProyecto
+    If pPromesa > 0 Then vSql$ = vSql$ & " AND promesa = " & pPromesa
+    vgConn.Execute vSql$, dbExecDirect
+    
+    ' Obtiene los datos de la promesa
+    vSql$ = "SELECT a.*, b.forma_pago FROM t_promesa_otros a, t_tipo_otros_ingresos b WHERE a.empresa = b.empresa AND a.proyecto = b.proyecto AND a.tipo_otros = b.codigo"
+    If pEmpresa > 0 Then vSql$ = vSql$ & " AND a.empresa = " & pEmpresa
+    If pProyecto > 0 Then vSql$ = vSql$ & " AND a.proyecto = " & pProyecto
+    If pPromesa > 0 Then vSql$ = vSql$ & " AND a.promesa = " & pPromesa
+    vSql$ = vSql$ & " ORDER BY a.empresa, a.proyecto, a.promesa, a.secuencia"
+    Set vRs = vgConn.OpenRecordset(vSql$, dbOpenSnapshot, dbExecDirect)
+    If vRs.RecordCount > 0 Then
+        vRs.MoveLast 0: vRs.MoveFirst
+        Do While Not vRs.EOF And vbEjecuto
+            ' Obtiene el plan de pagos
+            vSql$ = "SELECT a.*, b.valor_lote, b.monto_enganche, b.subsidio FROM t_plan_pago a, t_promesa b WHERE a.empresa = b.empresa AND a.proyecto = b.proyecto AND a.promesa = b.numero" & _
+            " AND a.empresa = " & vRs("empresa") & " AND a.proyecto = " & vRs("proyecto") & " AND a.promesa = " & vRs("promesa") & " AND a.tipo_cuota = 2 ORDER BY a.fecha, a.cuota"
+            Set vRs1 = vgConn.OpenRecordset(vSql$, dbOpenSnapshot, dbExecDirect)
+            If vRs1.RecordCount > 0 Then
+                ' Inicializa variables
+                vCapitalPagado# = 0
+                vMontoAcumulado# = 0
+                
+                Do While Not vRs1.EOF And vbEjecuto
+                    ' Valida si por la fecha aplica a esta cuota
+                    If Format(vRs("aplicar_hasta"), cgFecha$) = Format(cgFechaNull$, cgFecha$) Or CDate(Format(vRs1("fecha"), cgFecha$)) <= CDate(Format(vRs("aplicar_hasta"), cgFecha$)) Then
+                        ' Inicializa variables
+                        If Val(Format(vRs("hasta_monto"), cgN2DS$)) > Val(Format(vMontoAcumulado#, cgN2DS$)) Or Val(Format(vRs("hasta_monto"), cgN2DS$)) = 0 Then
+                            Select Case vRs("forma_pago")
+                                Case 1 ' Monto Mensual Fijo
+                                    vMonto# = vRs("monto")
+                                Case 2 ' % (Anual) Precio Lote
+                                    vMonto# = Val(Format(vRs1("valor_lote") * vRs("monto") / 100 / 12, cgN2DS$))
+                                Case 3 ' % (Anual) Precio Lote - Enganche
+                                    vMonto# = Val(Format((vRs1("valor_lote") - vRs1("monto_enganche")) * vRs("monto") / 100 / 12, cgN2DS$))
+                                Case 4 ' % (Anual) Saldo Capital
+                                    vMonto# = Val(Format((vRs1("valor_lote") - vRs1("monto_enganche") - vRs1("subsidio") - vCapitalPagado#) * vRs("monto") / 100 / 12, cgN2DS$))
+                                Case 5 ' % Capital Cuota
+                                    vMonto# = Val(Format(vRs1("capital") * vRs("monto") / 100, cgN2DS$))
+                            End Select
+                            If Val(Format(vRs("hasta_monto"), cgN2DS$)) > 0 Then
+                                If (vMontoAcumulado# + vMonto#) > Val(Format(vRs("hasta_monto"), cgN2DS$)) Then
+                                    vMonto# = Val(Format(Val(Format(vRs("hasta_monto"), cgN2DS$)) - vMontoAcumulado#, cgN2DS$))
+                                End If
+                            End If
+                            vMontoAcumulado# = vMontoAcumulado# + vMonto#
+                        Else: vMonto# = 0
+                        End If
+                        vCapitalPagado# = vCapitalPagado# + vRs1("capital")
+                        
+                        ' Inserta registro
+                        If Val(Format(vMonto#, cgN2DS$)) > 0 Then
+                            vSql$ = "INSERT INTO t_plan_otros (empresa, proyecto, promesa, secuencia, fecha, tipo_cuota, cuota, monto)" & _
+                            " VALUES (" & vRs("empresa") & "," & vRs("proyecto") & "," & vRs("promesa") & "," & vRs("secuencia") & _
+                            "," & f$ & Format(vRs1("fecha"), vgFechaBase$) & f$ & "," & vRs1("tipo_cuota") & "," & vRs1("cuota") & "," & vMonto# & ")"
+                            vgConn.Execute vSql$, dbExecDirect
+                            If vgConn.RecordsAffected <= 0 Then vbEjecuto = False
+                        End If
+                        
+                        ' Pasa al siguiente registro
+                        vRs1.MoveNext
+                        DoEvents
+                    End If
+                Loop
+            End If
+            vRs1.Close: Set vRs1 = Nothing
+            
+            ' Pasa al siguiente registro
+            vRs.MoveNext
+            DoEvents
+        Loop
+    End If
+    vRs.Close: Set vRs = Nothing
+
+    ' Devuelve resultado
+    ArmarPlanOtros = IIF(vbEjecuto,1,0)
+End Function
