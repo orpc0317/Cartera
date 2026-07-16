@@ -13,6 +13,7 @@ export type PlanPagoCuota = {
   mora: number
   mora_pagado: number
   estado: number // 0 Corriente, 1 Atrasada, 2 Pagada, 3 Pendiente
+  fecha_modifico: string // control de concurrencia optimista (no se muestra en UI)
 }
 
 // Un "otro ingreso" ya resuelto contra t_tipo_ingreso, para una cuota especifica

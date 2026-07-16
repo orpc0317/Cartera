@@ -36,6 +36,7 @@ import {
   CircleDollarSign,
   ScrollText,
   IdCard,
+  HandCoins,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -128,7 +129,7 @@ const NAV: NavItem[] = [
     children: [
       { label: 'Serie Recibos',  href: '/dashboard/cuentas-cobrar/series-recibos', icon: Receipt,       separator: 'Catalogo',     permiso: PERMISOS.SER_REC },
       { label: 'Tipos Ingresos', href: '/dashboard/cuentas-cobrar/tipos-ingresos', icon: Tags,                                     permiso: PERMISOS.TIN_CAT },
-      { label: 'Operaciones',    href: '#', icon: ClipboardList, separator: 'Operaciones', comingSoon: true },
+      { label: 'Pago Cuotas',    href: '/dashboard/cuentas-cobrar/operaciones/pago-cuotas', icon: HandCoins, separator: 'Operaciones', permiso: PERMISOS.PAG_CUO },
       { label: 'Consultas',      href: '#', icon: BarChart3,     separator: 'Consultas',   comingSoon: true },
     ],
   },

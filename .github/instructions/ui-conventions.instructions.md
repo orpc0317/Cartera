@@ -32,8 +32,7 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Tasas de Cambio   | `teal-100 / teal-600`         |
 | Depositar Pagos   | `pink-100 / pink-600`         |
 | Transacciones Bancarias | `fuchsia-100 / fuchsia-600` |
-| Tipos Documento   | `slate-100 / slate-600`       |
-
+| Tipos Documento   | `slate-100 / slate-600`       || Pago Cuotas       | `red-100 / red-600`         |
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
 ---
@@ -84,6 +83,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Depositar Pagos   | `CircleDollarSign` |
 | Transacciones Bancarias | `ScrollText` |
 | Tipos Documento   | `IdCard`         |
+| Pago Cuotas       | `HandCoins`      |
 
 ---
 

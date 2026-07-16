@@ -18,7 +18,7 @@ export async function getPlanPago(
     admin
       .schema('cartera')
       .from('t_plan_pago')
-      .select('tipo_cuota, cuota, fecha, capital, capital_pagado, interes, interes_pagado, mora, mora_pagado, estado')
+      .select('tipo_cuota, cuota, fecha, capital, capital_pagado, interes, interes_pagado, mora, mora_pagado, estado, fecha_modifico')
       .eq('cuenta', cuenta)
       .eq('empresa', empresa)
       .eq('proyecto', proyecto)

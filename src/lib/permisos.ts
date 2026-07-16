@@ -23,6 +23,7 @@ export const PERMISOS = {
   DEP_BAN:   'DEP.BAN',
   TRX_BAN:   'TRX.BAN',
   TDO_CAT:   'TDO.CAT',
+  PAG_CUO:   'PAG.CUO',
 } as const
 
 export type Permiso = (typeof PERMISOS)[keyof typeof PERMISOS]
