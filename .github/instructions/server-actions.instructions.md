@@ -190,6 +190,94 @@ GRANT EXECUTE ON FUNCTION cartera.fn_nombre_funcion(...) TO service_role;
 
 ---
 
+## writeAudit — obligatorio en toda mutación (INSERT/UPDATE/DELETE)
+
+Toda función `create*`/`update*`/`delete*` debe dejar rastro en `cartera.t_audit_log` llamando a
+`writeAudit` **inmediatamente después** de que la mutación se confirme exitosa. **No existe ningún
+trigger de base de datos que haga esto automáticamente** — es 100% responsabilidad de la Server
+Action. Sin esta llamada, el botón "Historial" (`components.instructions.md § AF`) de esa pantalla
+queda permanentemente vacío para los registros afectados (bug real ya detectado en Reservas y en
+Mantenimiento Pagos — ver por qué abajo).
+
+### Snippet (copiar en cada archivo de actions que no lo tenga ya — se duplica por archivo, no se comparte)
+
+```ts
+async function getAuditUser() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { userId: null, email: null, nombre: null }
+  const admin = createAdminClient()
+  const { data } = await admin
+    .schema('cartera')
+    .from('t_usuario')
+    .select('nombres, apellidos')
+    .eq('userid', user.id)
+    .maybeSingle()
+  const nombre = data
+    ? `${data.nombres ?? ''} ${data.apellidos ?? ''}`.trim() || null
+    : null
+  return { userId: user.id, email: user.email ?? null, nombre }
+}
+
+async function writeAudit(
+  admin: ReturnType<typeof createAdminClient>,
+  opts: {
+    tabla: string
+    operacion: 'INSERT' | 'UPDATE' | 'DELETE'
+    cuenta: string
+    registroId: Record<string, unknown>
+    datoAntes: Record<string, unknown> | null
+    datoDespues: Record<string, unknown> | null
+    userId: string | null
+    email: string | null
+    nombre: string | null
+  },
+) {
+  await admin.schema('cartera').from('t_audit_log').insert({
+    tabla: opts.tabla,
+    operacion: opts.operacion,
+    cuenta: opts.cuenta,
+    registro_id: opts.registroId,
+    datos_antes: opts.datoAntes,
+    datos_despues: opts.datoDespues,
+    usuario_id: opts.userId,
+    usuario_email: opts.email,
+    usuario_nombre: opts.nombre,
+  })
+}
+```
+
+- `INSERT`: `datoAntes: null`, `datoDespues: <fila creada completa>`.
+- `UPDATE`: `datoAntes: <fila antes del update>`, `datoDespues: <fila despues>`.
+- `DELETE`: `datoAntes: <fila antes de borrar>`, `datoDespues: null`.
+- `registroId` debe incluir **todos** los campos de la PK compuesta — debe coincidir exactamente
+  con el `registroId` que arma el `<AuditLogDialog>` en el cliente (ver
+  `components.instructions.md § AF`).
+
+### Regla obligatoria — aplica TAMBIEN a creación/edición vía función RPC (`SECURITY DEFINER`)
+
+Cuando la mutación se delega a una función Postgres (`fn_crear_reserva`,
+`fn_registrar_pago_cuotas`, `fn_crear_promesa`, etc. — ver "Funciones RPC" arriba), la llamada a
+`writeAudit` sigue siendo obligatoria **desde la Server Action que invoca el RPC**, nunca desde la
+función SQL. Es exactamente aquí donde se escapa más fácil el paso, porque no hay un `.insert()`
+explícito en TS que recuerde hacerlo. Dos casos:
+
+1. **La función YA devuelve la fila creada/actualizada** en su `jsonb` de retorno (ej.
+   `fn_crear_promesa` devuelve `{ ok, promesa: {...} }`) → usar ese valor directo como
+   `datoDespues`, sin queries extra.
+2. **La función NO devuelve la fila** (ej. `fn_crear_reserva` solo devuelve `{ok, numero, recibo}`,
+   `fn_registrar_pago_cuotas` solo `{numero_recibo, promesa_pagada}`) → hacer un `SELECT` de vuelta
+   por la clave (empresa/proyecto/serie/numero, o lo que corresponda) **antes** de llamar
+   `writeAudit`. Nunca pasar `datoDespues: null` para una mutación que sí ocurrió — inutiliza el
+   historial para ese registro.
+
+**Checklist rápido antes de dar por completa cualquier función `create*`/`update*`/`delete*` nueva
+(o que llame a un RPC nuevo):** ¿hay una llamada a `writeAudit` después de la mutación exitosa? Si
+la respuesta es no, agregarla — no asumir que "ya se hará después" o que "no aplica porque es una
+función SQL".
+
+---
+
 ## Optimistic concurrency control (modifico_fecha)
 
 Every UPDATE guards against concurrent edits using `modifico_fecha` as a version token.

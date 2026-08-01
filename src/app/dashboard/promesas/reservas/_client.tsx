@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador, SerieRecibo, ProyectoMoneda } from '@/lib/types/proyectos'
+import type { TasaCambio } from '@/lib/types/tasas-cambio'
 import { createReserva, type ReservaRow } from '@/app/actions/lotes'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 
@@ -403,6 +404,7 @@ interface Props {
   cobradores:        Cobrador[]
   seriesRecibo:      SerieRecibo[]
   proyectoMonedas:   ProyectoMoneda[]
+  tasasCambio:       TasaCambio[]
   puedeAgregar:      boolean
   userId:            string
 }
@@ -471,7 +473,7 @@ function mapReservas(rows: ReservaRow[]): Reserva[] {
 
 export function ReservasClient({
   reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes,
-  bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, puedeAgregar, userId,
+  bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, tasasCambio, puedeAgregar, userId,
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -598,6 +600,25 @@ export function ReservasClient({
     () => proyectoMonedas.filter((m) => m.activo === 1 && m.empresa === form.empresa && m.proyecto === form.proyecto),
     [proyectoMonedas, form.empresa, form.proyecto],
   )
+
+  // Moneda predeterminada del proyecto (moneda base del Plan de Pagos)
+  const monedaBase = useMemo(
+    () => proyectoMonedas.find((m) => m.activo === 1 && m.empresa === form.empresa && m.proyecto === form.proyecto && m.predeterminado === 1)?.moneda ?? '',
+    [proyectoMonedas, form.empresa, form.proyecto],
+  )
+
+  // Tasa de cambio vigente para la moneda seleccionada en la fecha de la reserva.
+  // Se recalcula automaticamente (useMemo) cada vez que cambia fecha o moneda. Esta
+  // es la tasa que se graba en t_recibo_caja.tasa_cambio y la que luego usa
+  // fn_crear_promesa para convertir el monto de la reserva a la moneda base del
+  // Plan de Pagos cuando la reserva se convierte en promesa — no se recalcula despues.
+  const tasaCambio = useMemo(() => {
+    if (!form.moneda || form.moneda === monedaBase) return 1
+    const candidatos = tasasCambio
+      .filter((t) => t.empresa === form.empresa && t.proyecto === form.proyecto && t.moneda === form.moneda && t.fecha <= form.fecha)
+      .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
+    return candidatos[0]?.tasa_cambio ?? null
+  }, [tasasCambio, form.empresa, form.proyecto, form.moneda, monedaBase, form.fecha])
 
   // Bancos filtrados por empresa + proyecto
   const bancosPorProyecto = useMemo(
@@ -737,25 +758,28 @@ export function ReservasClient({
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `reservas_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return DEFAULT_PREFS
-      const parsed: ColPref[] = JSON.parse(saved)
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      return [
+      setColPrefs([
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ]
-    } catch { return DEFAULT_PREFS }
-  })
+      ])
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
-  }, [colPrefs, STORAGE_KEY])
-
-  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
+  function saveColPrefs(next: ColPref[]) {
+    setColPrefs(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
+  }
   function toggleCol(key: string) { saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p)) }
   function moveCol(key: string, dir: -1 | 1) {
     const idx = colPrefs.findIndex((p) => p.key === key)
@@ -857,6 +881,7 @@ export function ReservasClient({
     if (!form.cliente)    { toast.error('Selecciona un cliente.');                     return }
     if (!form.fecha)      { toast.error('La fecha es requerida.');                     return }
     if (!form.moneda)     { toast.error('Selecciona la moneda.');                      return }
+    if (form.moneda !== monedaBase && !tasaCambio) { toast.error('No hay tasa de cambio registrada para esa moneda en esta fecha.'); return }
     const montoNum = parseFloat(form.monto.replace(',', '.'))
     if (isNaN(montoNum) || montoNum <= 0) { toast.error('El monto debe ser mayor a 0.'); return }
     if (loteSeleccionado && montoNum > loteSeleccionado.valor) {
@@ -898,6 +923,7 @@ export function ReservasClient({
         num_documento:    form.num_documento,
         cuenta_bancaria:  form.cuenta_bancaria,
         moneda:           form.moneda,
+        tasa_cambio:      tasaCambio ?? 1,
       },
       loteLastModified,
     )
@@ -1685,6 +1711,20 @@ export function ReservasClient({
                     </div>
 
                   </div>
+
+                  {form.moneda && form.moneda !== monedaBase && (
+                    <div className="col-span-2">
+                      <ViewField
+                        label={`Tasa de Cambio (${form.moneda} > ${monedaBase})`}
+                        value={tasaCambio ? tasaCambio.toFixed(4) : undefined}
+                      />
+                      {!tasaCambio && (
+                        <p className="mt-1 text-xs font-medium text-red-600">
+                          No hay tasa de cambio registrada para {form.moneda} en esta fecha.
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Cliente */}
                   <div className="col-span-2 grid gap-1">

@@ -48,25 +48,30 @@ Las secciones se distribuyen en dos columnas separadas por `<div className="w-px
 
 ---
 
-## ViewField + SectionDivider
+## ViewField + SectionDivider + SegmentCard
 
 → **Copiar verbatim de `components.instructions.md § N · ViewField + SectionDivider`**  
 Reglas de valores vacíos y numéricos también están en esa sección.
+
+**Estándar 2026-08:** cada segmento (bloque bajo un título) se envuelve en `<SegmentCard label="...">`
+— ya no se usa `<SectionDivider />` suelto seguido de sus campos hermanos. Aplica igual en modo Ver,
+Editar y Crear.
 
 ---
 
 ## View mode grid
 
 ```tsx
-<div className="grid grid-cols-2 gap-3">
-  <SectionDivider label="SECCION" />
-  <div className="col-span-2"><ViewField label="Nombre" value={...} /></div>
-  <ViewField label="Campo A" value={...} />
-  <ViewField label="Campo B" value={...} />
+<div className="grid grid-cols-2 gap-2">
+  <SegmentCard label="SECCION">
+    <div className="col-span-2"><ViewField label="Nombre" value={...} /></div>
+    <ViewField label="Campo A" value={...} />
+    <ViewField label="Campo B" value={...} />
+  </SegmentCard>
 </div>
 ```
 
-- `gap-3` between cards. Full-width: wrap in `<div className="col-span-2">`. Half-width: no wrapper.
+- `SegmentCard` ya trae `grid grid-cols-2 gap-2` interno — no repetir gap en el contenido. Full-width: wrap in `<div className="col-span-2">`. Half-width: no wrapper.
 - País: show flag + nombre in a custom div (see ui-conventions.instructions.md geo rules).
 - Boolean: `<Checkbox>` free-floating — **no card container**. Use `<div className="flex items-center gap-2 py-1"><Checkbox checked={!!record.field} disabled /><span className="text-[11px] font-semibold tracking-wider text-muted-foreground">Label</span></div>`. Same rule in edit mode: `<div className="flex items-center gap-2 py-1"><Checkbox id="..." .../><Label htmlFor="...">Label</Label></div>` — never wrap in `rounded-lg bg-muted/50 border` containers.
 - Logo: `<img>` inside a `col-span-2` muted card.

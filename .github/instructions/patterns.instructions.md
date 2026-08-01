@@ -5,6 +5,8 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 
 # Cartera — Screen Patterns
 
+> **Estos patrones son SOLO de layout/composición** — dónde va cada bloque, cuántos paneles hay, dónde vive el botón de export, etc. **Ninguno redefine cómo luce o se comporta un primitivo individual** (Input, Select, Checkbox, Label, tabla, modal). Un `<Input>` es el mismo `<Input>` (§ D de `components.instructions.md` + el contrato visual de `ui-conventions.instructions.md`) sin importar en cuál de estos patrones aparezca, o en un patrón futuro todavía no listado aquí. Si al aplicar un patrón nuevo surge la duda de "¿este campo necesita un estilo distinto porque el patrón es distinto?", la respuesta por defecto es **no** — usa el snippet universal y sigue adelante.
+
 ## Pattern selection guide
 
 Use this decision tree to pick the right layout before writing any code:
@@ -104,7 +106,7 @@ Analytical listing optimized for filtering and export. No create/edit modals.
 ### Rules
 
 - Export button lives in the **header** (right side), not in the toolbar.
-- Toolbar can contain date-range pickers, multi-selects, and text search — more controls than a standard CRUD toolbar.
+- Toolbar can contain date-range pickers, multi-selects, and text search — more controls than a standard CRUD toolbar. **Every one of these fields is still a normal `Input`/`Select`** — apply `variant="l-border"` and the `<Label>` classes from `ui-conventions.instructions.md § Label & field-wrapper visual standards` exactly as in an edit-mode form. There is no separate "toolbar/filter" style.
 - No row action dropdown (no edit/delete). Rows may be clickable to open a read-only detail drawer.
 - Summary / totals row pinned at the bottom of the table when applicable.
 - No `ColumnManager` unless the column count exceeds 8. Prefer a fixed, well-chosen set of columns.

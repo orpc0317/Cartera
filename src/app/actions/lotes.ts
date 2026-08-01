@@ -389,6 +389,7 @@ export type CreateReservaInput = {
   num_documento:     string
   cuenta_bancaria:   number
   moneda:            string   // moneda del lote
+  tasa_cambio:       number   // tasa vigente el dia de la reserva, resuelta por la pantalla
 }
 
 export type CreateReservaResult =
@@ -413,6 +414,9 @@ export async function createReserva(
   const reciboManual = form.recibo_automatico ? 0 : parseInt(form.recibo, 10)
   if (!form.recibo_automatico && isNaN(reciboManual))
     return { ok: false, error: 'Número de recibo inválido.' }
+
+  if (!form.tasa_cambio || form.tasa_cambio <= 0)
+    return { ok: false, error: 'La tasa de cambio debe ser mayor a cero.' }
 
   const admin = createAdminClient()
 
@@ -439,6 +443,7 @@ export async function createReserva(
       p_numero_documento:    form.num_documento,
       p_cuenta_deposito:     form.cuenta_bancaria,
       p_moneda:              form.moneda,
+      p_tasa_cambio:         form.tasa_cambio,
       p_agrego_usuario:      auditUser.userId,
       p_lote_modifico_fecha: loteLastModified ?? '1900-01-01T00:00:00',
       p_cliente_nombre:      form.cliente_nombre,
@@ -449,6 +454,34 @@ export async function createReserva(
 
   const result = data as { ok: boolean; error?: string; numero?: number; recibo?: number }
   if (!result.ok) return { ok: false, error: result.error ?? 'Error desconocido.' }
+
+  // fn_crear_reserva no devuelve las filas creadas (solo numero/recibo) — se
+  // consultan aqui para dejar el mismo rastro de auditoria "INSERT" que tiene
+  // el resto de entidades del sistema (Historial vacio en Reservas/Pagos era
+  // un hueco: la creacion pasa por RPC, no por el flujo estandar create<Entidad>
+  // que ya llama writeAudit automaticamente).
+  const [{ data: nuevaReserva }, { data: nuevoRecibo }] = await Promise.all([
+    admin.schema('cartera').from('t_reserva').select('*')
+      .eq('cuenta', cuenta).eq('numero', result.numero!).maybeSingle(),
+    admin.schema('cartera').from('t_recibo_caja').select('*')
+      .eq('cuenta', cuenta).eq('empresa', form.empresa).eq('proyecto', form.proyecto)
+      .eq('serie', form.serie_recibo).eq('numero', result.recibo!).maybeSingle(),
+  ])
+
+  await Promise.all([
+    writeAudit(admin, {
+      tabla: 't_reserva', operacion: 'INSERT', cuenta,
+      registroId: { numero: result.numero },
+      datoAntes: null, datoDespues: nuevaReserva as Record<string, unknown> | null,
+      ...auditUser,
+    }),
+    writeAudit(admin, {
+      tabla: 't_recibo_caja', operacion: 'INSERT', cuenta,
+      registroId: { empresa: form.empresa, proyecto: form.proyecto, serie: form.serie_recibo, numero: result.recibo },
+      datoAntes: null, datoDespues: nuevoRecibo as Record<string, unknown> | null,
+      ...auditUser,
+    }),
+  ])
 
   return { ok: true, numero: result.numero!, recibo: result.recibo! }
 }

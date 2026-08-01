@@ -9,6 +9,15 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 Copia cada sección verbatim — reemplaza los `<angle-bracket>` placeholders.  
 **No inventar alternativas.** Todo está aquí.
 
+> **Alcance — agnóstico al patrón de pantalla.** Cada § de este archivo describe un **tipo de campo/control**
+> (Input, Select, Checkbox, tabla, modal, etc.), no un tipo de pantalla. Si un `<Input>` de texto aparece en
+> el grid de edición de un CRUD, en un panel de filtros, en un Drawer, en una pantalla Maestro-Detalle,
+> Transacción, Reporte, o en cualquier patrón nuevo que no esté todavía en `patterns.instructions.md`, usa
+> **el mismo § D** sin modificarlo. El patrón de pantalla (`patterns.instructions.md`) define layout y
+> composición — **nunca** redefine cómo luce o se comporta un primitivo individual. Ante un campo que no
+> encaje en ningún § existente, detente y pregunta antes de improvisar un estilo nuevo (no asumas que un
+> contexto "distinto" (toolbar, filtro, wizard, dashboard) justifica una variante propia).
+
 ## Índice rápido
 
 | § | Objeto |
@@ -343,41 +352,28 @@ State: `const [deleteTarget, setDeleteTarget] = useState<<Entity> | null>(null)`
 
 ---
 
-## L · Row actions dropdown
+## L · Row action button (Ver)
+
+**Estándar 2026-08 — reemplaza el dropdown de acciones por fila.** La columna de acción de la tabla
+muestra **únicamente** el botón "Ver" — sin dropdown, sin chevron, sin `MoreHorizontal` — porque es la
+única acción de la fila. Editar, Historial, Eliminar y cualquier acción adicional propia de la entidad
+(ej. Plan Pagos, Anular) viven ahora dentro del **footer del modal Ver** como un grupo de botones —
+ver § R. Pantalla de referencia: `promesas/promesas/_client.tsx`.
 
 ```tsx
-<DropdownMenuTrigger
-  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium
-             transition-opacity hover:bg-accent hover:text-accent-foreground
-             focus-visible:outline-none opacity-0 group-hover:opacity-100"
+<button
+  type="button"
+  onClick={() => openView(row)}
+  title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+  className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
 >
-  <MoreHorizontal className="h-4 w-4" />
-</DropdownMenuTrigger>
-<DropdownMenuContent align="end">
-  <DropdownMenuItem onClick={() => openView(row)}>
-    <Eye className="mr-2 h-4 w-4" />
-    {puedeModificar ? 'Ver / Editar' : 'Ver'}
-  </DropdownMenuItem>
-  <DropdownMenuItem onClick={() => setAuditTarget(row)}>
-    <History className="mr-2 h-4 w-4" />
-    Historial
-  </DropdownMenuItem>
-  {puedeEliminar && (
-    <>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem
-        className="text-destructive focus:text-destructive"
-        onClick={() => setDeleteTarget(row)}
-      >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Eliminar
-      </DropdownMenuItem>
-    </>
-  )}
-</DropdownMenuContent>
+  <Eye className="h-4 w-4" />
+</button>
 ```
 
-> **`<DropdownMenuTrigger>` — no `asChild`** (Base UI does not support it). Put the className directly on the trigger.
+> **Ya no se usa `DropdownMenu`/`DropdownMenuTrigger`/`DropdownMenuContent`/`DropdownMenuItem`/`MoreHorizontal`
+> en la columna de acción de la fila.** Si el archivo no usa `DropdownMenu` en ningún otro lugar, elimina
+> ese import junto con `MoreHorizontal`.
 
 ---
 
@@ -522,7 +518,30 @@ function SectionDivider({ label }: { label: string }) {
     </div>
   )
 }
+
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
+      </div>
+    </div>
+  )
+}
 ```
+
+> **Estándar 2026-08 — `SegmentCard` reemplaza el uso suelto de `SectionDivider`.** Todo segmento
+> (bloque de campos bajo un título) en modo Ver, Editar **y** Crear debe envolverse en `<SegmentCard
+> label="...">...</SegmentCard>` en vez de `<SectionDivider label="..." />` + hermanos sueltos. El título
+> queda **arriba** de la caja (no dentro) — mismo look de `SectionDivider` (barra + texto uppercase),
+> solo que ahora el contenido del segmento queda visualmente agrupado en una caja con borde sutil.
+> `SectionDivider` se mantiene definido únicamente por compatibilidad de pantallas aún no migradas —
+> no usarlo directamente en pantallas nuevas ni en migraciones. Pantalla de referencia:
+> `promesas/promesas/_client.tsx`.
 
 ### Reglas ViewField
 
@@ -662,7 +681,9 @@ return (
 {/* ── State, computed vars, funciones ── ver § A, B, C antes de este JSX ── */}
 
 <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
-  if (!open && (similarWarning.length > 0 || deleteTarget !== null)) return
+  // Guard: no cerrar el modal Ver mientras haya un dialog anidado abierto desde el footer
+  // (Historial, Eliminar, o cualquier acción extra de la entidad) — ver base-ui-gotchas.instructions.md § 5
+  if (!open && (similarWarning.length > 0 || deleteTarget !== null || auditTarget !== null)) return
   setDialogOpen(open)
   if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
 }}>
@@ -697,39 +718,88 @@ return (
         {!isEditing && viewTarget ? (
           /* ── View mode — § O ── */
           <div className="grid grid-cols-2 gap-2">
-            {/* ViewField blocks */}
+            <SegmentCard label="SECCION">
+              {/* ViewField blocks de esta sección */}
+            </SegmentCard>
           </div>
         ) : (
           /* ── Edit mode — § P ── */
           <div className="grid grid-cols-2 gap-2">
-            {/* form fields */}
+            <SegmentCard label="SECCION">
+              {/* form fields de esta sección */}
+            </SegmentCard>
           </div>
         )}
       </TabsContent>
     </Tabs>
 
+    {/* Estándar 2026-08 — footer consolidado: sin botón "Cerrar" (la "x" del header ya cierra).
+        Historial + Eliminar (+ acciones extra de la entidad, ej. Plan Pagos/Anular) y Editar
+        quedan agrupados en una sola fila con variant="ghost", en el mismo orden mostrado abajo.
+        El footer tiene TRES ramas: Ver / Editar (existente) / Nuevo (crear) — ver § siguiente. */}
     <DialogFooter className="mt-4 shrink-0">
       {!isEditing && viewTarget ? (
-        <>
-          <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-          {puedeModificar && (
-            <Button onClick={startEdit} className="gap-2">
-              <Pencil className="h-3.5 w-3.5" /> Editar
+        /* ── Ver ── */
+        <div className="flex w-full items-center gap-1">
+          <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={() => setAuditTarget(viewTarget)}>
+            <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+          </Button>
+          {/* acciones extra de la entidad (ej. Plan Pagos, Anular) van aquí, mismo variant="ghost" +
+              mismo hover de acento si es una acción neutra; las de advertencia/peligro (Anular,
+              Desistir) conservan su propio color de texto y NO llevan el hover de acento */}
+          {puedeEliminar && (
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
             </Button>
           )}
-        </>
+          {puedeModificar && (
+            <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={startEdit}>
+              <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+            </Button>
+          )}
+        </div>
+      ) : viewTarget ? (
+        /* ── Editar (registro existente) — Cancelar + Guardar, sin cambios ── */
+        <div className="flex w-full justify-end gap-2">
+          <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
+        </div>
       ) : (
-        <>
-          <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
-          <Button onClick={handleSave} disabled={isPending}>
-            {isPending ? 'Guardando...' : 'Guardar'}
+        /* ── Nuevo (crear) — Estándar 2026-08: sin "Cancelar" (la "x" del header ya cierra),
+            Guardar como ghost button alineado a la derecha, mismo estilo que el footer Ver. */
+        <div className="flex w-full justify-end">
+          <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={handleSave} disabled={isPending}>
+            <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
           </Button>
-        </>
+        </div>
       )}
     </DialogFooter>
   </DialogContent>
 </Dialog>
 ```
+
+> **Orden fijo de botones en el footer (modo vista):** Historial → acciones extra de la entidad (si
+> las hay) → Eliminar → Editar. Todos `variant="ghost" size="sm"`, salvo Eliminar que además lleva
+> `className="text-destructive hover:text-destructive"`.
+>
+> **Hover difuso con color de acento (2026-08):** el hover gris por defecto de `variant="ghost"`
+> (`hover:bg-muted`) se reemplaza en TODOS los botones ghost **neutros** del footer (Historial,
+> Editar, Guardar de Nuevo, y cualquier acción extra no destructiva como Plan Pagos) por
+> `className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30"`, usando el `{accent}` de la
+> tabla maestra de colores (mismo tono `-50`/`dark:-950/30` que ya se usa para la fila activa de
+> la tabla — ver `ui-conventions.instructions.md`). Es un tinte difuso, no un color "bold": no se
+> toca el color del texto ni del ícono. Los botones con semántica de advertencia/peligro (Eliminar,
+> Anular, Desistir Reserva) **NO** llevan este hover de acento — conservan el hover gris por
+> defecto detrás de su propio `text-destructive` / `text-amber-700`, sin cambios.
+>
+> **Footer modo Nuevo (crear) vs Editar (existente):** aunque ambos comparten el mismo `isEditing`
+> interno, el footer los distingue por `viewTarget` (`null` = Nuevo, con valor = Editar existente).
+> En **Editar** el footer se queda igual que siempre: `Cancelar` (`variant="outline"`) + `Guardar`
+> (botón sólido). En **Nuevo** NO lleva botón Cancelar (la "x" del header ya cierra el modal) y
+> `Guardar` se estiliza igual que los botones del footer Ver (`variant="ghost" size="sm"`, icono
+> `Check` a la izquierda), alineado a la derecha con `justify-end` (sin `gap` extra al ser un solo
+> botón). Si la pantalla no tiene modo Editar (solo Crear/Ver, ej. Manzanas), la rama `isCreating`
+> completa usa este mismo patrón de Nuevo.
 
 
 
@@ -1191,6 +1261,10 @@ const <campo> = modo === '<opcionA>' ? <valorA> : <valorB>
 
 Mostrar en **todas** las pantallas CRUD. Permite ver el historial completo de INSERT/UPDATE/DELETE de un registro.
 
+> **Requisito del lado del servidor:** este botón solo funciona si la Server Action que crea/edita/elimina
+> el registro llama a `writeAudit` — ver la regla obligatoria en `server-actions.instructions.md § writeAudit`
+> (incluye el caso de creación vía función RPC `SECURITY DEFINER`, donde este paso se escapa fácil).
+
 ### Import
 
 ```ts
@@ -1203,13 +1277,12 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 const [auditTarget, setAuditTarget] = useState<<Entity> | null>(null)  // full row
 ```
 
-### Dropdown item (ya está en §L)
+### Botón en el footer del modal Ver (ya está en §L / §R)
 
 ```tsx
-<DropdownMenuItem onClick={() => setAuditTarget(row)}>
-  <History className="mr-2 h-4 w-4" />
-  Historial
-</DropdownMenuItem>
+<Button variant="ghost" size="sm" onClick={() => setAuditTarget(viewTarget)}>
+  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+</Button>
 ```
 
 ### JSX del componente
@@ -1279,22 +1352,26 @@ Aplica **exactamente igual** en modo vista y en modo edición (solo cambia `gap-
 <div className="flex gap-6 items-start">
 
   {/* Columna izquierda */}
-  <div className="flex-1 grid grid-cols-2 gap-3">   {/* gap-4 en edit mode */}
-    <SectionDivider label="SECCION A" />
-    {/* campos de la sección A */}
-    <SectionDivider label="SECCION B" />
-    {/* campos de la sección B */}
+  <div className="flex-1 grid grid-cols-2 gap-2">
+    <SegmentCard label="SECCION A">
+      {/* campos de la sección A */}
+    </SegmentCard>
+    <SegmentCard label="SECCION B">
+      {/* campos de la sección B */}
+    </SegmentCard>
   </div>
 
   {/* Separador vertical */}
   <div className="w-px self-stretch bg-primary/30" />
 
   {/* Columna derecha */}
-  <div className="flex-1 grid grid-cols-2 gap-3">   {/* gap-4 en edit mode */}
-    <SectionDivider label="SECCION C" />
-    {/* campos de la sección C */}
-    <SectionDivider label="SECCION D" />
-    {/* campos de la sección D */}
+  <div className="flex-1 grid grid-cols-2 gap-2">
+    <SegmentCard label="SECCION C">
+      {/* campos de la sección C */}
+    </SegmentCard>
+    <SegmentCard label="SECCION D">
+      {/* campos de la sección D */}
+    </SegmentCard>
   </div>
 
 </div>
@@ -1312,7 +1389,7 @@ Cuando una pestaña todavía no tiene contenido en la columna derecha, usar un `
 ### Reglas
 
 - **`gap-6`** en el flex exterior — provee 24 px a cada lado del separador. No reducir.
-- **`SectionDivider`** tiene `col-span-2` hardcodeado → funciona correctamente dentro de `flex-1 grid grid-cols-2`.
+- **`SegmentCard`** tiene `col-span-2` hardcodeado en su contenedor raíz → funciona correctamente dentro de `flex-1 grid grid-cols-2`.
 - **Anchos de campo** dentro de cada columna: `(full)` = `col-span-2`, `(half)` = una celda, `(third)` = igual que el estándar (ver `crud-screens.instructions.md`). Las reglas no cambian respecto al modal estrecho.
 - **Color del separador:** `bg-primary/30` — mismo tono que el acento del módulo. **No** usar colores de acento de módulo distintos.
 - **Distribución de secciones:** máximo ~3 secciones por columna. Distribuir equilibrando la altura visual entre columnas izquierda y derecha.

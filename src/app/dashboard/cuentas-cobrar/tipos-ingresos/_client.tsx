@@ -4,8 +4,8 @@ import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Trash2, Plus, Search,
-  History, Settings2, ChevronDown, ChevronUp, X, Tags, Download, MapPin,
+  Pencil, Trash2, Plus, Search, Eye,
+  History, Settings2, ChevronDown, ChevronUp, X, Tags, Download, MapPin, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,11 +23,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select, SelectContent, SelectItem,
@@ -117,6 +112,20 @@ function SectionDivider({ label }: { label: string }) {
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
       <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+    </div>
+  )
+}
+
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
+      </div>
     </div>
   )
 }
@@ -251,19 +260,7 @@ export function TiposIngresosClient({
   const [search, setSearch]       = useState('')
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
   const [colFilters, setColFilters] = useState<ColFilters>({})
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored) as ColPref[]
-        const allKeys = ALL_COLUMNS.map((c) => c.key)
-        const hasAll = allKeys.every((k) => parsed.some((p) => p.key === k))
-        if (hasAll) return parsed
-      }
-    } catch { /* ignore */ }
-    return DEFAULT_PREFS
-  })
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
 
   // ── Dialog state ─────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen]     = useState(false)
@@ -310,6 +307,20 @@ export function TiposIngresosClient({
   const montoLabel = formaCalculo === 1 ? 'Monto' : 'Porcentaje (%)'
 
   // ── Column prefs persistence ──────────────────────────────────────────────
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored) as ColPref[]
+        const allKeys = ALL_COLUMNS.map((c) => c.key)
+        const hasAll = allKeys.every((k) => parsed.some((p) => p.key === k))
+        if (hasAll) setColPrefs(parsed)
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* ignore */ }
   }, [colPrefs, STORAGE_KEY])
@@ -727,30 +738,14 @@ export function TiposIngresosClient({
                       }
                     })}
                     <TableCell className={`sticky right-0 z-10 ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(row)}>
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(row)}>
-                            <History className="mr-2 h-3.5 w-3.5" />Historial
-                          </DropdownMenuItem>
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteTarget(row)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => openView(row)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -764,7 +759,7 @@ export function TiposIngresosClient({
 
       {/* ── Main dialog ── */}
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
-        if (!open && similarWarning.length > 0) return
+        if (!open && (similarWarning.length > 0 || deleteTarget !== null || auditTarget !== null)) return
         setDialogOpen(open)
         if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
       }}>
@@ -808,26 +803,28 @@ export function TiposIngresosClient({
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda: IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                  <SectionDivider label="IDENTIFICACION" />
+                  <SegmentCard label="IDENTIFICACION">
                   <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa)} /></div>
                   <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} /></div>
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Codigo" value={String(viewTarget.codigo)} />
                     <div /><div />
                   </div>
+                  </SegmentCard>
 
-                  <SectionDivider label="GENERAL" />
+                  <SegmentCard label="GENERAL">
                   <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Etiqueta" value={viewTarget.etiqueta} />
                     <div /><div />
                   </div>
+                  </SegmentCard>
                   </div>
                   {/* Separador + columna derecha: FORMA PAGO, FACTURACION, OTROS PARAMETROS */}
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
 
-                  <SectionDivider label="FORMA PAGO" />
+                  <SegmentCard label="FORMA PAGO">
                   {/* Selection Buttons — view mode always disabled */}
                   <div className="col-span-2 flex gap-3">
                     <button type="button" className={selBtnCls(viewTarget.forma_pago === 0)} disabled>
@@ -889,12 +886,14 @@ export function TiposIngresosClient({
                       </div>
                     </>
                   )}
+                  </SegmentCard>
 
-                  <SectionDivider label="FACTURACION" />
+                  <SegmentCard label="FACTURACION">
                   <ViewField label="Item" value={viewTarget.facturacion_item} />
                   <ViewField label="Descripcion" value={viewTarget.facturacion_descripcion} />
+                  </SegmentCard>
 
-                  <SectionDivider label="OTROS PARAMETROS" />
+                  <SegmentCard label="OTROS PARAMETROS">
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.fijo} disabled />
@@ -918,6 +917,7 @@ export function TiposIngresosClient({
                     </div>
                     <div />
                   </div>
+                  </SegmentCard>
                   </div>
                 </div>
               ) : (
@@ -925,7 +925,7 @@ export function TiposIngresosClient({
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda: IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                  <SectionDivider label="IDENTIFICACION" />
+                  <SegmentCard label="IDENTIFICACION">
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
@@ -964,8 +964,9 @@ export function TiposIngresosClient({
                       <div /><div />
                     </div>
                   )}
+                  </SegmentCard>
 
-                  <SectionDivider label="GENERAL" />
+                  <SegmentCard label="GENERAL">
 
                   {/* Nombre */}
                   <div className="col-span-2 grid gap-1">
@@ -981,12 +982,13 @@ export function TiposIngresosClient({
                     </div>
                     <div /><div />
                   </div>
+                  </SegmentCard>
                   </div>
                   {/* Separador + columna derecha: FORMA PAGO, FACTURACION, OTROS PARAMETROS */}
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
 
-                  <SectionDivider label="FORMA PAGO" />
+                  <SegmentCard label="FORMA PAGO">
 
                   {/* Selection Buttons */}
                   <div className="col-span-2 flex gap-3">
@@ -1104,8 +1106,9 @@ export function TiposIngresosClient({
                       </div>
                     </>
                   )}
+                  </SegmentCard>
 
-                  <SectionDivider label="FACTURACION" />
+                  <SegmentCard label="FACTURACION">
                   <div className="grid gap-1">
                     <Label htmlFor="facturacion_item" className={`font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`} style={{ fontSize: 'var(--ui-form-label)' }}>
                       Item {form.impuesto === 1 && '*'}
@@ -1130,8 +1133,9 @@ export function TiposIngresosClient({
                       placeholder="Descripcion de factura"
                     />
                   </div>
+                  </SegmentCard>
 
-                  <SectionDivider label="OTROS PARAMETROS" />
+                  <SegmentCard label="OTROS PARAMETROS">
                   <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                     <div className="flex items-center gap-2 pb-1">
                       <Checkbox id="fijo" checked={false} disabled />
@@ -1167,6 +1171,7 @@ export function TiposIngresosClient({
                     </div>
                     <div />
                   </div>
+                  </SegmentCard>
                   </div>
                 </div>
               )}
@@ -1175,19 +1180,32 @@ export function TiposIngresosClient({
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                {puedeModificar && (
-                  <Button onClick={startEdit} className="gap-2">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                {puedeEliminar && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
-              </>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

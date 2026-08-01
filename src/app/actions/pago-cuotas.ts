@@ -9,6 +9,50 @@ import type {
   PromesaBusqueda, PlanPagoPendiente, CuotaPendiente, RegistrarPagoCuotasPayload,
 } from '@/lib/types/pago-cuotas'
 
+async function getAuditUser() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { userId: null, email: null, nombre: null }
+  const admin = createAdminClient()
+  const { data } = await admin
+    .schema('cartera')
+    .from('t_usuario')
+    .select('nombres, apellidos')
+    .eq('userid', user.id)
+    .maybeSingle()
+  const nombre = data
+    ? `${data.nombres ?? ''} ${data.apellidos ?? ''}`.trim() || null
+    : null
+  return { userId: user.id, email: user.email ?? null, nombre }
+}
+
+async function writeAudit(
+  admin: ReturnType<typeof createAdminClient>,
+  opts: {
+    tabla: string
+    operacion: 'INSERT' | 'UPDATE' | 'DELETE'
+    cuenta: string
+    registroId: Record<string, unknown>
+    datoAntes: Record<string, unknown> | null
+    datoDespues: Record<string, unknown> | null
+    userId: string | null
+    email: string | null
+    nombre: string | null
+  },
+) {
+  await admin.schema('cartera').from('t_audit_log').insert({
+    tabla: opts.tabla,
+    operacion: opts.operacion,
+    cuenta: opts.cuenta,
+    registro_id: opts.registroId,
+    datos_antes: opts.datoAntes,
+    datos_despues: opts.datoDespues,
+    usuario_id: opts.userId,
+    usuario_email: opts.email,
+    usuario_nombre: opts.nombre,
+  })
+}
+
 // ─── Identificar Promesa ────────────────────────────────────────────────────
 
 /**
@@ -192,5 +236,23 @@ export async function registrarPagoCuotas(
   if (error) return { error: error.message }
 
   const result = data as { numero_recibo: number; promesa_pagada: boolean } | null
+
+  // fn_registrar_pago_cuotas no devuelve la fila creada (solo numero_recibo) —
+  // se consulta aqui para dejar el mismo rastro de auditoria "INSERT" que tiene
+  // el resto de entidades del sistema (mismo hueco cerrado en createReserva).
+  if (result?.numero_recibo) {
+    const auditUser = await getAuditUser()
+    const { data: nuevoRecibo } = await admin.schema('cartera').from('t_recibo_caja').select('*')
+      .eq('cuenta', cuenta).eq('empresa', payload.empresa).eq('proyecto', payload.proyecto)
+      .eq('serie', payload.serie).eq('numero', result.numero_recibo).maybeSingle()
+
+    await writeAudit(admin, {
+      tabla: 't_recibo_caja', operacion: 'INSERT', cuenta,
+      registroId: { empresa: payload.empresa, proyecto: payload.proyecto, serie: payload.serie, numero: result.numero_recibo },
+      datoAntes: null, datoDespues: nuevoRecibo as Record<string, unknown> | null,
+      ...auditUser,
+    })
+  }
+
   return { numero_recibo: result?.numero_recibo, promesa_pagada: result?.promesa_pagada }
 }

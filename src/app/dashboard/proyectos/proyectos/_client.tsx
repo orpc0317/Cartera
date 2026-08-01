@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { MoreHorizontal, Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal, Download, Coins, Star } from 'lucide-react'
+import { Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronUp, X, Settings2, Trash2, Upload, ImageIcon, AlertCircle, MapPin, SlidersHorizontal, Download, Coins, Star, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,11 +20,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -109,6 +104,20 @@ function ViewField({ label, value }: { label: string; value?: string | null }) {
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
         <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+      </div>
+    </div>
+  )
+}
+
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
       </div>
     </div>
   )
@@ -546,25 +555,28 @@ export function ProyectosClient({
 
   // Column prefs (localStorage)
   const STORAGE_KEY = `proyectos_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return DEFAULT_PREFS
-      const parsed: ColPref[] = JSON.parse(saved)
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      return [
+      setColPrefs([
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ]
-    } catch { return DEFAULT_PREFS }
-  })
+      ])
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
-  }, [colPrefs, STORAGE_KEY])
-
-  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
+  function saveColPrefs(next: ColPref[]) {
+    setColPrefs(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
+  }
 
   function toggleCol(key: string) {
     saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p))
@@ -1035,35 +1047,16 @@ export function ProyectosClient({
                     <TableCell className={`sticky right-0 z-10 transition-colors ${
                       isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'
                     }`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
-                            isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                          }`}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(proyecto)}>
-                            <Eye className="mr-2 h-3.5 w-3.5" />
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(proyecto)}>
-                            <History className="mr-2 h-3.5 w-3.5" />
-                            Historial
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {puedeEliminar && !fases.some((f) => f.empresa === proyecto.empresa && f.proyecto === proyecto.codigo) && (
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setDeleteTarget(proyecto)}
-                            >
-                              <Trash2 className="mr-2 h-3.5 w-3.5" />
-                              Eliminar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => openView(proyecto)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
+                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -1079,7 +1072,7 @@ export function ProyectosClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return   // no cerrar mientras el aviso de nombres similares esta activo
+          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return   // no cerrar mientras un dialog anidado este activo
           if (!open && isEditing && viewTarget && proyectoMonedasActuales.length === 0) {
             setWarnNoMonedas(true)
             return
@@ -1138,16 +1131,11 @@ export function ProyectosClient({
                 <div className="flex gap-6 items-start">
                   {/* Left column — IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Identificacion</span>
-                    </div>
+                    <SegmentCard label="Identificacion">
                     <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
                     <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>General</span>
-                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="General">
                     <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
                     <div className="col-span-2"><ViewField label="Direccion" value={viewTarget.direccion} /></div>
                     {(() => {
@@ -1171,14 +1159,12 @@ export function ProyectosClient({
                     <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
                     <div className="col-span-2"><ViewField label="Telefono 1" value={viewTarget.telefono1} /></div>
                     <div className="col-span-2"><ViewField label="Telefono 2" value={viewTarget.telefono2} /></div>
+                    </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   {/* Right column — MORA + ABONO CAPITAL + OTROS PARAMETROS */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Mora</span>
-                    </div>
+                    <SegmentCard label="Mora">
                     <div className="col-span-2 flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.mora_automatica} disabled />
                       <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora Automatica</span>
@@ -1205,15 +1191,11 @@ export function ProyectosClient({
                         <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Parametros Editables</span>
                       </div>
                     </div>
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Abono Capital</span>
-                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="Abono Capital">
                     <ViewField label="Minimo Abono Capital" value={formatMora(viewTarget.minimo_abono_capital ?? 0)} />
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Otros Parametros</span>
-                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="Otros Parametros">
                     <div className="col-span-2 grid grid-cols-2 gap-2">
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={!!viewTarget.promesa_vencida} disabled />
@@ -1233,16 +1215,14 @@ export function ProyectosClient({
                     ) : (
                       <ViewField label="Logo" value="Sin logo" />
                     )}
+                    </SegmentCard>
                   </div>
                 </div>
               ) : (
                 <div className="flex gap-6 items-start">
                   {/* Left column — IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Identificacion</span>
-                    </div>
+                    <SegmentCard label="Identificacion">
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
@@ -1259,10 +1239,8 @@ export function ProyectosClient({
                     {viewTarget && (
                       <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
                     )}
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>General</span>
-                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="General">
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto *</Label>
                       <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
@@ -1328,14 +1306,12 @@ export function ProyectosClient({
                         placeholder="Numero local"
                       />
                     </div>
+                    </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   {/* Right column — MORA + ABONO CAPITAL + OTROS PARAMETROS */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Mora</span>
-                    </div>
+                    <SegmentCard label="Mora">
                     <div className="col-span-2 flex items-center gap-2 py-1">
                       <Checkbox
                         id="mora_automatica"
@@ -1451,15 +1427,11 @@ export function ProyectosClient({
                         <Label htmlFor="fijar_parametros_mora" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Parametros Editables</Label>
                       </div>
                     </div>
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Abono Capital</span>
-                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="Abono Capital">
                     <div className="grid gap-1 w-3/4"><Label htmlFor="minimo_abono" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Minimo Abono Capital</Label><Input variant="l-border" id="minimo_abono" type="number" step="0.01" value={form.minimo_abono_capital} onChange={(e) => f('minimo_abono_capital', Number(e.target.value))} /></div>
-                    <div className="col-span-2 flex items-center gap-2 pt-1">
-                      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-                      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>Otros Parametros</span>
-                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="Otros Parametros">
                     <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                       <div className="flex items-center gap-2 pb-1">
                         <Checkbox
@@ -1519,6 +1491,7 @@ export function ProyectosClient({
                         error={logoError}
                       />
                     </div>
+                    </SegmentCard>
                   </div>
                 </div>
               )}
@@ -1680,19 +1653,32 @@ export function ProyectosClient({
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                {puedeModificar && (
-                  <Button onClick={startEdit} className="gap-2">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                {puedeEliminar && !fases.some((f) => f.empresa === viewTarget.empresa && f.proyecto === viewTarget.codigo) && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
-              </>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

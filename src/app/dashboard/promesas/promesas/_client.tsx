@@ -4,9 +4,9 @@ import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Trash2, Plus, Search, History,
+  Eye, Pencil, Trash2, Plus, Search, History, Ban,
   Settings2, ChevronDown, ChevronUp, X, FileSignature, Download,
-  ChevronLeft, ChevronRight, FileText, Upload, Paperclip, Wallet, Receipt,
+  ChevronLeft, ChevronRight, FileText, Upload, Paperclip, Wallet, Receipt, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,11 +24,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select, SelectContent, SelectItem,
@@ -39,7 +34,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { PlanPagoDialog } from '@/components/ui/plan-pago-dialog'
-import { createPromesa, updatePromesa, deletePromesa } from '@/app/actions/promesas'
+import { createPromesa, updatePromesa, deletePromesa, anularPromesa } from '@/app/actions/promesas'
 import {
   getPromesaDocumentos, uploadPromesaDocumento,
   deletePromesaDocumento, getPromesaDocumentoUrl,
@@ -211,6 +206,20 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function ColumnFilter({ label, values, active, onChange }: {
   label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void
 }) {
@@ -364,7 +373,7 @@ function ClienteCombobox({
                   onClick={() => { onChange(c.codigo); setOpen(false) }}
                 >
                   <span className="flex-1 truncate text-left">{c.nombre}</span>
-                  {c.codigo === value && <span className="ml-2 shrink-0 text-fuchsia-600">âœ“</span>}
+                  {c.codigo === value && <span className="ml-2 shrink-0 text-zinc-600">✓</span>}
                 </button>
               ))
             )}
@@ -419,6 +428,8 @@ export function PromesasClient({
   const [deleteTarget, setDeleteTarget] = useState<Promesa | null>(null)
   const [auditTarget, setAuditTarget]   = useState<Promesa | null>(null)
   const [planPagoTarget, setPlanPagoTarget] = useState<Promesa | null>(null)
+  const [anularTarget, setAnularTarget]         = useState<Promesa | null>(null)
+  const [anularComentario, setAnularComentario] = useState('')
   const [tipoCalculo, setTipoCalculo]   = useState(0)
   const [form, setForm]               = useState<PromesaForm>(EMPTY_FORM)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
@@ -444,8 +455,11 @@ export function PromesasClient({
   const STORAGE_KEY = `promesas_cols_v1_${userId}`
   const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
@@ -454,17 +468,17 @@ export function PromesasClient({
           const found = parsed.find((p) => p.key === dp.key)
           return found ?? dp
         })
-        return merged.sort((a, b) => {
+        setColPrefs(merged.sort((a, b) => {
           const ai = parsed.findIndex((p) => p.key === a.key)
           const bi = parsed.findIndex((p) => p.key === b.key)
           if (ai === -1) return 1
           if (bi === -1) return -1
           return ai - bi
-        })
+        }))
       }
     } catch { /* ignore */ }
-    return DEFAULT_PREFS
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs))
@@ -989,6 +1003,20 @@ export function PromesasClient({
       if (res.error) { toast.error(res.error); return }
       toast.success('Promesa eliminada.')
       setDeleteTarget(null)
+      setDialogOpen(false)
+      router.refresh()
+    })
+  }
+
+  function handleAnular() {
+    if (!anularTarget || !anularComentario.trim()) return
+    startTransition(async () => {
+      const res = await anularPromesa(anularTarget.empresa, anularTarget.proyecto, anularTarget.numero, anularComentario, anularTarget.modifico_fecha)
+      if (res.error) { toast.error(res.error); return }
+      toast.success('Promesa anulada.')
+      setAnularTarget(null)
+      setAnularComentario('')
+      setDialogOpen(false)
       router.refresh()
     })
   }
@@ -1035,8 +1063,8 @@ export function PromesasClient({
   function resetCols() { setColPrefs(DEFAULT_PREFS) }
 
   // -- Icon badge for modal header ------------------------------------------
-  const iconBadgeBg = isEditing && viewTarget ? 'bg-amber-100'   : 'bg-fuchsia-100'
-  const iconColor   = isEditing && viewTarget ? 'text-amber-600' : 'text-fuchsia-600'
+  const iconBadgeBg = isEditing && viewTarget ? 'bg-amber-100'   : 'bg-zinc-100'
+  const iconColor   = isEditing && viewTarget ? 'text-amber-600' : 'text-zinc-600'
   const modalIcon   = isEditing && !viewTarget
     ? <Plus        className={`h-4 w-4 ${iconColor}`} />
     : isEditing
@@ -1051,8 +1079,8 @@ export function PromesasClient({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-fuchsia-100 p-2.5">
-            <FileSignature className="h-5 w-5 text-fuchsia-600" />
+          <div className="rounded-xl bg-zinc-100 p-2.5">
+            <FileSignature className="h-5 w-5 text-zinc-600" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">Promesas</h1>
@@ -1060,7 +1088,7 @@ export function PromesasClient({
           </div>
         </div>
         {puedeAgregar && (
-          <Button onClick={openCreate} className="gap-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white">
+          <Button onClick={openCreate} className="gap-2 bg-zinc-600 hover:bg-zinc-700 text-white">
             <Plus className="h-4 w-4" />
             Nueva Promesa
           </Button>
@@ -1150,13 +1178,13 @@ export function PromesasClient({
                 return (
                   <TableRow
                     key={`${row.empresa}-${row.proyecto}-${row.numero}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-fuchsia-50 dark:bg-fuchsia-950/30' : 'hover:bg-muted/40'}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-zinc-50 dark:bg-zinc-950/30' : 'hover:bg-muted/40'}`}
                     onClick={() => setCursorIdx(globalIdx)}
                     onDoubleClick={() => openView(row)}
                   >
                     <TableCell className={`sticky left-0 z-10 font-mono text-xs whitespace-nowrap transition-colors ${
                       isActive
-                        ? 'bg-fuchsia-50 dark:bg-fuchsia-950/30 border-l-[3px] border-l-fuchsia-600 text-fuchsia-700 dark:text-fuchsia-400 font-semibold'
+                        ? 'bg-zinc-50 dark:bg-zinc-950/30 border-l-[3px] border-l-zinc-600 text-zinc-700 dark:text-zinc-400 font-semibold'
                         : 'bg-card text-muted-foreground group-hover:bg-muted/40'
                     }`}>
                       {row.numero}
@@ -1185,31 +1213,15 @@ export function PromesasClient({
                         }
                       }
                     })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-fuchsia-50 dark:bg-fuchsia-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(row)}>
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setPlanPagoTarget(row)}>
-                            <Receipt className="mr-2 h-3.5 w-3.5" /> Plan Pagos
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(row)}>
-                            <History className="mr-2 h-3.5 w-3.5" /> Historial
-                          </DropdownMenuItem>
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(row)}>
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-zinc-50 dark:bg-zinc-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                      <button
+                        type="button"
+                        onClick={() => openView(row)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -1248,6 +1260,7 @@ export function PromesasClient({
         modal={false}
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && (deleteTarget !== null || docDeleteTarget !== null || auditTarget !== null || planPagoTarget !== null || anularTarget !== null)) return  // guard: no cerrar el modal Ver por un dialog anidado (Historial / Plan Pagos / Eliminar / Anular)
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -1257,7 +1270,7 @@ export function PromesasClient({
         }}
       >
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-fuchsia-50/70 to-transparent border-b border-border/50 shrink-0">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-zinc-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
               <div className="flex-1 min-w-0">
@@ -1295,90 +1308,98 @@ export function PromesasClient({
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                  <SectionDivider label="IDENTIFICACION" />
-                  <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
-                  <div className="col-span-2 grid grid-cols-3 gap-2">
-                    <ViewField label="Numero" value={String(viewTarget.numero)} />
-                  </div>
-                  <SectionDivider label="GENERAL" />
-                  <div className="col-span-2 grid grid-cols-3 gap-2">
-                    <ViewField label="Referencia" value={viewTarget.referencia} />
-                    <div />
-                    <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
-                  </div>
-                  <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
-                  <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
-                  <div className="col-span-2 grid grid-cols-3 gap-2">
-                    <div className="flex items-center gap-2 py-1">
-                      <Checkbox checked={viewTarget.venta === 1} disabled />
-                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Es Venta</span>
+                  <SegmentCard label="IDENTIFICACION">
+                    <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
+                    <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <ViewField label="Numero" value={String(viewTarget.numero)} />
                     </div>
-                  </div>
-                  <SectionDivider label="LOTE" />
-                  <div className="col-span-2 grid grid-cols-4 gap-2">
-                    <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
-                    <ViewField label="Manzana" value={viewTarget.manzana} />
-                    <ViewField label="Lote"    value={viewTarget.lote} />
-                  </div>
-                  <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
-                  <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
-                  <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
-                  <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
+                  </SegmentCard>
+                  <SegmentCard label="GENERAL">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <ViewField label="Referencia" value={viewTarget.referencia} />
+                      <div />
+                      <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
+                    </div>
+                    <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
+                    <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox checked={viewTarget.venta === 1} disabled />
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Es Venta</span>
+                      </div>
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="LOTE">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
+                      <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
+                      <ViewField label="Manzana" value={viewTarget.manzana} />
+                      <ViewField label="Lote"    value={viewTarget.lote} />
+                    </div>
+                    <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
+                    <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
+                    <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
+                    <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
+                  </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="ENGANCHE" />
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Monto"  value={viewTarget.monto_enganche  ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_enganche)}`  : ''} />
-                      <ViewField label="Plazo"  value={viewTarget.plazo_enganche  ? String(viewTarget.plazo_enganche)  : ''} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <ViewField label="1er Pago"    value={viewTarget.primer_enganche ? `${viewTarget.moneda} ${fmtNum(viewTarget.primer_enganche)}` : ''} />
-                      <ViewField label="Cuotas"      value={engancheCalcVista.cuotas      ? String(engancheCalcVista.cuotas)     : ''} />
-                      <ViewField label="Monto Cuota" value={engancheCalcVista.montoCuota  ? fmtNum(engancheCalcVista.montoCuota)  : ''} />
-                      <ViewField label="Ultima Cuota" value={engancheCalcVista.ultimaCuota ? fmtNum(engancheCalcVista.ultimaCuota) : ''} />
-                    </div>
-                    <div className="col-span-2">
-                      <ViewField label="Mora" value={viewTarget.mora_enganche === 1 ? 'SÃ­' : 'No'} />
-                    </div>
-                    <SectionDivider label="FINANCIAMIENTO" />
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <div className="col-span-2">
-                        <ViewField label="Forma Calculo" value={FORMAS_CALCULO[viewTarget.forma_financiamiento] ?? `#${viewTarget.forma_financiamiento}`} />
+                    <SegmentCard label="ENGANCHE">
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
+                        <ViewField label="Monto"  value={viewTarget.monto_enganche  ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_enganche)}`  : ''} />
+                        <ViewField label="Plazo"  value={viewTarget.plazo_enganche  ? String(viewTarget.plazo_enganche)  : ''} />
                       </div>
-                      <ViewField label="Interes Anual (%)"    value={viewTarget.interes_anual    ? fmtNum(viewTarget.interes_anual)              : ''} />
-                      <ViewField label="1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Monto Financiamiento" value={viewTarget.monto_financiamiento ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_financiamiento)}` : ''} />
-                      <ViewField label="Plazo"                value={viewTarget.plazo_financiamiento ? String(viewTarget.plazo_financiamiento) : ''} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField label="Cuotas"       value={financiamientoCalcVista.cuotas      ? String(financiamientoCalcVista.cuotas)     : ''} />
-                      <ViewField label="Monto Cuota"  value={financiamientoCalcVista.montoCuota  ? fmtNum(financiamientoCalcVista.montoCuota)  : ''} />
-                      <ViewField label="Ultima Cuota" value={financiamientoCalcVista.ultimaCuota ? fmtNum(financiamientoCalcVista.ultimaCuota) : ''} />
-                    </div>
-                    <SectionDivider label="MORA" />
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <ViewField label="Tipo Calculo"  value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
-                      {tipoCalculo === 0
-                        ? <ViewField label="Tasa (%)" value={viewTarget.interes_mora ? fmtNum(viewTarget.interes_mora) : ''} />
-                        : <ViewField label="Monto"    value={viewTarget.fijo_mora    ? fmtNum(viewTarget.fijo_mora)    : ''} />
-                      }
-                      <ViewField label="Dias Gracia"  value={viewTarget.dias_gracia ? String(viewTarget.dias_gracia) : ''} />
-                      <ViewField label="Dias Afectos" value={viewTarget.dias_afectos === 1 ? 'Un Mes' : 'Todos Los Dias'} />
-                    </div>
-                    <SectionDivider label="OTROS" />
-                    <div className="col-span-2 grid gap-1.5">
-                      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Observacion</span>
-                      <div className="min-h-[2.5rem] flex items-start rounded-none bg-transparent border-0 border-b border-primary/50 px-3 py-2">
-                        <span className="font-medium text-foreground whitespace-pre-wrap" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.observacion || ''}</span>
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <ViewField label="1er Pago"    value={viewTarget.primer_enganche ? `${viewTarget.moneda} ${fmtNum(viewTarget.primer_enganche)}` : ''} />
+                        <ViewField label="Cuotas"      value={engancheCalcVista.cuotas      ? String(engancheCalcVista.cuotas)     : ''} />
+                        <ViewField label="Monto Cuota" value={engancheCalcVista.montoCuota  ? fmtNum(engancheCalcVista.montoCuota)  : ''} />
+                        <ViewField label="Ultima Cuota" value={engancheCalcVista.ultimaCuota ? fmtNum(engancheCalcVista.ultimaCuota) : ''} />
                       </div>
-                    </div>
+                      <div className="col-span-2 flex items-center gap-2 py-1">
+                        <Checkbox checked={viewTarget.mora_enganche === 1} disabled />
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Mora</span>
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="FINANCIAMIENTO">
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <div className="col-span-2">
+                          <ViewField label="Forma Calculo" value={FORMAS_CALCULO[viewTarget.forma_financiamiento] ?? `#${viewTarget.forma_financiamiento}`} />
+                        </div>
+                        <ViewField label="Interes Anual (%)"    value={viewTarget.interes_anual    ? fmtNum(viewTarget.interes_anual)              : ''} />
+                        <ViewField label="1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
+                        <ViewField label="Monto Financiamiento" value={viewTarget.monto_financiamiento ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_financiamiento)}` : ''} />
+                        <ViewField label="Plazo"                value={viewTarget.plazo_financiamiento ? String(viewTarget.plazo_financiamiento) : ''} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                        <ViewField label="Cuotas"       value={financiamientoCalcVista.cuotas      ? String(financiamientoCalcVista.cuotas)     : ''} />
+                        <ViewField label="Monto Cuota"  value={financiamientoCalcVista.montoCuota  ? fmtNum(financiamientoCalcVista.montoCuota)  : ''} />
+                        <ViewField label="Ultima Cuota" value={financiamientoCalcVista.ultimaCuota ? fmtNum(financiamientoCalcVista.ultimaCuota) : ''} />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="MORA">
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <ViewField label="Tipo Calculo"  value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
+                        {tipoCalculo === 0
+                          ? <ViewField label="Tasa (%)" value={viewTarget.interes_mora ? fmtNum(viewTarget.interes_mora) : ''} />
+                          : <ViewField label="Monto"    value={viewTarget.fijo_mora    ? fmtNum(viewTarget.fijo_mora)    : ''} />
+                        }
+                        <ViewField label="Dias Gracia"  value={viewTarget.dias_gracia ? String(viewTarget.dias_gracia) : ''} />
+                        <ViewField label="Dias Afectos" value={viewTarget.dias_afectos === 1 ? 'Un Mes' : 'Todos Los Dias'} />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="OTROS">
+                      <div className="col-span-2 grid gap-1.5">
+                        <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Observacion</span>
+                        <div className="min-h-[2.5rem] flex items-start rounded-none bg-transparent border-0 border-b border-primary/50 px-3 py-2">
+                          <span className="font-medium text-foreground whitespace-pre-wrap" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.observacion || ''}</span>
+                        </div>
+                      </div>
+                    </SegmentCard>
                   </div>
                 </div>
 
@@ -1386,118 +1407,126 @@ export function PromesasClient({
               ) : isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                  <SectionDivider label="IDENTIFICACION" />
-                  <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
-                    <Select value={String(form.empresa)} disabled>
-                      <SelectTrigger variant="l-border" className="w-full">
-                        <SelectValue>
-                          {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto</Label>
-                    <Select value={String(form.proyecto)} disabled>
-                      <SelectTrigger variant="l-border" className="w-full">
-                        <SelectValue>
-                          {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {proyectos.filter((p) => p.empresa === form.empresa).map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 grid grid-cols-3 gap-2">
-                    <ViewField label="Numero" value={String(viewTarget.numero)} />
-                  </div>
-                  <SectionDivider label="GENERAL" />
-                  <div className="col-span-2 grid grid-cols-3 gap-2">
-                    <ViewField label="Referencia" value={viewTarget.referencia} />
-                    <div />
-                    <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
-                  </div>
-                  <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
-                  <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
-                  <div className="col-span-2 flex items-center gap-2 pt-1">
-                    <Checkbox id="es-venta-edit" checked={viewTarget.venta === 1} disabled />
-                    <Label htmlFor="es-venta-edit" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Es Venta</Label>
-                  </div>
-                  <SectionDivider label="LOTE" />
-                  <div className="col-span-2 grid grid-cols-4 gap-2">
-                    <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
-                    <ViewField label="Manzana" value={viewTarget.manzana} />
-                    <ViewField label="Lote"    value={viewTarget.lote} />
-                  </div>
-                  <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
-                  <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
-                  <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
-                  <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
+                  <SegmentCard label="IDENTIFICACION">
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
+                      <Select value={String(form.empresa)} disabled>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue>
+                            {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto</Label>
+                      <Select value={String(form.proyecto)} disabled>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue>
+                            {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {proyectos.filter((p) => p.empresa === form.empresa).map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <ViewField label="Numero" value={String(viewTarget.numero)} />
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="GENERAL">
+                    <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <ViewField label="Referencia" value={viewTarget.referencia} />
+                      <div />
+                      <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
+                    </div>
+                    <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
+                    <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
+                    <div className="col-span-2 flex items-center gap-2 pt-1">
+                      <Checkbox id="es-venta-edit" checked={viewTarget.venta === 1} disabled />
+                      <Label htmlFor="es-venta-edit" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Es Venta</Label>
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="LOTE">
+                    <div className="col-span-2 grid grid-cols-4 gap-2">
+                      <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
+                      <ViewField label="Manzana" value={viewTarget.manzana} />
+                      <ViewField label="Lote"    value={viewTarget.lote} />
+                    </div>
+                    <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
+                    <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
+                    <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
+                    <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
+                  </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="ENGANCHE" />
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Monto"  value={viewTarget.monto_enganche  ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_enganche)}`  : ''} />
-                      <ViewField label="Plazo"  value={viewTarget.plazo_enganche  ? String(viewTarget.plazo_enganche)  : ''} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <ViewField label="1er Pago"    value={viewTarget.primer_enganche ? `${viewTarget.moneda} ${fmtNum(viewTarget.primer_enganche)}` : ''} />
-                      <ViewField label="Cuotas"      value={engancheCalcVista.cuotas      ? String(engancheCalcVista.cuotas)     : ''} />
-                      <ViewField label="Monto Cuota" value={engancheCalcVista.montoCuota  ? fmtNum(engancheCalcVista.montoCuota)  : ''} />
-                      <ViewField label="Ultima Cuota" value={engancheCalcVista.ultimaCuota ? fmtNum(engancheCalcVista.ultimaCuota) : ''} />
-                    </div>
-                    <div className="col-span-2">
-                      <ViewField label="Mora" value={viewTarget.mora_enganche === 1 ? 'SÃ­' : 'No'} />
-                    </div>
-                    <SectionDivider label="FINANCIAMIENTO" />
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <div className="col-span-2">
-                        <ViewField label="Forma Calculo" value={FORMAS_CALCULO[viewTarget.forma_financiamiento] ?? `#${viewTarget.forma_financiamiento}`} />
+                    <SegmentCard label="ENGANCHE">
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
+                        <ViewField label="Monto"  value={viewTarget.monto_enganche  ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_enganche)}`  : ''} />
+                        <ViewField label="Plazo"  value={viewTarget.plazo_enganche  ? String(viewTarget.plazo_enganche)  : ''} />
                       </div>
-                      <ViewField label="Interes Anual (%)"    value={viewTarget.interes_anual    ? fmtNum(viewTarget.interes_anual)              : ''} />
-                      <ViewField label="1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Monto Financiamiento" value={viewTarget.monto_financiamiento ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_financiamiento)}` : ''} />
-                      <ViewField label="Plazo"                value={viewTarget.plazo_financiamiento ? String(viewTarget.plazo_financiamiento) : ''} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField label="Cuotas"       value={financiamientoCalcVista.cuotas      ? String(financiamientoCalcVista.cuotas)     : ''} />
-                      <ViewField label="Monto Cuota"  value={financiamientoCalcVista.montoCuota  ? fmtNum(financiamientoCalcVista.montoCuota)  : ''} />
-                      <ViewField label="Ultima Cuota" value={financiamientoCalcVista.ultimaCuota ? fmtNum(financiamientoCalcVista.ultimaCuota) : ''} />
-                    </div>
-                    <SectionDivider label="MORA" />
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <ViewField label="Tipo Calculo"  value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
-                      {tipoCalculo === 0
-                        ? <ViewField label="Tasa (%)" value={viewTarget.interes_mora ? fmtNum(viewTarget.interes_mora) : ''} />
-                        : <ViewField label="Monto"    value={viewTarget.fijo_mora    ? fmtNum(viewTarget.fijo_mora)    : ''} />
-                      }
-                      <ViewField label="Dias Gracia"  value={viewTarget.dias_gracia ? String(viewTarget.dias_gracia) : ''} />
-                      <ViewField label="Dias Afectos" value={viewTarget.dias_afectos === 1 ? 'Un Mes' : 'Todos Los Dias'} />
-                    </div>
-                    <SectionDivider label="OTROS" />
-                    <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="observacion-edit" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Observacion</Label>
-                      <textarea
-                        id="observacion-edit"
-                        value={form.observacion ?? ''}
-                        onChange={(e) => f('observacion', e.target.value)}
-                        placeholder="Observaciones"
-                        rows={2}
-                        style={{ fontSize: 'var(--ui-input)' }}
-                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                      />
-                    </div>
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <ViewField label="1er Pago"    value={viewTarget.primer_enganche ? `${viewTarget.moneda} ${fmtNum(viewTarget.primer_enganche)}` : ''} />
+                        <ViewField label="Cuotas"      value={engancheCalcVista.cuotas      ? String(engancheCalcVista.cuotas)     : ''} />
+                        <ViewField label="Monto Cuota" value={engancheCalcVista.montoCuota  ? fmtNum(engancheCalcVista.montoCuota)  : ''} />
+                        <ViewField label="Ultima Cuota" value={engancheCalcVista.ultimaCuota ? fmtNum(engancheCalcVista.ultimaCuota) : ''} />
+                      </div>
+                      <div className="col-span-2 flex items-center gap-2 py-1">
+                        <Checkbox id="mora-enganche-view" checked={viewTarget.mora_enganche === 1} disabled />
+                        <Label htmlFor="mora-enganche-view" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Mora</Label>
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="FINANCIAMIENTO">
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <div className="col-span-2">
+                          <ViewField label="Forma Calculo" value={FORMAS_CALCULO[viewTarget.forma_financiamiento] ?? `#${viewTarget.forma_financiamiento}`} />
+                        </div>
+                        <ViewField label="Interes Anual (%)"    value={viewTarget.interes_anual    ? fmtNum(viewTarget.interes_anual)              : ''} />
+                        <ViewField label="1era Cuota" value={fmtDate(viewTarget.fecha_financiamiento)} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
+                        <ViewField label="Monto Financiamiento" value={viewTarget.monto_financiamiento ? `${viewTarget.moneda} ${fmtNum(viewTarget.monto_financiamiento)}` : ''} />
+                        <ViewField label="Plazo"                value={viewTarget.plazo_financiamiento ? String(viewTarget.plazo_financiamiento) : ''} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                        <ViewField label="Cuotas"       value={financiamientoCalcVista.cuotas      ? String(financiamientoCalcVista.cuotas)     : ''} />
+                        <ViewField label="Monto Cuota"  value={financiamientoCalcVista.montoCuota  ? fmtNum(financiamientoCalcVista.montoCuota)  : ''} />
+                        <ViewField label="Ultima Cuota" value={financiamientoCalcVista.ultimaCuota ? fmtNum(financiamientoCalcVista.ultimaCuota) : ''} />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="MORA">
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <ViewField label="Forma Calculo" value={viewTarget.forma_mora === 1 ? 'Diario' : 'Mensual'} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <ViewField label="Tipo Calculo"  value={tipoCalculo === 1 ? 'Valor Fijo' : 'Tasa'} />
+                        {tipoCalculo === 0
+                          ? <ViewField label="Tasa (%)" value={viewTarget.interes_mora ? fmtNum(viewTarget.interes_mora) : ''} />
+                          : <ViewField label="Monto"    value={viewTarget.fijo_mora    ? fmtNum(viewTarget.fijo_mora)    : ''} />
+                        }
+                        <ViewField label="Dias Gracia"  value={viewTarget.dias_gracia ? String(viewTarget.dias_gracia) : ''} />
+                        <ViewField label="Dias Afectos" value={viewTarget.dias_afectos === 1 ? 'Un Mes' : 'Todos Los Dias'} />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="OTROS">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="observacion-edit" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Observacion</Label>
+                        <textarea
+                          id="observacion-edit"
+                          value={form.observacion ?? ''}
+                          onChange={(e) => f('observacion', e.target.value)}
+                          placeholder="Observaciones"
+                          rows={2}
+                          style={{ fontSize: 'var(--ui-input)' }}
+                          className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                        />
+                      </div>
+                    </SegmentCard>
                   </div>
                 </div>
 
@@ -2083,29 +2112,40 @@ export function PromesasClient({
 
           <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
             {!isEditing ? (
-              <div className="flex w-full items-center justify-between">
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => setAuditTarget(viewTarget)}>
-                    <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={() => setPlanPagoTarget(viewTarget)}>
+                  <Receipt className="mr-1.5 h-3.5 w-3.5" /> Plan Pagos
+                </Button>
+                {puedeEliminar && viewTarget?.estado !== 99 && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setAnularTarget(viewTarget)}>
+                    <Ban className="mr-1.5 h-3.5 w-3.5" /> Anular
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setPlanPagoTarget(viewTarget)}>
-                    <Receipt className="mr-1.5 h-3.5 w-3.5" /> Plan Pagos
+                )}
+                {puedeEliminar && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                  {puedeModificar && (
-                    <Button className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" onClick={startEdit}>
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
-                    </Button>
-                  )}
-                </div>
+                )}
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
               </div>
-            ) : (
+            ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
                 <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-                <Button className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white" onClick={handleSave} disabled={isPending}>
+                <Button className="bg-zinc-600 hover:bg-zinc-700 text-white" onClick={handleSave} disabled={isPending}>
                   {isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             )}
@@ -2117,11 +2157,11 @@ export function PromesasClient({
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Â¿Eliminar promesa?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar promesa?</AlertDialogTitle>
             <AlertDialogDescription render={<div />}>
-              Se eliminarÃ¡ la promesa <strong>{deleteTarget?.numero}</strong> del proyecto{' '}
+              Se eliminará la promesa <strong>{deleteTarget?.numero}</strong> del proyecto{' '}
               <strong>{proyectoMap.get(`${deleteTarget?.empresa}-${deleteTarget?.proyecto}`) ?? ''}</strong>.
-              Esta acciÃ³n no se puede deshacer.
+              Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2151,6 +2191,42 @@ export function PromesasClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Anular confirmation (requiere comentario obligatorio) */}
+      <Dialog open={!!anularTarget} onOpenChange={(open) => { if (!open) { setAnularTarget(null); setAnularComentario('') } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Anular promesa?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Se anulará la promesa <strong>{anularTarget?.numero}</strong> del proyecto{' '}
+            <strong>{proyectoMap.get(`${anularTarget?.empresa}-${anularTarget?.proyecto}`) ?? ''}</strong>.
+          </p>
+          <div className="grid gap-1">
+            <Label htmlFor="anular-comentario" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+              Motivo Anulacion *
+            </Label>
+            <textarea
+              id="anular-comentario"
+              value={anularComentario}
+              onChange={(e) => setAnularComentario(e.target.value)}
+              placeholder="Describe el motivo de la anulación"
+              rows={3}
+              className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAnularTarget(null); setAnularComentario('') }} disabled={isPending}>Cancelar</Button>
+            <Button
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={handleAnular}
+              disabled={isPending || !anularComentario.trim()}
+            >
+              {isPending ? 'Anulando...' : 'Anular'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Audit log */}
       {auditTarget && (

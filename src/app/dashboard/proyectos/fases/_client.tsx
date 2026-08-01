@@ -4,8 +4,8 @@ import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Eye, Plus, Layers, Search,
-  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
+  Pencil, Eye, Plus, Layers, Search,
+  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,11 +23,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -123,6 +118,20 @@ function SectionDivider({ label }: { label: string }) {
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
       <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+    </div>
+  )
+}
+
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
+      </div>
     </div>
   )
 }
@@ -282,25 +291,28 @@ export function FasesClient({
   // -- Column preferences -------------------------------------------------
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const STORAGE_KEY = `fases_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return DEFAULT_PREFS
-      const parsed: ColPref[] = JSON.parse(saved)
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      return [
+      setColPrefs([
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ]
-    } catch { return DEFAULT_PREFS }
-  })
+      ])
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
-  }, [colPrefs, STORAGE_KEY])
-
-  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
+  function saveColPrefs(next: ColPref[]) {
+    setColPrefs(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
+  }
   function toggleCol(key: string) { saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p)) }
   function moveCol(key: string, dir: -1 | 1) {
     const idx = colPrefs.findIndex((p) => p.key === key)
@@ -626,32 +638,14 @@ export function FasesClient({
                       }
                     })}
                     <TableCell className={`sticky right-0 z-10 w-12 transition-colors ${isActive ? 'bg-violet-50 dark:bg-violet-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(fase)}>
-                            <Eye className="mr-2 h-3.5 w-3.5" />
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(fase)}>
-                            <History className="mr-2 h-3.5 w-3.5" />
-                            Historial
-                          </DropdownMenuItem>
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteTarget(fase)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => openView(fase)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -668,7 +662,7 @@ export function FasesClient({
         modal={false}
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return
+          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return
           setDialogOpen(open)
           if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
         }}
@@ -704,29 +698,31 @@ export function FasesClient({
               {/* -- View mode -- */}
               {!isEditing && viewTarget ? (
                 <div className="grid grid-cols-2 gap-2">
-                  <SectionDivider label="Identificacion" />
-                  <div className="col-span-2">
-                    <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Codigo" value={String(viewTarget.codigo)} />
-                  </div>
-                  <SectionDivider label="General" />
-                  <div className="col-span-2">
-                    <ViewField label="Nombre" value={viewTarget.nombre} />
-                  </div>
-                  <div className="col-span-1">
-                    <ViewField label="Medida" value={UNIDAD_MEDIDA[viewTarget.medida] ?? viewTarget.medida} />
-                  </div>
+                  <SegmentCard label="Identificacion">
+                    <div className="col-span-2">
+                      <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField label="Codigo" value={String(viewTarget.codigo)} />
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="General">
+                    <div className="col-span-2">
+                      <ViewField label="Nombre" value={viewTarget.nombre} />
+                    </div>
+                    <div className="col-span-1">
+                      <ViewField label="Medida" value={UNIDAD_MEDIDA[viewTarget.medida] ?? viewTarget.medida} />
+                    </div>
+                  </SegmentCard>
                 </div>
               ) : (
 
               /* -- Edit / Create mode -- */
               <div className="grid grid-cols-2 gap-2">
-                <SectionDivider label="Identificacion" />
+                <SegmentCard label="Identificacion">
 
                 {/* Empresa */}
                 <div className="col-span-2 grid gap-1">
@@ -773,9 +769,9 @@ export function FasesClient({
                     </SelectContent>
                   </Select>
                 </div>
+                </SegmentCard>
 
-                <SectionDivider label="General" />
-
+                <SegmentCard label="General">
                 {/* Nombre */}
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
@@ -810,6 +806,7 @@ export function FasesClient({
                     </SelectContent>
                   </Select>
                 </div>
+                </SegmentCard>
               </div>
               )}
 
@@ -818,19 +815,32 @@ export function FasesClient({
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                {puedeModificar && (
-                  <Button onClick={startEdit} className="gap-2">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                {puedeEliminar && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
-              </>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

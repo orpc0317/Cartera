@@ -257,6 +257,80 @@ export async function updatePromesa(
   return {}
 }
 
+// ─── Anular ────────────────────────────────────────────────────────────────
+
+export async function anularPromesa(
+  empresa: number,
+  proyecto: number,
+  numero: number,
+  comentario: string,
+  lastModified?: string,
+): Promise<{ error?: string }> {
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'eliminar')
+  if (permCheck) return permCheck
+
+  const motivo = comentario.trim()
+  if (!motivo) return { error: 'El motivo de la anulación es obligatorio.' }
+
+  const admin = createAdminClient()
+
+  const { data: original } = await admin
+    .schema('cartera')
+    .from('t_promesa')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('numero', numero)
+    .maybeSingle()
+
+  if (!original) return { error: 'Promesa no encontrada.' }
+
+  const observacionActual = (original as { observacion: string | null }).observacion
+  const observacionNueva = observacionActual?.trim()
+    ? `${observacionActual.trim()}; ${motivo}`
+    : motivo
+
+  const auditUser = await getAuditUser()
+  const now = new Date().toISOString()
+
+  let query = admin
+    .schema('cartera')
+    .from('t_promesa')
+    .update({
+      estado: 99,
+      observacion: observacionNueva,
+      modifico_usuario: auditUser.userId,
+      modifico_fecha: now,
+    })
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('numero', numero)
+
+  if (lastModified) query = query.eq('modifico_fecha', lastModified)
+
+  const { data, error } = await query.select()
+  if (error) return { error: error.message }
+  if (lastModified && (!data || data.length === 0)) {
+    return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
+  }
+
+  await writeAudit(admin, {
+    tabla: 't_promesa',
+    operacion: 'UPDATE',
+    cuenta,
+    registroId: { empresa, proyecto, numero },
+    datoAntes: original as Record<string, unknown>,
+    datoDespues: (data?.[0] ?? null) as Record<string, unknown> | null,
+    ...auditUser,
+  })
+
+  return {}
+}
+
 // ─── Eliminar ──────────────────────────────────────────────────────────────
 
 export async function deletePromesa(

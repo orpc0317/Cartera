@@ -8,6 +8,7 @@ import { getBancos } from '@/app/actions/bancos'
 import { getCuentasBancarias } from '@/app/actions/cuentas-bancarias'
 import { getVendedores } from '@/app/actions/vendedores'
 import { getCobradores } from '@/app/actions/cobradores'
+import { getTasasCambio } from '@/app/actions/tasas-cambio'
 import { getPermisosDetalle } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
@@ -17,7 +18,7 @@ export default async function ReservasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes, bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, permisos] = await Promise.all([
+  const [reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes, bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, tasasCambio, permisos] = await Promise.all([
     getReservas().catch((e: Error)                  => { console.error('getReservas:', e.message);                  return [] as Awaited<ReturnType<typeof getReservas>>                  }),
     getLotesDisponibles().catch((e: Error)          => { console.error('getLotesDisponibles:', e.message);          return [] as Awaited<ReturnType<typeof getLotesDisponibles>>          }),
     getManzanas().catch((e: Error)                  => { console.error('getManzanas:', e.message);                  return [] as Awaited<ReturnType<typeof getManzanas>>                  }),
@@ -31,6 +32,7 @@ export default async function ReservasPage() {
     getCobradores().catch((e: Error)                => { console.error('getCobradores:', e.message);                return [] as Awaited<ReturnType<typeof getCobradores>>                }),
     getSeriesRecibo().catch((e: Error)              => { console.error('getSeriesRecibo:', e.message);              return [] as Awaited<ReturnType<typeof getSeriesRecibo>>              }),
     getProyectoMonedas().catch((e: Error)           => { console.error('getProyectoMonedas:', e.message);           return [] as Awaited<ReturnType<typeof getProyectoMonedas>>           }),
+    getTasasCambio().catch((e: Error)               => { console.error('getTasasCambio:', e.message);               return [] as Awaited<ReturnType<typeof getTasasCambio>>               }),
     getPermisosDetalle(PERMISOS.RES_OPE),
   ])
 
@@ -49,6 +51,7 @@ export default async function ReservasPage() {
       cobradores={cobradores}
       seriesRecibo={seriesRecibo}
       proyectoMonedas={proyectoMonedas}
+      tasasCambio={tasasCambio}
       puedeAgregar={permisos.agregar}
       userId={user?.id ?? ''}
     />

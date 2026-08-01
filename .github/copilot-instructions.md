@@ -68,6 +68,7 @@ Recorrer esta lista mentalmente en cada cierre de tarea — sin excepción:
 1. **`get_errors`** sobre todo archivo TS/TSX creado o modificado.
 2. **`npx tsc --noEmit`** solo si `get_errors` pasa limpio pero la edición fue estructuralmente compleja y hay indicios de problema.
 3. **Comentarios JSX cerrados** — verificar que no exista `{/* texto */` sin `}` de cierre.
+4. **`writeAudit`** — si se creó o modificó una función `create*`/`update*`/`delete*` (o una que llame a un RPC `SECURITY DEFINER` que inserta/actualiza/borra), verificar que llame a `writeAudit` tras el éxito de la mutación. Ver `server-actions.instructions.md § writeAudit`.
 
 ---
 
@@ -86,10 +87,14 @@ Si hay un campo que no coincide con ningún § de `components.instructions.md`, 
 | `components.instructions.md` | **SIEMPRE** — toda `_client.tsx`, sin excepción. Fuente única de verdad para todos los snippets de UI (§§ A–AG, excepto W/X/AA/AB). |
 | `base-ui-gotchas.instructions.md` | **SIEMPRE** junto con `components.instructions.md`. Diferencias críticas Base UI vs Radix: `SelectValue` render prop, `SelectTrigger w-full`, `AlertDialogDescription render={<div />}`, `DropdownMenuTrigger`. |
 | `crud-screens.instructions.md` | Toda pantalla CRUD — modal layout, icon badge, ViewField, SectionDivider, PhoneField pattern, geo pre-selection. |
+| `patterns.instructions.md` | Toda pantalla que no sea un CRUD simple de un solo nivel — Maestro-Detalle, Transacción, Reporte, Drawer, o cualquier layout nuevo. Define **solo** layout/composición; nunca redefine el aspecto de un campo (eso siempre viene de `components.instructions.md` + `ui-conventions.instructions.md`, sin excepción de patrón). |
 | `server-actions.instructions.md` | Todo `page.tsx` y todo `actions/*.ts` — patrón `getCuentaActiva`, `Promise.all` con `.catch()` por llamada, concurrencia optimista con `modifico_fecha`. |
-| `ui-conventions.instructions.md` | Toda `_client.tsx` — color de acento del módulo, iconos Lucide, reglas de labels, formatos numéricos, COUNTRY_CURRENCY_MAP. |
+| `ui-conventions.instructions.md` | Toda `_client.tsx` — color de acento del módulo, iconos Lucide, reglas de labels, formatos numéricos, COUNTRY_CURRENCY_MAP. **Contrato visual universal de campos** (Input/Select/Label/tabla): aplica igual sin importar el patrón de pantalla que se esté usando. |
 | `data-tables.instructions.md` | Toda pantalla con tabla — columnas, ColumnFilter, ColumnManager, keyboard nav. |
 | `business-context.instructions.md` | Toda pantalla nueva — jerarquía cuenta→empresa→proyecto, modelo SaaS, reglas de negocio. |
 | `image-upload.instructions.md` | Solo cuando la pantalla incluya un campo de tipo imagen (`logo_url` u otro) — magic bytes, SVG risk, cleanup, patrón `LogoUploadField` (§ AC). |
 | `advanced-components.instructions.md` | Solo cuando la pantalla tenga campo `moneda` (§W), cascada geográfica pais/depto/municipio (§X), `CountrySelect` (§AA), o `ClienteCombobox` (§AB). |
+
+> **Regla de fondo:** `components.instructions.md` y `ui-conventions.instructions.md` definen **qué es** cada primitivo (Input, Select, Checkbox, Label, tabla, modal) — son agnósticos al patrón de pantalla. `crud-screens.instructions.md` y `patterns.instructions.md` definen **dónde va cada cosa** (layout) para un tipo de pantalla dado. Un patrón de pantalla nuevo (incluido uno no documentado todavía) nunca es excusa para inventar un estilo de campo distinto — si no calza en ningún § existente, detener y preguntar (ver regla obligatoria arriba).
+
 

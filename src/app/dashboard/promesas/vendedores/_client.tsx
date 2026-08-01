@@ -4,8 +4,8 @@ import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Eye, Plus, UserCheck, Search,
-  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
+  Pencil, Eye, Plus, UserCheck, Search,
+  History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,10 +21,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -284,25 +280,28 @@ export function VendedoresClient({
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `vendedores_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return DEFAULT_PREFS
-      const parsed: ColPref[] = JSON.parse(saved)
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      return [
+      setColPrefs([
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ]
-    } catch { return DEFAULT_PREFS }
-  })
+      ])
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
-  }, [colPrefs, STORAGE_KEY])
-
-  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
+  function saveColPrefs(next: ColPref[]) {
+    setColPrefs(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
+  }
   function toggleCol(key: string) { saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p)) }
   function moveCol(key: string, dir: -1 | 1) {
     const idx = colPrefs.findIndex((p) => p.key === key)
@@ -677,34 +676,16 @@ export function VendedoresClient({
                     <TableCell className={`sticky right-0 z-10 transition-colors ${
                       isActive ? 'bg-lime-50 dark:bg-lime-950/30' : 'bg-card group-hover:bg-muted/40'
                     }`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
+                      <button
+                        type="button"
+                        onClick={() => openView(vendedor)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
                           isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(vendedor)}>
-                            <Eye className="mr-2 h-3.5 w-3.5" />
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(vendedor)}>
-                            <History className="mr-2 h-3.5 w-3.5" />
-                            Historial
-                          </DropdownMenuItem>
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteTarget(vendedor)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -720,7 +701,7 @@ export function VendedoresClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return
+          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -866,21 +847,34 @@ export function VendedoresClient({
           {/* Footer */}
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                {puedeModificar && (
-                  <Button onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" /> Editar
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-lime-50 dark:hover:bg-lime-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                {puedeEliminar && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-lime-50 dark:hover:bg-lime-950/30" onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
                 <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isPending}>
                   {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
-              </>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-lime-50 dark:hover:bg-lime-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

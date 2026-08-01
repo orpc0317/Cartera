@@ -24,11 +24,11 @@ Before writing any code, load these instruction files **in parallel**:
 |------|--------|
 | `.github/instructions/business-context.instructions.md` | Domain hierarchy, cuenta isolation |
 | `.github/instructions/server-actions.instructions.md` | getCuentaActiva, page.tsx pattern, optimistic concurrency |
-| `.github/instructions/crud-screens.instructions.md` | Modal layout, ViewField, SectionDivider, icon badge |
+| `.github/instructions/crud-screens.instructions.md` | Modal layout, ViewField, SectionDivider/SegmentCard, icon badge |
 | `.github/instructions/ui-conventions.instructions.md` | Accent colors, Lucide icons, label rules |
 | `.github/instructions/data-tables.instructions.md` | Column defs, ColumnFilter, ColumnManager, keyboard nav |
 | `.github/instructions/base-ui-gotchas.instructions.md` | Base UI vs Radix API differences (SelectValue, SelectTrigger, AlertDialog, DropdownMenu) |
-| `.github/instructions/components.instructions.md` | **Copy-verbatim snippets** — modal state/functions, iconBadgeBg, subtitle, form inputs, selects, checkboxes, AlertDialog delete, row dropdown, ColumnFilter, ColumnManager, handleTableKeyDown |
+| `.github/instructions/components.instructions.md` | **Copy-verbatim snippets** — modal state/functions, iconBadgeBg, subtitle, form inputs, selects, checkboxes, AlertDialog delete, row Ver button, SegmentCard, ColumnFilter, ColumnManager, handleTableKeyDown |
 
 > **Si el spec contiene algún campo de tipo imagen** (p.ej. `logo_url`), cargar también:
 > `.github/instructions/image-upload.instructions.md` — magic bytes, SVG risk, cleanup de archivo anterior, patrón `LogoUploadField`.
@@ -204,7 +204,7 @@ const [search, setSearch]         = useState('')
 
 - [ ] **`STORAGE_KEY` includes `${userId}`** so column preferences are per-user.
 - [ ] **Export filename matches the spec's `EXPORTACION` section** exactly (e.g. `tipos-ingresos-YYYY-MM-DD.csv`).
-- [ ] **Sticky left column is `codigo`; sticky right column is the actions dropdown** — both have `z-10` and mirror their background class to the active-row highlight class.
+- [ ] **Sticky left column is `codigo`; sticky right column is the "Ver" button** (single action, no dropdown/chevron) — both have `z-10` and mirror their background class to the active-row highlight class.
 - [ ] **Toolbar structure** — copy the exact block from `data-tables.instructions.md § Toolbar layout`. Violations to catch:
   - Search input has `max-w-xs` (fixed), **not** `flex-1`.
   - `hasActiveFilters = Object.keys(colFilters).length > 0` is declared near other derived constants.
@@ -217,15 +217,16 @@ const [search, setSearch]         = useState('')
 - Header gradient with module accent color
 - Icon badge: module icon when viewing, `<Plus>` when creating, `<Pencil>` when editing
 - Tabs with at least "General" tab; add more tabs only if spec defines them
-- **View mode:** `ViewField` for each field
-- **Edit mode:** form fields per `CAMPOS_FORMULARIO`; if RELACIONES defines cascade selects, on parent change reset child to first available item or `0`
-- **Footer:** view mode → Cerrar + Editar (if `puedeModificar`); edit mode → Cancelar/Volver + Guardar
-- **Delete:** `AlertDialog` with "¿Estás seguro?" pattern; only shown if `puedeEliminar`
+- **View mode:** `ViewField` for each field, grouped into `SegmentCard` per section (title above a bordered card — replaces bare `SectionDivider`)
+- **Edit mode:** form fields per `CAMPOS_FORMULARIO`, same `SegmentCard` grouping; if RELACIONES defines cascade selects, on parent change reset child to first available item or `0`
+- **Footer (estándar 2026-08):** view mode → single row of ghost buttons: Historial, [acciones extra de la entidad], Eliminar (if `puedeEliminar`), Editar (if `puedeModificar`) — **no** botón "Cerrar" (la "x" del header ya cierra); edit mode → Cancelar/Volver + Guardar
+- **Delete:** `AlertDialog` with "¿Estás seguro?" pattern, triggered from the footer's Eliminar button (not a row dropdown); only shown if `puedeEliminar`
+- **Guard obligatorio:** el `modal={false}` del Dialog principal debe ignorar `onOpenChange(false)` mientras `auditTarget`/`deleteTarget`/cualquier otro dialog anidado esté abierto — ver `base-ui-gotchas.instructions.md § 5`
 
 **Permission gates** (from spec's `ACCIONES`):
 - `puedeAgregar` → "Nuevo" button visibility
-- `puedeModificar` → Edit button in modal footer; row dropdown shows "Ver / Editar" vs only "Ver"
-- `puedeEliminar` → Delete option in row actions dropdown
+- `puedeModificar` → Editar button in modal footer
+- `puedeEliminar` → Eliminar button in modal footer (not a row dropdown)
 
 ---
 

@@ -32,7 +32,10 @@ applyTo: "src/app/dashboard/**/_client.tsx"
 | Tasas de Cambio   | `teal-100 / teal-600`         |
 | Depositar Pagos   | `pink-100 / pink-600`         |
 | Transacciones Bancarias | `fuchsia-100 / fuchsia-600` |
-| Tipos Documento   | `slate-100 / slate-600`       || Pago Cuotas       | `red-100 / red-600`         |
+| Tipos Documento   | `slate-100 / slate-600`       |
+| Pago Cuotas       | `red-100 / red-600`          |
+| Mantenimiento Pagos | `stone-100 / stone-600`     |
+| Promesas          | `zinc-100 / zinc-600`         |
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
 ---
@@ -84,6 +87,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Transacciones Bancarias | `ScrollText` |
 | Tipos Documento   | `IdCard`         |
 | Pago Cuotas       | `HandCoins`      |
+| Mantenimiento Pagos | `ReceiptText`  |
 
 ---
 
@@ -97,6 +101,8 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 ## Label & field-wrapper visual standards
 
 Estos estándares garantizan que labels y bordes de campo se vean consistentes en toda la app, especialmente cuando un `ViewField` (solo lectura) aparece lado a lado con un `Input`/`Select` (editable).
+
+**Alcance — sin excepción de ubicación ni de patrón de pantalla:** esta regla aplica a **todo** `<Input>`/`<Select>` que exista en un `_client.tsx`, sin importar dónde esté en el layout (grid de edición dentro del modal, panel de filtros server-side, toolbar de búsqueda, tabla, drawer) **ni qué patrón de pantalla lo contiene** (Formulario simple, Maestro-Detalle, Transacción, Reporte, Drawer, o cualquier patrón nuevo aún no documentado en `patterns.instructions.md`). No existe una variante "toolbar" o "filtro" con estilo propio, y un patrón de pantalla nuevo tampoco crea una excepción automática. Si el campo es un `Input` o un `Select`, lleva `variant="l-border"`; si tiene una etiqueta encima, es un `<Label>` con las clases de esta tabla — nunca un `<span>` suelto.
 
 | Elemento | className obligatorio | style |
 |---|---|---|

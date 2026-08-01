@@ -4,8 +4,8 @@ import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Trash2, Plus, MapPin, Search, History,
-  Settings2, ChevronDown, ChevronUp, X, Receipt, ClipboardList, ChevronLeft, ChevronRight, Ban,
+  Pencil, Trash2, Plus, MapPin, Search, History, Eye,
+  Settings2, ChevronDown, ChevronUp, X, Receipt, ClipboardList, ChevronLeft, ChevronRight, Ban, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,11 +23,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -118,6 +113,20 @@ function SectionDivider({ label }: { label: string }) {
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
       <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+    </div>
+  )
+}
+
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
+      </div>
     </div>
   )
 }
@@ -240,8 +249,11 @@ export function LotesClient({
 
   const STORAGE_KEY = `lotes_cols_v1_${userId}`
   const DEFAULT_PREFS: ColPref[] = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
@@ -250,17 +262,17 @@ export function LotesClient({
           const found = parsed.find((p) => p.key === dp.key)
           return found ?? dp
         })
-        return merged.sort((a, b) => {
+        setColPrefs(merged.sort((a, b) => {
           const ai = parsed.findIndex((p) => p.key === a.key)
           const bi = parsed.findIndex((p) => p.key === b.key)
           if (ai === -1) return 1
           if (bi === -1) return -1
           return ai - bi
-        })
+        }))
       }
     } catch { /* ignore */ }
-    return DEFAULT_PREFS
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs))
@@ -779,27 +791,14 @@ export function LotesClient({
                       }
                     })}
                     <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-rose-50 dark:bg-rose-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(lote)}>
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(lote)}>
-                            <History className="mr-2 h-3.5 w-3.5" /> Historial
-                          </DropdownMenuItem>
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(lote)}>
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => openView(lote)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -835,6 +834,7 @@ export function LotesClient({
         modal={false}
         open={dialogOpen}
         onOpenChange={(open) => {
+          if (!open && (deleteTarget !== null || auditTarget !== null || desistirConfirmOpen)) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -877,48 +877,52 @@ export function LotesClient({
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="IDENTIFICACION" />
-                    <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
-                    <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
-                    <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} />
-                    <ViewField label="Manzana" value={viewTarget.manzana} />
-                    <ViewField label="Codigo"  value={viewTarget.codigo}  />
-                    <SectionDivider label="GENERAL" />
-                    <div className="grid gap-1">
-                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
-                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-                        {(() => {
-                          const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                          return flag ? (
-                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                              {viewTarget.moneda}
-                            </span>
-                          ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
-                        })()}
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
+                      <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
+                      <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} />
+                      <ViewField label="Manzana" value={viewTarget.manzana} />
+                      <ViewField label="Codigo"  value={viewTarget.codigo}  />
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
+                      <div className="grid gap-1">
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                        <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                          {(() => {
+                            const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                            return flag ? (
+                              <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                                <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                {viewTarget.moneda}
+                              </span>
+                            ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
+                          })()}
+                        </div>
                       </div>
-                    </div>
-                    <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
-                    <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
+                      <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
+                      <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
+                    </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="REGISTRO" />
-                    <ViewField label="Finca" value={viewTarget.finca} />
-                    <ViewField label="Folio" value={viewTarget.folio} />
-                    <ViewField label="Libro" value={viewTarget.libro} />
-                    <SectionDivider label="COLINDANCIAS" />
-                    <ViewField label="Norte" value={viewTarget.norte} />
-                    <ViewField label="Sur"   value={viewTarget.sur}   />
-                    <ViewField label="Este"  value={viewTarget.este}  />
-                    <ViewField label="Oeste" value={viewTarget.oeste} />
-                    <ViewField label="Otros" value={viewTarget.otro}  />
+                    <SegmentCard label="REGISTRO">
+                      <ViewField label="Finca" value={viewTarget.finca} />
+                      <ViewField label="Folio" value={viewTarget.folio} />
+                      <ViewField label="Libro" value={viewTarget.libro} />
+                    </SegmentCard>
+                    <SegmentCard label="COLINDANCIAS">
+                      <ViewField label="Norte" value={viewTarget.norte} />
+                      <ViewField label="Sur"   value={viewTarget.sur}   />
+                      <ViewField label="Este"  value={viewTarget.este}  />
+                      <ViewField label="Oeste" value={viewTarget.oeste} />
+                      <ViewField label="Otros" value={viewTarget.otro}  />
+                    </SegmentCard>
                   </div>
                 </div>
               ) : (
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="IDENTIFICACION" />
+                    <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
@@ -979,7 +983,8 @@ export function LotesClient({
                     ) : (
                       <ViewField label="Codigo" value={viewTarget.codigo} />
                     )}
-                    <SectionDivider label="GENERAL" />
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
                     <div className="grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
@@ -1024,10 +1029,11 @@ export function LotesClient({
                         {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
                       </div>
                     </div>
+                    </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="REGISTRO" />
+                    <SegmentCard label="REGISTRO">
                     <div className="grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Finca</Label>
                       <Input variant="l-border" value={form.finca ?? ''} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" />
@@ -1040,7 +1046,8 @@ export function LotesClient({
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Libro</Label>
                       <Input variant="l-border" value={form.libro ?? ''} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" />
                     </div>
-                    <SectionDivider label="COLINDANCIAS" />
+                    </SegmentCard>
+                    <SegmentCard label="COLINDANCIAS">
                     <div className="grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Norte</Label>
                       <Input variant="l-border" value={form.norte ?? ''} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia norte" />
@@ -1061,6 +1068,7 @@ export function LotesClient({
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Otros</Label>
                       <Input variant="l-border" value={form.otro ?? ''} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias" />
                     </div>
+                    </SegmentCard>
                   </div>
                 </div>
               )}
@@ -1072,39 +1080,28 @@ export function LotesClient({
                 <div className="flex gap-6 items-start">
                   {/* Columna izquierda — RESERVA */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="RESERVA" />
-                    <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField
-                        label="Reserva"
-                        value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}
-                      />
-                      <ViewField
-                        label="Recibo"
-                        value={viewTarget.recibo_numero > 0 ? `${viewTarget.recibo_serie ?? ''}${viewTarget.recibo_numero}` : ''}
-                      />
-                      <ViewField
-                        label="Fecha"
-                        value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <ViewField
-                        label="Cliente"
-                        value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
-                      />
-                    </div>
-                    {viewTarget.recibo_numero > 0 && reservaInfo?.reserva_numero && puedeModificar && (
-                      <div className="col-span-2 flex justify-end pt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
-                          onClick={() => setDesistirConfirmOpen(true)}
-                        >
-                          <Ban className="h-3.5 w-3.5" /> Desistir Reserva
-                        </Button>
+                    <SegmentCard label="RESERVA">
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                        <ViewField
+                          label="Reserva"
+                          value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}
+                        />
+                        <ViewField
+                          label="Recibo"
+                          value={viewTarget.recibo_numero > 0 ? `${viewTarget.recibo_serie ?? ''}${viewTarget.recibo_numero}` : ''}
+                        />
+                        <ViewField
+                          label="Fecha"
+                          value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
+                        />
                       </div>
-                    )}
+                      <div className="col-span-2">
+                        <ViewField
+                          label="Cliente"
+                          value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
+                        />
+                      </div>
+                    </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
                   {/* Columna derecha — reservada para contenido futuro */}
@@ -1116,19 +1113,37 @@ export function LotesClient({
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                {puedeModificar && (
-                  <Button onClick={startEdit} className="gap-2">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                {viewTarget.recibo_numero > 0 && reservaInfo?.reserva_numero && puedeModificar && (
+                  <Button variant="ghost" size="sm" className="text-amber-700 hover:text-amber-800" onClick={() => setDesistirConfirmOpen(true)}>
+                    <Ban className="mr-1.5 h-3.5 w-3.5" /> Desistir Reserva
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                {puedeEliminar && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
+                  </Button>
+                )}
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
-              </>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

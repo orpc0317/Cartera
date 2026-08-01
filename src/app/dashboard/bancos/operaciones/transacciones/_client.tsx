@@ -303,19 +303,23 @@ export function TransaccionesBancariasClient({
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `trx_ban_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return DEFAULT_PREFS
-      const parsed: ColPref[] = JSON.parse(saved)
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      return [
+      setColPrefs([
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ]
-    } catch { return DEFAULT_PREFS }
-  })
+      ])
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }

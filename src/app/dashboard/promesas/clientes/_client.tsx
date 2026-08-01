@@ -4,9 +4,9 @@ import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  MoreHorizontal, Pencil, Eye, Plus, Users, Search,
+  Pencil, Eye, Plus, Users, Search,
   History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,11 +24,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -143,6 +138,20 @@ function SectionDivider({ label }: { label: string }) {
     <div className="col-span-2 flex items-center gap-2 pt-1">
       <div className="h-4 w-0.5 rounded-full bg-primary/40" />
       <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+    </div>
+  )
+}
+
+function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="col-span-2 grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
+        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        {children}
+      </div>
     </div>
   )
 }
@@ -341,25 +350,28 @@ export function ClientesClient({
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `clientes_cols_v1_${userId}`
-  const [colPrefs, setColPrefs] = useState<ColPref[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_PREFS
+  const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
+
+  // Cargar preferencias guardadas al montar (solo client-side, evita hydration mismatch:
+  // el server siempre renderiza DEFAULT_PREFS; localStorage se lee despues del mount)
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (!saved) return DEFAULT_PREFS
-      const parsed: ColPref[] = JSON.parse(saved)
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (!raw) return
+      const parsed: ColPref[] = JSON.parse(raw)
       const knownKeys = new Set(parsed.map((p) => p.key))
-      return [
+      setColPrefs([
         ...parsed.filter((p) => ALL_COLUMNS.some((c) => c.key === p.key)),
         ...DEFAULT_PREFS.filter((p) => !knownKeys.has(p.key)),
-      ]
-    } catch { return DEFAULT_PREFS }
-  })
+      ])
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(colPrefs)) } catch { /* quota */ }
-  }, [colPrefs, STORAGE_KEY])
-
-  function saveColPrefs(next: ColPref[]) { setColPrefs(next) }
+  function saveColPrefs(next: ColPref[]) {
+    setColPrefs(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { /* quota */ }
+  }
   function toggleCol(key: string) { saveColPrefs(colPrefs.map((p) => p.key === key ? { ...p, visible: !p.visible } : p)) }
   function moveCol(key: string, dir: -1 | 1) {
     const idx = colPrefs.findIndex((p) => p.key === key)
@@ -955,34 +967,16 @@ export function ClientesClient({
                     <TableCell className={`sticky right-0 z-10 transition-colors ${
                       isActive ? 'bg-indigo-50 dark:bg-indigo-950/30' : 'bg-card group-hover:bg-muted/40'
                     }`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
+                      <button
+                        type="button"
+                        onClick={() => openView(cliente)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
                           isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(cliente)}>
-                            <Eye className="mr-2 h-3.5 w-3.5" />
-                            {puedeModificar ? 'Ver / Editar' : 'Ver'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(cliente)}>
-                            <History className="mr-2 h-3.5 w-3.5" />
-                            Historial
-                          </DropdownMenuItem>
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeleteTarget(cliente)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -1017,7 +1011,7 @@ export function ClientesClient({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open && similarWarning) return
+          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
@@ -1066,7 +1060,7 @@ export function ClientesClient({
 
                   {/* Columna izquierda */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="IDENTIFICACION" />
+                    <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
                       <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
                     </div>
@@ -1074,7 +1068,8 @@ export function ClientesClient({
                       <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
                     </div>
                     <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
-                    <SectionDivider label="GENERAL" />
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
                     <div className="col-span-2">
                       <ViewField label="Nombre" value={viewTarget.nombre} />
                     </div>
@@ -1111,6 +1106,7 @@ export function ClientesClient({
                     <div className="col-span-2">
                       <ViewField label="Correo" value={viewTarget.correo} />
                     </div>
+                    </SegmentCard>
                   </div>
 
                   {/* Separador vertical */}
@@ -1118,7 +1114,7 @@ export function ClientesClient({
 
                   {/* Columna derecha */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SectionDivider label="DIRECCION" />
+                    <SegmentCard label="DIRECCION">
                     <div className="col-span-2">
                       <ViewField label="Direccion" value={viewTarget.direccion} />
                     </div>
@@ -1146,13 +1142,15 @@ export function ClientesClient({
                       value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
                     />
                     <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
-                    <SectionDivider label="FACTURACION" />
+                    </SegmentCard>
+                    <SegmentCard label="FACTURACION">
                     <div className="col-span-2">
                       <ViewField label="Nombre Factura" value={viewTarget.nombre_factura} />
                     </div>
                     <ViewField label="Identificacion" value={TIPO_IDENTIFICACION[viewTarget.tipo_identificacion ?? 0] ?? `#${viewTarget.tipo_identificacion}`} />
                     <ViewField label="ID Tributaria" value={viewTarget.identificacion_tributaria} />
                     <ViewField label="Regimen IVA" value={REGIMENES_IVA[viewTarget.regimen_iva] ?? `#${viewTarget.regimen_iva}`} />
+                    </SegmentCard>
                   </div>
 
                 </div>
@@ -1162,7 +1160,7 @@ export function ClientesClient({
 
                 {/* Columna izquierda */}
                 <div className="flex-1 grid grid-cols-2 gap-2">
-                  <SectionDivider label="IDENTIFICACION" />
+                  <SegmentCard label="IDENTIFICACION">
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
@@ -1177,7 +1175,8 @@ export function ClientesClient({
                       <SelectContent>{proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <SectionDivider label="GENERAL" />
+                  </SegmentCard>
+                  <SegmentCard label="GENERAL">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
                     <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
@@ -1206,6 +1205,7 @@ export function ClientesClient({
                     <Label htmlFor="correo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Correo *</Label>
                     <Input variant="l-border" id="correo" type="email" value={form.correo} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))} placeholder="Correo@ejemplo.com" />
                   </div>
+                  </SegmentCard>
                 </div>
 
                 {/* Separador vertical */}
@@ -1213,7 +1213,7 @@ export function ClientesClient({
 
                 {/* Columna derecha */}
                 <div className="flex-1 grid grid-cols-2 gap-2">
-                  <SectionDivider label="DIRECCION" />
+                  <SegmentCard label="DIRECCION">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
                     <Input variant="l-border" id="direccion" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
@@ -1279,7 +1279,8 @@ export function ClientesClient({
                     <Label htmlFor="codigo_postal" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cod. Postal</Label>
                     <Input variant="l-border" id="codigo_postal" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Codigo postal" />
                   </div>
-                  <SectionDivider label="FACTURACION" />
+                  </SegmentCard>
+                  <SegmentCard label="FACTURACION">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre_factura" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Factura</Label>
                     <Input variant="l-border" id="nombre_factura" value={form.nombre_factura} onChange={(e) => f('nombre_factura', e.target.value)} placeholder="Nombre para facturacion (si difiere)" />
@@ -1318,6 +1319,7 @@ export function ClientesClient({
                       </SelectContent>
                     </Select>
                   </div>
+                  </SegmentCard>
                 </div>
 
               </div>
@@ -1328,19 +1330,32 @@ export function ClientesClient({
           {/* Footer */}
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
-                {puedeModificar && (
-                  <Button onClick={startEdit} className="gap-2">
-                    <Pencil className="h-3.5 w-3.5" /> Editar
+              <div className="flex w-full items-center gap-1">
+                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+                {puedeEliminar && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={cancelEdit}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
+                {puedeModificar && (
+                  <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={startEdit}>
+                    <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
+                  </Button>
+                )}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
-              </>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

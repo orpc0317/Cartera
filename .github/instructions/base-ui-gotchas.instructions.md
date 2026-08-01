@@ -128,14 +128,27 @@ Usar `className` directamente en `<DropdownMenuTrigger>`, no envolver con `<Butt
 
 ## 5. `<Dialog modal={false}>` — guard al cerrar
 
-Con `modal={false}` el `onOpenChange` se dispara al hacer clic fuera. Si hay un `AlertDialog` activo (e.g. confirmación de similares o de eliminación), el dialog principal no debe cerrarse. Incluir siempre el guard:
+Con `modal={false}` el `onOpenChange` se dispara al hacer clic fuera. Si hay **cualquier dialog anidado
+abierto** (AlertDialog de confirmación de similares/eliminación, o — estándar 2026-08 — Historial u
+otra acción del footer del modal Ver que abra su propio Dialog/AlertDialog), el dialog principal no
+debe cerrarse. Incluir siempre el guard con **todos** los estados de dialogs anidados que existan en el
+archivo (no solo `deleteTarget`):
 
 ```tsx
 // similarWarning es string[] — declarado como useState<string[]>([])
 // Non-empty = hay un AlertDialog de duplicados abierto
+// auditTarget = Historial (§AF); agregar aquí cualquier otro target de dialog propio de la entidad
+// (ej. planPagoTarget, anularTarget) que se pueda abrir desde el footer del modal Ver
 <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
-  if (!open && (similarWarning.length > 0 || deleteTarget !== null)) return  // guard
+  if (!open && (similarWarning.length > 0 || deleteTarget !== null || auditTarget !== null)) return  // guard
   setDialogOpen(open)
   if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
 }}>
 ```
+
+> **Por qué importa más desde el estándar 2026-08:** con el footer de acciones consolidado (§L/§R de
+> `components.instructions.md`), Historial/Eliminar/acciones extra se abren **mientras el modal Ver ya
+> está abierto** (antes se abrían solo desde la fila, con el modal cerrado). Si el guard no incluye el
+> target del dialog anidado, cerrar ese dialog anidado cierra también el modal Ver por error — bug real
+> encontrado y corregido en `promesas/promesas/_client.tsx`. Verificar este guard en cada pantalla
+> migrada al nuevo estándar.

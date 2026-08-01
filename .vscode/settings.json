@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^Get-Process -Id 23176,21724 \\| Select-Object Id, ProcessName, StartTime, Path$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
