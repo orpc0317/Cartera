@@ -37,6 +37,7 @@ alwaysApply: false
 | Pago Cuotas       | `red-100 / red-600`          |
 | Mantenimiento Pagos | `stone-100 / stone-600`     |
 | Promesas          | `zinc-100 / zinc-600`         |
+| GFACE             | `gray-100 / gray-600`         |
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
 ---
@@ -89,6 +90,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Tipos Documento   | `IdCard`         |
 | Pago Cuotas       | `HandCoins`      |
 | Mantenimiento Pagos | `ReceiptText`  |
+| GFACE             | `ShieldCheck`    |
 
 ---
 

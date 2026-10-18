@@ -36,6 +36,7 @@ import {
   CircleDollarSign,
   ScrollText,
   IdCard,
+  ShieldCheck,
   HandCoins,
   ReceiptText,
 } from 'lucide-react'
@@ -146,6 +147,7 @@ const NAV: NavItem[] = [
     icon: Settings,
     children: [
       { label: 'Tipos Documento', href: '/dashboard/generales/tipos-documento', icon: IdCard, separator: 'Catalogos', permiso: PERMISOS.TDO_CAT },
+      { label: 'GFACE', href: '/dashboard/generales/gface', icon: ShieldCheck, permiso: PERMISOS.GFA_CAT },
     ],
   },
 ]
