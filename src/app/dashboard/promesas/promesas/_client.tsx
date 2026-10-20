@@ -2137,9 +2137,11 @@ export function PromesasClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-                <Button className="bg-zinc-600 hover:bg-zinc-700 text-white" onClick={handleSave} disabled={isPending}>
-                  {isPending ? 'Guardando...' : 'Guardar'}
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={cancelEdit} disabled={isPending}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             ) : (
