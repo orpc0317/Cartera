@@ -124,7 +124,7 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
 
 Clase estándar (l-border, igual que los inputs del modal):
 ```
-w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50
+w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed
 ```
 Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}`.
 
@@ -145,7 +145,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
       setDeptoCodigo(dCode)
       setForm((p) => ({ ...p, pais: codigo, departamento: dCode, municipio: mCode }))
     }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">Selecciona país</option>
@@ -165,7 +165,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
       setDeptoCodigo(v)
       setForm((p) => ({ ...p, departamento: v, municipio: mCode }))
     }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un país'}</option>
@@ -180,7 +180,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
     value={form.municipio}
     disabled={!deptoCodigo}
     onChange={(e) => setForm((p) => ({ ...p, municipio: e.target.value }))}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
@@ -361,7 +361,7 @@ function ClienteCombobox({
           <button
             type="button"
             disabled={disabled}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}

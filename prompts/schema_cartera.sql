@@ -330,31 +330,32 @@ CREATE TABLE IF NOT EXISTS cartera.t_fase (
   PRIMARY KEY (cuenta, empresa, proyecto, codigo)
 );
 
--- Configuración de facturación electrónica (GFACE / FEL)
+-- Catalogo de Certificadores de documentos electronicos
 CREATE TABLE IF NOT EXISTS cartera.t_gface (
-  empresa                   integer      NOT NULL DEFAULT 0,
-  proyecto                  integer      NOT NULL DEFAULT 0,
-  codigo                    integer      NOT NULL DEFAULT 0,
-  nombre                    varchar(100) NOT NULL,
-  requestor                 varchar(50)  NULL,
-  entity                    varchar(25)  NULL,
-  user_name                 varchar(25)  NULL,
-  token                     varchar(50)  NULL,
-  web_service               varchar(100) NULL,
-  web_service_documento     varchar(100) NULL,
-  primera_firma             smallint     NOT NULL DEFAULT 0,
-  certificado_post          varchar(100) NULL,
-  certificado_ruta          varchar(100) NULL,
-  certificado_nombre        varchar(50)  NULL,
-  certificado_contrasena    varchar(25)  NULL,
-  correo_envio              varchar(50)  NULL,
-  correo_copia              varchar(50)  NULL,
-  validar_identificacion    smallint     NOT NULL DEFAULT 0,
-  usuario_agrego            uuid         NOT NULL,
-  fecha_agrego              timestamptz  NOT NULL DEFAULT now(),
-  usuario_modifico          uuid         NOT NULL,
-  fecha_modifico            timestamptz  NOT NULL DEFAULT now(),
-  PRIMARY KEY (empresa, proyecto, codigo)
+  cuenta                    varchar       NOT NULL,
+  empresa                   integer       NOT NULL DEFAULT 0,
+  proyecto                  integer       NOT NULL DEFAULT 0,
+  codigo                    integer       NOT NULL DEFAULT 0,
+  nombre                    varchar(100)  NOT NULL,
+  requestor                 varchar(50)   NULL,
+  entity                    varchar(25)   NULL,
+  user_name                 varchar(25)   NULL,
+  token                     varchar(50)   NULL,
+  web_service               varchar(100)  NULL,
+  web_service_documento     varchar(100)  NULL,
+  certificado_post          varchar(100)  NULL,
+  certificado_ruta          varchar(100)  NULL,
+  certificado_nombre        varchar(50)   NULL,
+  certificado_contrasena    varchar(25)   NULL,
+  correo_envio              varchar(50)   NULL,
+  correo_copia              varchar(50)   NULL,
+  primera_firma             smallint      NOT NULL DEFAULT 0,
+  validar_identificacion    smallint      NOT NULL DEFAULT 0,
+  agrego_usuario            uuid          NOT NULL,
+  agrego_fecha              timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
+  modifico_usuario          uuid          NOT NULL,
+  modifico_fecha            timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
+  PRIMARY KEY (cuenta, empresa, proyecto, codigo)
 );
 
 -- Grupos de usuarios

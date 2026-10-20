@@ -97,12 +97,12 @@ type ColFilters = Record<string, Set<string>>
 
 // --- Helpers UI ---
 
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -878,11 +878,11 @@ export function LotesClient({
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
-                      <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
-                      <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} />
-                      <ViewField label="Manzana" value={viewTarget.manzana} />
-                      <ViewField label="Codigo"  value={viewTarget.codigo}  />
+                      <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
+                      <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
+                      <ViewField locked label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} />
+                      <ViewField locked label="Manzana" value={viewTarget.manzana} />
+                      <ViewField locked label="Codigo"  value={viewTarget.codigo}  />
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                       <div className="grid gap-1">
@@ -981,7 +981,7 @@ export function LotesClient({
                         <Input variant="l-border" value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
-                      <ViewField label="Codigo" value={viewTarget.codigo} />
+                      <ViewField locked label="Codigo" value={viewTarget.codigo} />
                     )}
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
@@ -1082,21 +1082,21 @@ export function LotesClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="RESERVA">
                       <div className="col-span-2 grid grid-cols-3 gap-2">
-                        <ViewField
+                        <ViewField locked
                           label="Reserva"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}
                         />
-                        <ViewField
+                        <ViewField locked
                           label="Recibo"
                           value={viewTarget.recibo_numero > 0 ? `${viewTarget.recibo_serie ?? ''}${viewTarget.recibo_numero}` : ''}
                         />
-                        <ViewField
+                        <ViewField locked
                           label="Fecha"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
                         />
                       </div>
                       <div className="col-span-2">
-                        <ViewField
+                        <ViewField locked
                           label="Cliente"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
                         />
@@ -1135,8 +1135,12 @@ export function LotesClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
+                <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={cancelEdit} disabled={isPending}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
               </div>
             ) : (
               <div className="flex w-full justify-end">

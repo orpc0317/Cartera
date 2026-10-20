@@ -186,12 +186,12 @@ type ColFilters = Record<string, Set<string>>
 
 // â”€â”€â”€ Helper components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -331,7 +331,7 @@ function ClienteCombobox({
           <button
             type="button"
             disabled={disabled}
-            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:border-dashed disabled:bg-muted/20"
+            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/20"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -1523,7 +1523,7 @@ export function PromesasClient({
                           placeholder="Observaciones"
                           rows={2}
                           style={{ fontSize: 'var(--ui-input)' }}
-                          className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                          className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed resize-none"
                         />
                       </div>
                     </SegmentCard>
@@ -1670,8 +1670,8 @@ export function PromesasClient({
                       </Select>
                     </div>
                   </div>
-                  <ViewField label="Extension"       value={loteActivoForm ? `${loteActivoForm.extension} ${medidaForm}`.trim() : ''} />
-                  <ViewField label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
+                  <ViewField locked label="Extension"       value={loteActivoForm ? `${loteActivoForm.extension} ${medidaForm}`.trim() : ''} />
+                  <ViewField locked label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Arras</Label>
                     <Input variant="l-border"
@@ -1724,9 +1724,9 @@ export function PromesasClient({
                           placeholder="0.00"
                         />
                       </div>
-                      <ViewField label="Cuotas"      value={engancheCalcForm.cuotas      ? String(engancheCalcForm.cuotas)     : ''} />
-                      <ViewField label="Monto Cuota" value={engancheCalcForm.montoCuota  ? fmtNum(engancheCalcForm.montoCuota)  : ''} />
-                      <ViewField label="Ultima Cuota" value={engancheCalcForm.ultimaCuota ? fmtNum(engancheCalcForm.ultimaCuota) : ''} />
+                      <ViewField locked label="Cuotas"      value={engancheCalcForm.cuotas      ? String(engancheCalcForm.cuotas)     : ''} />
+                      <ViewField locked label="Monto Cuota" value={engancheCalcForm.montoCuota  ? fmtNum(engancheCalcForm.montoCuota)  : ''} />
+                      <ViewField locked label="Ultima Cuota" value={engancheCalcForm.ultimaCuota ? fmtNum(engancheCalcForm.ultimaCuota) : ''} />
                     </div>
                     <div className="col-span-2 flex items-center gap-2">
                       <Checkbox
@@ -1772,7 +1772,7 @@ export function PromesasClient({
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Monto Financiamiento" value={montoFinancCalc ? `${form.moneda} ${fmtNum(montoFinancCalc)}` : ''} />
+                      <ViewField locked label="Monto Financiamiento" value={montoFinancCalc ? `${form.moneda} ${fmtNum(montoFinancCalc)}` : ''} />
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Plazo</Label>
                         <Input variant="l-border"
@@ -1784,9 +1784,9 @@ export function PromesasClient({
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField label="Cuotas"       value={financiamientoCalcForm.cuotas      ? String(financiamientoCalcForm.cuotas)     : ''} />
-                      <ViewField label="Monto Cuota"  value={financiamientoCalcForm.montoCuota  ? fmtNum(financiamientoCalcForm.montoCuota)  : ''} />
-                      <ViewField label="Ultima Cuota" value={financiamientoCalcForm.ultimaCuota ? fmtNum(financiamientoCalcForm.ultimaCuota) : ''} />
+                      <ViewField locked label="Cuotas"       value={financiamientoCalcForm.cuotas      ? String(financiamientoCalcForm.cuotas)     : ''} />
+                      <ViewField locked label="Monto Cuota"  value={financiamientoCalcForm.montoCuota  ? fmtNum(financiamientoCalcForm.montoCuota)  : ''} />
+                      <ViewField locked label="Ultima Cuota" value={financiamientoCalcForm.ultimaCuota ? fmtNum(financiamientoCalcForm.ultimaCuota) : ''} />
                     </div>
                     <SectionDivider label="MORA" />
                     <div className="col-span-2 grid grid-cols-4 gap-2">
@@ -1863,7 +1863,7 @@ export function PromesasClient({
                         placeholder="Observaciones"
                         rows={2}
                         style={{ fontSize: 'var(--ui-input)' }}
-                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                        className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed resize-none"
                       />
                     </div>
                   </div>
@@ -2137,9 +2137,11 @@ export function PromesasClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-                <Button className="bg-zinc-600 hover:bg-zinc-700 text-white" onClick={handleSave} disabled={isPending}>
-                  {isPending ? 'Guardando...' : 'Guardar'}
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={cancelEdit} disabled={isPending}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             ) : (
@@ -2212,7 +2214,7 @@ export function PromesasClient({
               onChange={(e) => setAnularComentario(e.target.value)}
               placeholder="Describe el motivo de la anulación"
               rows={3}
-              className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:cursor-not-allowed resize-none"
             />
           </div>
           <DialogFooter>

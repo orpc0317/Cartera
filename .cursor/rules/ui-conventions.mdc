@@ -37,6 +37,7 @@ alwaysApply: false
 | Pago Cuotas       | `red-100 / red-600`          |
 | Mantenimiento Pagos | `stone-100 / stone-600`     |
 | Promesas          | `zinc-100 / zinc-600`         |
+| GFACE             | `gray-100 / gray-600`         |
 Used in: modal header gradient (`from-{accent}-50/70`), icon badge bg, table active row bg, sticky code cell border/text.
 
 ---
@@ -89,6 +90,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 | Tipos Documento   | `IdCard`         |
 | Pago Cuotas       | `HandCoins`      |
 | Mantenimiento Pagos | `ReceiptText`  |
+| GFACE             | `ShieldCheck`    |
 
 ---
 
@@ -141,6 +143,13 @@ Numeric `codigo` fields (auto-increment PKs) are displayed as plain `N` **withou
 #{row.codigo}
 <ViewField label="Codigo" value={`#${viewTarget.codigo}`} />
 ```
+
+## Color del dato
+
+El color del valor dice si el campo se puede editar. El subrayado no cambia. No usar `disabled:opacity-50` en inputs ni selects de formulario.
+
+- Editable, tambien en Ver si al pasar a Editar se habilita: casi negro (`--foreground`). `ViewField` sin `locked`.
+- No editable (Codigo ya asignado, calculado, select con `disabled={!!viewTarget}`): gris claro `#b4bec9`. `ViewField` lleva `locked`. Un input o select deshabilitado toma ese gris desde `src/app/globals.css`.
 
 ---
 

@@ -98,12 +98,12 @@ function ColumnFilter({
   )
 }
 
-function ViewField({ label, value }: { label: string; value?: string | null }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -404,7 +404,7 @@ function LogoUploadField({
           onDrop={handleDrop}
           className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-sm transition-colors ${
             dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'
-          } disabled:cursor-not-allowed disabled:opacity-50`}
+          } disabled:cursor-not-allowed`}
         >
           <ImageIcon className="h-8 w-8 text-muted-foreground" />
           <span className="text-muted-foreground">Haz clic o arrastra una imagen</span>
@@ -1132,8 +1132,8 @@ export function ProyectosClient({
                   {/* Left column — IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="Identificacion">
-                    <div className="col-span-2"><ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
-                    <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
+                    <div className="col-span-1"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                     </SegmentCard>
                     <SegmentCard label="General">
                     <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
@@ -1237,7 +1237,7 @@ export function ProyectosClient({
                       </Select>
                     </div>
                     {viewTarget && (
-                      <div className="col-span-1"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
+                      <div className="col-span-1"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                     )}
                     </SegmentCard>
                     <SegmentCard label="General">
@@ -1264,7 +1264,7 @@ export function ProyectosClient({
                       <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento *</Label>
                       <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo}
                         onChange={(e) => { const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
-                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
                         style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                         {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
@@ -1276,7 +1276,7 @@ export function ProyectosClient({
                         value={form.direccion_municipio}
                         disabled={!deptoCodigo}
                         onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
-                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
                         style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                         {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
@@ -1670,8 +1670,12 @@ export function ProyectosClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
+                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={cancelEdit} disabled={isPending}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
               </div>
             ) : (
               <div className="flex w-full justify-end">

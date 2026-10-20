@@ -95,12 +95,12 @@ function exportCsv(
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
 
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -764,9 +764,9 @@ export function CoordinadoresClient({
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
                     <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
-                    <div className="col-span-2"><ViewField label="Codigo"   value={String(viewTarget.codigo)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Codigo"   value={String(viewTarget.codigo)} /></div>
                   </SegmentCard>
                   <SegmentCard label="GENERAL">
                     <div className="col-span-2"><ViewField label="Supervisor" value={supervisorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.supervisor}`) ?? `#${viewTarget.supervisor}`} /></div>
@@ -866,9 +866,11 @@ export function CoordinadoresClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="outline" onClick={cancelEdit}>Volver</Button>
-                <Button onClick={handleSave} disabled={isPending}>
-                  {isPending ? 'Guardando…' : 'Guardar'}
+                <Button variant="ghost" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-950/30" onClick={cancelEdit}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
             ) : (

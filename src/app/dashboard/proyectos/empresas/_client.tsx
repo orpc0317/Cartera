@@ -107,12 +107,12 @@ function ColumnFilter({
   )
 }
 
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -785,7 +785,7 @@ export function EmpresasClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2">
-                        <ViewField label="Codigo" value={String(viewTarget.codigo)} />
+                        <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
                       </div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
@@ -855,7 +855,7 @@ export function EmpresasClient({
                   {viewTarget && (
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2">
-                        <ViewField label="Codigo" value={String(viewTarget.codigo)} />
+                        <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
                       </div>
                     </SegmentCard>
                   )}
@@ -946,7 +946,7 @@ export function EmpresasClient({
                         setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
                       }}
                       style={{ fontSize: 'var(--ui-input)' }}
-                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed"
                     >
                       <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
                       {deptosFiltrados.map((d) => (
@@ -966,7 +966,7 @@ export function EmpresasClient({
                         setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
                       }}
                       style={{ fontSize: 'var(--ui-input)' }}
-                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed"
                     >
                       <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
                       {municipiosFiltrados.map((m) => (
@@ -1031,8 +1031,12 @@ export function EmpresasClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando…' : 'Guardar'}</Button>
+                <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={cancelEdit} disabled={isPending}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
+                </Button>
               </div>
             ) : (
               <div className="flex w-full justify-end">

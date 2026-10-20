@@ -153,6 +153,18 @@
   html {
     @apply font-sans;
   }
+  /*
+   * Dato que no se puede editar: gris claro.
+   * Dato que si se puede editar: --foreground, tambien en Ver.
+   */
+  [data-slot="input"]:disabled:not([data-view-mode="true"]),
+  [data-slot="textarea"]:disabled:not([data-view-mode="true"]),
+  [data-slot="select-trigger"]:disabled:not([data-view-mode="true"]),
+  [data-slot="select-trigger"][data-disabled]:not([data-view-mode="true"]),
+  select:disabled:not([data-view-mode="true"]) {
+    color: #b4bec9 !important;
+    -webkit-text-fill-color: #b4bec9 !important;
+  }
   /* Native textarea/select using the underline-variant form style */
   textarea[class~="rounded-t-sm"],
   select[class~="rounded-t-sm"] {
