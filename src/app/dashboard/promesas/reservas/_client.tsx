@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ClipboardList, MapPin, Download,
-  Plus, Search, X, Settings2,
+  Plus, Search, X, Check, Settings2,
   ChevronDown, ChevronUp, MoreHorizontal, Eye, History,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
@@ -1957,9 +1957,11 @@ export function ReservasClient({
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={cancelEdit} disabled={isSaving}>Cancelar</Button>
-                <Button onClick={() => void handleSave()} disabled={isSaving}>
-                  {isSaving ? 'Guardando…' : 'Guardar'}
+                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelEdit} disabled={isSaving}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                </Button>
+                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={() => void handleSave()} disabled={isSaving}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isSaving ? 'Guardando…' : 'Guardar'}
                 </Button>
               </>
             )}
