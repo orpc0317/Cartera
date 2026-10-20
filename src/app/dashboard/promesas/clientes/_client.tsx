@@ -122,12 +122,12 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
 
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -1062,12 +1062,12 @@ export function ClientesClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
-                      <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
+                      <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
+                      <ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
                     </div>
-                    <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                     <div className="col-span-2">
@@ -1249,7 +1249,7 @@ export function ClientesClient({
                         setDeptoCodigo(v)
                         setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: mCode }))
                       }}
-                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
                       style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
                     >
                       <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
@@ -1266,7 +1266,7 @@ export function ClientesClient({
                       value={form.direccion_municipio}
                       disabled={!deptoCodigo}
                       onChange={(e) => setForm((p) => ({ ...p, direccion_municipio: e.target.value }))}
-                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
                       style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
                     >
                       <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>

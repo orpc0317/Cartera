@@ -51,6 +51,8 @@ Las secciones se distribuyen en dos columnas separadas por `<div className="w-px
 
 ## ViewField + SectionDivider + SegmentCard
 
+Color del valor: casi negro si el campo se edita en Editar. Gris claro `#b4bec9` (`locked` en `ViewField`, o input/select deshabilitado) si no se edita. Sin opacidad en el control.
+
 → **Copiar verbatim de `components.instructions.md § N · ViewField + SectionDivider`**  
 Reglas de valores vacíos y numéricos también están en esa sección.
 

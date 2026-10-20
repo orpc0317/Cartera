@@ -144,6 +144,13 @@ Numeric `codigo` fields (auto-increment PKs) are displayed as plain `N` **withou
 <ViewField label="Codigo" value={`#${viewTarget.codigo}`} />
 ```
 
+## Color del dato
+
+El color del valor dice si el campo se puede editar. El subrayado no cambia. No usar `disabled:opacity-50` en inputs ni selects de formulario.
+
+- Editable, tambien en Ver si al pasar a Editar se habilita: casi negro (`--foreground`). `ViewField` sin `locked`.
+- No editable (Codigo ya asignado, calculado, select con `disabled={!!viewTarget}`): gris claro `#b4bec9`. `ViewField` lleva `locked`. Un input o select deshabilitado toma ese gris desde `src/app/globals.css`.
+
 ---
 
 ## Geo / country rules

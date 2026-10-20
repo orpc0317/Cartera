@@ -177,12 +177,12 @@ const fmt = (n: number) =>
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
 
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -274,7 +274,7 @@ function ClienteCombobox({
           <button
             type="button"
             disabled={disabled}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -1714,7 +1714,7 @@ export function ReservasClient({
 
                   {form.moneda && form.moneda !== monedaBase && (
                     <div className="col-span-2">
-                      <ViewField
+                      <ViewField locked
                         label={`Tasa de Cambio (${form.moneda} > ${monedaBase})`}
                         value={tasaCambio ? tasaCambio.toFixed(4) : undefined}
                       />
