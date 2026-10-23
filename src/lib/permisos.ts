@@ -23,6 +23,7 @@ export const PERMISOS = {
   DEP_BAN:   'DEP.BAN',
   TRX_BAN:   'TRX.BAN',
   TDO_CAT:   'TDO.CAT',
+  GFA_CAT:   'GFA.CAT',
   PAG_CUO:   'PAG.CUO',
   PAG_MAN:   'PAG.MAN',
 } as const

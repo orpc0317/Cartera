@@ -80,12 +80,12 @@ function ColumnFilter({ label, values, active, onChange }: {
   )
 }
 
-function ViewField({ label, value }: { label: string; value?: string | null }) {
+function ViewField({ label, value, locked = false }: { label: string; value?: string | null; locked?: boolean }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
+        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -634,10 +634,10 @@ export function ManzanasClient({
               ) : viewTarget ? (
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                  <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa)} /></div>
-                  <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} /></div>
-                  <ViewField label="Fase"   value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase)} />
-                  <ViewField label="Codigo" value={viewTarget.codigo} />
+                  <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa)} /></div>
+                  <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} /></div>
+                  <ViewField locked label="Fase"   value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase)} />
+                  <ViewField locked label="Codigo" value={viewTarget.codigo} />
                   </SegmentCard>
                 </div>
               ) : null}
