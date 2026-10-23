@@ -1,7 +1,8 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react'
-import { Download, Loader2, Receipt } from 'lucide-react'
+import { Download, Loader2, Printer, Receipt } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -91,19 +92,46 @@ function InfoField({ label, value }: { label: string; value: string }) {
   )
 }
 
+type PlanPagoCsvMeta = {
+  empresa: number
+  empresaNombre: string
+  proyecto: number
+  proyectoNombre: string
+  numero: number
+  cliente: number
+  clienteNombre: string
+  faseNombre: string
+  manzana: string
+  lote: string
+}
+
 function exportPlanPagoCsv(
-  enganche: Row[], financiamiento: Row[], otrosColumnas: PlanOtroColumna[], numero: number,
+  enganche: Row[], financiamiento: Row[], otrosColumnas: PlanOtroColumna[],
+  meta: PlanPagoCsvMeta,
 ) {
+  const identity = [
+    meta.empresa, meta.empresaNombre,
+    meta.proyecto, meta.proyectoNombre,
+    meta.numero,
+    meta.cliente, meta.clienteNombre,
+    meta.faseNombre, meta.manzana, meta.lote,
+  ]
   const headers = [
-    'Seccion', 'Cuota', 'Fecha',
+    'Empresa', 'Empresa Nombre',
+    'Proyecto', 'Proyecto Nombre',
+    'Promesa',
+    'Cliente', 'Cliente Nombre',
+    'Fase', 'Manzana', 'Lote',
+    'Tipo', 'Cuota', 'Fecha',
     'Capital Monto', 'Capital Pagado',
     'Intereses Monto', 'Intereses Pagado',
     ...otrosColumnas.flatMap((c) => [`${c.etiqueta} Monto`, `${c.etiqueta} Pagado`]),
     'Mora Monto', 'Mora Pagado',
-    'Cuota Monto', 'Cuota Pagado',
+    'Totales Monto', 'Totales Pagado',
     'Saldo', 'Estado',
   ]
   const rowsToCsv = (seccion: string, rows: Row[]) => rows.map((r) => [
+    ...identity,
     seccion, r.cuota, fmtDate(r.fecha),
     r.capital.toFixed(2), r.capital_pagado.toFixed(2),
     r.interes.toFixed(2), r.interes_pagado.toFixed(2),
@@ -122,7 +150,7 @@ function exportPlanPagoCsv(
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `plan-pagos-${numero}-${new Date().toISOString().slice(0, 10)}.csv`
+  a.download = `plan_pagos-${meta.proyecto}-${meta.numero}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -137,12 +165,14 @@ interface PlanPagoDialogProps {
   proyectoNombre?: string
   clienteNombre?: string
   faseNombre?: string
+  logoUrl?: string
 }
 
 export function PlanPagoDialog({
-  open, onOpenChange, promesa, empresaNombre, proyectoNombre, clienteNombre, faseNombre,
+  open, onOpenChange, promesa, empresaNombre, proyectoNombre, clienteNombre, faseNombre, logoUrl,
 }: PlanPagoDialogProps) {
   const [loading, startTransition]      = useTransition()
+  const [pdfPending, setPdfPending]     = useState(false)
   const [cuotas, setCuotas]             = useState<PlanPagoCuota[]>([])
   const [otros, setOtros]               = useState<PlanOtroCuota[]>([])
   const [otrosColumnas, setOtrosColumnas] = useState<PlanOtroColumna[]>([])
@@ -174,8 +204,42 @@ export function PlanPagoDialog({
   )
 
   const moraEsFijo = (promesa.fijo_mora ?? 0) > 0
+  const moraTexto = moraEsFijo
+    ? `${promesa.moneda} ${fmtNum(promesa.fijo_mora)} fijo`
+    : `${fmtNum(promesa.interes_mora)}% ${promesa.forma_mora === 1 ? 'diario' : 'mensual'}`
 
-  const colSpanTotal = 2 /* Cuota, Fecha */ + 8 /* Capital, Interes, Mora, Cuota x2 */ + 2 /* Saldo, Estado */ + otrosColumnas.length * 2
+  async function handlePrintPdf() {
+    setPdfPending(true)
+    try {
+      const { downloadPlanPagoPdf } = await import('@/lib/plan-pago-pdf')
+      await downloadPlanPagoPdf({
+        empresaNombre: empresaNombre ?? '',
+        proyectoNombre: proyectoNombre ?? '',
+        proyecto: promesa.proyecto,
+        numero: promesa.numero,
+        logoUrl,
+        clienteNombre: clienteNombre ?? '',
+        lote: `${faseNombre ?? ''} Mnz. ${promesa.manzana} Lote ${promesa.lote}`.trim(),
+        fechaPromesa: promesa.fecha,
+        valorLote: `${promesa.moneda} ${fmtNum(promesa.valor_lote)}`,
+        subsidio: `${promesa.moneda} ${fmtNum(promesa.subsidio)}`,
+        arras: `${promesa.moneda} ${fmtNum(promesa.arras)}`,
+        enganche: `${promesa.moneda} ${fmtNum(promesa.monto_enganche)} · ${promesa.plazo_enganche} cuota(s)`,
+        financiamiento: `${promesa.moneda} ${fmtNum(promesa.monto_financiamiento)} · ${promesa.plazo_financiamiento} cuota(s)`,
+        interesAnual: `${fmtNum(promesa.interes_anual)}%`,
+        mora: moraTexto,
+        otrosEtiquetas: otrosColumnas.map((c) => c.etiqueta),
+        engancheRows,
+        financiamientoRows,
+      })
+    } catch {
+      toast.error('No se pudo generar el PDF.')
+    } finally {
+      setPdfPending(false)
+    }
+  }
+
+  const colSpanTotal = 2 /* Cuota, Fecha */ + 8 /* Capital, Interes, Mora, Totales x2 */ + 2 /* Saldo, Estado */ + otrosColumnas.length * 2
 
   function renderGroupHeaderRow() {
     return (
@@ -188,7 +252,7 @@ export function PlanPagoDialog({
           <TableHead key={c.codigo} colSpan={2} className="text-center border-l border-border/50">{c.etiqueta}</TableHead>
         ))}
         <TableHead colSpan={2} className="text-center border-l border-border/50">Mora</TableHead>
-        <TableHead colSpan={2} className="text-center border-l border-border/50">Cuota</TableHead>
+        <TableHead colSpan={2} className="text-center border-l border-border/50">Totales</TableHead>
         <TableHead rowSpan={2} className="text-right border-l border-border/50 align-bottom">Saldo</TableHead>
         <TableHead rowSpan={2} className="text-center align-bottom">Estado</TableHead>
       </TableRow>
@@ -297,12 +361,7 @@ export function PlanPagoDialog({
             <InfoField label="Enganche"       value={`${promesa.moneda} ${fmtNum(promesa.monto_enganche)} \u00b7 ${promesa.plazo_enganche} cuota(s)`} />
             <InfoField label="Financiamiento" value={`${promesa.moneda} ${fmtNum(promesa.monto_financiamiento)} \u00b7 ${promesa.plazo_financiamiento} cuota(s)`} />
             <InfoField label="Interes Anual"  value={`${fmtNum(promesa.interes_anual)}%`} />
-            <InfoField
-              label="Mora"
-              value={moraEsFijo
-                ? `${promesa.moneda} ${fmtNum(promesa.fijo_mora)} fijo`
-                : `${fmtNum(promesa.interes_mora)}% ${promesa.forma_mora === 1 ? 'diario' : 'mensual'}`}
-            />
+            <InfoField label="Mora" value={moraTexto} />
           </div>
 
           {loading ? (
@@ -350,16 +409,37 @@ export function PlanPagoDialog({
         </div>
 
         <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
-          <div className="flex w-full items-center justify-between">
+          <div className="flex w-full items-center gap-1">
             <Button
-              variant="outline" size="sm"
+              variant="ghost" size="sm"
+              className="hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
               disabled={loading || cuotas.length === 0}
-              onClick={() => exportPlanPagoCsv(engancheRows, financiamientoRows, otrosColumnas, promesa.numero)}
-              className="gap-1.5"
+              onClick={() => exportPlanPagoCsv(engancheRows, financiamientoRows, otrosColumnas, {
+                empresa: promesa.empresa,
+                empresaNombre: empresaNombre ?? '',
+                proyecto: promesa.proyecto,
+                proyectoNombre: proyectoNombre ?? '',
+                numero: promesa.numero,
+                cliente: promesa.cliente,
+                clienteNombre: clienteNombre ?? '',
+                faseNombre: faseNombre ?? '',
+                manzana: promesa.manzana,
+                lote: promesa.lote,
+              })}
             >
-              <Download className="h-3.5 w-3.5" /> Exportar CSV
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Exportar CSV
             </Button>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cerrar</Button>
+            <Button
+              variant="ghost" size="sm"
+              className="hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
+              disabled={loading || cuotas.length === 0 || pdfPending}
+              onClick={() => { void handlePrintPdf() }}
+            >
+              {pdfPending
+                ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                : <Printer className="mr-1.5 h-3.5 w-3.5" />}
+              {pdfPending ? 'Generando...' : 'Imprimir PDF'}
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>

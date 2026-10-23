@@ -2252,6 +2252,7 @@ export function PromesasClient({
           proyectoNombre={proyectoMap.get(`${planPagoTarget.empresa}-${planPagoTarget.proyecto}`)}
           clienteNombre={clienteMap.get(`${planPagoTarget.empresa}-${planPagoTarget.proyecto}-${planPagoTarget.cliente}`)}
           faseNombre={faseMap.get(`${planPagoTarget.empresa}-${planPagoTarget.proyecto}-${planPagoTarget.fase}`)}
+          logoUrl={proyectos.find((p) => p.empresa === planPagoTarget.empresa && p.codigo === planPagoTarget.proyecto)?.logo_url}
         />
       )}
     </div>
