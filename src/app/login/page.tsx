@@ -1,8 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import Script from 'next/script'
-import { login, setCuentaActiva, type Cuenta, type LoginState, type ActionState } from '@/app/actions/auth'
+import { login, setCuentaActiva, type LoginState, type ActionState } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
@@ -57,11 +56,7 @@ export default function LoginPage() {
 
   // Pantalla de login principal
   return (
-    <>
-      {TURNSTILE_SITE_KEY && (
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async />
-      )}
-      <main className="flex min-h-screen items-center justify-center bg-background">
+    <main className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-sm space-y-6 rounded-xl border bg-card p-8 shadow-sm">
           <div className="space-y-1">
             <h1 className="text-xl font-semibold">Cartera</h1>
@@ -117,6 +112,5 @@ export default function LoginPage() {
           </form>
         </div>
       </main>
-    </>
   )
 }
