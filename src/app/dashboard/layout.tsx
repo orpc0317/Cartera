@@ -2,8 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { CuentaChangeListener } from '@/components/layout/cuenta-change-listener'
-import { getPermisosUsuario, getCuentaActiva } from '@/app/actions/permisos'
+import { getCuentaActiva } from '@/app/actions/permisos'
 import { getCuentasDelUsuario } from '@/app/actions/auth'
+import { getMenuPrincipal } from '@/app/actions/menu'
+import type { MenuModulo } from '@/lib/navigation'
 
 export default async function DashboardLayout({
   children,
@@ -20,10 +22,13 @@ export default async function DashboardLayout({
   }
 
   const userEmail = user.email
-  const [cuentaActiva, cuentas, permisos] = await Promise.all([
+  const [cuentaActiva, cuentas, menu] = await Promise.all([
     getCuentaActiva(),
     getCuentasDelUsuario(user.id),
-    getPermisosUsuario(),
+    getMenuPrincipal().catch((e: Error) => {
+      console.error('getMenuPrincipal:', e.message)
+      return [] as MenuModulo[]
+    }),
   ])
 
   return (
@@ -34,7 +39,7 @@ export default async function DashboardLayout({
         cuentaActiva={cuentaActiva}
         cuentas={cuentas}
         userEmail={userEmail}
-        permisos={permisos}
+        menu={menu}
       />
 
       {/* Contenido principal */}
