@@ -41,10 +41,31 @@ export function HomeClient({
   const saludo = hora < 0 ? 'Hola' : saludoDe(hora)
 
   useEffect(() => {
-    const leer = () => setHashId(window.location.hash.slice(1))
-    leer()
-    window.addEventListener('hashchange', leer)
-    return () => window.removeEventListener('hashchange', leer)
+    const publicar = () => setHashId(window.location.hash.slice(1))
+    publicar()
+
+    const originalPush = history.pushState.bind(history)
+    const originalReplace = history.replaceState.bind(history)
+    const vigilar = (original: History['pushState']) =>
+      (...args: Parameters<History['pushState']>) => {
+        const antes = window.location.hash
+        original(...args)
+        publicar()
+        if (window.location.hash !== antes) {
+          window.dispatchEvent(new HashChangeEvent('hashchange'))
+        }
+      }
+
+    history.pushState = vigilar(originalPush)
+    history.replaceState = vigilar(originalReplace)
+    window.addEventListener('hashchange', publicar)
+    window.addEventListener('popstate', publicar)
+    return () => {
+      history.pushState = originalPush
+      history.replaceState = originalReplace
+      window.removeEventListener('hashchange', publicar)
+      window.removeEventListener('popstate', publicar)
+    }
   }, [])
 
   const consulta = normalizar(busqueda)
