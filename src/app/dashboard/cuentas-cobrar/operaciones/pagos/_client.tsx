@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from
 import { toast } from 'sonner'
 import {
   ReceiptText, Search, X, Settings2, Download, Filter,
-  ChevronDown, ChevronUp, MoreHorizontal, Eye, History,
+  ChevronDown, ChevronUp, Eye, History,
   ChevronLeft, ChevronRight, Info, ListOrdered, Loader2, AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,10 +17,6 @@ import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -978,23 +974,14 @@ export function PagosClient({
                     }
                   })}
                   <TableCell className={`sticky right-0 z-10 ${isActive ? 'bg-stone-50 dark:bg-stone-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium
-                                   transition-opacity hover:bg-accent hover:text-accent-foreground
-                                   focus-visible:outline-none opacity-0 group-hover:opacity-100"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openView(row)}>
-                          <Eye className="mr-2 h-4 w-4" /> Ver
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setAuditTarget(row)}>
-                          <History className="mr-2 h-4 w-4" /> Historial
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <button
+                      type="button"
+                      onClick={() => openView(row)}
+                      title="Ver"
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
                   </TableCell>
                 </TableRow>
               )
@@ -1030,7 +1017,11 @@ export function PagosClient({
       </div>
 
       {/* ── Modal Ver ── */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setViewTarget(null); setExtra(null) } }}>
+      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
+        if (!open && auditTarget !== null) return
+        setDialogOpen(open)
+        if (!open) { setViewTarget(null); setExtra(null) }
+      }}>
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
           {viewTarget && (
             <>
@@ -1203,7 +1194,12 @@ export function PagosClient({
               </Tabs>
 
               <DialogFooter className="mt-4 shrink-0">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
+                <div className="flex w-full items-center gap-1">
+                  <Button variant="ghost" size="sm" className="hover:bg-stone-50 dark:hover:bg-stone-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                    <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                  </Button>
+                  <Button variant="outline" className="ml-auto" onClick={() => setDialogOpen(false)}>Cerrar</Button>
+                </div>
               </DialogFooter>
             </>
           )}
