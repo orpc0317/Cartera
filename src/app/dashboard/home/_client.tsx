@@ -6,6 +6,7 @@ import { ArrowRight, Home } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { estiloItem, gruposDe, iconoModulo, normalizar, type MenuItem, type MenuModulo } from '@/lib/navigation'
 
@@ -31,6 +32,7 @@ export function HomeClient({
   cuentaNombre: string
 }) {
   const [busqueda, setBusqueda] = useState('')
+  const [hashId, setHashId] = useState('')
   const hora = useSyncExternalStore(
     () => () => {},
     () => new Date().getHours(),
@@ -39,17 +41,10 @@ export function HomeClient({
   const saludo = hora < 0 ? 'Hola' : saludoDe(hora)
 
   useEffect(() => {
-    const ubicar = () => {
-      const id = window.location.hash.slice(1)
-      if (!id) {
-        document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' })
-        return
-      }
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-    ubicar()
-    window.addEventListener('hashchange', ubicar)
-    return () => window.removeEventListener('hashchange', ubicar)
+    const leer = () => setHashId(window.location.hash.slice(1))
+    leer()
+    window.addEventListener('hashchange', leer)
+    return () => window.removeEventListener('hashchange', leer)
   }, [])
 
   const consulta = normalizar(busqueda)
@@ -59,6 +54,23 @@ export function HomeClient({
       .filter((modulo) => modulo.items.length > 0),
     [modulos, consulta],
   )
+  const activaId = visibles.some((modulo) => modulo.id === hashId)
+    ? hashId
+    : (visibles[0]?.id ?? '')
+
+  function seleccionarModulo(id: string) {
+    const destino = `#${id}`
+    if (window.location.hash === destino) return
+    window.history.pushState(null, '', destino)
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+  }
+
+  useEffect(() => {
+    if (!activaId || !hashId || hashId === activaId) return
+    if (visibles.some((modulo) => modulo.id === hashId)) return
+    window.history.replaceState(null, '', `#${activaId}`)
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+  }, [activaId, hashId, visibles])
 
   return (
     <div className="flex flex-col gap-8 p-6 md:p-8">
@@ -106,22 +118,40 @@ export function HomeClient({
       ) : visibles.length === 0 ? (
         <p className="text-sm text-muted-foreground">Ninguna funcionalidad coincide con la búsqueda.</p>
       ) : (
-        <div className="flex flex-col gap-10">
+        <Tabs
+          value={activaId}
+          onValueChange={(value) => {
+            if (typeof value !== 'string' || !value) return
+            seleccionarModulo(value)
+          }}
+          className="gap-6"
+        >
+          <div className="-mx-1 overflow-x-auto px-1">
+            <TabsList
+              variant="line"
+              className="h-auto w-max min-w-full justify-start gap-0 rounded-none border-b border-border bg-transparent p-0 group-data-horizontal/tabs:h-auto"
+            >
+              {visibles.map((modulo) => {
+                const Icono = iconoModulo(modulo.nombre)
+                return (
+                  <TabsTrigger
+                    key={modulo.id}
+                    value={modulo.id}
+                    className="h-auto flex-none gap-2 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-sm after:hidden data-active:border-primary data-active:bg-transparent data-active:text-primary data-active:shadow-none"
+                  >
+                    <Icono className="h-4 w-4" />
+                    {modulo.nombre}
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
+          </div>
+
           {visibles.map((modulo) => {
-            const Icono = iconoModulo(modulo.nombre)
             const grupos = gruposDe(modulo.items)
             const mostrarGrupo = grupos.length > 1
             return (
-              <section key={modulo.id} id={modulo.id} className="scroll-mt-6">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="rounded-xl bg-primary/10 p-2">
-                    <Icono className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    {modulo.nombre}
-                  </h2>
-                </div>
-
+              <TabsContent key={modulo.id} value={modulo.id} id={modulo.id} className="mt-0">
                 <div className="flex flex-col gap-6">
                   {grupos.map((grupo) => (
                     <div key={grupo.nombre}>
@@ -138,10 +168,10 @@ export function HomeClient({
                     </div>
                   ))}
                 </div>
-              </section>
+              </TabsContent>
             )
           })}
-        </div>
+        </Tabs>
       )}
     </div>
   )
