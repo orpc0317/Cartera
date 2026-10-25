@@ -33,6 +33,9 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  // El navegador de prueba abre el dev server en 127.0.0.1. Sin este origen,
+  // Next bloquea el websocket de desarrollo y la página no se hidrata.
+  allowedDevOrigins: ['127.0.0.1'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'flagcdn.com' },
