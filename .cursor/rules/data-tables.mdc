@@ -126,13 +126,13 @@ Use `switch (col.key)` with explicit cases; `default` for generic text columns.
 
 ---
 
-## Dropdown menu (actions cell)
+## Actions column (last column)
 
-Always: **Ver / Editar** (`Eye`) + **Historial** (`History`).
-Conditional: **Eliminar** (`Trash2`) wrapped in `<DropdownMenuSeparator>` only when `puedeEliminar` prop is `true`.
-Label: `puedeModificar ? 'Ver / Editar' : 'Ver'`.
+The last column of the main table is the actions column. It shows **only** the view icon (`Eye`). A click opens the record detail (`openView`). No dropdown, no chevron, no `MoreHorizontal`.
 
-Trigger: `inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none` + `opacity-0 group-hover:opacity-100` (visible when row is active).
+Copy the button from `components.mdc` § L. Editar, Historial, Eliminar, and any extra action live in the detail modal footer (§ R), not in the row.
+
+`title={puedeModificar ? 'Ver / Editar' : 'Ver'}`.
 
 ---
 
@@ -285,7 +285,7 @@ Just add a counter (no navigation controls):
 4. Active row: module accent color (see ui-conventions.instructions.md)
 5. Cell `switch`: explicit cases for nombre, pais, FK lookups, enums; geo codes  resolve to name
 6. Empty state with `search || hasActiveFilters` ternary
-7. Dropdown: Eye/Historial always; Eliminar only when supported
+7. Last column: only the Ver icon (§ L). Historial, Editar, and Eliminar live in the modal footer
 8. CSV export: `exportCsv` + `Exportar CSV` button (see **CSV Export** section below)
 9. If spec declares `PAGINACION: SI`, apply all changes listed in **§ Pagination** above. If `PAGINACION: NO`, add only the record counter `<p>`.
 

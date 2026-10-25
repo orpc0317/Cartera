@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import {
   ClipboardList, MapPin, Download,
   Plus, Search, X, Check, Settings2,
-  ChevronDown, ChevronUp, MoreHorizontal, Eye, History,
+  ChevronDown, ChevronUp, Eye, History,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,10 +20,6 @@ import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -1313,19 +1309,14 @@ export function ReservasClient({
                     })}
 
                     <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger title="Acciones" className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(r)}>
-                            <Eye className="mr-2 h-4 w-4" /> Ver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(r)}>
-                            <History className="mr-2 h-4 w-4" /> Historial
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => openView(r)}
+                        title="Ver"
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -1358,6 +1349,7 @@ export function ReservasClient({
 
       {/* ── Dialogo Nueva / Ver Reserva ── */}
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
+        if (!open && auditTarget !== null) return
         setDialogOpen(open)
         if (!open) { setIsEditing(false) }
       }}>
@@ -1954,7 +1946,14 @@ export function ReservasClient({
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing ? (
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
+              <div className="flex w-full items-center gap-1">
+                {viewTarget && (
+                  <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                    <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                  </Button>
+                )}
+                <Button variant="outline" className="ml-auto" onClick={() => setDialogOpen(false)}>Cerrar</Button>
+              </div>
             ) : (
               <>
                 <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelEdit} disabled={isSaving}>

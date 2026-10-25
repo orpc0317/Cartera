@@ -1,5 +1,5 @@
 ---
-description: "Cartera — copy-verbatim snippets for every UI primitive used in _client.tsx: modal state/functions, form inputs, selects, checkboxes, alert dialog, row dropdown, table utilities. Single source of truth — no imagination needed."
+description: "Cartera — copy-verbatim snippets for every UI primitive used in _client.tsx: modal state/functions, form inputs, selects, checkboxes, alert dialog, row view button, table utilities. Single source of truth — no imagination needed."
 globs: "src/app/dashboard/**/_client.tsx"
 alwaysApply: false
 ---
@@ -34,7 +34,7 @@ Copia cada sección verbatim — reemplaza los `<angle-bracket>` placeholders.
 | I | Checkbox standalone (fila completa) |
 | J | Checkbox en fila mixta con input/select |
 | K | AlertDialog — confirmación de borrado |
-| L | Dropdown de fila (acciones) |
+| L | Botón de fila (solo Ver) |
 | M | Utilidades de tabla: ColumnFilter, ColumnManager, handleTableKeyDown |
 | N | ViewField + SectionDivider |
 | O | Grid modo vista (view mode) |

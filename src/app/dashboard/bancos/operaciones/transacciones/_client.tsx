@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ScrollText, Search, X, Settings2, Download,
-  ChevronDown, ChevronUp, MoreHorizontal, Eye, History,
+  ChevronDown, ChevronUp, Eye, History,
   ChevronLeft, ChevronRight, Ban, Trash2, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -23,10 +23,6 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -645,41 +641,14 @@ export function TransaccionesBancariasClient({
                     })}
 
                     <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-fuchsia-50 dark:bg-fuchsia-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger title="Acciones" className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openView(r)}>
-                            <Eye className="mr-2 h-3.5 w-3.5" /> Ver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setAuditTarget(r)}>
-                            <History className="mr-2 h-3.5 w-3.5" /> Historial
-                          </DropdownMenuItem>
-                          {puedeAnular && r.estado === 1 && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-amber-600 focus:text-amber-700"
-                                onClick={() => setAnularTarget(r)}
-                              >
-                                <Ban className="mr-2 h-3.5 w-3.5" /> Anular
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {puedeEliminar && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setEliminarTarget(r)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Eliminar
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => openView(r)}
+                        title="Ver"
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
                     </TableCell>
                   </TableRow>
                 )
@@ -712,7 +681,10 @@ export function TransaccionesBancariasClient({
       </div>
 
       {/* Diálogo Ver */}
-      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open) }}>
+      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
+        if (!open && (auditTarget !== null || anularTarget !== null || eliminarTarget !== null)) return
+        setDialogOpen(open)
+      }}>
         <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[680px] max-h-[90vh] overflow-hidden">
 
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-fuchsia-50/70 to-transparent border-b border-border/50 shrink-0">
@@ -829,6 +801,16 @@ export function TransaccionesBancariasClient({
 
           <DialogFooter className="mt-4 shrink-0 flex flex-row items-center justify-between w-full">
             <div className="flex gap-2">
+              {viewTarget && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
+                  onClick={() => setAuditTarget(viewTarget)}
+                >
+                  <History className="mr-1.5 h-3.5 w-3.5" /> Historial
+                </Button>
+              )}
               {puedeAnular && viewTarget?.estado === 1 && (
                 <Button
                   variant="outline"
