@@ -799,8 +799,8 @@ export function TransaccionesBancariasClient({
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="mt-4 shrink-0 flex flex-row items-center justify-between w-full">
-            <div className="flex gap-2">
+          <DialogFooter className="mt-4 shrink-0">
+            <div className="flex w-full items-center gap-1">
               {viewTarget && (
                 <Button
                   variant="ghost"
@@ -813,26 +813,27 @@ export function TransaccionesBancariasClient({
               )}
               {puedeAnular && viewTarget?.estado === 1 && (
                 <Button
-                  variant="outline"
-                  className="gap-2 text-amber-600 border-amber-300 hover:bg-amber-50"
+                  variant="ghost"
+                  size="sm"
+                  className="text-amber-700 hover:text-amber-700"
                   onClick={() => { setAnularTarget(viewTarget); }}
                   disabled={isPending}
                 >
-                  <Ban className="h-3.5 w-3.5" /> Anular
+                  <Ban className="mr-1.5 h-3.5 w-3.5" /> Anular
                 </Button>
               )}
               {puedeEliminar && viewTarget && (
                 <Button
-                  variant="outline"
-                  className="gap-2 text-destructive border-destructive/30 hover:bg-destructive/5"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
                   onClick={() => { setEliminarTarget(viewTarget); }}
                   disabled={isPending}
                 >
-                  <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                 </Button>
               )}
             </div>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
           </DialogFooter>
 
         </DialogContent>

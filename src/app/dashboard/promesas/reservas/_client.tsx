@@ -1952,7 +1952,6 @@ export function ReservasClient({
                     <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                   </Button>
                 )}
-                <Button variant="outline" className="ml-auto" onClick={() => setDialogOpen(false)}>Cerrar</Button>
               </div>
             ) : (
               <>
