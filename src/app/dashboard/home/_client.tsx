@@ -24,6 +24,43 @@ function itemsVisibles(modulo: MenuModulo, consulta: string): MenuItem[] {
   )
 }
 
+function hashActual(): string {
+  return window.location.hash.slice(1)
+}
+
+function suscribirHash(alCambiar: () => void): () => void {
+  const pendientes = new Set<number>()
+  const alClick = (event: MouseEvent) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    if (!(event.target instanceof Element)) return
+    const href = event.target.closest('a[href]')?.getAttribute('href') ?? ''
+    if (href !== '/dashboard/home' && !href.startsWith('/dashboard/home#')) return
+    const esperado = href.startsWith('/dashboard/home#') ? href.slice('/dashboard/home'.length) : ''
+    // El enlace cambia el hash en un commit posterior al clic y no emite hashchange.
+    let intentos = 0
+    const id = window.setInterval(() => {
+      intentos += 1
+      const enPortada = window.location.pathname === '/dashboard/home'
+      const listo = enPortada && window.location.hash === esperado
+      if (listo) window.dispatchEvent(new HashChangeEvent('hashchange'))
+      if (listo || !enPortada || intentos >= 60) {
+        window.clearInterval(id)
+        pendientes.delete(id)
+      }
+    }, 16)
+    pendientes.add(id)
+  }
+  window.addEventListener('hashchange', alCambiar)
+  window.addEventListener('popstate', alCambiar)
+  document.addEventListener('click', alClick, true)
+  return () => {
+    window.removeEventListener('hashchange', alCambiar)
+    window.removeEventListener('popstate', alCambiar)
+    document.removeEventListener('click', alClick, true)
+    for (const id of pendientes) window.clearInterval(id)
+  }
+}
+
 export function HomeClient({
   modulos,
   cuentaNombre,
@@ -32,50 +69,13 @@ export function HomeClient({
   cuentaNombre: string
 }) {
   const [busqueda, setBusqueda] = useState('')
-  const [hashId, setHashId] = useState('')
+  const hashId = useSyncExternalStore(suscribirHash, hashActual, () => '')
   const hora = useSyncExternalStore(
     () => () => {},
     () => new Date().getHours(),
     () => -1,
   )
   const saludo = hora < 0 ? 'Hola' : saludoDe(hora)
-
-  useEffect(() => {
-    let vigente = true
-    let publicado = '\0'
-    const publicar = () => {
-      const actual = window.location.hash
-      if (!vigente || actual === publicado) return
-      publicado = actual
-      setHashId(actual.slice(1))
-    }
-    publicar()
-
-    const originalPush = history.pushState.bind(history)
-    const originalReplace = history.replaceState.bind(history)
-    const vigilar = (original: History['pushState']) =>
-      (...args: Parameters<History['pushState']>) => {
-        const antes = window.location.hash
-        original(...args)
-        if (window.location.hash === antes) return
-        queueMicrotask(() => {
-          publicar()
-          if (vigente) window.dispatchEvent(new HashChangeEvent('hashchange'))
-        })
-      }
-
-    history.pushState = vigilar(originalPush)
-    history.replaceState = vigilar(originalReplace)
-    window.addEventListener('hashchange', publicar)
-    window.addEventListener('popstate', publicar)
-    return () => {
-      vigente = false
-      history.pushState = originalPush
-      history.replaceState = originalReplace
-      window.removeEventListener('hashchange', publicar)
-      window.removeEventListener('popstate', publicar)
-    }
-  }, [])
 
   const consulta = normalizar(busqueda)
   const visibles = useMemo(
