@@ -41,7 +41,14 @@ export function HomeClient({
   const saludo = hora < 0 ? 'Hola' : saludoDe(hora)
 
   useEffect(() => {
-    const publicar = () => setHashId(window.location.hash.slice(1))
+    let vigente = true
+    let publicado = '\0'
+    const publicar = () => {
+      const actual = window.location.hash
+      if (!vigente || actual === publicado) return
+      publicado = actual
+      setHashId(actual.slice(1))
+    }
     publicar()
 
     const originalPush = history.pushState.bind(history)
@@ -50,10 +57,11 @@ export function HomeClient({
       (...args: Parameters<History['pushState']>) => {
         const antes = window.location.hash
         original(...args)
-        publicar()
-        if (window.location.hash !== antes) {
-          window.dispatchEvent(new HashChangeEvent('hashchange'))
-        }
+        if (window.location.hash === antes) return
+        queueMicrotask(() => {
+          publicar()
+          if (vigente) window.dispatchEvent(new HashChangeEvent('hashchange'))
+        })
       }
 
     history.pushState = vigilar(originalPush)
@@ -61,6 +69,7 @@ export function HomeClient({
     window.addEventListener('hashchange', publicar)
     window.addEventListener('popstate', publicar)
     return () => {
+      vigente = false
       history.pushState = originalPush
       history.replaceState = originalReplace
       window.removeEventListener('hashchange', publicar)
