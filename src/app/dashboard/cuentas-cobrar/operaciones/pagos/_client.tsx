@@ -1198,7 +1198,6 @@ export function PagosClient({
                   <Button variant="ghost" size="sm" className="hover:bg-stone-50 dark:hover:bg-stone-950/30" onClick={() => setAuditTarget(viewTarget)}>
                     <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                   </Button>
-                  <Button variant="outline" className="ml-auto" onClick={() => setDialogOpen(false)}>Cerrar</Button>
                 </div>
               </DialogFooter>
             </>

@@ -4,7 +4,7 @@ import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  ArrowLeftRight, Plus, Search, X, ChevronDown, ChevronUp,
+  ArrowLeftRight, Plus, Search, X, Check, ChevronDown, ChevronUp,
   Settings2, Download, Trash2, Eye, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -784,24 +784,33 @@ export default function TasasCambioClient({
           {/* ── Footer ── */}
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
-              <>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cerrar</Button>
+              <div className="flex w-full items-center gap-1">
                 {puedeAgregar && (
                   <Button
-                    className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+                    variant="ghost"
+                    size="sm"
+                    className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
                     onClick={() => openCreate({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, moneda: viewTarget.moneda })}
                   >
-                    <Plus className="h-3.5 w-3.5" /> Nueva Tasa
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva Tasa
                   </Button>
                 )}
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={cancelCreate}>{viewTarget ? 'Volver' : 'Cancelar'}</Button>
-                <Button onClick={handleSave} disabled={isPending} className="bg-teal-600 hover:bg-teal-700 text-white">
-                  {isPending ? 'Guardando...' : 'Guardar'}
+              </div>
+            ) : viewTarget ? (
+              <div className="flex w-full justify-end gap-2">
+                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelCreate} disabled={isPending}>
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Volver
                 </Button>
-              </>
+                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex w-full justify-end">
+                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={handleSave} disabled={isPending}>
+                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
+                </Button>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>
