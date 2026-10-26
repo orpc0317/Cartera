@@ -3,7 +3,7 @@ import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { assertSinOverlayDeNext, credencialesDePrueba } from './soporte'
 
-const authFile = path.join(process.cwd(), 'e2e/.auth/user.json')
+const authFile = path.join(process.cwd(), 'test/.auth/user.json')
 
 test('inicia sesión', async ({ page }) => {
   const { email, password } = credencialesDePrueba()
