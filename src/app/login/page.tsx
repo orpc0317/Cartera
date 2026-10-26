@@ -1,10 +1,53 @@
 'use client'
 
+import { memo, useCallback, useEffect, useRef } from 'react'
 import { useActionState } from 'react'
+import Script from 'next/script'
 import { login, setCuentaActiva, type LoginState, type ActionState } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+const TURNSTILE_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+
+type TurnstileApi = {
+  render: (
+    container: HTMLElement,
+    options: { sitekey: string; theme: 'auto' },
+  ) => string
+  remove: (widgetId: string) => void
+}
+
+function turnstileApi(): TurnstileApi | undefined {
+  return (window as Window & { turnstile?: TurnstileApi }).turnstile
+}
+
+const TurnstileWidget = memo(function TurnstileWidget({ siteKey }: { siteKey: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const widgetIdRef = useRef<string | null>(null)
+
+  const renderWidget = useCallback(() => {
+    const container = containerRef.current
+    const api = turnstileApi()
+    if (!container || !api || widgetIdRef.current) return
+    widgetIdRef.current = api.render(container, { sitekey: siteKey, theme: 'auto' })
+  }, [siteKey])
+
+  useEffect(() => {
+    renderWidget()
+    return () => {
+      const widgetId = widgetIdRef.current
+      if (widgetId) turnstileApi()?.remove(widgetId)
+      widgetIdRef.current = null
+    }
+  }, [renderWidget])
+
+  return (
+    <>
+      <Script src={TURNSTILE_SRC} strategy="afterInteractive" onReady={renderWidget} />
+      <div ref={containerRef} />
+    </>
+  )
+})
 
 export default function LoginPage() {
   const [loginState, loginAction, loginPending] = useActionState<LoginState, FormData>(
@@ -98,13 +141,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {TURNSTILE_SITE_KEY && (
-              <div
-                className="cf-turnstile"
-                data-sitekey={TURNSTILE_SITE_KEY}
-                data-theme="auto"
-              />
-            )}
+            {TURNSTILE_SITE_KEY ? <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} /> : null}
 
             <Button type="submit" className="w-full" disabled={loginPending}>
               {loginPending ? 'Ingresando...' : 'Ingresar'}
