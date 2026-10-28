@@ -4,9 +4,39 @@ import { assertSinOverlayDeNext } from '../soporte'
 
 const CONTADOR = /^(?:0 lotes|\d+\u2013\d+ de \d+ lotes?)$/
 
+async function valorDeVista(dialog: Locator, etiqueta: string) {
+  return (await dialog.getByText(etiqueta, { exact: true }).locator('xpath=..').locator('span').last().innerText()).trim()
+}
+
+async function combinacionDeLaPrimeraFila(page: Page) {
+  const fila = page.locator('tbody tr').first()
+  await fila.dblclick()
+  const dialog = page.getByRole('dialog')
+  const empresa = await valorDeVista(dialog, 'Empresa')
+  const proyecto = await valorDeVista(dialog, 'Proyecto')
+  const fase = await valorDeVista(dialog, 'Fase')
+  const manzana = await valorDeVista(dialog, 'Manzana')
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  return { empresa, proyecto, fase, manzana }
+}
+
+async function elegirOpcion(dialog: Locator, indice: number, nombre: string) {
+  const trigger = dialog.locator('[data-slot="select-trigger"]').nth(indice)
+  const actual = (await trigger.innerText()).replace(/\s+/g, ' ').trim()
+  if (actual === nombre) return
+  await trigger.click()
+  await dialog.page().getByRole('option', { name: nombre, exact: true }).click()
+}
+
 async function crearLoteDePrueba(page: Page, codigo: string) {
+  const combo = await combinacionDeLaPrimeraFila(page)
   await page.getByRole('button', { name: 'Nuevo Lote' }).click()
   const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Lote' })
+  await elegirOpcion(dialog, 0, combo.empresa)
+  await elegirOpcion(dialog, 1, combo.proyecto)
+  await elegirOpcion(dialog, 2, combo.fase)
+  await elegirOpcion(dialog, 3, combo.manzana)
   await dialog.getByPlaceholder('Ej: L-001').fill(codigo)
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   const ok = page.getByText('Lote creado.')
