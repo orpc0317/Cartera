@@ -29,6 +29,29 @@ async function eliminarBanco(page: Page, nombre: string) {
   await dialog.getByRole('button', { name: 'Close' }).click({ timeout: 3_000 }).catch(() => undefined)
 }
 
+async function guardarAunqueParezca(page: Page, exito: string) {
+  const aviso = page.getByRole('alertdialog').filter({ hasText: 'Nombres similares encontrados' })
+  const ok = page.getByText(exito)
+  await expect(aviso.or(ok)).toBeVisible()
+  if (await aviso.isVisible()) {
+    await aviso.getByRole('button', { name: 'Si, es diferente — Continuar' }).click()
+    await expect(aviso).toBeHidden()
+  }
+  await expect(ok).toBeVisible()
+}
+
+async function abrirEdicionDeBanco(page: Page, nombre: string) {
+  await page.getByPlaceholder('Buscar bancos...').fill(nombre)
+  const fila = page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })
+  await expect(fila).toHaveCount(1)
+  await fila.dblclick()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Editar' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Editar Banco' })).toBeVisible()
+  await expect(dialog.getByLabel('Nombre *')).toHaveValue(nombre)
+  return dialog
+}
+
 async function limpiarBancosDePrueba(page: Page) {
   const busqueda = page.getByPlaceholder('Buscar bancos...')
   await busqueda.fill('E2E BANCO')
@@ -226,4 +249,80 @@ test('editar un banco con el nombre vacío marca el campo y no guarda', async ({
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td.font-medium')).toHaveText(nombre)
+})
+
+test('dos pestañas editan el mismo banco y solo la primera grabación vale', async ({ page }) => {
+  const nuevo = page.getByRole('button', { name: 'Nuevo Banco' })
+  await expect(nuevo).toBeVisible()
+  test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene proyectos.')
+
+  const marca = Date.now()
+  const original = `E2E BANCO ${marca}`
+  const primero = `KILO NORTE ${marca}`
+  const segundo = `VASO SUR ${marca}`
+  const conflicto = 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'
+  let creado = false
+  const otra = await page.context().newPage()
+
+  try {
+    await nuevo.click()
+    const alta = page.getByRole('dialog').filter({ hasText: 'Nuevo Banco' })
+    await alta.getByLabel('Nombre *').fill(original)
+    await alta.getByRole('button', { name: 'Guardar' }).click()
+    await confirmarSiElNombreParece(page)
+    await expect(alta).toBeHidden()
+    creado = true
+
+    const dialogA = await abrirEdicionDeBanco(page, original)
+
+    await otra.goto('/dashboard/bancos/bancos')
+    await expect(otra).not.toHaveURL(/\/login/)
+    await expect(otra.getByRole('heading', { level: 1, name: 'Bancos' })).toBeVisible()
+    const dialogB = await abrirEdicionDeBanco(otra, original)
+
+    await dialogB.getByLabel('Nombre *').fill(primero)
+    await dialogB.getByRole('button', { name: 'Guardar' }).click()
+    await guardarAunqueParezca(otra, 'Banco actualizado.')
+    await expect(dialogB).toBeHidden()
+
+    await dialogA.getByLabel('Nombre *').fill(segundo)
+    await dialogA.getByRole('button', { name: 'Guardar' }).click()
+    const aviso = page.getByRole('alertdialog').filter({ hasText: 'Nombres similares encontrados' })
+    const error = page.getByText(conflicto)
+    await expect(aviso.or(error)).toBeVisible()
+    if (await aviso.isVisible()) {
+      await aviso.getByRole('button', { name: 'Si, es diferente — Continuar' }).click()
+    }
+    await expect(error).toBeVisible()
+    await expect(dialogA.getByRole('heading', { name: 'Editar Banco' })).toBeVisible()
+    await expect(page.getByText('Banco actualizado.')).toHaveCount(0)
+
+    await dialogA.getByRole('button', { name: 'Close' }).click()
+    await expect(dialogA).toBeHidden()
+    await page.getByPlaceholder('Buscar bancos...').fill(primero)
+    await expect(page.locator('tbody td.font-medium').filter({ hasText: primero })).toBeVisible()
+    await page.getByPlaceholder('Buscar bancos...').fill(segundo)
+    await expect(page.getByText('Sin resultados para esa busqueda.')).toBeVisible()
+
+    await eliminarBanco(page, primero)
+    creado = false
+  } finally {
+    await otra.close()
+    if (creado) {
+      const busqueda = page.getByPlaceholder('Buscar bancos...')
+      await busqueda.fill(String(marca))
+      const fila = page.locator('tbody tr').filter({ hasText: String(marca) })
+      if ((await fila.count()) > 0) {
+        const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
+        const abierto = page.getByRole('dialog')
+        if (await abierto.isVisible().catch(() => false)) {
+          await abierto.getByRole('button', { name: 'Close' }).click().catch(() => undefined)
+        }
+        await eliminarBanco(page, nombre).catch((error: unknown) => {
+          const detalle = error instanceof Error ? error.message : String(error)
+          throw new Error(`Quedó el banco ${nombre}. Bórralo a mano. ${detalle}`)
+        })
+      }
+    }
+  }
 })
