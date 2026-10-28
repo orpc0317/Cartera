@@ -54,6 +54,11 @@ test('nueva fase exige nombre y se cierra sin guardar', async ({ page }) => {
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('El nombre es requerido.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const nombre = dialog.getByLabel('Nombre *')
+  await expect(nombre).toBeVisible()
+  await expect(nombre).toHaveAttribute('aria-invalid', 'true')
+  await expect(nombre).toBeFocused()
   await expect(dialog.getByText('Nueva Fase', { exact: true })).toBeVisible()
   await expect(page.getByText('Fase creada.')).toHaveCount(0)
 
@@ -88,6 +93,33 @@ test('ver una fase y cancelar la edición no guarda cambios', async ({ page }) =
   await expect(titulo).toBeVisible()
   await expect(dialog.getByRole('heading', { name: 'Editar Fase' })).toHaveCount(0)
 
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(fila.locator('td.font-medium')).toHaveText(nombre)
+})
+
+test('editar una fase con el nombre vacío marca el campo en General', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay fases. Haz clic en "Nueva Fase" para comenzar.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene fases.')
+
+  const fila = page.locator('tbody tr').first()
+  const nombre = (await fila.locator('td.font-medium').innerText()).trim()
+  await fila.dblclick()
+
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Editar' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Editar Fase' })).toBeVisible()
+  await dialog.getByLabel('Nombre *').fill('')
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  await expect(page.getByText('El nombre es requerido.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const campo = dialog.getByLabel('Nombre *')
+  await expect(campo).toHaveAttribute('aria-invalid', 'true')
+  await expect(campo).toBeFocused()
+  await expect(page.getByText('Fase actualizada.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Cancelar' }).click()
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td.font-medium')).toHaveText(nombre)
