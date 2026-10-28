@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { expect, test, type Page } from '@playwright/test'
 import { assertSinOverlayDeNext } from '../soporte'
 
@@ -86,6 +87,117 @@ test.beforeEach(async ({ page }) => {
   await expect(page).not.toHaveURL(/\/login/)
   await expect(page.getByRole('heading', { level: 1, name: 'Proyectos' })).toBeVisible()
   await assertSinOverlayDeNext(page)
+})
+
+test('una búsqueda sin coincidencias vacía la lista y se puede deshacer', async ({ page }) => {
+  const contador = page.getByText(/^\d+ proyectos?$/)
+  await expect(contador).toBeVisible()
+  const antes = (await contador.innerText()).trim()
+
+  const busqueda = page.getByPlaceholder('Buscar proyectos...')
+  await busqueda.fill('___sin_coincidencias___')
+  await expect(page.getByText('0 proyectos')).toBeVisible()
+  await expect(page.getByText('No se encontraron proyectos con ese criterio.')).toBeVisible()
+
+  await busqueda.fill('')
+  await expect(page.getByText(antes, { exact: true })).toBeVisible()
+  await expect(page.getByText('No se encontraron proyectos con ese criterio.')).toHaveCount(0)
+})
+
+test('exportar CSV usa las columnas visibles y no toca la base', async ({ page }) => {
+  const descarga = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Exportar CSV' }).click()
+  const archivo = await descarga
+  expect(archivo.suggestedFilename()).toBe(`proyectos-${new Date().toISOString().slice(0, 10)}.csv`)
+
+  const ruta = await archivo.path()
+  expect(ruta).toBeTruthy()
+  const csv = await readFile(ruta as string, 'utf8')
+  const encabezado = csv.split('\n')[0] ?? ''
+  expect(encabezado).toContain('Codigo')
+  expect(encabezado).toContain('Empresa')
+  expect(encabezado).toContain('Nombre')
+  expect(encabezado).toContain('Pais')
+  expect(encabezado).not.toContain('cuenta')
+  expect(encabezado).not.toContain('Departamento')
+  expect(encabezado).not.toContain('Telefono')
+})
+
+test('ver un proyecto y cancelar la edición no guarda cambios', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay proyectos. Haz clic en "Nuevo Proyecto" para comenzar.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene proyectos.')
+
+  const fila = page.locator('tbody tr').first()
+  const nombre = (await fila.locator('td.font-medium').innerText()).trim()
+  expect(nombre.length).toBeGreaterThan(0)
+  await fila.dblclick()
+
+  const dialog = page.getByRole('dialog')
+  const titulo = dialog.getByRole('heading', { name: nombre, exact: true })
+  await expect(titulo).toBeVisible()
+  await expect(dialog.getByText('Identificacion')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Historial' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Editar' })).toBeVisible()
+
+  await dialog.getByRole('button', { name: 'Editar' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Editar Proyecto' })).toBeVisible()
+  const campo = dialog.getByLabel('Nombre Proyecto *')
+  await expect(campo).toHaveValue(nombre)
+  await campo.fill(`${nombre} CAMBIO QUE NO SE GUARDA`)
+
+  await dialog.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(titulo).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Editar Proyecto' })).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(fila.locator('td.font-medium')).toHaveText(nombre)
+})
+
+test('un nombre parecido avisa y cancelar no guarda', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay proyectos. Haz clic en "Nuevo Proyecto" para comenzar.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene proyectos.')
+
+  const contador = page.getByText(/^\d+ proyectos?$/)
+  const antes = (await contador.innerText()).trim()
+  const fila = page.locator('tbody tr').first()
+  const empresa = (await fila.locator('td').nth(1).innerText()).replace(/\s+/g, ' ').trim()
+  const nombre = (await fila.locator('td.font-medium').innerText()).trim()
+  expect(nombre.length).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Nuevo Proyecto' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Proyecto' })
+  const empresaTrigger = dialog.locator('#empresa')
+  const empresaActual = (await empresaTrigger.innerText()).replace(/\s+/g, ' ').trim()
+  if (empresaActual !== empresa) {
+    await empresaTrigger.click()
+    await page.getByRole('option', { name: empresa, exact: true }).click()
+  }
+  if ((await dialog.locator('#departamento_p').inputValue()) === '') {
+    const pais = dialog.getByRole('button', { name: 'Seleccionar país' })
+    if (await pais.isVisible()) {
+      await pais.click()
+      await dialog.getByText('GUATEMALA', { exact: true }).click()
+    } else {
+      await dialog.locator('#departamento_p').selectOption({ index: 1 })
+    }
+  }
+  await expect(dialog.locator('#departamento_p')).not.toHaveValue('')
+  await expect(dialog.locator('#municipio_p')).not.toHaveValue('')
+  await dialog.getByLabel('Nombre Proyecto *').fill(nombre)
+  await dialog.getByLabel('Direccion *').fill('CALLE PARECIDA')
+  await dialog.locator('#telefono1').fill('5550100')
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  const aviso = page.getByRole('alertdialog')
+  await expect(aviso.getByRole('heading', { name: 'Nombres similares encontrados' })).toBeVisible()
+  await aviso.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(aviso).toBeHidden()
+  await expect(page.getByText('Proyecto creado exitosamente.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText(antes, { exact: true })).toBeVisible()
 })
 
 test('nuevo proyecto marca el nombre vacío en la pestaña General', async ({ page }) => {
