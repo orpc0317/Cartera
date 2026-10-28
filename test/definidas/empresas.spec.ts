@@ -1,6 +1,46 @@
 import { readFile } from 'node:fs/promises'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { assertSinOverlayDeNext } from '../soporte'
+
+async function confirmarSiElNombreParece(page: Page) {
+  const aviso = page.getByRole('alertdialog').filter({ hasText: 'Nombres similares encontrados' })
+  const creada = page.getByText('Empresa creada.')
+  await expect(aviso.or(creada)).toBeVisible()
+  if (await aviso.isVisible()) {
+    await aviso.getByRole('button', { name: 'Si, es diferente — Continuar' }).click()
+    await expect(aviso).toBeHidden()
+  }
+  await expect(creada).toBeVisible()
+}
+
+async function eliminarEmpresa(page: Page, nombre: string) {
+  const busqueda = page.getByPlaceholder('Buscar empresas...')
+  await busqueda.fill(nombre)
+  const fila = page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })
+  await expect(fila).toHaveCount(1)
+  await fila.dblclick()
+
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: nombre, exact: true }) })
+  await dialog.getByRole('button', { name: 'Eliminar' }).click()
+  const aviso = page.getByRole('alertdialog').filter({ hasText: 'Eliminar empresa' })
+  await aviso.getByRole('button', { name: 'Eliminar' }).click()
+  await expect(fila).toHaveCount(0)
+  await expect(page.getByText('Empresa eliminada.')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close' }).click({ timeout: 3_000 }).catch(() => undefined)
+}
+
+async function limpiarEmpresasDePrueba(page: Page) {
+  const busqueda = page.getByPlaceholder('Buscar empresas...')
+  await busqueda.fill('E2E EMPRESA')
+  for (let i = 0; i < 5; i += 1) {
+    const fila = page.locator('tbody tr').filter({ hasText: /E2E EMPRESA \d+/ })
+    if ((await fila.count()) === 0) break
+    const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
+    await eliminarEmpresa(page, nombre)
+    await busqueda.fill('E2E EMPRESA')
+  }
+  await busqueda.fill('')
+}
 
 test.beforeEach(async ({ page }) => {
   const response = await page.goto('/dashboard/proyectos/empresas')
@@ -128,4 +168,43 @@ test('un nombre parecido avisa y cancelar no guarda', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   await expect(page.getByText(antes, { exact: true })).toBeVisible()
+})
+
+test('crea una empresa con nombre único y la elimina', async ({ page }) => {
+  await limpiarEmpresasDePrueba(page)
+
+  const nombre = `E2E EMPRESA ${Date.now()}`
+  let creada = false
+  try {
+    await page.getByRole('button', { name: 'Nueva Empresa' }).click()
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Nueva Empresa' })
+    await dialog.getByLabel('Nombre *').fill(nombre)
+    await dialog.getByLabel('Razon Social *').fill(`RAZON ${nombre}`)
+    await dialog.getByLabel('ID Tributaria *').fill('CF')
+    await dialog.getByLabel('Direccion *').fill('DIRECCION E2E')
+    await dialog.getByRole('button', { name: 'Seleccionar país' }).click()
+    await dialog.getByText('GUATEMALA', { exact: true }).click()
+    await expect(dialog.locator('#departamento')).not.toHaveValue('')
+    await expect(dialog.locator('#municipio')).not.toHaveValue('')
+    await dialog.getByRole('button', { name: 'Guardar' }).click()
+    await confirmarSiElNombreParece(page)
+    creada = true
+    await expect(dialog).toBeHidden()
+
+    await page.getByPlaceholder('Buscar empresas...').fill(nombre)
+    await expect(page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })).toHaveCount(1)
+    await expect(page.getByText('1 empresa')).toBeVisible()
+
+    await eliminarEmpresa(page, nombre)
+    creada = false
+    await expect(page.getByText('No se encontraron empresas con ese criterio.')).toBeVisible()
+    await expect(page.getByText('0 empresas')).toBeVisible()
+  } finally {
+    if (creada) {
+      await eliminarEmpresa(page, nombre).catch((error: unknown) => {
+        const detalle = error instanceof Error ? error.message : String(error)
+        throw new Error(`Quedó la empresa ${nombre}. Bórrala a mano. ${detalle}`)
+      })
+    }
+  }
 })

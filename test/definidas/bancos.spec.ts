@@ -1,6 +1,46 @@
 import { readFile } from 'node:fs/promises'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { assertSinOverlayDeNext } from '../soporte'
+
+async function confirmarSiElNombreParece(page: Page) {
+  const aviso = page.getByRole('alertdialog').filter({ hasText: 'Nombres similares encontrados' })
+  const creado = page.getByText('Banco creado.')
+  await expect(aviso.or(creado)).toBeVisible()
+  if (await aviso.isVisible()) {
+    await aviso.getByRole('button', { name: 'Si, es diferente — Continuar' }).click()
+    await expect(aviso).toBeHidden()
+  }
+  await expect(creado).toBeVisible()
+}
+
+async function eliminarBanco(page: Page, nombre: string) {
+  const busqueda = page.getByPlaceholder('Buscar bancos...')
+  await busqueda.fill(nombre)
+  const fila = page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })
+  await expect(fila).toHaveCount(1)
+  await fila.dblclick()
+
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: nombre, exact: true }) })
+  await dialog.getByRole('button', { name: 'Eliminar' }).click()
+  const aviso = page.getByRole('alertdialog').filter({ hasText: 'Eliminar banco' })
+  await aviso.getByRole('button', { name: 'Eliminar' }).click()
+  await expect(fila).toHaveCount(0)
+  await expect(page.getByText('Banco eliminado.')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close' }).click({ timeout: 3_000 }).catch(() => undefined)
+}
+
+async function limpiarBancosDePrueba(page: Page) {
+  const busqueda = page.getByPlaceholder('Buscar bancos...')
+  await busqueda.fill('E2E BANCO')
+  for (let i = 0; i < 5; i += 1) {
+    const fila = page.locator('tbody tr').filter({ hasText: /E2E BANCO \d+/ })
+    if ((await fila.count()) === 0) break
+    const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
+    await eliminarBanco(page, nombre)
+    await busqueda.fill('E2E BANCO')
+  }
+  await busqueda.fill('')
+}
 
 test.beforeEach(async ({ page }) => {
   const response = await page.goto('/dashboard/bancos/bancos')
@@ -116,4 +156,41 @@ test('un nombre parecido avisa y cancelar no guarda', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   await expect(page.getByText(antes, { exact: true })).toBeVisible()
+})
+
+test('crea un banco con nombre único y lo elimina', async ({ page }) => {
+  const nuevo = page.getByRole('button', { name: 'Nuevo Banco' })
+  await expect(nuevo).toBeVisible()
+  test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene proyectos.')
+
+  await limpiarBancosDePrueba(page)
+
+  const nombre = `E2E BANCO ${Date.now()}`
+  let creado = false
+  try {
+    await nuevo.click()
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Banco' })
+    await dialog.getByLabel('Nombre *').fill(nombre)
+    await expect(dialog.getByLabel('Nombre *')).toHaveValue(nombre)
+    await dialog.getByRole('button', { name: 'Guardar' }).click()
+    await confirmarSiElNombreParece(page)
+    creado = true
+    await expect(dialog).toBeHidden()
+
+    await page.getByPlaceholder('Buscar bancos...').fill(nombre)
+    await expect(page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })).toHaveCount(1)
+    await expect(page.getByText('1 banco')).toBeVisible()
+
+    await eliminarBanco(page, nombre)
+    creado = false
+    await expect(page.getByText('Sin resultados para esa busqueda.')).toBeVisible()
+    await expect(page.getByText('0 bancos')).toBeVisible()
+  } finally {
+    if (creado) {
+      await eliminarBanco(page, nombre).catch((error: unknown) => {
+        const detalle = error instanceof Error ? error.message : String(error)
+        throw new Error(`Quedó el banco ${nombre}. Bórralo a mano. ${detalle}`)
+      })
+    }
+  }
 })
