@@ -527,7 +527,8 @@ export function TiposIngresosClient({
   }
 
   function handleSave() {
-    // Validate required virtual fields
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
+    if (!form.etiqueta.trim()) { rechazar('etiqueta', 'La etiqueta es requerida.'); return }
     if (modo === 'eventual') {
       if (!eventualMoneda) { rechazar('eventual_moneda', 'Selecciona una moneda para el modo Eventual.'); return }
     } else {
@@ -983,14 +984,14 @@ export function TiposIngresosClient({
                   {/* Nombre */}
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                    <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
+                    <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
                   </div>
 
                   {/* Etiqueta */}
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
                       <Label htmlFor="etiqueta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Etiqueta *</Label>
-                      <Input variant="l-border" id="etiqueta" maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
+                      <Input variant="l-border" id="etiqueta" aria-invalid={campoInvalido?.id === 'etiqueta' || undefined} maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
                     </div>
                     <div /><div />
                   </div>
