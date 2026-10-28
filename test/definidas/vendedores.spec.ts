@@ -270,6 +270,11 @@ test('crea un vendedor con nombre único y lo elimina', async ({ page }) => {
     await page.getByPlaceholder('Buscar vendedor…').fill(nombre)
     await expect(page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })).toHaveCount(1)
     await expect(page.getByText('1 vendedor')).toBeVisible()
+    await page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) }).dblclick()
+    const vista = page.getByRole('dialog')
+    expect(await valorDeVista(vista, 'Coordinador')).toBe('—')
+    await vista.getByRole('button', { name: 'Close' }).click()
+    await expect(vista).toBeHidden()
     await eliminarVendedor(page, nombre)
     creado = false
     await expect(page.getByText('No se encontraron vendedores con ese criterio.')).toBeVisible()
