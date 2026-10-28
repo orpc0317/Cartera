@@ -269,7 +269,7 @@ test('editar con el nombre vacío marca el campo y no guarda', async ({ page }) 
   await expect(page.getByText('Tipo ingreso actualizado.')).toHaveCount(0)
 
   await dialog.getByRole('button', { name: 'Cancelar' }).click()
-  await dialog.getByRole('button', { name: 'Close' }).click()
+  await dialog.getByRole('button', { name: 'Close' }).click({ force: true })
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td.font-medium')).toHaveText(nombre)
 })
