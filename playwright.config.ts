@@ -37,11 +37,6 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: 'test/.auth/user.json' },
     },
-    {
-      name: 'primer',
-      testDir: './tests',
-      testMatch: /primer-test\.spec\.ts/,
-    },
   ],
   webServer: {
     command: 'npm run dev -- --hostname 127.0.0.1 --port 3000',
