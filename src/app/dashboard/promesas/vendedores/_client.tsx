@@ -33,6 +33,7 @@ import {
   createVendedor, updateVendedor, deleteVendedor,
 } from '@/app/actions/vendedores'
 import type { Empresa, Proyecto, Coordinador, Vendedor, VendedorForm } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ export function VendedoresClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // ── Estado de tabla ───────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
@@ -339,6 +341,7 @@ export function VendedoresClient({
 
   // ── Helpers de formulario ─────────────────────────────────────────────
   function f(key: keyof VendedorForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -367,6 +370,8 @@ export function VendedoresClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
@@ -376,6 +381,8 @@ export function VendedoresClient({
   }
 
   function openView(vendedor: Vendedor) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(vendedor)
     setIsEditing(false)
     setHadConflict(false)
@@ -384,6 +391,7 @@ export function VendedoresClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setIsEditing(false)
       setForm(buildFormFromVendedor(viewTarget))
@@ -394,9 +402,9 @@ export function VendedoresClient({
 
   // ── Guardar ───────────────────────────────────────────────────────────
   function handleSave() {
-    if (!form.empresa)        { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto)       { toast.error('El proyecto es requerido.'); return }
-    if (!form.nombre.trim())  { toast.error('El nombre es requerido.'); return }
+    if (!form.empresa)        { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto)       { rechazar('proyecto', 'El proyecto es requerido.'); return }
+    if (!form.nombre.trim())  { rechazar('nombre', 'El nombre es requerido.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromVendedor(viewTarget))) {
@@ -737,7 +745,7 @@ export function VendedoresClient({
           </DialogHeader>
 
           {/* Tabs */}
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -777,7 +785,7 @@ export function VendedoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                   <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
                       </SelectValue>
@@ -791,7 +799,7 @@ export function VendedoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                   <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {proyectoMap.get(`${form.empresa}-${form.proyecto}`) ?? 'Selecciona proyecto'}
                       </SelectValue>
@@ -804,7 +812,7 @@ export function VendedoresClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Vendedor *</Label>
-                  <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
+                  <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
                 </div>
 
                 <div className="col-span-2 grid gap-1">

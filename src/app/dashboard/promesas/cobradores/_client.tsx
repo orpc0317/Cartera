@@ -33,6 +33,7 @@ import {
   createCobrador, updateCobrador, deleteCobrador,
 } from '@/app/actions/cobradores'
 import type { Cobrador, CobradorForm, Empresa, Proyecto } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
@@ -230,6 +231,7 @@ export function CobradoresClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // ── Estado de tabla ───────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
@@ -346,6 +348,7 @@ export function CobradoresClient({
 
   // ── Helpers de formulario ─────────────────────────────────────────────
   function f(key: keyof CobradorForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -370,6 +373,8 @@ export function CobradoresClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
@@ -379,6 +384,8 @@ export function CobradoresClient({
   }
 
   function openView(cobrador: Cobrador) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(cobrador)
     setIsEditing(false)
     setHadConflict(false)
@@ -387,6 +394,7 @@ export function CobradoresClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setIsEditing(false)
       setForm(buildFormFromCobrador(viewTarget))
@@ -397,9 +405,9 @@ export function CobradoresClient({
 
   // ── Guardar ───────────────────────────────────────────────────────────
   function handleSave() {
-    if (!form.empresa)       { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto)      { toast.error('El proyecto es requerido.'); return }
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
+    if (!form.empresa)       { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto)      { rechazar('proyecto', 'El proyecto es requerido.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCobrador(viewTarget))) {
@@ -725,7 +733,7 @@ export function CobradoresClient({
           </DialogHeader>
 
           {/* Tabs */}
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -770,7 +778,7 @@ export function CobradoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                   <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -784,7 +792,7 @@ export function CobradoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                   <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -800,7 +808,7 @@ export function CobradoresClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                  <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del cobrador" />
+                  <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del cobrador" />
                 </div>
 
                 <div className="col-span-2 grid grid-cols-3 gap-2">

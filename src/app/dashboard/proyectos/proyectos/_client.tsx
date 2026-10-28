@@ -377,7 +377,7 @@ function LogoUploadField({
   }, [onFileSelect])
 
   return (
-    <div className="grid gap-1">
+    <div id="logo" tabIndex={-1} className="grid gap-1 outline-none">
       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Logo</Label>
       {displayUrl ? (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-2.5">
@@ -831,7 +831,7 @@ export function ProyectosClient({
       if (tipoCalculo === 1 && !form.fijo_mora) { rechazar('fijo_mora', 'El monto de mora es requerido.'); return }
       if (form.dias_gracia < 0) { rechazar('dias_gracia', 'Los dias de gracia deben ser 0 o mayor.'); return }
     }
-    if (logoError) { setActiveTab('general'); toast.error('Corrige el error en el logo antes de guardar.'); return }
+    if (logoError) { rechazar('logo', 'Corrige el error en el logo antes de guardar.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && !logoFile && JSON.stringify(form) === JSON.stringify(buildFormFromProyecto(viewTarget).form)) {

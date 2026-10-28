@@ -45,11 +45,13 @@ export function splitPhone(value: string): { iso: string; local: string } {
 }
 
 export function PhoneField({
-  iso, local, onIsoChange, onLocalChange, placeholder,
+  iso, local, onIsoChange, onLocalChange, placeholder, inputId, invalid = false,
 }: {
   iso: string; local: string
   onIsoChange: (iso: string) => void; onLocalChange: (local: string) => void
   placeholder?: string
+  inputId?: string
+  invalid?: boolean
 }) {
   return (
     <div className="flex gap-2">
@@ -75,7 +77,7 @@ export function PhoneField({
           ))}
         </SelectContent>
       </Select>
-      <Input variant="underline" className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
+      <Input variant="underline" id={inputId} aria-invalid={invalid || undefined} className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
 }
