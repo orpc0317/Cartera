@@ -102,7 +102,7 @@ const EMPTY_FORM: VendedorForm = {
   empresa: 0,
   proyecto: 0,
   nombre: '',
-  coordinador: null,
+  coordinador: 0,
   activo: 1,
 }
 
@@ -350,10 +350,10 @@ export function VendedoresClient({
       if (key === 'empresa') {
         const fp = proyectos.find((p) => p.empresa === Number(value))
         next.proyecto = fp?.codigo ?? 0
-        next.coordinador = null
+        next.coordinador = 0
       }
       if (key === 'proyecto') {
-        next.coordinador = null
+        next.coordinador = 0
       }
       return next
     })
@@ -364,7 +364,7 @@ export function VendedoresClient({
       empresa: v.empresa,
       proyecto: v.proyecto,
       nombre: v.nombre,
-      coordinador: v.coordinador ?? null,
+      coordinador: v.coordinador ?? 0,
       activo: v.activo,
     }
   }
@@ -376,7 +376,7 @@ export function VendedoresClient({
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto?.codigo ?? 0, coordinador: null })
+    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto?.codigo ?? 0, coordinador: 0 })
     setDialogOpen(true)
   }
 
@@ -818,13 +818,13 @@ export function VendedoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Coordinador</Label>
                   <Select
-                    value={form.coordinador != null ? String(form.coordinador) : '__none__'}
-                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? null : Number(v) }))}
+                    value={form.coordinador ? String(form.coordinador) : '__none__'}
+                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? 0 : Number(v) }))}
                     disabled={!form.proyecto}
                   >
                     <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue>
-                        {form.coordinador != null
+                        {form.coordinador
                           ? (coordinadorMap.get(`${form.empresa}-${form.proyecto}-${form.coordinador}`) ?? `#${form.coordinador}`)
                           : <span className="text-muted-foreground">Sin coordinador</span>}
                       </SelectValue>

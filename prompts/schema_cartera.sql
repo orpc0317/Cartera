@@ -863,7 +863,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
   agrego_fecha        timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
   modifico_usuario    uuid          NOT NULL,
   modifico_fecha      timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
-  coordinador         integer       NULL,      -- FK lógica a t_coordinador.codigo (mismo cuenta/empresa/proyecto)
+  coordinador         integer       NOT NULL DEFAULT 0, -- 0 = sin coordinador. FK lógica a t_coordinador.codigo cuando es mayor que 0
   PRIMARY KEY (cuenta, empresa, proyecto, codigo)
 );
 
@@ -878,7 +878,8 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 --   "timestamptz".
 -- * t_recibo_caja.secuencia es timestamptz, se usa como tiebreaker
 --   de orden, no como secuencia numérica.
--- * t_vendedor.coordinador es FK lógica a t_coordinador.codigo (mismo cuenta/empresa/proyecto);
+-- * t_vendedor.coordinador es NOT NULL. 0 significa sin coordinador. Si es mayor que 0,
+--   es FK lógica a t_coordinador.codigo (mismo cuenta/empresa/proyecto);
 --   no existe FOREIGN KEY declarada en la DB.
 -- * t_coordinador.supervisor es FK lógica a t_supervisor.codigo (mismo cuenta/empresa/proyecto);
 --   no existe FOREIGN KEY declarada en la DB.

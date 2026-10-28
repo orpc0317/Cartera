@@ -71,6 +71,11 @@ export async function getVendedores(empresa?: number, proyecto?: number): Promis
 
 // ─── Crear ─────────────────────────────────────────────────────────────────
 
+function coordinadorEnCero<T extends { coordinador?: number | null }>(form: T): T {
+  if (form.coordinador === null) return { ...form, coordinador: 0 }
+  return form
+}
+
 export async function createVendedor(form: VendedorForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -108,7 +113,7 @@ export async function createVendedor(form: VendedorForm): Promise<{ error?: stri
     .schema('cartera')
     .from('t_vendedor')
     .insert({
-      ...form,
+      ...coordinadorEnCero(form),
       codigo,
       cuenta,
       agrego_usuario: auditUser.userId,
@@ -178,7 +183,7 @@ export async function updateVendedor(
   let query = admin
     .schema('cartera')
     .from('t_vendedor')
-    .update({ ...form, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .update({ ...coordinadorEnCero(form), modifico_usuario: auditUser.userId, modifico_fecha: now })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
