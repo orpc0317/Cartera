@@ -91,6 +91,11 @@ test('nuevo banco exige nombre y se cierra sin guardar', async ({ page }) => {
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('El nombre es requerido.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const nombre = dialog.getByLabel('Nombre *')
+  await expect(nombre).toBeVisible()
+  await expect(nombre).toHaveAttribute('aria-invalid', 'true')
+  await expect(nombre).toBeFocused()
   await expect(dialog.getByText('Nuevo Banco', { exact: true })).toBeVisible()
 
   await dialog.getByRole('button', { name: 'Close' }).click()
@@ -193,4 +198,32 @@ test('crea un banco con nombre único y lo elimina', async ({ page }) => {
       })
     }
   }
+})
+
+test('editar un banco con el nombre vacío marca el campo y no guarda', async ({ page }) => {
+  const vacio = page.getByText('No hay bancos registrados aun.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene bancos.')
+
+  const fila = page.locator('tbody tr').first()
+  const nombre = (await fila.locator('td.font-medium').innerText()).trim()
+  expect(nombre.length).toBeGreaterThan(0)
+  await fila.dblclick()
+
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Editar' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Editar Banco' })).toBeVisible()
+  await dialog.getByLabel('Nombre *').fill('')
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  await expect(page.getByText('El nombre es requerido.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const campo = dialog.getByLabel('Nombre *')
+  await expect(campo).toBeVisible()
+  await expect(campo).toHaveAttribute('aria-invalid', 'true')
+  await expect(campo).toBeFocused()
+  await expect(page.getByText('Banco actualizado.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(fila.locator('td.font-medium')).toHaveText(nombre)
 })

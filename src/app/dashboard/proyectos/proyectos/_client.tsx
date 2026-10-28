@@ -36,6 +36,7 @@ import type { Empresa, Proyecto, ProyectoForm, Fase, Moneda, ProyectoMoneda } fr
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { CountrySelect } from '@/components/ui/country-select'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -184,11 +185,13 @@ function splitPhone(value: string): { iso: string; local: string } {
 }
 
 function PhoneField({
-  iso, local, onIsoChange, onLocalChange, placeholder,
+  iso, local, onIsoChange, onLocalChange, placeholder, inputId, invalid,
 }: {
   iso: string; local: string
   onIsoChange: (iso: string) => void; onLocalChange: (local: string) => void
   placeholder?: string
+  inputId?: string
+  invalid?: boolean
 }) {
   return (
     <div className="flex gap-2">
@@ -214,7 +217,7 @@ function PhoneField({
           ))}
         </SelectContent>
       </Select>
-      <Input variant="l-border" className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
+      <Input variant="l-border" id={inputId} aria-invalid={invalid || undefined} className="flex-1" value={local} onChange={(e) => onLocalChange(e.target.value)} placeholder={placeholder} />
     </div>
   )
 }
@@ -491,7 +494,13 @@ export function ProyectosClient({
 
   // Estado para la pestaña activa del modal y advertencia de monedas
   const [activeTab, setActiveTab] = useState('general')
+  const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
   const [warnNoMonedas, setWarnNoMonedas] = useState(false)
+
+  useEffect(() => {
+    if (!campoInvalido) return
+    enfocarCampoInvalido(campoInvalido.id)
+  }, [campoInvalido, activeTab])
 
   const deptosFiltrados = departamentos.filter((d) => d.pais === paisCodigo)
   const municipiosFiltrados = municipios.filter(
@@ -658,6 +667,7 @@ export function ProyectosClient({
   }
 
   function openCreate() {
+    setCampoInvalido(null)
     setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
@@ -677,6 +687,7 @@ export function ProyectosClient({
   }
 
   function openView(proyecto: Proyecto) {
+    setCampoInvalido(null)
     setActiveTab('general')
     const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromProyecto(proyecto)
     const { iso: iso1, local: local1 } = splitPhone(proyecto.telefono1 ?? '')
@@ -699,6 +710,7 @@ export function ProyectosClient({
   function startEdit() { setIsEditing(true) }
 
   function cancelEdit() {
+    setCampoInvalido(null)
     if (viewTarget && proyectoMonedasActuales.length === 0) {
       setWarnNoMonedas(true)
       return
@@ -723,7 +735,14 @@ export function ProyectosClient({
     }
   }
 
+  function rechazar(id: string, message: string) {
+    setCampoInvalido({ id, tab: 'general' })
+    setActiveTab('general')
+    toast.error(message)
+  }
+
   function f(key: keyof ProyectoForm, value: string | number) {
+    setCampoInvalido(null)
     const v = typeof value === 'string' && key !== 'direccion_pais' && key !== 'direccion_departamento' && key !== 'direccion_municipio'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -799,20 +818,20 @@ export function ProyectosClient({
   }
 
   function handleSave() {
-    if (!form.empresa) { toast.error('Debes seleccionar una empresa.'); return }
-    if (!form.nombre.trim()) { toast.error('El nombre del proyecto es requerido.'); return }
-    if (!form.direccion.trim()) { toast.error('La direccion es requerida.'); return }
-    if (!form.direccion_pais.trim()) { toast.error('El pais es requerido.'); return }
-    if (!form.direccion_departamento.trim()) { toast.error('El departamento es requerido.'); return }
-    if (!form.direccion_municipio.trim()) { toast.error('El municipio es requerido.'); return }
-    if (!tel1Local.trim()) { toast.error('El telefono 1 es requerido.'); return }
-    if (!viewTarget && !form.moneda) { toast.error('La moneda es requerida.'); return }
+    if (!form.empresa) { rechazar('empresa', 'Debes seleccionar una empresa.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre del proyecto es requerido.'); return }
+    if (!form.direccion.trim()) { rechazar('direccion_p', 'La direccion es requerida.'); return }
+    if (!form.direccion_pais.trim()) { rechazar('direccion_pais', 'El pais es requerido.'); return }
+    if (!form.direccion_departamento.trim()) { rechazar('departamento_p', 'El departamento es requerido.'); return }
+    if (!form.direccion_municipio.trim()) { rechazar('municipio_p', 'El municipio es requerido.'); return }
+    if (!tel1Local.trim()) { rechazar('telefono1', 'El telefono 1 es requerido.'); return }
+    if (!viewTarget && !form.moneda) { rechazar('moneda', 'La moneda es requerida.'); return }
     if (form.mora_automatica === 1) {
-      if (tipoCalculo === 0 && !form.interes_mora) { toast.error('El porcentaje de mora es requerido.'); return }
-      if (tipoCalculo === 1 && !form.fijo_mora) { toast.error('El monto de mora es requerido.'); return }
-      if (form.dias_gracia < 0) { toast.error('Los dias de gracia deben ser 0 o mayor.'); return }
+      if (tipoCalculo === 0 && !form.interes_mora) { rechazar('interes_mora', 'El porcentaje de mora es requerido.'); return }
+      if (tipoCalculo === 1 && !form.fijo_mora) { rechazar('fijo_mora', 'El monto de mora es requerido.'); return }
+      if (form.dias_gracia < 0) { rechazar('dias_gracia', 'Los dias de gracia deben ser 0 o mayor.'); return }
     }
-    if (logoError) { toast.error('Corrige el error en el logo antes de guardar.'); return }
+    if (logoError) { setActiveTab('general'); toast.error('Corrige el error en el logo antes de guardar.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && !logoFile && JSON.stringify(form) === JSON.stringify(buildFormFromProyecto(viewTarget).form)) {
@@ -1080,6 +1099,8 @@ export function ProyectosClient({
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
+            setCampoInvalido(null)
+            setActiveTab('general')
             if (hadConflict) { setHadConflict(false); router.refresh() }
           }
         }}
@@ -1226,7 +1247,7 @@ export function ProyectosClient({
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" id="empresa" className="w-full">
+                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                           <SelectValue placeholder="Selecciona una empresa">
                             {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                           </SelectValue>
@@ -1243,16 +1264,17 @@ export function ProyectosClient({
                     <SegmentCard label="General">
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto *</Label>
-                      <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
+                      <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
-                      <Input variant="l-border" id="direccion_p" value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
+                      <Input variant="l-border" id="direccion_p" aria-invalid={campoInvalido?.id === 'direccion_p' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
                     </div>
                     <div className="grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
-                      <CountrySelect paises={paises} value={paisCodigo} variant="l-border"
+                      <CountrySelect paises={paises} value={paisCodigo} variant="l-border" id="direccion_pais" invalid={campoInvalido?.id === 'direccion_pais'}
                         onChange={(codigo, _nombre) => {
+                          setCampoInvalido(null)
                           const firstDepto = departamentos.find((d) => d.pais === codigo)?.codigo ?? ''
                           const firstMunicipio = municipios.find((m) => m.pais === codigo && m.departamento === firstDepto)?.codigo ?? ''
                           setPaisCodigo(codigo); setDeptoCodigo(firstDepto)
@@ -1262,9 +1284,9 @@ export function ProyectosClient({
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento *</Label>
-                      <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo}
-                        onChange={(e) => { const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
-                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
+                      <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo} aria-invalid={campoInvalido?.id === 'departamento_p' || undefined}
+                        onChange={(e) => { setCampoInvalido(null); const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
+                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
                         style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                         {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
@@ -1273,10 +1295,11 @@ export function ProyectosClient({
                     <div className="grid gap-1">
                       <Label htmlFor="municipio_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio *</Label>
                       <select id="municipio_p" title="Municipio"
+                        aria-invalid={campoInvalido?.id === 'municipio_p' || undefined}
                         value={form.direccion_municipio}
                         disabled={!deptoCodigo}
-                        onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
-                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
+                        onChange={(e) => { setCampoInvalido(null); const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
+                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
                         style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                         {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
@@ -1291,6 +1314,8 @@ export function ProyectosClient({
                       <PhoneField
                         iso={tel1Iso}
                         local={tel1Local}
+                        inputId="telefono1"
+                        invalid={campoInvalido?.id === 'telefono1'}
                         onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
                         onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
                         placeholder="Numero local"
@@ -1369,17 +1394,17 @@ export function ProyectosClient({
                       {tipoCalculo === 0 ? (
                         <div className="grid gap-1">
                           <Label htmlFor="interes_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? '% Mora *' : '% Mora'}</Label>
-                          <Input variant="l-border" id="interes_mora" type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                          <Input variant="l-border" id="interes_mora" aria-invalid={campoInvalido?.id === 'interes_mora' || undefined} type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                         </div>
                       ) : (
                         <div className="grid gap-1">
                           <Label htmlFor="fijo_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? 'Monto Mora *' : 'Monto Mora'}</Label>
-                          <Input variant="l-border" id="fijo_mora" type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                          <Input variant="l-border" id="fijo_mora" aria-invalid={campoInvalido?.id === 'fijo_mora' || undefined} type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                         </div>
                       )}
                       <div className="grid gap-1">
                         <Label htmlFor="dias_gracia" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? 'Dias Gracia *' : 'Dias Gracia'}</Label>
-                        <Input variant="l-border" id="dias_gracia" type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                        <Input variant="l-border" id="dias_gracia" aria-invalid={campoInvalido?.id === 'dias_gracia' || undefined} type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
@@ -1453,8 +1478,8 @@ export function ProyectosClient({
                       {!viewTarget && (
                         <div className="grid gap-1">
                           <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
-                          <Select value={form.moneda} onValueChange={(v: string | null) => setForm((prev) => ({ ...prev, moneda: v ?? '' }))}>
-                            <SelectTrigger variant="l-border" id="moneda" className="w-full">
+                          <Select value={form.moneda} onValueChange={(v: string | null) => { setCampoInvalido(null); setForm((prev) => ({ ...prev, moneda: v ?? '' })) }}>
+                            <SelectTrigger variant="l-border" id="moneda" aria-invalid={campoInvalido?.id === 'moneda' || undefined} className="w-full">
                               <SelectValue placeholder="Selecciona moneda">
                                 {(v: string) => v ? (
                                   <span className="flex items-center gap-1.5">

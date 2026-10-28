@@ -135,6 +135,12 @@ test('nueva empresa exige razon social', async ({ page }) => {
   await dialog.getByLabel('Nombre *').fill('EMPRESA DE PRUEBA')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('La razon social es requerida.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const razon = dialog.getByLabel('Razon Social *')
+  await expect(razon).toBeVisible()
+  await expect(razon).toHaveAttribute('aria-invalid', 'true')
+  await expect(razon).toBeFocused()
+  await expect(dialog.getByLabel('Nombre *')).not.toHaveAttribute('aria-invalid', 'true')
   await expect(dialog.getByText('Nueva Empresa', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
@@ -207,4 +213,33 @@ test('crea una empresa con nombre único y la elimina', async ({ page }) => {
       })
     }
   }
+})
+
+test('editar una empresa con la dirección vacía marca ese campo y no guarda', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay empresas. Haz clic en "Nueva Empresa" para comenzar.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene empresas.')
+
+  const fila = page.locator('tbody tr').first()
+  const nombre = (await fila.locator('td.font-medium').innerText()).trim()
+  expect(nombre.length).toBeGreaterThan(0)
+  await fila.dblclick()
+
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Editar' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Editar Empresa' })).toBeVisible()
+  await dialog.getByLabel('Direccion *').fill('')
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  await expect(page.getByText('La direccion es requerida.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const campo = dialog.getByLabel('Direccion *')
+  await expect(campo).toBeVisible()
+  await expect(campo).toHaveAttribute('aria-invalid', 'true')
+  await expect(campo).toBeFocused()
+  await expect(dialog.getByLabel('Nombre *')).not.toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByText('Empresa actualizada.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(fila.locator('td.font-medium')).toHaveText(nombre)
 })
