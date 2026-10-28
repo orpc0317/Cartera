@@ -77,6 +77,19 @@ export async function createCobrador(form: CobradorForm): Promise<{ error?: stri
   const permCheck = await requirePermiso(PERMISOS.COB_CAT, 'agregar')
   if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  const { data: max } = await admin
+    .schema('cartera')
+    .from('t_cobrador')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .order('codigo', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
   // Validar nombre duplicado dentro del mismo proyecto
@@ -96,6 +109,7 @@ export async function createCobrador(form: CobradorForm): Promise<{ error?: stri
     .from('t_cobrador')
     .insert({
       ...form,
+      codigo,
       cuenta,
       agrego_usuario: auditUser.userId,
       agrego_fecha: now,
