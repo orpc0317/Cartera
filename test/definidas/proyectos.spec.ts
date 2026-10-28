@@ -58,7 +58,8 @@ async function eliminarProyecto(page: Page, nombre: string) {
     throw new Error((await fallo.first().innerText()).replace(/\s+/g, ' ').trim())
   }
   await expect(fila).toHaveCount(0)
-  await dialog.getByRole('button', { name: 'Close' }).click({ timeout: 3_000 }).catch(() => undefined)
+  await dialog.getByRole('button', { name: 'Close' }).click({ force: true })
+  await expect(dialog).toBeHidden()
 }
 
 async function limpiarProyectosDePrueba(page: Page) {
