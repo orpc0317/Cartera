@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { assertSinOverlayDeNext } from '../soporte'
 
-const CONTADOR = /^\d+ cobradores?$/
+const CONTADOR = /^\d+ cobrador(?:es)?$/
 const VACIO = 'Todavia no hay cobradores. Haz clic en "Nuevo Cobrador" para comenzar.'
 const CONFLICTO = 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'
 

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { assertSinOverlayDeNext } from '../soporte'
 
-const CONTADOR = /^\d+ coordinadores?$/
+const CONTADOR = /^\d+ coordinador(?:es)?$/
 const VACIO = 'Todavia no hay coordinadores. Haz clic en "Nuevo Coordinador" para comenzar.'
 const CONFLICTO = 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'
 
