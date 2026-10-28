@@ -1,6 +1,6 @@
 ---
 name: crud-screen
-description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, permission-gated UI. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
+description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, permission-gated UI, campo con error al grabar, and the Playwright file in test/definidas. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
 argument-hint: 'Ruta al spec, e.g. prompts/crud-bancos.md — o el pedido de la pantalla, si no hay spec'
 ---
 
@@ -47,7 +47,7 @@ Read these before writing:
 |------|--------|
 | `.cursor/rules/business-context.mdc` | Domain hierarchy, cuenta isolation |
 | `.cursor/rules/server-actions.mdc` | getCuentaActiva, requirePermiso, page.tsx pattern, optimistic concurrency, writeAudit |
-| `.cursor/rules/crud-screens.mdc` | Modal composition notes |
+| `.cursor/rules/crud-screens.mdc` | Modal composition, and § Campo con error al grabar |
 | `.cursor/rules/ui-conventions.mdc` | Accent colors, Lucide icons, label rules |
 | `.cursor/rules/data-tables.mdc` | Column defs, ColumnFilter, ColumnManager, keyboard nav |
 | `.cursor/rules/base-ui-gotchas.mdc` | Base UI vs Radix API differences |
@@ -170,6 +170,7 @@ const [dialogOpen, setDialogOpen] = useState(false)
 const [isEditing, setIsEditing]   = useState(false)
 const [viewTarget, setViewTarget] = useState<Entity | null>(null)
 const [isPending, startTransition] = useTransition()
+const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 const [hadConflict, setHadConflict] = useState(false)
 const [cursorIdx, setCursorIdx]   = useState<number | null>(null)
 const [colPrefs, setColPrefs]     = useState<ColPref[]>(DEFAULT_PREFS)
@@ -188,6 +189,16 @@ The modal state block (dialogOpen, isEditing, viewTarget, form, isPending, hadCo
 - Row `onClick` → `setCursorIdx(idx)`; `onDoubleClick` → `openView(row)`
 
 **Before declaring the screen finished, verify every item below.**
+
+#### Campo con error al grabar
+
+Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the wiring from `src/app/dashboard/proyectos/fases/_client.tsx`. Do not invent a second focus helper.
+
+- [ ] `useCampoInvalido` comes from `@/lib/campo-invalido`. `Tabs` uses `value={activeTab}` and `onValueChange={setActiveTab}`.
+- [ ] Every client-side field error calls `rechazar(id, mensaje, tab)` and returns before `startTransition`. The Spanish message is the one the screen already shows.
+- [ ] `limpiarCampoInvalido()` runs at the start of `f()`, `openCreate`, `openView`, `startEdit`, and `cancelEdit`. Those four also call `setActiveTab('general')`.
+- [ ] The rejected control has the same `id`. `Input`, `SelectTrigger`, and native `<select>` set `aria-invalid`. `PhoneField` uses `inputId` and `invalid`. `CountrySelect` and combobox buttons use `id` plus `data-invalid`. A `<button>` does not get `aria-invalid`.
+- [ ] `toast.error(result.error)` stays for the server response, including the `modifico_fecha` conflict. It is not the way to report a field error.
 
 #### Selects
 
@@ -267,7 +278,46 @@ In `src/components/layout/app-sidebar.tsx`:
 },
 ```
 
-### Step 10 — Definition of done
+### Step 10 — Playwright for the new catalog
+
+A new catalog CRUD includes `test/definidas/<entidad>.spec.ts`. `<entidad>` is the kebab-case name used for the action file (`fases`, `bancos`, `cuentas-bancarias`).
+
+Do not add this battery for pagos, depósitos, promesas, transacciones, or KPIs. Do not create another auth setup. The `definidas` project in `playwright.config.ts` already logs in through `test/auth.setup.ts` and stores `test/.auth/user.json`.
+
+Read the screen you just wrote and copy its strings. Do not invent toasts, empty-state copy, placeholders, CSV headers, button labels, or column names.
+
+| What the screen does | Copy the shape from |
+|---|---|
+| Search, CSV, create with the first empty required field, view and cancel, edit with that field empty | `test/definidas/fases.spec.ts` |
+| Another required field that `openCreate` leaves empty | `test/definidas/empresas.spec.ts`, test `nueva empresa exige razon social` |
+| The invalid field lives on another tab | `test/definidas/proyectos.spec.ts`, test `editar desde otra pestaña vuelve al campo obligatorio vacío` |
+| Save warns about a similar name | `test/definidas/bancos.spec.ts`, test `un nombre parecido avisa y cancelar no guarda` |
+| One create and delete that removes the row | `test/definidas/bancos.spec.ts`, helpers plus `crea un banco con nombre único y lo elimina` |
+| Two tabs edit the same row | `test/definidas/bancos.spec.ts`, test `dos pestañas editan el mismo banco y solo la primera grabación vale` |
+
+Every new catalog file includes these tests:
+
+1. `beforeEach` opens the route, expects status under 400, expects the URL not to contain `/login`, expects the `h1`, and calls `assertSinOverlayDeNext` from `../soporte`.
+2. A search for `___sin_coincidencias___` shows the counter at 0 and the empty copy from the client. Clearing the search restores the previous counter. The placeholder and the counter regex come from the client (`0 fases`, `0 bancos`).
+3. Exportar CSV downloads `<archivo>-YYYY-MM-DD.csv`. The date is the UTC day from `new Date().toISOString().slice(0, 10)`, because the screen builds the filename that way. The header contains the visible default columns and does not contain `cuenta` or a column the default view hides.
+4. Create: open the dialog, press Guardar, and assert the first `rechazar` that fires with the form `openCreate` left behind. Toast text, tab `General` selected (`getByRole('tab', { name: 'General', selected: true })`), the control visible, `aria-invalid="true"` (or `data-invalid="true"` on a button), and focused. The success toast has count 0. Close with the button named `Close`. The dialog hides. Repeat once per additional required field that `openCreate` leaves empty: fill the earlier ones with a value that is not saved, then Guardar. Do not retest a dropdown `openCreate` already filled.
+5. View and cancel. Skip when the client's empty-state sentence is visible. Double-click the first row. The name is the text of `td.font-medium`. The dialog heading matches that name. Historial and Editar are visible. Editar, change the field, Cancelar, and the view heading returns. Close. The cell still has the original name. After Editar, find the dialog with `getByRole('dialog')`. Filtering the dialog by the record name fails once the title changes.
+6. Edit with the required field empty. One tab: stay on General, as in Fases. More than one tab: switch to the other tab before Guardar, as in Proyectos, and expect the tab of the field to become selected. Cancelar, then Close. The row is unchanged. There is no success toast.
+7. Similar-name warning, only when `handleSave` opens that alert. Use an existing row's name. The alert heading is `Nombres similares encontrados`. Click `Cancelar`. Do not click `Si, es diferente — Continuar` in this test. The success toast has count 0 and the counter is unchanged.
+8. One create and one delete. Read `create*` and `delete*` first and fill only what the form still requires. The name is `E2E <ENTIDAD> ${Date.now()}`. The success and delete toasts are the exact strings from the client. The row count goes to 0. `finally` deletes the row if the test fails, and throws `Quedó <nombre>. Bórralo a mano.` when cleanup fails. A unique name may still trip the similar-name warning: only this test and the lock test may click `Si, es diferente — Continuar`, and only after the warning is actually visible. Copy `confirmarSiElNombreParece` from Bancos.
+9. Optimistic lock, when `update*` sends `modifico_fecha`. `test.setTimeout(90_000)`. `page.context().newPage()` shares the session. Create `E2E <ENTIDAD> ${marca}`. Edit it in both pages. The second page saves `KILO NORTE ${marca}` and sees the success toast. The first page saves `VASO SUR ${marca}` and sees exactly `Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.` The edit dialog stays open. The losing name is absent from the list. `finally` closes the extra page and deletes the row. Those two names stay far from each other and from existing catalog names.
+
+A new-mode footer has no Cancelar. Close it with `Close`. Edit mode uses Cancelar to leave edit and `Close` to leave the dialog.
+
+Run this before the screen is finished:
+
+```bash
+npx playwright test --project=definidas test/definidas/<entidad>.spec.ts
+```
+
+The dev server and `TEST_LOGIN_USERNAME` / `TEST_LOGIN_PASSWORD` come from the Playwright config and the setup project. Do not print those secrets. Do not leave `E2E` rows behind.
+
+### Step 11 — Definition of done
 
 Run these before reporting the screen finished. Do not use `get_errors` or PowerShell.
 
@@ -284,5 +334,7 @@ Run these before reporting the screen finished. Do not use `get_errors` or Power
 - [ ] Accent color table in `.cursor/rules/ui-conventions.mdc` updated (add row if new module)
 - [ ] Icon table in `.cursor/rules/ui-conventions.mdc` updated (add row if new icon)
 - [ ] The spec file was not edited
+- [ ] `test/definidas/<entidad>.spec.ts` exists and `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` is green
+- [ ] Guardar on an invalid field toasts, selects that field's tab, marks the control, and focuses it
 
 Mark the task done only when the checks above are green. If the change is visible on screen, walk the flow in the browser first.

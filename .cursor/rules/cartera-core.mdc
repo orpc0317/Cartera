@@ -75,6 +75,7 @@ Sustituye a `get_errors` y a los chequeos en PowerShell. Marcar la tarea termina
 3. **Escrituras:** `getCuentaActiva` importada desde `@/app/actions/permisos`, `requirePermiso` como primera instrucción, `writeAudit` tras el éxito de la mutación (incluye RPC `SECURITY DEFINER` que inserta, actualiza o borra). Ver `.cursor/rules/server-actions.mdc`.
 4. **Comentarios JSX cerrados** (`{/* ... */}`).
 5. **Si el cambio se ve en pantalla:** recorrer el flujo en el navegador.
+6. **Catálogo nuevo:** el formulario usa `useCampoInvalido` como dice `.cursor/rules/crud-screens.mdc` § Campo con error al grabar, y `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` está en verde. El plano de esas pruebas está en `.cursor/skills/crud-screen/SKILL.md`.
 
 ---
 

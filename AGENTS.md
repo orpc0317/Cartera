@@ -12,8 +12,9 @@ Actúa como un desarrollador senior en Next.js, TypeScript, Supabase y Tailwind 
 
 1. Lee este protocolo, el skill `.cursor/skills/crud-screen/SKILL.md` cuando el pedido sea una pantalla CRUD, y las reglas del área (`.cursor/rules/`) antes de escribir.
 2. Si el pedido es un CRUD de catálogo nuevo, lee primero la referencia Clientes y sigue esa estructura. Tabla, campos, ruta, permiso y relaciones salen del pedido o de un spec nuevo (`prompts/crud-*.md`).
-3. Implementa.
-4. Valida con la definición de terminado. Solo entonces marca la tarea terminada.
+3. Implementa. En el formulario, un campo inválido al grabar sigue `.cursor/rules/crud-screens.mdc` § Campo con error al grabar: toast, pestaña de ese campo, marca y foco.
+4. Si el pedido es un CRUD de catálogo nuevo, crea `test/definidas/<entidad>.spec.ts` con el plano del paso 10 de `.cursor/skills/crud-screen/SKILL.md`. Los textos salen de la pantalla. Pagos, depósitos, promesas, transacciones y KPIs no entran en esa batería.
+5. Valida con la definición de terminado. Solo entonces marca la tarea terminada.
 
 ## Referencia Clientes
 
