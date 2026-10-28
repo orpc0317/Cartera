@@ -88,3 +88,44 @@ test('ver una empresa y cancelar la edición no guarda cambios', async ({ page }
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td.font-medium')).toHaveText(nombre)
 })
+
+test('nueva empresa exige razon social', async ({ page }) => {
+  await page.getByRole('button', { name: 'Nueva Empresa' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Nueva Empresa' })
+  await dialog.getByLabel('Nombre *').fill('EMPRESA DE PRUEBA')
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByText('La razon social es requerida.')).toBeVisible()
+  await expect(dialog.getByText('Nueva Empresa', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+})
+
+test('un nombre parecido avisa y cancelar no guarda', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay empresas. Haz clic en "Nueva Empresa" para comenzar.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene empresas.')
+
+  const contador = page.getByText(/^\d+ empresas?$/)
+  const antes = (await contador.innerText()).trim()
+  const nombre = (await page.locator('tbody tr').first().locator('td.font-medium').innerText()).trim()
+  expect(nombre.length).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Nueva Empresa' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Nueva Empresa' })
+  await dialog.getByLabel('Nombre *').fill(nombre)
+  await dialog.getByLabel('Razon Social *').fill('RAZON SOCIAL DE PRUEBA')
+  await dialog.getByLabel('ID Tributaria *').fill('CF')
+  await dialog.getByLabel('Direccion *').fill('DIRECCION DE PRUEBA')
+  await dialog.getByRole('button', { name: 'Seleccionar país' }).click()
+  await dialog.getByText('GUATEMALA', { exact: true }).click()
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  const aviso = page.getByRole('alertdialog')
+  await expect(aviso.getByRole('heading', { name: 'Nombres similares encontrados' })).toBeVisible()
+  await aviso.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(aviso).toBeHidden()
+  await expect(page.getByText('Empresa creada.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText(antes, { exact: true })).toBeVisible()
+})

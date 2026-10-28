@@ -88,3 +88,32 @@ test('ver un banco y cancelar la edición no guarda cambios', async ({ page }) =
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td.font-medium')).toHaveText(nombre)
 })
+
+test('un nombre parecido avisa y cancelar no guarda', async ({ page }) => {
+  const vacio = page.getByText('No hay bancos registrados aun.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene bancos.')
+
+  const contador = page.getByText(/^\d+ bancos?$/)
+  const antes = (await contador.innerText()).trim()
+  const fila = page.locator('tbody tr').first()
+  const proyecto = (await fila.locator('td').nth(1).innerText()).replace(/\s+/g, ' ').trim()
+  const nombre = (await fila.locator('td.font-medium').innerText()).trim()
+  expect(nombre.length).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Nuevo Banco' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Banco' })
+  await dialog.locator('[data-slot="select-trigger"]').nth(1).click()
+  await page.getByRole('option', { name: proyecto, exact: true }).click()
+  await dialog.getByLabel('Nombre *').fill(nombre)
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  const aviso = page.getByRole('alertdialog')
+  await expect(aviso.getByRole('heading', { name: 'Nombres similares encontrados' })).toBeVisible()
+  await aviso.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(aviso).toBeHidden()
+  await expect(page.getByText('Banco creado.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText(antes, { exact: true })).toBeVisible()
+})
