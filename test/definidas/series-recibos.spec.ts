@@ -25,6 +25,10 @@ async function asegurarProyecto(dialog: Locator) {
   await opcion.click()
 }
 
+function serieCorta(marca: number) {
+  return `E2E${String(marca).slice(-7)}`
+}
+
 async function crearSerie(page: Page, serie: string) {
   await page.getByRole('button', { name: 'Nueva Serie' }).click()
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Serie de Recibos' }) })
@@ -32,7 +36,13 @@ async function crearSerie(page: Page, serie: string) {
   await dialog.getByLabel('Serie *').fill(serie)
   await expect(dialog.getByLabel('Serie *')).toHaveValue(serie)
   await dialog.getByRole('button', { name: 'Guardar' }).click()
-  await expect(page.getByText('Serie creada.')).toBeVisible()
+  const ok = page.getByText('Serie creada.')
+  try {
+    await expect(ok).toBeVisible()
+  } catch (error) {
+    const detalle = (await page.locator('[data-sonner-toast][data-type="error"]').last().innerText().catch(() => '')).replace(/\s+/g, ' ').trim()
+    throw new Error(detalle || (error instanceof Error ? error.message : String(error)))
+  }
   await expect(dialog).toBeHidden()
 }
 
@@ -223,7 +233,7 @@ test('crea una serie con codigo único y la elimina', async ({ page }) => {
   test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene proyectos.')
   await limpiar(page)
 
-  const serie = `E2E${Date.now()}`
+  const serie = serieCorta(Date.now())
   let creada = false
   try {
     await crearSerie(page, serie)
@@ -252,7 +262,7 @@ test('dos pestañas editan la misma serie y solo la primera grabación vale', as
   test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene proyectos.')
   await limpiar(page)
 
-  const serie = `E2E${Date.now()}`
+  const serie = serieCorta(Date.now())
   let creada = false
   const otra = await page.context().newPage()
 
