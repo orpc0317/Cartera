@@ -29,6 +29,29 @@ async function eliminarEmpresa(page: Page, nombre: string) {
   await dialog.getByRole('button', { name: 'Close' }).click({ timeout: 3_000 }).catch(() => undefined)
 }
 
+async function guardarAunqueParezca(page: Page, exito: string) {
+  const aviso = page.getByRole('alertdialog').filter({ hasText: 'Nombres similares encontrados' })
+  const ok = page.getByText(exito)
+  await expect(aviso.or(ok)).toBeVisible()
+  if (await aviso.isVisible()) {
+    await aviso.getByRole('button', { name: 'Si, es diferente — Continuar' }).click()
+    await expect(aviso).toBeHidden()
+  }
+  await expect(ok).toBeVisible()
+}
+
+async function abrirEdicionDeEmpresa(page: Page, nombre: string) {
+  await page.getByPlaceholder('Buscar empresas...').fill(nombre)
+  const fila = page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })
+  await expect(fila).toHaveCount(1)
+  await fila.dblclick()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Editar' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Editar Empresa' })).toBeVisible()
+  await expect(dialog.getByLabel('Nombre *')).toHaveValue(nombre)
+  return dialog
+}
+
 async function limpiarEmpresasDePrueba(page: Page) {
   const busqueda = page.getByPlaceholder('Buscar empresas...')
   await busqueda.fill('E2E EMPRESA')
@@ -242,4 +265,83 @@ test('editar una empresa con la dirección vacía marca ese campo y no guarda', 
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td.font-medium')).toHaveText(nombre)
+})
+
+test('dos pestañas editan la misma empresa y solo la primera grabación vale', async ({ page }) => {
+  const marca = Date.now()
+  const original = `E2E EMPRESA ${marca}`
+  const primero = `KILO NORTE ${marca}`
+  const segundo = `VASO SUR ${marca}`
+  const conflicto = 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'
+  let creada = false
+  const otra = await page.context().newPage()
+
+  try {
+    await page.getByRole('button', { name: 'Nueva Empresa' }).click()
+    const alta = page.getByRole('dialog').filter({ hasText: 'Nueva Empresa' })
+    await alta.getByLabel('Nombre *').fill(original)
+    await alta.getByLabel('Razon Social *').fill(`RAZON ${original}`)
+    await alta.getByLabel('ID Tributaria *').fill('CF')
+    await alta.getByLabel('Direccion *').fill('DIRECCION E2E')
+    await alta.getByRole('button', { name: 'Seleccionar país' }).click()
+    await alta.getByText('GUATEMALA', { exact: true }).click()
+    await expect(alta.locator('#departamento')).not.toHaveValue('')
+    await expect(alta.locator('#municipio')).not.toHaveValue('')
+    await alta.getByRole('button', { name: 'Guardar' }).click()
+    await confirmarSiElNombreParece(page)
+    await expect(alta).toBeHidden()
+    creada = true
+
+    const dialogA = await abrirEdicionDeEmpresa(page, original)
+
+    await otra.goto('/dashboard/proyectos/empresas')
+    await expect(otra).not.toHaveURL(/\/login/)
+    await expect(otra.getByRole('heading', { level: 1, name: 'Empresas' })).toBeVisible()
+    const dialogB = await abrirEdicionDeEmpresa(otra, original)
+
+    await dialogB.getByLabel('Nombre *').fill(primero)
+    await dialogB.getByRole('button', { name: 'Guardar' }).click()
+    await guardarAunqueParezca(otra, 'Empresa actualizada.')
+    await expect(dialogB).toBeHidden()
+
+    await dialogA.getByLabel('Nombre *').fill(segundo)
+    await dialogA.getByRole('button', { name: 'Guardar' }).click()
+    const aviso = page.getByRole('alertdialog').filter({ hasText: 'Nombres similares encontrados' })
+    const error = page.getByText(conflicto)
+    await expect(aviso.or(error)).toBeVisible()
+    if (await aviso.isVisible()) {
+      await aviso.getByRole('button', { name: 'Si, es diferente — Continuar' }).click()
+    }
+    await expect(error).toBeVisible()
+    await expect(dialogA.getByRole('heading', { name: 'Editar Empresa' })).toBeVisible()
+    await expect(page.getByText('Empresa actualizada.')).toHaveCount(0)
+
+    await dialogA.getByRole('button', { name: 'Close' }).click()
+    await expect(dialogA).toBeHidden()
+    await page.getByPlaceholder('Buscar empresas...').fill(primero)
+    await expect(page.locator('tbody td.font-medium').filter({ hasText: primero })).toBeVisible()
+    await page.getByPlaceholder('Buscar empresas...').fill(segundo)
+    await expect(page.getByText('No se encontraron empresas con ese criterio.')).toBeVisible()
+
+    await eliminarEmpresa(page, primero)
+    creada = false
+  } finally {
+    await otra.close()
+    if (creada) {
+      const busqueda = page.getByPlaceholder('Buscar empresas...')
+      await busqueda.fill(String(marca))
+      const fila = page.locator('tbody tr').filter({ hasText: String(marca) })
+      if ((await fila.count()) > 0) {
+        const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
+        const abierto = page.getByRole('dialog')
+        if (await abierto.isVisible().catch(() => false)) {
+          await abierto.getByRole('button', { name: 'Close' }).click().catch(() => undefined)
+        }
+        await eliminarEmpresa(page, nombre).catch((error: unknown) => {
+          const detalle = error instanceof Error ? error.message : String(error)
+          throw new Error(`Quedó la empresa ${nombre}. Bórrala a mano. ${detalle}`)
+        })
+      }
+    }
+  }
 })
