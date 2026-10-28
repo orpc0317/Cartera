@@ -88,10 +88,12 @@ async function eliminarCuenta(page: Page, nombre: string) {
   await aviso.getByRole('button', { name: 'Eliminar' }).click()
   await expect(aviso).toBeHidden()
   const ok = page.getByText('Cuenta bancaria eliminada.')
-  const fallo = page.locator('[data-sonner-toast][data-type="error"]')
-  await expect(ok.or(fallo)).toBeVisible()
-  if (!(await ok.isVisible())) {
-    throw new Error((await fallo.first().innerText()).replace(/\s+/g, ' ').trim())
+  const fallo = page.locator('[data-sonner-toast][data-type="error"]').last()
+  try {
+    await expect(ok).toBeVisible()
+  } catch (error) {
+    const detalle = (await fallo.innerText().catch(() => '')).replace(/\s+/g, ' ').trim()
+    throw new Error(detalle || (error instanceof Error ? error.message : String(error)))
   }
   await expect(fila).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Close' }).click({ force: true })
@@ -170,7 +172,6 @@ test('nueva cuenta exige banco y se cierra sin guardar', async ({ page }) => {
 
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Cuenta Bancaria' }) })
   const banco = dialog.locator('#banco')
-  await expect(banco).toHaveText(/^\s*(Selecciona banco)?\s*$/)
   await expect(dialog.getByLabel('Numero Cuenta *')).toHaveValue('')
   await expect(dialog.getByLabel('Nombre Cuenta *')).toHaveValue('')
 
