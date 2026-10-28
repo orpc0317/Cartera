@@ -16,9 +16,10 @@ async function combinacionDeLaPrimeraFila(page: Page) {
   const proyecto = await valorDeVista(dialog, 'Proyecto')
   const fase = await valorDeVista(dialog, 'Fase')
   const manzana = await valorDeVista(dialog, 'Manzana')
+  const codigo = await valorDeVista(dialog, 'Codigo')
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
-  return { empresa, proyecto, fase, manzana }
+  return { empresa, proyecto, fase, manzana, codigo }
 }
 
 async function elegirOpcion(dialog: Locator, indice: number, nombre: string) {
@@ -144,6 +145,61 @@ test('exportar CSV usa las columnas visibles y no toca la base', async ({ page }
   expect(encabezado).not.toContain('Empresa')
   expect(encabezado).not.toContain('Estado')
   expect(encabezado).not.toContain('Finca')
+})
+
+test('nuevo lote exige codigo y se cierra sin guardar', async ({ page }) => {
+  const nuevo = page.getByRole('button', { name: 'Nuevo Lote' })
+  await expect(nuevo).toBeVisible()
+  await nuevo.click()
+
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Lote' })
+  await expect(dialog.getByRole('heading', { name: 'Nuevo Lote' })).toBeVisible()
+  const codigo = dialog.getByLabel('Codigo *')
+  await expect(codigo).toHaveValue('')
+
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByText('El codigo es requerido.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(codigo).toHaveAttribute('aria-invalid', 'true')
+  await expect(codigo).toBeFocused()
+  await expect(page.getByText('Lote creado.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('heading', { level: 1, name: 'Lotes' })).toBeVisible()
+})
+
+test('un codigo repetido en la misma manzana marca el campo', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay lotes. Haz clic en "Nuevo Lote" para comenzar.')
+  test.skip(await vacio.isVisible(), 'La cuenta de prueba no tiene lotes.')
+
+  const contador = page.getByText(CONTADOR)
+  await expect(contador).toBeVisible()
+  const antes = (await contador.innerText()).trim()
+  const combo = await combinacionDeLaPrimeraFila(page)
+  expect(combo.codigo.length).toBeGreaterThan(0)
+
+  await page.getByRole('button', { name: 'Nuevo Lote' }).click()
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Lote' })
+  await elegirOpcion(dialog, 0, combo.empresa)
+  await elegirOpcion(dialog, 1, combo.proyecto)
+  await elegirOpcion(dialog, 2, combo.fase)
+  await elegirOpcion(dialog, 3, combo.manzana)
+  const campo = dialog.getByLabel('Codigo *')
+  await campo.fill(combo.codigo)
+  await expect(campo).toHaveValue(combo.codigo)
+
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+  await expect(page.getByText('Ya existe un lote con ese codigo.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(campo).toHaveAttribute('aria-invalid', 'true')
+  await expect(campo).toBeFocused()
+  await expect(dialog.getByRole('heading', { name: 'Nuevo Lote' })).toBeVisible()
+  await expect(page.getByText('Lote creado.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByText(antes, { exact: true })).toBeVisible()
 })
 
 test('ver un lote y cancelar la edición no guarda cambios', async ({ page }) => {
