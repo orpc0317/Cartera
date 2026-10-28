@@ -63,7 +63,21 @@ async function abrirEdicion(page: Page, nombre: string) {
   return dialog
 }
 
+async function cerrarLoAbierto(page: Page) {
+  const aviso = page.getByRole('alertdialog')
+  if (await aviso.isVisible().catch(() => false)) {
+    await aviso.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(aviso).toBeHidden()
+  }
+  const dialog = page.getByRole('dialog')
+  if (await dialog.isVisible().catch(() => false)) {
+    await dialog.getByRole('button', { name: 'Close' }).click({ force: true })
+    await expect(dialog).toBeHidden()
+  }
+}
+
 async function eliminarCuenta(page: Page, nombre: string) {
+  await cerrarLoAbierto(page)
   await page.getByPlaceholder('Buscar cuentas bancarias...').fill(nombre)
   const fila = page.locator('tbody tr').filter({ has: page.getByText(nombre, { exact: true }) })
   await expect(fila).toHaveCount(1)
@@ -72,6 +86,7 @@ async function eliminarCuenta(page: Page, nombre: string) {
   await dialog.getByRole('button', { name: 'Eliminar' }).click()
   const aviso = page.getByRole('alertdialog').filter({ hasText: 'Eliminar cuenta bancaria' })
   await aviso.getByRole('button', { name: 'Eliminar' }).click()
+  await expect(aviso).toBeHidden()
   const ok = page.getByText('Cuenta bancaria eliminada.')
   const fallo = page.locator('[data-sonner-toast][data-type="error"]')
   await expect(ok.or(fallo)).toBeVisible()
@@ -85,17 +100,20 @@ async function eliminarCuenta(page: Page, nombre: string) {
 
 async function limpiarCuentasDePrueba(page: Page) {
   const busqueda = page.getByPlaceholder('Buscar cuentas bancarias...')
-  await busqueda.fill('E2E CUENTA')
-  for (let i = 0; i < 5; i += 1) {
-    const fila = page.locator('tbody tr').filter({ hasText: /E2E CUENTA \d+/ })
-    if ((await fila.count()) === 0) break
-    const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
-    const abierto = page.getByRole('dialog')
-    if (await abierto.isVisible().catch(() => false)) {
-      await abierto.getByRole('button', { name: 'Close' }).click({ force: true }).catch(() => undefined)
+  const criterios: Array<[string, RegExp]> = [
+    ['E2E CUENTA', /E2E CUENTA \d+/],
+    ['KILO NORTE', /KILO NORTE \d+/],
+    ['VASO SUR', /VASO SUR \d+/],
+  ]
+  for (const [prefijo, criterio] of criterios) {
+    await busqueda.fill(prefijo)
+    for (let i = 0; i < 5; i += 1) {
+      const fila = page.locator('tbody tr').filter({ hasText: criterio })
+      if ((await fila.count()) === 0) break
+      const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
+      await eliminarCuenta(page, nombre)
+      await busqueda.fill(prefijo)
     }
-    await eliminarCuenta(page, nombre)
-    await busqueda.fill('E2E CUENTA')
   }
   await busqueda.fill('')
 }
@@ -144,22 +162,23 @@ test('exportar CSV usa las columnas visibles y no toca la base', async ({ page }
   expect(encabezado).not.toContain('Proyecto')
 })
 
-test('nueva cuenta exige numero y se cierra sin guardar', async ({ page }) => {
+test('nueva cuenta exige banco y se cierra sin guardar', async ({ page }) => {
   const nuevo = page.getByRole('button', { name: 'Nueva Cuenta' })
   await expect(nuevo).toBeVisible()
   test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene bancos.')
   await nuevo.click()
 
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Cuenta Bancaria' }) })
+  const banco = dialog.locator('#banco')
+  await expect(banco).toHaveText(/^\s*(Selecciona banco)?\s*$/)
   await expect(dialog.getByLabel('Numero Cuenta *')).toHaveValue('')
   await expect(dialog.getByLabel('Nombre Cuenta *')).toHaveValue('')
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
-  await expect(page.getByText('El numero de cuenta es requerido.')).toBeVisible()
+  await expect(page.getByText('Selecciona el banco.')).toBeVisible()
   await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
-  const numero = dialog.getByLabel('Numero Cuenta *')
-  await expect(numero).toHaveAttribute('aria-invalid', 'true')
-  await expect(numero).toBeFocused()
+  await expect(banco).toHaveAttribute('aria-invalid', 'true')
+  await expect(banco).toBeFocused()
   await expect(page.getByText('Cuenta bancaria creada.')).toHaveCount(0)
 
   await dialog.getByRole('button', { name: 'Close' }).click()
@@ -167,13 +186,42 @@ test('nueva cuenta exige numero y se cierra sin guardar', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Cuentas Bancarias' })).toBeVisible()
 })
 
-test('nueva cuenta exige nombre cuando el numero ya esta lleno', async ({ page }) => {
+test('nueva cuenta exige numero cuando el banco ya esta elegido', async ({ page }) => {
   const nuevo = page.getByRole('button', { name: 'Nueva Cuenta' })
   await expect(nuevo).toBeVisible()
-  test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene bancos.')
+  test.skip(await page.getByText(VACIO).isVisible(), 'La cuenta de prueba no tiene cuentas bancarias.')
+  const combo = await combinacionDeLaPrimeraFila(page)
   await nuevo.click()
 
   const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Cuenta Bancaria' }) })
+  await elegirOpcion(dialog, 0, combo.empresa)
+  await elegirOpcion(dialog, 1, combo.proyecto)
+  await elegirOpcion(dialog, 2, combo.banco)
+  await dialog.getByRole('button', { name: 'Guardar' }).click()
+
+  await expect(page.getByText('El numero de cuenta es requerido.')).toBeVisible()
+  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  const numero = dialog.getByLabel('Numero Cuenta *')
+  await expect(numero).toHaveAttribute('aria-invalid', 'true')
+  await expect(numero).toBeFocused()
+  await expect(dialog.locator('#banco')).not.toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByText('Cuenta bancaria creada.')).toHaveCount(0)
+
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+})
+
+test('nueva cuenta exige nombre cuando el numero ya esta lleno', async ({ page }) => {
+  const nuevo = page.getByRole('button', { name: 'Nueva Cuenta' })
+  await expect(nuevo).toBeVisible()
+  test.skip(await page.getByText(VACIO).isVisible(), 'La cuenta de prueba no tiene cuentas bancarias.')
+  const combo = await combinacionDeLaPrimeraFila(page)
+  await nuevo.click()
+
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Cuenta Bancaria' }) })
+  await elegirOpcion(dialog, 0, combo.empresa)
+  await elegirOpcion(dialog, 1, combo.proyecto)
+  await elegirOpcion(dialog, 2, combo.banco)
   await dialog.getByLabel('Numero Cuenta *').fill('999000111')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
 
