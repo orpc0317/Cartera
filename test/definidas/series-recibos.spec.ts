@@ -291,6 +291,8 @@ test('dos pestañas editan la misma serie y solo la primera grabación vale', as
 
     await dialogA.getByRole('button', { name: 'Close' }).click({ force: true })
     await expect(dialogA).toBeHidden()
+    await page.goto('/dashboard/cuentas-cobrar/series-recibos')
+    await expect(page.getByRole('heading', { level: 1, name: 'Series de Recibos' })).toBeVisible()
     await page.getByPlaceholder(BUSCAR).fill(serie)
     const fila = page.locator('tbody tr').filter({ has: page.getByText(serie, { exact: true }) })
     await expect(fila).toHaveCount(1)
