@@ -33,6 +33,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createManzana, deleteManzana } from '@/app/actions/manzanas'
 import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // --- Helpers --------------------------------------------------------------
 
@@ -183,6 +184,7 @@ export function ManzanasClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search,       setSearch]       = useState('')
   const [dialogOpen,   setDialogOpen]   = useState(false)
@@ -312,6 +314,7 @@ export function ManzanasClient({
   // --- Form handler ----------------------------------------------------------
 
   function f(key: keyof ManzanaForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -334,6 +337,8 @@ export function ManzanasClient({
   // --- Dialog handlers ------------------------------------------------------
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     const firstEmpresa  = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
     const firstFase     = fases.find((f2) => f2.empresa === firstEmpresa && f2.proyecto === firstProyecto)?.codigo ?? 0
@@ -344,6 +349,8 @@ export function ManzanasClient({
   }
 
   function openView(m: Manzana) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(m)
     setIsCreating(false)
     setDialogOpen(true)
@@ -352,10 +359,10 @@ export function ManzanasClient({
   // --- Save / Delete ---------------------------------------------------------
 
   function handleSave() {
-    if (!form.empresa)       { toast.error('Selecciona empresa.'); return }
-    if (!form.proyecto)      { toast.error('Selecciona proyecto.'); return }
-    if (!form.fase)          { toast.error('Selecciona fase.'); return }
-    if (!form.codigo.trim()) { toast.error('El codigo es requerido.'); return }
+    if (!form.empresa)       { rechazar('empresa', 'Selecciona empresa.'); return }
+    if (!form.proyecto)      { rechazar('proyecto', 'Selecciona proyecto.'); return }
+    if (!form.fase)          { rechazar('fase', 'Selecciona fase.'); return }
+    if (!form.codigo.trim()) { rechazar('codigo', 'El codigo es requerido.'); return }
 
     startTransition(async () => {
       const result = await createManzana(form)
@@ -571,7 +578,7 @@ export function ManzanasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -585,7 +592,7 @@ export function ManzanasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v && Number(v) ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -598,7 +605,7 @@ export function ManzanasClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v && Number(v) ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -611,7 +618,7 @@ export function ManzanasClient({
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase *</Label>
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="fase" aria-invalid={campoInvalido?.id === 'fase' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona fase">
                           {(v: string) => v && Number(v) ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -624,6 +631,8 @@ export function ManzanasClient({
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
                     <Input variant="l-border"
+                      id="codigo"
+                      aria-invalid={campoInvalido?.id === 'codigo' || undefined}
                       value={form.codigo}
                       onChange={(e) => f('codigo', e.target.value)}
                       placeholder="Ej: A, B, 1, 2..."

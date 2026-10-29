@@ -35,6 +35,7 @@ import { createFase, updateFase, deleteFase } from '@/app/actions/fases'
 import type { Empresa, Proyecto, Fase, FaseForm } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { UNIDAD_MEDIDA } from '@/lib/constants'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // --- Column types -----------------------------------------------------------
 
@@ -227,6 +228,7 @@ export function FasesClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // -- Search & filters ---------------------------------------------------
   const [search, setSearch] = useState('')
@@ -350,6 +352,7 @@ export function FasesClient({
 
   // -- Form helper --------------------------------------------------------
   function f(key: keyof FaseForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -375,6 +378,8 @@ export function FasesClient({
 
   // -- Dialog actions -----------------------------------------------------
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
@@ -384,15 +389,22 @@ export function FasesClient({
   }
 
   function openView(fase: Fase) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(fase)
     setForm(buildFormFromFase(fase))
     setIsEditing(false)
     setDialogOpen(true)
   }
 
-  function startEdit() { setIsEditing(true) }
+  function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
+    setIsEditing(true)
+  }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setForm(buildFormFromFase(viewTarget))
       setIsEditing(false)
@@ -418,10 +430,10 @@ export function FasesClient({
 
   // -- Save ---------------------------------------------------------------
   function handleSave() {
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
-    if (!form.empresa)       { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto)      { toast.error('El proyecto es requerido.'); return }
-    if (!form.medida)        { toast.error('La medida es requerida.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
+    if (!form.empresa)       { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto)      { rechazar('proyecto', 'El proyecto es requerido.'); return }
+    if (!form.medida)        { rechazar('medida', 'La medida es requerida.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromFase(viewTarget))) {
@@ -686,7 +698,7 @@ export function FasesClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -734,7 +746,7 @@ export function FasesClient({
                     onValueChange={(v) => f('empresa', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger variant="l-border" id="empresa" className="w-full">
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -757,7 +769,7 @@ export function FasesClient({
                     onValueChange={(v) => f('proyecto', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger variant="l-border" id="proyecto" className="w-full">
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -779,6 +791,7 @@ export function FasesClient({
                   </Label>
                   <Input variant="l-border"
                     id="nombre"
+                    aria-invalid={campoInvalido?.id === 'nombre' || undefined}
                     value={form.nombre}
                     onChange={(e) => f('nombre', e.target.value)}
                     placeholder="Nombre de la fase"
@@ -794,7 +807,7 @@ export function FasesClient({
                     value={form.medida}
                     onValueChange={(v) => f('medida', v ?? '')}
                   >
-                    <SelectTrigger variant="l-border" id="medida" className="w-full">
+                    <SelectTrigger variant="l-border" id="medida" aria-invalid={campoInvalido?.id === 'medida' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona medida">
                         {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
                       </SelectValue>

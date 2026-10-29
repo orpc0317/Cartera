@@ -35,6 +35,7 @@ import { createTipoDocumento, updateTipoDocumento, deleteTipoDocumento } from '@
 import type { Empresa, Proyecto } from '@/lib/types/proyectos'
 import type { TipoDocumento, TipoDocumentoForm } from '@/lib/types/tipos-documento'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // --- Column types -----------------------------------------------------------
 
@@ -218,6 +219,7 @@ export function TiposDocumentoClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // -- Search & filters ---------------------------------------------------
   const [search, setSearch] = useState('')
@@ -338,6 +340,7 @@ export function TiposDocumentoClient({
 
   // -- Form helper --------------------------------------------------------
   function f(key: keyof TipoDocumentoForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -361,6 +364,8 @@ export function TiposDocumentoClient({
 
   // -- Dialog actions -----------------------------------------------------
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
@@ -370,15 +375,22 @@ export function TiposDocumentoClient({
   }
 
   function openView(tipo: TipoDocumento) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(tipo)
     setForm(buildFormFromTipoDocumento(tipo))
     setIsEditing(false)
     setDialogOpen(true)
   }
 
-  function startEdit() { setIsEditing(true) }
+  function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
+    setIsEditing(true)
+  }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setForm(buildFormFromTipoDocumento(viewTarget))
       setIsEditing(false)
@@ -404,9 +416,9 @@ export function TiposDocumentoClient({
 
   // -- Save ---------------------------------------------------------------
   function handleSave() {
-    if (!form.descripcion.trim()) { toast.error('La descripcion es requerida.'); return }
-    if (!form.empresa)            { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto)           { toast.error('El proyecto es requerido.'); return }
+    if (!form.descripcion.trim()) { rechazar('descripcion', 'La descripcion es requerida.'); return }
+    if (!form.empresa)            { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto)           { rechazar('proyecto', 'El proyecto es requerido.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromTipoDocumento(viewTarget))) {
@@ -661,7 +673,7 @@ export function TiposDocumentoClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -706,7 +718,7 @@ export function TiposDocumentoClient({
                     onValueChange={(v) => f('empresa', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger variant="l-border" id="empresa" className="w-full">
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                       </SelectValue>
@@ -729,7 +741,7 @@ export function TiposDocumentoClient({
                     onValueChange={(v) => f('proyecto', Number(v))}
                     disabled={!!viewTarget}
                   >
-                    <SelectTrigger variant="l-border" id="proyecto" className="w-full">
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                       </SelectValue>
@@ -751,6 +763,7 @@ export function TiposDocumentoClient({
                   </Label>
                   <Input variant="l-border"
                     id="descripcion"
+                    aria-invalid={campoInvalido?.id === 'descripcion' || undefined}
                     value={form.descripcion}
                     onChange={(e) => f('descripcion', e.target.value)}
                     placeholder="Descripcion del tipo de documento"

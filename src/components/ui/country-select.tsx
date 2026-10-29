@@ -24,6 +24,8 @@ interface CountrySelectProps {
   placeholder?: string
   className?: string
   variant?: 'default' | 'underline' | 'l-border'
+  id?: string
+  invalid?: boolean
 }
 
 export function CountrySelect({
@@ -33,6 +35,8 @@ export function CountrySelect({
   placeholder = 'Seleccionar país',
   className,
   variant = 'default',
+  id,
+  invalid = false,
 }: CountrySelectProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -52,15 +56,17 @@ export function CountrySelect({
     <div ref={ref} className={cn('relative', className)}>
       <button
         type="button"
+        id={id}
+        data-invalid={invalid || undefined}
         onClick={() => setOpen((o) => !o)}
         style={{ fontSize: 'var(--ui-input)' }}
         className={cn(
           'flex h-8 w-full items-center justify-between gap-1.5 px-2.5 outline-none',
           variant === 'underline'
-            ? 'rounded-t-sm border-0 border-b border-input bg-muted/30 focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40'
+            ? 'rounded-t-sm border-0 border-b border-input bg-muted/30 focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 data-invalid:border-b-2 data-invalid:border-destructive'
             : variant === 'l-border'
-            ? 'rounded-none border-0 border-b border-primary/50 bg-transparent focus-visible:border-b-2 focus-visible:border-primary'
-            : 'rounded-none border border-input bg-transparent focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
+            ? 'rounded-none border-0 border-b border-primary/50 bg-transparent focus-visible:border-b-2 focus-visible:border-primary data-invalid:border-b-2 data-invalid:border-destructive'
+            : 'rounded-none border border-input bg-transparent focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-invalid:border-destructive',
         )}
       >
         {selected ? (

@@ -34,6 +34,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createBanco, updateBanco, deleteBanco } from '@/app/actions/bancos'
 import type { Banco, BancoForm, Empresa, Proyecto } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -212,6 +213,13 @@ export function BancosClient({
   const [form, setForm]               = useState<BancoForm>(EMPTY_FORM)
   const [similarWarning, setSimilarWarning] = useState<Banco[] | null>(null)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
+  const [activeTab, setActiveTab]     = useState('general')
+  const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
+
+  useEffect(() => {
+    if (!campoInvalido) return
+    enfocarCampoInvalido(campoInvalido.id)
+  }, [campoInvalido, activeTab])
 
   const empresaMap  = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
@@ -316,7 +324,14 @@ export function BancosClient({
 
   // ─── Form helpers ────────────────────────────────────────────────────────
 
+  function rechazar(id: string, message: string) {
+    setCampoInvalido({ id, tab: 'general' })
+    setActiveTab('general')
+    toast.error(message)
+  }
+
   function f(key: keyof BancoForm, value: string | number) {
+    setCampoInvalido(null)
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -328,6 +343,8 @@ export function BancosClient({
   }
 
   function openCreate() {
+    setCampoInvalido(null)
+    setActiveTab('general')
     setViewTarget(null); setIsEditing(true)
     const firstEmpresa  = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
@@ -336,6 +353,8 @@ export function BancosClient({
   }
 
   function openView(banco: Banco) {
+    setCampoInvalido(null)
+    setActiveTab('general')
     setViewTarget(banco); setIsEditing(false)
     setForm({ empresa: banco.empresa, proyecto: banco.proyecto, nombre: banco.nombre })
     setDialogOpen(true)
@@ -344,15 +363,16 @@ export function BancosClient({
   function startEdit() { setIsEditing(true) }
 
   function cancelEdit() {
+    setCampoInvalido(null)
     if (!viewTarget) { setDialogOpen(false); return }
     setIsEditing(false)
     setForm({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, nombre: viewTarget.nombre })
   }
 
   function handleSave() {
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
-    if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
-    if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
+    if (!form.empresa)  { rechazar('empresa', 'Selecciona la empresa.'); return }
+    if (!form.proyecto) { rechazar('proyecto', 'Selecciona el proyecto.'); return }
 
     // Si estamos editando y no hay cambios, cerrar sin ir a la base de datos
     if (viewTarget) {
@@ -548,6 +568,8 @@ export function BancosClient({
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
+            setCampoInvalido(null)
+            setActiveTab('general')
             if (hadConflict) { setHadConflict(false); router.refresh() }
           }
         }}
@@ -577,7 +599,7 @@ export function BancosClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full">
               <TabsList variant="line" className="">
                 <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -607,14 +629,14 @@ export function BancosClient({
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                       <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
@@ -624,6 +646,7 @@ export function BancosClient({
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
                       <Input variant="l-border"
                         id="nombre"
+                        aria-invalid={campoInvalido?.id === 'nombre' || undefined}
                         value={form.nombre}
                         onChange={(e) => f('nombre', e.target.value)}
                         placeholder="Nombre de la institucion financiera"

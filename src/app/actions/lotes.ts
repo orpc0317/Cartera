@@ -123,7 +123,10 @@ export async function createLote(form: LoteForm): Promise<{ error?: string }> {
     .select()
     .single()
 
-  if (error) return { error: error.message }
+  if (error) {
+    if (error.code === '23505') return { error: 'Ya existe un lote con ese codigo.' }
+    return { error: error.message }
+  }
 
   await writeAudit(admin, {
     tabla: 't_lote', operacion: 'INSERT', cuenta,

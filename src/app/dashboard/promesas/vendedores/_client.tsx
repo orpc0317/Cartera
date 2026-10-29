@@ -33,6 +33,7 @@ import {
   createVendedor, updateVendedor, deleteVendedor,
 } from '@/app/actions/vendedores'
 import type { Empresa, Proyecto, Coordinador, Vendedor, VendedorForm } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ const EMPTY_FORM: VendedorForm = {
   empresa: 0,
   proyecto: 0,
   nombre: '',
-  coordinador: null,
+  coordinador: 0,
   activo: 1,
 }
 
@@ -211,6 +212,7 @@ export function VendedoresClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // ── Estado de tabla ───────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
@@ -339,6 +341,7 @@ export function VendedoresClient({
 
   // ── Helpers de formulario ─────────────────────────────────────────────
   function f(key: keyof VendedorForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -347,10 +350,10 @@ export function VendedoresClient({
       if (key === 'empresa') {
         const fp = proyectos.find((p) => p.empresa === Number(value))
         next.proyecto = fp?.codigo ?? 0
-        next.coordinador = null
+        next.coordinador = 0
       }
       if (key === 'proyecto') {
-        next.coordinador = null
+        next.coordinador = 0
       }
       return next
     })
@@ -361,21 +364,25 @@ export function VendedoresClient({
       empresa: v.empresa,
       proyecto: v.proyecto,
       nombre: v.nombre,
-      coordinador: v.coordinador ?? null,
+      coordinador: v.coordinador ?? 0,
       activo: v.activo,
     }
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)
-    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto?.codigo ?? 0, coordinador: null })
+    setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto?.codigo ?? 0, coordinador: 0 })
     setDialogOpen(true)
   }
 
   function openView(vendedor: Vendedor) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(vendedor)
     setIsEditing(false)
     setHadConflict(false)
@@ -384,6 +391,7 @@ export function VendedoresClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setIsEditing(false)
       setForm(buildFormFromVendedor(viewTarget))
@@ -394,9 +402,9 @@ export function VendedoresClient({
 
   // ── Guardar ───────────────────────────────────────────────────────────
   function handleSave() {
-    if (!form.empresa)        { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto)       { toast.error('El proyecto es requerido.'); return }
-    if (!form.nombre.trim())  { toast.error('El nombre es requerido.'); return }
+    if (!form.empresa)        { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto)       { rechazar('proyecto', 'El proyecto es requerido.'); return }
+    if (!form.nombre.trim())  { rechazar('nombre', 'El nombre es requerido.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromVendedor(viewTarget))) {
@@ -737,7 +745,7 @@ export function VendedoresClient({
           </DialogHeader>
 
           {/* Tabs */}
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -777,7 +785,7 @@ export function VendedoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                   <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona empresa">
                         {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
                       </SelectValue>
@@ -791,7 +799,7 @@ export function VendedoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                   <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona proyecto">
                         {proyectoMap.get(`${form.empresa}-${form.proyecto}`) ?? 'Selecciona proyecto'}
                       </SelectValue>
@@ -804,19 +812,19 @@ export function VendedoresClient({
 
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Vendedor *</Label>
-                  <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
+                  <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
                 </div>
 
                 <div className="col-span-2 grid gap-1">
                   <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Coordinador</Label>
                   <Select
-                    value={form.coordinador != null ? String(form.coordinador) : '__none__'}
-                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? null : Number(v) }))}
+                    value={form.coordinador ? String(form.coordinador) : '__none__'}
+                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? 0 : Number(v) }))}
                     disabled={!form.proyecto}
                   >
                     <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue>
-                        {form.coordinador != null
+                        {form.coordinador
                           ? (coordinadorMap.get(`${form.empresa}-${form.proyecto}-${form.coordinador}`) ?? `#${form.coordinador}`)
                           : <span className="text-muted-foreground">Sin coordinador</span>}
                       </SelectValue>

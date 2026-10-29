@@ -33,6 +33,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { createLote, updateLote, deleteLote, getLoteReservaInfo, desistirReserva, type LoteReservaInfo } from '@/app/actions/lotes'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 import { getLoteEstado, LOTE_ESTADO_BADGE } from '@/lib/constants'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 
@@ -232,6 +233,7 @@ export function LotesClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search, setSearch] = useState('')
   const [reservaInfo, setReservaInfo] = useState<LoteReservaInfo | null>(null)
@@ -398,6 +400,7 @@ export function LotesClient({
   // --- form helper ---
 
   const f = useCallback((key: string, value: unknown) => {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -430,17 +433,21 @@ export function LotesClient({
       }
       return next
     })
-  }, [proyectos, fases, manzanas, proyectoMonedas, monedas])
+  }, [proyectos, fases, manzanas, proyectoMonedas, monedas, limpiarCampoInvalido])
 
   // --- Abrir dialog ---
 
   function openView(lote: Lote) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(lote)
     setIsEditing(false)
     setDialogOpen(true)
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     const firstEmpresa = empresas[0]
     const empCod = firstEmpresa?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === empCod)
@@ -471,6 +478,8 @@ export function LotesClient({
 
   function startEdit() {
     if (!viewTarget) return
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setForm({
       empresa:   viewTarget.empresa,
       proyecto:  viewTarget.proyecto,
@@ -495,6 +504,7 @@ export function LotesClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) setIsEditing(false)
     else setDialogOpen(false)
   }
@@ -502,6 +512,11 @@ export function LotesClient({
   // --- Guardar ---
 
   function handleSave() {
+    if (!viewTarget && !form.codigo.trim()) {
+      rechazar('codigo', 'El codigo es requerido.')
+      return
+    }
+
     const valor     = parseFloat(valorStr)     || form.valor
     const extension = parseFloat(extensionStr) || form.extension
 
@@ -540,7 +555,11 @@ export function LotesClient({
         router.refresh()
       } else {
         const res = await createLote({ ...form, valor, extension })
-        if (res.error) { toast.error(res.error); return }
+        if (res.error) {
+          if (res.error === 'Ya existe un lote con ese codigo.') rechazar('codigo', res.error)
+          else toast.error(res.error)
+          return
+        }
         toast.success('Lote creado.')
         setDialogOpen(false)
         router.refresh()
@@ -860,7 +879,7 @@ export function LotesClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -977,8 +996,8 @@ export function LotesClient({
                     </div>
                     {!viewTarget ? (
                       <div className="grid gap-1">
-                        <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo</Label>
-                        <Input variant="l-border" value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
+                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
+                        <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
                       <ViewField locked label="Codigo" value={viewTarget.codigo} />

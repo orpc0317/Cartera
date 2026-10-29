@@ -36,6 +36,7 @@ import { createTipoIngreso, updateTipoIngreso, deleteTipoIngreso } from '@/app/a
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 import type { Empresa, Proyecto, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ export function TiposIngresosClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
   const tableRef = useRef<HTMLDivElement>(null)
   const STORAGE_KEY = `tipos_ingresos_cols_v1_${userId}`
 
@@ -275,6 +277,7 @@ export function TiposIngresosClient({
   // Actualiza un campo del form. Para campos string: elimina tildes y convierte
   // a mayusculas, excepto las keys en SKIP_KEYS.
   function f(key: keyof TipoIngresoForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -398,6 +401,8 @@ export function TiposIngresosClient({
 
   // ── Dialog helpers ────────────────────────────────────────────────────────
   function openView(row: TipoIngreso) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(row)
     setIsEditing(false)
     setHadConflict(false)
@@ -405,6 +410,8 @@ export function TiposIngresosClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     const firstEmpresa = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
     const defaultMoneda = proyectoDefaultMoneda(firstEmpresa, firstProyecto)
@@ -423,6 +430,8 @@ export function TiposIngresosClient({
   }
 
   function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     if (!viewTarget) return
     setIsEditing(true)
     setForm({
@@ -462,6 +471,7 @@ export function TiposIngresosClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setIsEditing(false)
     } else {
@@ -517,15 +527,16 @@ export function TiposIngresosClient({
   }
 
   function handleSave() {
-    // Validate required virtual fields
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
+    if (!form.etiqueta.trim()) { rechazar('etiqueta', 'La etiqueta es requerida.'); return }
     if (modo === 'eventual') {
-      if (!eventualMoneda) { toast.error('Selecciona una moneda para el modo Eventual.'); return }
+      if (!eventualMoneda) { rechazar('eventual_moneda', 'Selecciona una moneda para el modo Eventual.'); return }
     } else {
-      if (!estadoCuentaMoneda) { toast.error('Selecciona una moneda para el modo Estado Cuenta.'); return }
+      if (!estadoCuentaMoneda) { rechazar('ec_moneda', 'Selecciona una moneda para el modo Estado Cuenta.'); return }
     }
     if (form.impuesto === 1) {
-      if (!form.facturacion_item.trim()) { toast.error('El campo Item es requerido cuando Impuestos esta activo.'); return }
-      if (!form.facturacion_descripcion.trim()) { toast.error('El campo Descripcion es requerido cuando Impuestos esta activo.'); return }
+      if (!form.facturacion_item.trim()) { rechazar('facturacion_item', 'El campo Item es requerido cuando Impuestos esta activo.'); return }
+      if (!form.facturacion_descripcion.trim()) { rechazar('facturacion_descripcion', 'El campo Descripcion es requerido cuando Impuestos esta activo.'); return }
     }
 
     // Jaro-Winkler similarity check
@@ -571,6 +582,7 @@ export function TiposIngresosClient({
 
   // ── Proyecto change ───────────────────────────────────────────────────────
   function handleProyectoChange(proyectoCodigo: number) {
+    limpiarCampoInvalido()
     const moneda = proyectoDefaultMoneda(form.empresa, proyectoCodigo)
     setForm((prev) => ({ ...prev, proyecto: proyectoCodigo }))
     setEventualMoneda(moneda)
@@ -579,6 +591,7 @@ export function TiposIngresosClient({
 
   // ── Empresa change ────────────────────────────────────────────────────────
   function handleEmpresaChange(empresaCodigo: number) {
+    limpiarCampoInvalido()
     const firstProyecto = proyectos.find((p) => p.empresa === empresaCodigo)?.codigo ?? 0
     setForm((prev) => ({ ...prev, empresa: empresaCodigo, proyecto: firstProyecto }))
     const moneda = proyectoDefaultMoneda(empresaCodigo, firstProyecto)
@@ -791,7 +804,7 @@ export function TiposIngresosClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -971,14 +984,14 @@ export function TiposIngresosClient({
                   {/* Nombre */}
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                    <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
+                    <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
                   </div>
 
                   {/* Etiqueta */}
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
                       <Label htmlFor="etiqueta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Etiqueta *</Label>
-                      <Input variant="l-border" id="etiqueta" maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
+                      <Input variant="l-border" id="etiqueta" aria-invalid={campoInvalido?.id === 'etiqueta' || undefined} maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
                     </div>
                     <div /><div />
                   </div>
@@ -1009,8 +1022,8 @@ export function TiposIngresosClient({
                     <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                       <div className="grid gap-1">
                         <Label htmlFor="eventual_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
-                        <Select value={eventualMoneda} onValueChange={(v) => setEventualMoneda(v ?? '')}>
-                          <SelectTrigger variant="l-border" id="eventual_moneda" className="w-full">
+                        <Select value={eventualMoneda} onValueChange={(v) => { limpiarCampoInvalido(); setEventualMoneda(v ?? '') }}>
+                          <SelectTrigger variant="l-border" id="eventual_moneda" aria-invalid={campoInvalido?.id === 'eventual_moneda' || undefined} className="w-full">
                             <SelectValue>
                               {(v: string) => {
                                 const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1066,8 +1079,8 @@ export function TiposIngresosClient({
                       <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                         <div className="grid gap-1">
                           <Label htmlFor="ec_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
-                          <Select value={estadoCuentaMoneda} onValueChange={(v) => setEstadoCuentaMoneda(v ?? '')}>
-                            <SelectTrigger variant="l-border" id="ec_moneda" className="w-full">
+                          <Select value={estadoCuentaMoneda} onValueChange={(v) => { limpiarCampoInvalido(); setEstadoCuentaMoneda(v ?? '') }}>
+                            <SelectTrigger variant="l-border" id="ec_moneda" aria-invalid={campoInvalido?.id === 'ec_moneda' || undefined} className="w-full">
                               <SelectValue>
                                 {(v: string) => {
                                   const flag = CURRENCY_FLAG_MAP.get(v)
@@ -1115,6 +1128,7 @@ export function TiposIngresosClient({
                     </Label>
                     <Input variant="l-border"
                       id="facturacion_item"
+                      aria-invalid={campoInvalido?.id === 'facturacion_item' || undefined}
                       value={form.facturacion_item}
                       onChange={(e) => f('facturacion_item', e.target.value)}
                       disabled={form.impuesto !== 1}
@@ -1127,6 +1141,7 @@ export function TiposIngresosClient({
                     </Label>
                     <Input variant="l-border"
                       id="facturacion_descripcion"
+                      aria-invalid={campoInvalido?.id === 'facturacion_descripcion' || undefined}
                       value={form.facturacion_descripcion}
                       onChange={(e) => f('facturacion_descripcion', e.target.value)}
                       disabled={form.impuesto !== 1}
@@ -1150,6 +1165,7 @@ export function TiposIngresosClient({
                         id="impuesto"
                         checked={!!form.impuesto}
                         onCheckedChange={(v) => {
+                          limpiarCampoInvalido()
                           const val = v ? 1 : 0
                           setForm((p) => ({
                             ...p,

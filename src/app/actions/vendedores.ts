@@ -71,12 +71,30 @@ export async function getVendedores(empresa?: number, proyecto?: number): Promis
 
 // ─── Crear ─────────────────────────────────────────────────────────────────
 
+function coordinadorEnCero<T extends { coordinador?: number | null }>(form: T): T {
+  if (form.coordinador === null) return { ...form, coordinador: 0 }
+  return form
+}
+
 export async function createVendedor(form: VendedorForm): Promise<{ error?: string }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.VEN_CAT, 'agregar')
   if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  const { data: max } = await admin
+    .schema('cartera')
+    .from('t_vendedor')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .order('codigo', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
   // Validar nombre duplicado dentro del mismo proyecto
@@ -95,7 +113,8 @@ export async function createVendedor(form: VendedorForm): Promise<{ error?: stri
     .schema('cartera')
     .from('t_vendedor')
     .insert({
-      ...form,
+      ...coordinadorEnCero(form),
+      codigo,
       cuenta,
       agrego_usuario: auditUser.userId,
       agrego_fecha: now,
@@ -164,7 +183,7 @@ export async function updateVendedor(
   let query = admin
     .schema('cartera')
     .from('t_vendedor')
-    .update({ ...form, modifico_usuario: auditUser.userId, modifico_fecha: now })
+    .update({ ...coordinadorEnCero(form), modifico_usuario: auditUser.userId, modifico_fecha: now })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

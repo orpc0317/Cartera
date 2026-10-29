@@ -252,7 +252,7 @@ export type VendedorForm = {
   empresa: number
   proyecto: number
   nombre: string
-  coordinador: number | null
+  coordinador: number
   activo: number
 }
 
