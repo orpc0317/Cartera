@@ -740,7 +740,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_serie_recibo (
   serie               varchar       NOT NULL,
   serie_factura       varchar       NULL,
   dias_fecha          smallint      NOT NULL DEFAULT 0,
-  correlativo         smallint      NOT NULL DEFAULT 0,
+  correlativo         integer       NOT NULL DEFAULT 0,
   formato             smallint      NOT NULL DEFAULT 0,
   predeterminado      smallint      NOT NULL DEFAULT 0,
   activo              smallint      NOT NULL DEFAULT 0,

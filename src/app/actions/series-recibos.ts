@@ -135,6 +135,7 @@ export async function createSerieRecibo(form: SerieReciboForm): Promise<{ error?
       serie,
       serie_factura: form.serie_factura || null,
       dias_fecha: form.dias_fecha,
+      correlativo: form.recibo_automatico === 1 ? 0 : (form.correlativo ?? 0),
       formato: form.formato,
       predeterminado: form.predeterminado,
       recibo_automatico: form.recibo_automatico,
@@ -186,6 +187,7 @@ export async function updateSerieRecibo(
   const payload: Record<string, unknown> = {
     serie_factura: form.serie_factura || null,
     dias_fecha: form.dias_fecha,
+    correlativo: form.recibo_automatico === 1 ? 0 : (form.correlativo ?? 0),
     formato: form.formato,
     predeterminado: form.predeterminado,
     recibo_automatico: form.recibo_automatico,
