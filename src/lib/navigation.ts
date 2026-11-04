@@ -9,6 +9,7 @@ import {
   ClipboardList,
   CreditCard,
   FileSignature,
+  FileSpreadsheet,
   FileText,
   FolderKanban,
   Grid3x3,
@@ -234,6 +235,14 @@ const PRESENTACION: Record<string, Presentacion> = {
     orden: 10,
     icon: Receipt,
     accent: 'bg-green-100 text-green-600',
+  },
+  'SER.FAC': {
+    href: '/dashboard/cuentas-cobrar/series-facturas',
+    descripcion: 'Series de facturas del proyecto',
+    grupo: 'Catálogos',
+    orden: 15,
+    icon: FileSpreadsheet,
+    accent: 'bg-neutral-100 text-neutral-600',
   },
   'TIN.CAT': {
     href: '/dashboard/cuentas-cobrar/tipos-ingresos',

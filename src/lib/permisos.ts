@@ -18,6 +18,7 @@ export const PERMISOS = {
   RES_OPE:   'RES.OPE',
   PRE_OPE:   'PRE.OPE',
   SER_REC:   'SER.REC',
+  SER_FAC:   'SER.FAC',
   TIN_CAT:   'TIN.CAT',
   TSC_CAT:   'TSC.CAT',
   DEP_BAN:   'DEP.BAN',
