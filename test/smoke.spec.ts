@@ -25,7 +25,7 @@ const PANTALLAS: { ruta: string; titulo: string | RegExp }[] = [
   { ruta: '/dashboard/promesas/reservas', titulo: 'Reservas' },
   { ruta: '/dashboard/promesas/promesas', titulo: 'Promesas' },
   { ruta: '/dashboard/cuentas-cobrar/series-recibos', titulo: 'Series de Recibos' },
-  { ruta: '/dashboard/cuentas-cobrar/series-facturas', titulo: 'Series de Facturas' },
+  { ruta: '/dashboard/cuentas-cobrar/series-facturas', titulo: 'Serie Facturas' },
   { ruta: '/dashboard/cuentas-cobrar/tipos-ingresos', titulo: 'Tipos Ingresos' },
   { ruta: '/dashboard/cuentas-cobrar/operaciones/pago-cuotas', titulo: 'Pago Cuotas' },
   { ruta: '/dashboard/cuentas-cobrar/operaciones/pagos', titulo: 'Mantenimiento Pagos' },

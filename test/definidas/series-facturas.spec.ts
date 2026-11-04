@@ -31,7 +31,7 @@ function serieCorta(marca: number) {
 
 async function crearSerie(page: Page, serie: string) {
   await page.getByRole('button', { name: 'Nueva Serie' }).click()
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Serie de Facturas' }) })
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Serie Facturas' }) })
   await asegurarProyecto(dialog)
   await dialog.getByLabel('Serie *').fill(serie)
   await expect(dialog.getByLabel('Serie *')).toHaveValue(serie)
@@ -57,7 +57,7 @@ async function abrirEdicion(page: Page, serie: string) {
   await fila.dblclick()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('button', { name: 'Editar' }).click()
-  await expect(dialog.getByRole('heading', { name: 'Editar Serie de Facturas' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Editar Serie Facturas' })).toBeVisible()
   await expect(dialog.getByLabel('Serie *')).toHaveValue(serie)
   return dialog
 }
@@ -119,7 +119,7 @@ test.beforeEach(async ({ page }) => {
   const response = await page.goto('/dashboard/cuentas-cobrar/series-facturas')
   expect(response?.status() ?? 0).toBeLessThan(400)
   await expect(page).not.toHaveURL(/\/login/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Series de Facturas' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Serie Facturas' })).toBeVisible()
   await assertSinOverlayDeNext(page)
 })
 
@@ -168,7 +168,7 @@ test('nueva serie exige el codigo y se cierra sin guardar', async ({ page }) => 
   test.skip(await nuevo.isDisabled(), 'La cuenta de prueba no tiene proyectos.')
   await nuevo.click()
 
-  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Serie de Facturas' }) })
+  const dialog = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Nueva Serie Facturas' }) })
   await expect(dialog.getByText('DOCUMENTOS ELECTRONICOS')).toBeVisible()
   await expect(dialog.getByLabel('Serie *')).toHaveValue('')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -215,7 +215,7 @@ test('ver una serie y cancelar la edición no guarda cambios', async ({ page }) 
 
   const formatoAntes = await valorDeVista(dialog, 'Formato')
   await dialog.getByRole('button', { name: 'Editar' }).click()
-  await expect(dialog.getByRole('heading', { name: 'Editar Serie de Facturas' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Editar Serie Facturas' })).toBeVisible()
   const formato = dialog.getByLabel('Formato')
   const distinto = formatoAntes === '4' ? '5' : '4'
   await formato.fill(distinto)
@@ -249,7 +249,7 @@ test('editar deja la serie bloqueada y no se puede vaciar', async ({ page }) => 
   await fila.dblclick()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('button', { name: 'Editar' }).click()
-  await expect(dialog.getByRole('heading', { name: 'Editar Serie de Facturas' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Editar Serie Facturas' })).toBeVisible()
 
   const campo = dialog.getByLabel('Serie *')
   await expect(campo).toBeDisabled()
@@ -308,7 +308,7 @@ test('dos pestañas editan la misma serie y solo la primera grabación vale', as
 
     await otra.goto('/dashboard/cuentas-cobrar/series-facturas')
     await expect(otra).not.toHaveURL(/\/login/)
-    await expect(otra.getByRole('heading', { level: 1, name: 'Series de Facturas' })).toBeVisible()
+    await expect(otra.getByRole('heading', { level: 1, name: 'Serie Facturas' })).toBeVisible()
     const dialogB = await abrirEdicion(otra, serie)
 
     await dialogB.getByLabel('Formato').fill('8')
@@ -321,13 +321,13 @@ test('dos pestañas editan la misma serie y solo la primera grabación vale', as
     await expect(dialogA.getByLabel('Formato')).toHaveValue('3')
     await dialogA.getByRole('button', { name: 'Guardar' }).click()
     await expect(page.getByText(CONFLICTO)).toBeVisible()
-    await expect(dialogA.getByRole('heading', { name: 'Editar Serie de Facturas' })).toBeVisible()
+    await expect(dialogA.getByRole('heading', { name: 'Editar Serie Facturas' })).toBeVisible()
     await expect(page.getByText('Serie actualizada.')).toHaveCount(0)
 
     await dialogA.getByRole('button', { name: 'Close' }).click({ force: true })
     await expect(dialogA).toBeHidden()
     await page.goto('/dashboard/cuentas-cobrar/series-facturas')
-    await expect(page.getByRole('heading', { level: 1, name: 'Series de Facturas' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Serie Facturas' })).toBeVisible()
     await page.getByPlaceholder(BUSCAR).fill(serie)
     const fila = page.locator('tbody tr').filter({ has: page.getByText(serie, { exact: true }) })
     await expect(fila).toHaveCount(1)

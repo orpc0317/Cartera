@@ -509,7 +509,7 @@ export function SeriesFacturasClient({
             <FileSpreadsheet className="h-5 w-5 text-neutral-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Series de Facturas</h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Serie Facturas</h1>
             <p className="text-sm text-muted-foreground">Catalogo de series de facturas por proyecto</p>
           </div>
         </div>
@@ -683,7 +683,7 @@ export function SeriesFacturasClient({
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Serie de Facturas' : isEditing ? 'Editar Serie de Facturas' : viewTarget?.serie}
+                  {isEditing && !viewTarget ? 'Nueva Serie Facturas' : isEditing ? 'Editar Serie Facturas' : viewTarget?.serie}
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
