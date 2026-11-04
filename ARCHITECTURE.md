@@ -218,6 +218,7 @@ Las queries de Server Actions usan el cliente admin (o user) con `.schema('carte
 | Cobradores | `/dashboard/cobradores` | `COB.CAT` |
 | Coordinadores | `/dashboard/coordinadores` | `COO.CAT` |
 | Series de recibos | `/dashboard/cuentas-cobrar/series-recibos` | `SER.REC` |
+| Serie Facturas | `/dashboard/cuentas-cobrar/series-facturas` | `SER.FAC` |
 | Tipos de ingreso | `/dashboard/cuentas-cobrar/tipos-ingresos` | `TIN.CAT` |
 | Promesas | `/dashboard/promesas` | — |
 

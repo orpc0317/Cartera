@@ -38,7 +38,7 @@ cuenta
 Entidades transversales al proyecto (no pertenecen a una fase específica):
 - `cliente` — comprador de lotes
 - `cobrador`, `supervisor`, `coordinador`, `vendedor` — personal del proyecto
-- `banco`, `cuenta_bancaria`, `serie_recibo` — catálogos financieros
+- `banco`, `cuenta_bancaria`, `serie_recibo`, `serie_factura` — catálogos financieros
 
 ---
 

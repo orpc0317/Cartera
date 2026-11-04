@@ -9,6 +9,8 @@ import {
   ClipboardList,
   CreditCard,
   FileSignature,
+  FileSpreadsheet,
+  FileStack,
   FileText,
   FolderKanban,
   Grid3x3,
@@ -78,13 +80,14 @@ type Proximamente = {
   accent: string
 }
 
-const GRUPO_ORDEN = ['Catálogos', 'Operaciones', 'Consultas', 'General']
+const GRUPO_ORDEN = ['Catalogo', 'Catalogos', 'Operaciones', 'Consultas', 'General']
 
 const MODULO_ORDEN = [
   'Proyectos',
   'Bancos',
   'Promesas',
   'Cuentas Cobrar',
+  'Facturacion',
   'Generales',
   'Dashboard',
   'Mapa',
@@ -94,7 +97,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'EMP.CAT': {
     href: '/dashboard/proyectos/empresas',
     descripcion: 'Registra y administra las empresas lotificadoras',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 10,
     icon: Building2,
     accent: 'bg-emerald-100 text-emerald-600',
@@ -102,7 +105,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'PRO.CAT': {
     href: '/dashboard/proyectos/proyectos',
     descripcion: 'Gestiona los proyectos de lotificación por empresa',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 20,
     icon: FolderKanban,
     accent: 'bg-sky-100 text-sky-600',
@@ -110,7 +113,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'FAS.CAT': {
     href: '/dashboard/proyectos/fases',
     descripcion: 'Organiza las fases o etapas de cada proyecto',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 30,
     icon: Layers,
     accent: 'bg-violet-100 text-violet-600',
@@ -118,7 +121,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'MAN.CAT': {
     href: '/dashboard/proyectos/manzanas',
     descripcion: 'Administra las manzanas dentro de cada fase',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 40,
     icon: Grid3x3,
     accent: 'bg-amber-100 text-amber-600',
@@ -126,7 +129,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'LOT.CAT': {
     href: '/dashboard/proyectos/lotes',
     descripcion: 'Consulta la disponibilidad y el estado de cada lote',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 50,
     icon: MapPin,
     accent: 'bg-rose-100 text-rose-600',
@@ -134,7 +137,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'BAN.CAT': {
     href: '/dashboard/bancos/bancos',
     descripcion: 'Catálogo de bancos de la cuenta',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 10,
     icon: Landmark,
     accent: 'bg-teal-100 text-teal-600',
@@ -142,7 +145,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'CUE.BAN': {
     href: '/dashboard/bancos/cuentas-bancarias',
     descripcion: 'Cuentas bancarias donde se depositan los cobros',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 20,
     icon: CreditCard,
     accent: 'bg-cyan-100 text-cyan-600',
@@ -174,7 +177,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'CLI.CAT': {
     href: '/dashboard/promesas/clientes',
     descripcion: 'Compradores de lotes de la cuenta',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 10,
     icon: Users,
     accent: 'bg-indigo-100 text-indigo-600',
@@ -182,7 +185,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'SUP.CAT': {
     href: '/dashboard/promesas/supervisores',
     descripcion: 'Supervisores de la fuerza de ventas',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 20,
     icon: UserCog,
     accent: 'bg-purple-100 text-purple-600',
@@ -190,7 +193,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'COO.CAT': {
     href: '/dashboard/promesas/coordinadores',
     descripcion: 'Coordinadores asignados a cada supervisor',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 30,
     icon: Network,
     accent: 'bg-blue-100 text-blue-600',
@@ -198,7 +201,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'VEN.CAT': {
     href: '/dashboard/promesas/vendedores',
     descripcion: 'Vendedores que registran reservas y promesas',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 40,
     icon: UserCheck,
     accent: 'bg-lime-100 text-lime-600',
@@ -206,7 +209,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'COB.CAT': {
     href: '/dashboard/promesas/cobradores',
     descripcion: 'Cobradores que reciben los pagos',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 50,
     icon: Banknote,
     accent: 'bg-orange-100 text-orange-600',
@@ -230,15 +233,23 @@ const PRESENTACION: Record<string, Presentacion> = {
   'SER.REC': {
     href: '/dashboard/cuentas-cobrar/series-recibos',
     descripcion: 'Series de recibos de caja',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 10,
     icon: Receipt,
     accent: 'bg-green-100 text-green-600',
   },
+  'SER.FAC': {
+    href: '/dashboard/cuentas-cobrar/series-facturas',
+    descripcion: 'Series de facturas del proyecto',
+    grupo: 'Catalogo',
+    orden: 10,
+    icon: FileSpreadsheet,
+    accent: 'bg-neutral-100 text-neutral-600',
+  },
   'TIN.CAT': {
     href: '/dashboard/cuentas-cobrar/tipos-ingresos',
     descripcion: 'Clasifica los ingresos que se cobran',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 20,
     icon: Tags,
     accent: 'bg-yellow-100 text-yellow-600',
@@ -262,7 +273,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'TDO.CAT': {
     href: '/dashboard/generales/tipos-documento',
     descripcion: 'Tipos de documento de identidad',
-    grupo: 'Catálogos',
+    grupo: 'Catalogos',
     orden: 10,
     icon: IdCard,
     accent: 'bg-slate-100 text-slate-600',
@@ -270,7 +281,7 @@ const PRESENTACION: Record<string, Presentacion> = {
   'GFA.CAT': {
     href: '/dashboard/generales/gface',
     descripcion: 'Configuración del facturador electrónico',
-    grupo: 'Catálogos',
+    grupo: 'Catalogo',
     orden: 20,
     icon: ShieldCheck,
     accent: 'bg-gray-100 text-gray-600',
@@ -323,6 +334,7 @@ const ICONOS_MODULO: Record<string, LucideIcon> = {
   Bancos: Landmark,
   Promesas: FileText,
   'Cuentas Cobrar': BookOpen,
+  Facturacion: FileStack,
   Generales: Settings,
   Dashboard: LayoutDashboard,
   Mapa: MapIcon,
@@ -394,7 +406,7 @@ export function construirMenu(input: {
       nombre: pantalla.nombre?.trim() || indice,
       href: meta?.href ?? null,
       descripcion: meta?.descripcion ?? '',
-      grupo: meta?.grupo ?? (Number(pantalla.mantenimiento) === 1 ? 'Catálogos' : 'Operaciones'),
+      grupo: meta?.grupo ?? (Number(pantalla.mantenimiento) === 1 ? 'Catalogos' : 'Operaciones'),
       comingSoon: false,
       orden: meta?.orden ?? 1000,
     })
