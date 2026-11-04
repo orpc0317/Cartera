@@ -33,6 +33,7 @@ import {
   createCoordinador, updateCoordinador, deleteCoordinador,
 } from '@/app/actions/coordinadores'
 import type { Empresa, Proyecto, Supervisor, Coordinador, CoordinadorForm } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 
 // ─── Columnas ──────────────────────────────────────────────────────────────
@@ -231,6 +232,7 @@ export function CoordinadoresClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // ── Estado de tabla ───────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
@@ -359,6 +361,7 @@ export function CoordinadoresClient({
 
   // ── Helpers de formulario ─────────────────────────────────────────────
   function f(key: keyof CoordinadorForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string'
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -389,6 +392,8 @@ export function CoordinadoresClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const firstEmpresa = empresas[0]?.codigo ?? 0
@@ -404,6 +409,8 @@ export function CoordinadoresClient({
   }
 
   function openView(coordinador: Coordinador) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(coordinador)
     setIsEditing(false)
     setHadConflict(false)
@@ -412,6 +419,7 @@ export function CoordinadoresClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setIsEditing(false)
       setForm(buildFormFromCoordinador(viewTarget))
@@ -422,10 +430,10 @@ export function CoordinadoresClient({
 
   // ── Guardar ───────────────────────────────────────────────────────────
   function handleSave() {
-    if (!form.empresa)       { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto)      { toast.error('El proyecto es requerido.'); return }
-    if (!form.supervisor)    { toast.error('El supervisor es requerido.'); return }
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
+    if (!form.empresa)       { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto)      { rechazar('proyecto', 'El proyecto es requerido.'); return }
+    if (!form.supervisor)    { rechazar('supervisor', 'El supervisor es requerido.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCoordinador(viewTarget))) {
@@ -751,7 +759,7 @@ export function CoordinadoresClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" />
@@ -785,7 +793,7 @@ export function CoordinadoresClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -799,7 +807,7 @@ export function CoordinadoresClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -816,7 +824,7 @@ export function CoordinadoresClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Supervisor *</Label>
                     <Select value={String(form.supervisor)} onValueChange={(v) => f('supervisor', Number(v))} disabled={!form.proyecto}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="supervisor" aria-invalid={campoInvalido?.id === 'supervisor' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona supervisor">
                           {(v: string) => v ? (supervisorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -829,7 +837,7 @@ export function CoordinadoresClient({
 
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                    <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del coordinador" />
+                    <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del coordinador" />
                   </div>
 
                   <div className="col-span-2 flex items-center gap-2 py-1">

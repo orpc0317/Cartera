@@ -32,6 +32,7 @@ import { createEmpresa, updateEmpresa, deleteEmpresa } from '@/app/actions/empre
 import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
 import { REGIMENES_ISR, validarNIT } from '@/lib/constants'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
 import { CountrySelect } from '@/components/ui/country-select'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -255,6 +256,13 @@ export function EmpresasClient({
   const [form, setForm]               = useState<EmpresaForm>(EMPTY_FORM)
   const [similarWarning, setSimilarWarning] = useState<Empresa[] | null>(null)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
+  const [activeTab, setActiveTab]     = useState('general')
+  const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
+
+  useEffect(() => {
+    if (!campoInvalido) return
+    enfocarCampoInvalido(campoInvalido.id)
+  }, [campoInvalido, activeTab])
 
   // Cascada geo
   const [paisCodigo, setPaisCodigo]   = useState('')
@@ -390,6 +398,8 @@ export function EmpresasClient({
   }
 
   function openCreate() {
+    setCampoInvalido(null)
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     setForm(EMPTY_FORM)
@@ -399,6 +409,8 @@ export function EmpresasClient({
   }
 
   function openView(empresa: Empresa) {
+    setCampoInvalido(null)
+    setActiveTab('general')
     const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromEmpresa(empresa)
     setViewTarget(empresa)
     setForm(f)
@@ -411,6 +423,7 @@ export function EmpresasClient({
   function startEdit() { setIsEditing(true) }
 
   function cancelEdit() {
+    setCampoInvalido(null)
     if (viewTarget) {
       const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromEmpresa(viewTarget)
       setForm(f)
@@ -422,7 +435,14 @@ export function EmpresasClient({
     }
   }
 
+  function rechazar(id: string, message: string) {
+    setCampoInvalido({ id, tab: 'general' })
+    setActiveTab('general')
+    toast.error(message)
+  }
+
   function f(key: keyof EmpresaForm, value: string | number) {
+    setCampoInvalido(null)
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -446,17 +466,17 @@ export function EmpresasClient({
   }
 
   function handleSave() {
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
-    if (!form.razon_social.trim()) { toast.error('La razon social es requerida.'); return }
-    if (!form.identificacion_tributaria.trim()) { toast.error('La identificacion tributaria es requerida.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
+    if (!form.razon_social.trim()) { rechazar('razon_social', 'La razon social es requerida.'); return }
+    if (!form.identificacion_tributaria.trim()) { rechazar('id_trib', 'La identificacion tributaria es requerida.'); return }
     if (form.direccion_pais === 'GT' && form.identificacion_tributaria && !validarNIT(form.identificacion_tributaria)) {
-      toast.error('El NIT no tiene una estructura valida.')
+      rechazar('id_trib', 'El NIT no tiene una estructura valida.')
       return
     }
-    if (!form.direccion.trim()) { toast.error('La direccion es requerida.'); return }
-    if (!form.direccion_pais) { toast.error('El pais es requerido.'); return }
-    if (!form.direccion_departamento) { toast.error('El departamento es requerido.'); return }
-    if (!form.direccion_municipio) { toast.error('El municipio es requerido.'); return }
+    if (!form.direccion.trim()) { rechazar('direccion', 'La direccion es requerida.'); return }
+    if (!form.direccion_pais) { rechazar('direccion_pais', 'El pais es requerido.'); return }
+    if (!form.direccion_departamento) { rechazar('departamento', 'El departamento es requerido.'); return }
+    if (!form.direccion_municipio) { rechazar('municipio', 'El municipio es requerido.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromEmpresa(viewTarget).form)) {
@@ -747,6 +767,8 @@ export function EmpresasClient({
           setDialogOpen(open)
           if (!open) {
             setIsEditing(false)
+            setCampoInvalido(null)
+            setActiveTab('general')
             if (hadConflict) { setHadConflict(false); router.refresh() }
           }
         }}
@@ -769,7 +791,7 @@ export function EmpresasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -865,6 +887,7 @@ export function EmpresasClient({
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
                     <Input variant="l-border"
                       id="nombre"
+                      aria-invalid={campoInvalido?.id === 'nombre' || undefined}
                       value={form.nombre}
                       onChange={(e) => f('nombre', e.target.value)}
                       placeholder="Nombre comercial"
@@ -875,6 +898,7 @@ export function EmpresasClient({
                     <Label htmlFor="razon_social" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Razon Social *</Label>
                     <Input variant="l-border"
                       id="razon_social"
+                      aria-invalid={campoInvalido?.id === 'razon_social' || undefined}
                       value={form.razon_social}
                       onChange={(e) => f('razon_social', e.target.value)}
                       placeholder="Razon social legal"
@@ -885,6 +909,7 @@ export function EmpresasClient({
                     <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria *</Label>
                     <Input variant="l-border"
                       id="id_trib"
+                      aria-invalid={campoInvalido?.id === 'id_trib' || undefined}
                       value={form.identificacion_tributaria}
                       onChange={(e) => f('identificacion_tributaria', e.target.value)}
                       placeholder="NIT o equivalente"
@@ -904,6 +929,7 @@ export function EmpresasClient({
                     <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
                     <Input variant="l-border"
                       id="direccion"
+                      aria-invalid={campoInvalido?.id === 'direccion' || undefined}
                       value={form.direccion}
                       onChange={(e) => f('direccion', e.target.value)}
                       placeholder="Direccion completa"
@@ -915,7 +941,10 @@ export function EmpresasClient({
                     <CountrySelect
                       paises={paises}
                       value={paisCodigo}
+                      id="direccion_pais"
+                      invalid={campoInvalido?.id === 'direccion_pais'}
                       onChange={(codigo) => {
+                        setCampoInvalido(null)
                         const firstDepto = departamentos.filter((d) => d.pais === codigo)[0]
                         const firstMuni  = firstDepto
                           ? municipios.filter((m) => m.pais === codigo && m.departamento === firstDepto.codigo)[0]
@@ -939,14 +968,16 @@ export function EmpresasClient({
                       title="Departamento"
                       value={deptoCodigo}
                       disabled={!paisCodigo}
+                      aria-invalid={campoInvalido?.id === 'departamento' || undefined}
                       onChange={(e) => {
+                        setCampoInvalido(null)
                         const v = e.target.value
                         const firstMuni = municipios.filter((m) => m.pais === paisCodigo && m.departamento === v)[0]
                         setDeptoCodigo(v)
                         setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
                       }}
                       style={{ fontSize: 'var(--ui-input)' }}
-                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed"
+                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed aria-invalid:border-destructive"
                     >
                       <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
                       {deptosFiltrados.map((d) => (
@@ -962,11 +993,13 @@ export function EmpresasClient({
                       title="Municipio"
                       value={form.direccion_municipio}
                       disabled={!deptoCodigo}
+                      aria-invalid={campoInvalido?.id === 'municipio' || undefined}
                       onChange={(e) => {
+                        setCampoInvalido(null)
                         setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
                       }}
                       style={{ fontSize: 'var(--ui-input)' }}
-                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed"
+                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed aria-invalid:border-destructive"
                     >
                       <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
                       {municipiosFiltrados.map((m) => (

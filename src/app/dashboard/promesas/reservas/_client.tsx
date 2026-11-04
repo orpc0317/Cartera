@@ -32,6 +32,7 @@ import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBanc
 import type { TasaCambio } from '@/lib/types/tasas-cambio'
 import { createReserva, type ReservaRow } from '@/app/actions/lotes'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
 
@@ -231,13 +232,15 @@ function ColumnFilter({
 }
 
 function ClienteCombobox({
-  clientes, value, onChange, disabled, placeholder,
+  clientes, value, onChange, disabled, placeholder, id, invalid,
 }: {
   clientes: Cliente[]
   value: number
   onChange: (v: number) => void
   disabled?: boolean
   placeholder?: string
+  id?: string
+  invalid?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -269,8 +272,10 @@ function ClienteCombobox({
         <PopoverTrigger render={
           <button
             type="button"
+            id={id}
+            data-invalid={invalid || undefined}
             disabled={disabled}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-invalid:border-destructive"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -473,6 +478,7 @@ export function ReservasClient({
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // ── Estado de tabla ─────────────────────────────────────────────────────────────────
   const [reservas, setReservas] = useState<Reserva[]>(() => mapReservas(reservasIniciales))
@@ -645,6 +651,7 @@ export function ReservasClient({
   // ── Funcion de actualizacion del formulario ───────────────────────────
 
   function f(key: keyof ReservaForm, value: string | number) {
+    limpiarCampoInvalido()
     setForm((prev) => {
       const next = { ...prev, [key]: value }
       // Cascada: al cambiar empresa, resetear desde proyecto hacia abajo
@@ -831,6 +838,8 @@ export function ReservasClient({
   // ── Acciones de dialogo ───────────────────────────────────────────────
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     const emp  = empresas[0]?.codigo ?? 0
@@ -856,43 +865,46 @@ export function ReservasClient({
   }
 
   function openView(r: Reserva) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(r)
     setIsEditing(false)
     setDialogOpen(true)
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     setDialogOpen(false)
   }
 
   // ── Guardar ────────────────────────────────────────────────────────────────
 
   async function handleSave() {
-    if (!form.empresa)  { toast.error('Selecciona una empresa.');  return }
-    if (!form.proyecto) { toast.error('Selecciona un proyecto.');  return }
-    if (!form.fase)     { toast.error('Selecciona una fase.');     return }
-    if (!form.manzana)  { toast.error('Selecciona una manzana.');  return }
-    if (!form.lote)     { toast.error('Selecciona un lote.');      return }
-    if (!form.vendedor)  { toast.error('Selecciona un vendedor.');                     return }
-    if (!form.cliente)    { toast.error('Selecciona un cliente.');                     return }
-    if (!form.fecha)      { toast.error('La fecha es requerida.');                     return }
-    if (!form.moneda)     { toast.error('Selecciona la moneda.');                      return }
-    if (form.moneda !== monedaBase && !tasaCambio) { toast.error('No hay tasa de cambio registrada para esa moneda en esta fecha.'); return }
+    if (!form.empresa)  { rechazar('res-empresa', 'Selecciona una empresa.');  return }
+    if (!form.proyecto) { rechazar('res-proyecto', 'Selecciona un proyecto.');  return }
+    if (!form.fase)     { rechazar('res-fase', 'Selecciona una fase.');     return }
+    if (!form.manzana)  { rechazar('res-manzana', 'Selecciona una manzana.');  return }
+    if (!form.lote)     { rechazar('res-lote', 'Selecciona un lote.');      return }
+    if (!form.vendedor)  { rechazar('res-vendedor', 'Selecciona un vendedor.');                     return }
+    if (!form.cliente)    { rechazar('res-cliente', 'Selecciona un cliente.');                     return }
+    if (!form.fecha)      { rechazar('res-fecha', 'La fecha es requerida.');                     return }
+    if (!form.moneda)     { rechazar('res-moneda', 'Selecciona la moneda.');                      return }
+    if (form.moneda !== monedaBase && !tasaCambio) { rechazar('res-moneda', 'No hay tasa de cambio registrada para esa moneda en esta fecha.'); return }
     const montoNum = parseFloat(form.monto.replace(',', '.'))
-    if (isNaN(montoNum) || montoNum <= 0) { toast.error('El monto debe ser mayor a 0.'); return }
+    if (isNaN(montoNum) || montoNum <= 0) { rechazar('res-monto', 'El monto debe ser mayor a 0.'); return }
     if (loteSeleccionado && montoNum > loteSeleccionado.valor) {
-      toast.error(`El monto no puede ser mayor al valor del lote (${loteSeleccionado.moneda} ${fmt(loteSeleccionado.valor)}).`)
+      rechazar('res-monto', `El monto no puede ser mayor al valor del lote (${loteSeleccionado.moneda} ${fmt(loteSeleccionado.valor)}).`)
       return
     }
-    if (!form.serie_recibo) { toast.error('Selecciona la serie de recibo.');           return }
-    if (!reciboAutomatico && !form.recibo.trim()) { toast.error('Ingresa el numero de recibo.'); return }
-    if (!form.forma_pago) { toast.error('Selecciona la forma de pago.');               return }
-    if (form.forma_pago === 2 && !form.banco)           { toast.error('Selecciona el banco.');            return }
-    if (form.forma_pago === 2 && !form.num_cuenta.trim()) { toast.error('Ingresa el numero de cuenta.');  return }
-    if (form.forma_pago === 2 && !form.num_documento.trim()) { toast.error('Ingresa el numero de documento.'); return }
-    if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.cuenta_bancaria) { toast.error('Selecciona la cuenta bancaria.'); return }
-    if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.num_documento.trim()) { toast.error('Ingresa el numero de documento.'); return }
-    if (!form.cobrador) { toast.error('Selecciona un cobrador.'); return }
+    if (!form.serie_recibo) { rechazar('res-serie-recibo', 'Selecciona la serie de recibo.');           return }
+    if (!reciboAutomatico && !form.recibo.trim()) { rechazar('res-recibo', 'Ingresa el numero de recibo.'); return }
+    if (!form.forma_pago) { rechazar('res-forma-pago', 'Selecciona la forma de pago.');               return }
+    if (form.forma_pago === 2 && !form.banco)           { rechazar('res-banco', 'Selecciona el banco.');            return }
+    if (form.forma_pago === 2 && !form.num_cuenta.trim()) { rechazar('res-num-cuenta', 'Ingresa el numero de cuenta.');  return }
+    if (form.forma_pago === 2 && !form.num_documento.trim()) { rechazar('res-num-doc-cheque', 'Ingresa el numero de documento.'); return }
+    if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.cuenta_bancaria) { rechazar('res-cuenta-bancaria', 'Selecciona la cuenta bancaria.'); return }
+    if ((form.forma_pago === 3 || form.forma_pago === 4) && !form.num_documento.trim()) { rechazar('res-num-doc', 'Ingresa el numero de documento.'); return }
+    if (!form.cobrador) { rechazar('res-cobrador', 'Selecciona un cobrador.'); return }
 
     // ── Creacion con persistencia en BD ────────────────────────────────────
     setIsSaving(true)
@@ -1373,7 +1385,7 @@ export function ReservasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -1508,7 +1520,7 @@ export function ReservasClient({
                       value={form.empresa ? String(form.empresa) : ''}
                       onValueChange={(v) => f('empresa', Number(v))}
                     >
-                      <SelectTrigger variant="l-border" id="res-empresa" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-empresa" aria-invalid={campoInvalido?.id === 'res-empresa' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona empresa">{(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1529,7 +1541,7 @@ export function ReservasClient({
                       onValueChange={(v) => f('proyecto', Number(v))}
                       disabled={!form.empresa}
                     >
-                      <SelectTrigger variant="l-border" id="res-proyecto" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-proyecto" aria-invalid={campoInvalido?.id === 'res-proyecto' || undefined} className="w-full">
                         <SelectValue placeholder={form.empresa ? 'Selecciona proyecto' : 'Primero selecciona empresa'}>{(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1556,7 +1568,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('fase', Number(v))}
                         disabled={!form.proyecto}
                       >
-                        <SelectTrigger variant="l-border" id="res-fase" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-fase" aria-invalid={campoInvalido?.id === 'res-fase' || undefined} className="w-full">
                           <SelectValue placeholder={form.proyecto ? fasesConLotes.length === 0 ? 'Sin fases' : 'Selecciona fase' : '—'}>
                             {(v: string) => v ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -1579,7 +1591,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('manzana', v ?? '')}
                         disabled={!form.fase}
                       >
-                        <SelectTrigger variant="l-border" id="res-manzana" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-manzana" aria-invalid={campoInvalido?.id === 'res-manzana' || undefined} className="w-full">
                           <SelectValue placeholder={form.fase ? manzanasConLotes.length === 0 ? '—' : 'Manzana' : '—'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1600,7 +1612,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('lote', v ?? '')}
                         disabled={!form.manzana}
                       >
-                        <SelectTrigger variant="l-border" id="res-lote" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-lote" aria-invalid={campoInvalido?.id === 'res-lote' || undefined} className="w-full">
                           <SelectValue placeholder={form.manzana ? lotesEnManzana.length === 0 ? '—' : 'Lote' : '—'} />
                         </SelectTrigger>
                         <SelectContent>
@@ -1639,6 +1651,7 @@ export function ReservasClient({
                       </Label>
                       <Input variant="l-border"
                         id="res-fecha"
+                        aria-invalid={campoInvalido?.id === 'res-fecha' || undefined}
                         type="date"
                         value={form.fecha}
                         onChange={(e) => f('fecha', e.target.value)}
@@ -1655,7 +1668,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('moneda', v ?? '')}
                         disabled={!form.proyecto}
                       >
-                        <SelectTrigger variant="l-border" id="res-moneda" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-moneda" aria-invalid={campoInvalido?.id === 'res-moneda' || undefined} className="w-full">
                           <SelectValue placeholder={form.proyecto ? (monedasPorProyecto.length === 0 ? 'Sin monedas' : 'Selecciona moneda') : '—'}>
                             {(v: string) => {
                               if (!v) return null
@@ -1692,6 +1705,7 @@ export function ReservasClient({
                       </Label>
                       <Input variant="l-border"
                         id="res-monto"
+                        aria-invalid={campoInvalido?.id === 'res-monto' || undefined}
                         type="number"
                         min="0"
                         step="0.01"
@@ -1728,6 +1742,8 @@ export function ReservasClient({
                       value={form.cliente}
                       onChange={(v) => f('cliente', v)}
                       disabled={!form.proyecto}
+                      id="res-cliente"
+                      invalid={campoInvalido?.id === 'res-cliente'}
                       placeholder={form.proyecto ? 'Selecciona cliente...' : 'Primero selecciona proyecto'}
                     />
                   </div>
@@ -1742,7 +1758,7 @@ export function ReservasClient({
                       onValueChange={(v) => f('vendedor', Number(v))}
                       disabled={!form.proyecto}
                     >
-                      <SelectTrigger variant="l-border" id="res-vendedor" className="w-full">
+                      <SelectTrigger variant="l-border" id="res-vendedor" aria-invalid={campoInvalido?.id === 'res-vendedor' || undefined} className="w-full">
                         <SelectValue placeholder={form.proyecto ? 'Selecciona vendedor' : 'Primero selecciona proyecto'}>{(v: string) => v ? (vendedorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -1775,7 +1791,7 @@ export function ReservasClient({
                           value={form.serie_recibo}
                           onValueChange={(v) => f('serie_recibo', v ?? '')}
                         >
-                          <SelectTrigger variant="l-border" id="res-serie-recibo" className="w-full">
+                          <SelectTrigger variant="l-border" id="res-serie-recibo" aria-invalid={campoInvalido?.id === 'res-serie-recibo' || undefined} className="w-full">
                             <SelectValue placeholder={seriesReciboPorProyecto.length === 0 ? 'Sin series' : 'Selecciona serie'} />
                           </SelectTrigger>
                           <SelectContent>
@@ -1794,6 +1810,7 @@ export function ReservasClient({
                           </Label>
                           <Input variant="l-border"
                             id="res-recibo"
+                            aria-invalid={campoInvalido?.id === 'res-recibo' || undefined}
                             placeholder="No. recibo"
                             value={form.recibo}
                             onChange={(e) => f('recibo', e.target.value)}
@@ -1816,7 +1833,7 @@ export function ReservasClient({
                         onValueChange={(v) => f('cobrador', Number(v))}
                         disabled={!form.proyecto}
                       >
-                        <SelectTrigger variant="l-border" id="res-cobrador" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-cobrador" aria-invalid={campoInvalido?.id === 'res-cobrador' || undefined} className="w-full">
                           <SelectValue placeholder={form.proyecto ? 'Selecciona cobrador' : 'Primero selecciona proyecto'}>{(v: string) => v ? (cobradorMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1838,7 +1855,7 @@ export function ReservasClient({
                         value={form.forma_pago ? String(form.forma_pago) : ''}
                         onValueChange={(v) => f('forma_pago', Number(v))}
                       >
-                        <SelectTrigger variant="l-border" id="res-forma-pago" className="w-full">
+                        <SelectTrigger variant="l-border" id="res-forma-pago" aria-invalid={campoInvalido?.id === 'res-forma-pago' || undefined} className="w-full">
                           <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -1859,7 +1876,7 @@ export function ReservasClient({
                           value={form.banco ? String(form.banco) : ''}
                           onValueChange={(v) => f('banco', Number(v))}
                         >
-                          <SelectTrigger variant="l-border" id="res-banco" className="w-full">
+                          <SelectTrigger variant="l-border" id="res-banco" aria-invalid={campoInvalido?.id === 'res-banco' || undefined} className="w-full">
                             <SelectValue placeholder={bancosPorProyecto.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
@@ -1880,6 +1897,7 @@ export function ReservasClient({
                           </Label>
                           <Input variant="l-border"
                             id="res-num-cuenta"
+                            aria-invalid={campoInvalido?.id === 'res-num-cuenta' || undefined}
                             placeholder="Numero de cuenta"
                             value={form.num_cuenta}
                             onChange={(e) => f('num_cuenta', e.target.value)}
@@ -1891,6 +1909,7 @@ export function ReservasClient({
                           </Label>
                           <Input variant="l-border"
                             id="res-num-doc-cheque"
+                            aria-invalid={campoInvalido?.id === 'res-num-doc-cheque' || undefined}
                             placeholder="Numero de cheque"
                             value={form.num_documento}
                             onChange={(e) => f('num_documento', e.target.value)}
@@ -1909,7 +1928,7 @@ export function ReservasClient({
                           value={form.cuenta_bancaria ? String(form.cuenta_bancaria) : ''}
                           onValueChange={(v) => f('cuenta_bancaria', Number(v))}
                         >
-                          <SelectTrigger variant="l-border" id="res-cuenta-bancaria" className="w-full">
+                          <SelectTrigger variant="l-border" id="res-cuenta-bancaria" aria-invalid={campoInvalido?.id === 'res-cuenta-bancaria' || undefined} className="w-full">
                             <SelectValue placeholder={cuentasActivas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
                           </SelectTrigger>
                           <SelectContent>
@@ -1929,6 +1948,7 @@ export function ReservasClient({
                         </Label>
                         <Input variant="l-border"
                           id="res-num-doc"
+                          aria-invalid={campoInvalido?.id === 'res-num-doc' || undefined}
                           placeholder="Numero de documento"
                           value={form.num_documento}
                           onChange={(e) => f('num_documento', e.target.value)}

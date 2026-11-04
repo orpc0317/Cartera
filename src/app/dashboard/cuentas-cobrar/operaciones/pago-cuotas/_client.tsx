@@ -24,6 +24,7 @@ import type {
 } from '@/lib/types/proyectos'
 import type { TasaCambio } from '@/lib/types/tasas-cambio'
 import type { PromesaBusqueda, PlanPagoPendiente } from '@/lib/types/pago-cuotas'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Constantes ───────────────────────────────────────────────────────────
 
@@ -78,13 +79,15 @@ function SectionDivider({ label }: { label: string }) {
 // ─── Combobox buscable de Cobrador (codigo o nombre) ───────────────────────
 
 function CobradorCombobox({
-  cobradores, value, onChange, disabled, placeholder,
+  cobradores, value, onChange, disabled, placeholder, id, invalid,
 }: {
   cobradores: Cobrador[]
   value: number
   onChange: (v: number) => void
   disabled?: boolean
   placeholder?: string
+  id?: string
+  invalid?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -116,8 +119,10 @@ function CobradorCombobox({
         <PopoverTrigger render={
           <button
             type="button"
+            id={id}
+            data-invalid={invalid || undefined}
             disabled={disabled}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-invalid:border-destructive"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? `${selected.codigo} - ${selected.nombre}` : (placeholder ?? 'Selecciona...')}
@@ -198,6 +203,7 @@ export function PagoCuotasClient({
   const [promesa,      setPromesa]      = useState<PromesaBusqueda | null>(null)
   const [planPago,     setPlanPago]     = useState<PlanPagoPendiente | null>(null)
   const [isPendingSearch, startSearch]  = useTransition()
+  const { campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
   const [isPendingPlan,   startPlan]    = useTransition()
   const [isPendingSave,   startSave]    = useTransition()
 
@@ -267,6 +273,7 @@ export function PagoCuotasClient({
 
   // ── Seleccionar una promesa de los resultados ──
   function handleSeleccionarPromesa(p: PromesaBusqueda) {
+    limpiarCampoInvalido()
     setPromesa(p)
     setResultados([])
     setQuery('')
@@ -304,6 +311,7 @@ export function PagoCuotasClient({
   }
 
   function handleLimpiarFormulario() {
+    limpiarCampoInvalido()
     if (!promesa) return
     const seriesDisp = seriesRecibo.filter((s) => s.activo === 1 && s.empresa === promesa.empresa && s.proyecto === promesa.proyecto)
     const defSerie    = seriesDisp.find((s) => s.predeterminado === 1) ?? seriesDisp[0]
@@ -323,6 +331,7 @@ export function PagoCuotasClient({
 
   // ── Cascada forma de pago ──
   function onFormaPagoChange(v: string | null) {
+    limpiarCampoInvalido()
     const fp = Number(v ?? 0)
     setFormaPago(fp)
     setNumCuenta('')
@@ -334,15 +343,17 @@ export function PagoCuotasClient({
   // ── Grabar el recibo ──
   function handleGuardar() {
     if (!promesa || !planPago) return
-    if (!serie) { toast.error('Selecciona la serie de recibo.'); return }
-    if (!reciboAutomatico && !numero.trim()) { toast.error('Ingresa el numero de recibo.'); return }
-    if (!cobrador) { toast.error('Selecciona el cobrador.'); return }
-    if (!formaPago) { toast.error('Selecciona la forma de pago.'); return }
-    if (formaPago === 2 && (!banco || !numDocumento.trim())) { toast.error('Completa los datos del cheque.'); return }
-    if ((formaPago === 3 || formaPago === 4) && (!cuentaBancaria || !numDocumento.trim())) { toast.error('Completa los datos de la cuenta bancaria.'); return }
-    if (!moneda) { toast.error('Selecciona la moneda.'); return }
-    if (montoNum <= 0) { toast.error('El monto a pagar debe ser mayor a cero.'); return }
-    if (moneda !== monedaBase && !tasaCambio) { toast.error('No hay tasa de cambio registrada para esa moneda en esta fecha.'); return }
+    if (!serie) { rechazar('pc-serie', 'Selecciona la serie de recibo.'); return }
+    if (!reciboAutomatico && !numero.trim()) { rechazar('pc-numero', 'Ingresa el numero de recibo.'); return }
+    if (!cobrador) { rechazar('pc-cobrador', 'Selecciona el cobrador.'); return }
+    if (!formaPago) { rechazar('pc-forma-pago', 'Selecciona la forma de pago.'); return }
+    if (formaPago === 2 && !banco) { rechazar('pc-banco', 'Completa los datos del cheque.'); return }
+    if (formaPago === 2 && !numDocumento.trim()) { rechazar('pc-num-documento', 'Completa los datos del cheque.'); return }
+    if ((formaPago === 3 || formaPago === 4) && !cuentaBancaria) { rechazar('pc-cuenta', 'Completa los datos de la cuenta bancaria.'); return }
+    if ((formaPago === 3 || formaPago === 4) && !numDocumento.trim()) { rechazar('pc-num-documento', 'Completa los datos de la cuenta bancaria.'); return }
+    if (!moneda) { rechazar('pc-moneda', 'Selecciona la moneda.'); return }
+    if (montoNum <= 0) { rechazar('pc-monto', 'El monto a pagar debe ser mayor a cero.'); return }
+    if (moneda !== monedaBase && !tasaCambio) { rechazar('pc-moneda', 'No hay tasa de cambio registrada para esa moneda en esta fecha.'); return }
 
     startSave(async () => {
       const result = await registrarPagoCuotas({
@@ -615,8 +626,8 @@ export function PagoCuotasClient({
                 <div className="col-span-2 grid grid-cols-2 gap-2">
                   <div className="grid gap-1">
                     <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie *</Label>
-                    <Select value={serie} onValueChange={(v) => setSerie(v ?? '')}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                    <Select value={serie} onValueChange={(v) => { limpiarCampoInvalido(); setSerie(v ?? '') }}>
+                      <SelectTrigger variant="l-border" id="pc-serie" aria-invalid={campoInvalido?.id === 'pc-serie' || undefined} className="w-full">
                         <SelectValue placeholder={seriesDisponibles.length === 0 ? 'Sin series' : 'Serie'} />
                       </SelectTrigger>
                       <SelectContent>
@@ -630,7 +641,7 @@ export function PagoCuotasClient({
                   {!reciboAutomatico ? (
                     <div className="grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>Numero *</Label>
-                      <Input variant="l-border" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="No. recibo" />
+                      <Input variant="l-border" id="pc-numero" aria-invalid={campoInvalido?.id === 'pc-numero' || undefined} value={numero} onChange={(e) => { limpiarCampoInvalido(); setNumero(e.target.value) }} placeholder="No. recibo" />
                     </div>
                   ) : (
                     <div className="grid gap-1">
@@ -652,7 +663,9 @@ export function PagoCuotasClient({
                   <CobradorCombobox
                     cobradores={cobradoresDisponibles}
                     value={cobrador}
-                    onChange={setCobrador}
+                    onChange={(v) => { limpiarCampoInvalido(); setCobrador(v) }}
+                    id="pc-cobrador"
+                    invalid={campoInvalido?.id === 'pc-cobrador'}
                     placeholder="Selecciona cobrador..."
                   />
                 </div>
@@ -662,7 +675,7 @@ export function PagoCuotasClient({
                 <div className="col-span-2 grid gap-1">
                   <Label className={LABEL_CLS} style={LABEL_STYLE}>Forma de Pago *</Label>
                   <Select value={formaPago ? String(formaPago) : ''} onValueChange={onFormaPagoChange}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                    <SelectTrigger variant="l-border" id="pc-forma-pago" aria-invalid={campoInvalido?.id === 'pc-forma-pago' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -677,8 +690,8 @@ export function PagoCuotasClient({
                   <>
                     <div className="col-span-2 grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>Banco *</Label>
-                      <Select value={banco ? String(banco) : ''} onValueChange={(v) => setBanco(Number(v))}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                      <Select value={banco ? String(banco) : ''} onValueChange={(v) => { limpiarCampoInvalido(); setBanco(Number(v)) }}>
+                        <SelectTrigger variant="l-border" id="pc-banco" aria-invalid={campoInvalido?.id === 'pc-banco' || undefined} className="w-full">
                           <SelectValue placeholder={bancosDisponibles.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -694,7 +707,7 @@ export function PagoCuotasClient({
                     </div>
                     <div className="grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento *</Label>
-                      <Input variant="l-border" value={numDocumento} onChange={(e) => setNumDocumento(e.target.value)} placeholder="Numero de cheque" />
+                      <Input variant="l-border" id="pc-num-documento" aria-invalid={campoInvalido?.id === 'pc-num-documento' || undefined} value={numDocumento} onChange={(e) => { limpiarCampoInvalido(); setNumDocumento(e.target.value) }} placeholder="Numero de cheque" />
                     </div>
                   </>
                 )}
@@ -703,8 +716,8 @@ export function PagoCuotasClient({
                   <>
                     <div className="col-span-2 grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria *</Label>
-                      <Select value={cuentaBancaria ? String(cuentaBancaria) : ''} onValueChange={(v) => setCuentaBancaria(Number(v))}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                      <Select value={cuentaBancaria ? String(cuentaBancaria) : ''} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }}>
+                        <SelectTrigger variant="l-border" id="pc-cuenta" aria-invalid={campoInvalido?.id === 'pc-cuenta' || undefined} className="w-full">
                           <SelectValue placeholder={cuentasDisponibles.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -716,7 +729,7 @@ export function PagoCuotasClient({
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento *</Label>
-                      <Input variant="l-border" value={numDocumento} onChange={(e) => setNumDocumento(e.target.value)} placeholder="Numero de documento" />
+                      <Input variant="l-border" id="pc-num-documento" aria-invalid={campoInvalido?.id === 'pc-num-documento' || undefined} value={numDocumento} onChange={(e) => { limpiarCampoInvalido(); setNumDocumento(e.target.value) }} placeholder="Numero de documento" />
                     </div>
                   </>
                 )}
@@ -725,8 +738,8 @@ export function PagoCuotasClient({
 
                 <div className="grid gap-1">
                   <Label className={LABEL_CLS} style={LABEL_STYLE}>Moneda *</Label>
-                  <Select value={moneda} onValueChange={(v) => setMoneda(v ?? '')}>
-                    <SelectTrigger variant="l-border" className="w-full">
+                  <Select value={moneda} onValueChange={(v) => { limpiarCampoInvalido(); setMoneda(v ?? '') }}>
+                    <SelectTrigger variant="l-border" id="pc-moneda" aria-invalid={campoInvalido?.id === 'pc-moneda' || undefined} className="w-full">
                       <SelectValue placeholder={monedasDisponibles.length === 0 ? 'Sin monedas' : 'Selecciona moneda'}>
                         {(v: string) => {
                           if (!v) return null
@@ -760,12 +773,14 @@ export function PagoCuotasClient({
                   <Label className={LABEL_CLS} style={LABEL_STYLE}>Monto a Pagar *</Label>
                   <Input
                     variant="l-border"
+                    id="pc-monto"
+                    aria-invalid={campoInvalido?.id === 'pc-monto' || undefined}
                     type="number"
                     min="0"
                     step="0.01"
                     placeholder="0.00"
                     value={monto}
-                    onChange={(e) => setMonto(e.target.value)}
+                    onChange={(e) => { limpiarCampoInvalido(); setMonto(e.target.value) }}
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>

@@ -361,6 +361,7 @@ setLogoFile(null); setLogoPreviewUrl(''); setLogoError('')
 ### En doSave() — subir antes de la mutación
 
 ```ts
+if (logoError) { rechazar('logo', 'Corrige el error en el logo antes de guardar.'); return }
 if (logoFile) {
   const fd = new FormData()
   fd.append('file', logoFile)
@@ -373,7 +374,7 @@ if (logoFile) {
 ### Uso en JSX (edit/create mode)
 
 ```tsx
-<div className="col-span-2">
+<div id="logo" tabIndex={-1} className="col-span-2">
   <LogoUploadField
     displayUrl={logoPreviewUrl || form.logo_url || ''}
     fileName={logoFile?.name ?? ''}

@@ -77,6 +77,19 @@ export async function createCoordinador(form: CoordinadorForm): Promise<{ error?
   const permCheck = await requirePermiso(PERMISOS.COO_CAT, 'agregar')
   if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+
+  const { data: max } = await admin
+    .schema('cartera')
+    .from('t_coordinador')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .order('codigo', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const codigo = (max?.codigo ?? 0) + 1
   const now = new Date().toISOString()
 
   const { data: existente } = await admin
@@ -95,6 +108,7 @@ export async function createCoordinador(form: CoordinadorForm): Promise<{ error?
     .from('t_coordinador')
     .insert({
       ...form,
+      codigo,
       cuenta,
       agrego_usuario: auditUser.userId,
       agrego_fecha: now,

@@ -22,12 +22,18 @@ export default defineConfig({
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     {
       name: 'publico',
-      testMatch: /login\.spec\.ts/,
+      testMatch: /\/(login|sesion)\.spec\.ts/,
       use: { storageState: { cookies: [], origins: [] } },
     },
     {
       name: 'smoke',
       testMatch: /smoke\.spec\.ts/,
+      dependencies: ['setup'],
+      use: { storageState: 'test/.auth/user.json' },
+    },
+    {
+      name: 'definidas',
+      testMatch: /definidas\/.*\.spec\.ts/,
       dependencies: ['setup'],
       use: { storageState: 'test/.auth/user.json' },
     },

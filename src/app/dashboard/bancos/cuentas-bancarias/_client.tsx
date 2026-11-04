@@ -36,6 +36,7 @@ import {
   createCuentaBancaria, updateCuentaBancaria, deleteCuentaBancaria,
 } from '@/app/actions/cuentas-bancarias'
 import type { CuentaBancaria, CuentaBancariaForm, Empresa, Proyecto, Banco, Moneda } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Moneda display map ────────────────────────────────────────────────────
 
@@ -225,6 +226,7 @@ export function CuentasBancariasClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search, setSearch]             = useState('')
   const [dialogOpen, setDialogOpen]     = useState(false)
@@ -344,6 +346,7 @@ export function CuentasBancariasClient({
   // ─── Form helpers ─────────────────────────────────────────────────────────
 
   function f(key: keyof CuentaBancariaForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -364,6 +367,8 @@ export function CuentasBancariasClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null); setIsEditing(true)
     const firstEmpresa  = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
@@ -373,6 +378,8 @@ export function CuentasBancariasClient({
   }
 
   function openView(cb: CuentaBancaria) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(cb); setIsEditing(false)
     setForm({
       empresa: cb.empresa,
@@ -386,9 +393,14 @@ export function CuentasBancariasClient({
     setDialogOpen(true)
   }
 
-  function startEdit() { setIsEditing(true) }
+  function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
+    setIsEditing(true)
+  }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (!viewTarget) { setDialogOpen(false); return }
     setIsEditing(false)
     setForm({
@@ -403,12 +415,12 @@ export function CuentasBancariasClient({
   }
 
   function handleSave() {
-    if (!form.empresa)       { toast.error('Selecciona la empresa.'); return }
-    if (!form.proyecto)      { toast.error('Selecciona el proyecto.'); return }
-    if (!form.banco)         { toast.error('Selecciona el banco.'); return }
-    if (!form.numero.trim()) { toast.error('El numero de cuenta es requerido.'); return }
-    if (!form.nombre.trim()) { toast.error('El nombre de cuenta es requerido.'); return }
-    if (!form.moneda.trim()) { toast.error('Selecciona la moneda.'); return }
+    if (!form.empresa)       { rechazar('empresa', 'Selecciona la empresa.'); return }
+    if (!form.proyecto)      { rechazar('proyecto', 'Selecciona el proyecto.'); return }
+    if (!form.banco)         { rechazar('banco', 'Selecciona el banco.'); return }
+    if (!form.numero.trim()) { rechazar('numero', 'El numero de cuenta es requerido.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre de cuenta es requerido.'); return }
+    if (!form.moneda.trim()) { rechazar('moneda', 'Selecciona la moneda.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget) {
@@ -655,7 +667,7 @@ export function CuentasBancariasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" />
@@ -703,14 +715,14 @@ export function CuentasBancariasClient({
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                       <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
@@ -719,7 +731,7 @@ export function CuentasBancariasClient({
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco *</Label>
                       <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
-                        <SelectTrigger variant="l-border" className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v && v !== '0' ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectTrigger variant="l-border" id="banco" aria-invalid={campoInvalido?.id === 'banco' || undefined} className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v && v !== '0' ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
                           {bancosFiltrados.length === 0
                             ? <SelectItem value="0" disabled>Sin bancos para este proyecto</SelectItem>
@@ -732,6 +744,7 @@ export function CuentasBancariasClient({
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Cuenta *</Label>
                       <Input variant="l-border"
                         id="nombre"
+                        aria-invalid={campoInvalido?.id === 'nombre' || undefined}
                         value={form.nombre}
                         onChange={(e) => f('nombre', e.target.value)}
                         placeholder="Ej: cuenta operativa principal..."
@@ -741,6 +754,7 @@ export function CuentasBancariasClient({
                       <Label htmlFor="numero" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Cuenta *</Label>
                       <Input variant="l-border"
                         id="numero"
+                        aria-invalid={campoInvalido?.id === 'numero' || undefined}
                         value={form.numero}
                         onChange={(e) => f('numero', e.target.value)}
                         placeholder="Ej: 1234567890"
@@ -749,7 +763,7 @@ export function CuentasBancariasClient({
                     <div className="grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                        <SelectTrigger variant="l-border" id="moneda" aria-invalid={campoInvalido?.id === 'moneda' || undefined} className="w-full">
                           <SelectValue placeholder="Selecciona moneda">
                             {(v: string) => {
                               const flagIso = CURRENCY_FLAG_MAP.get(v)

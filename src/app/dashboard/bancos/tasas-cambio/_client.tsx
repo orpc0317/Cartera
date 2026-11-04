@@ -30,6 +30,7 @@ import {
 import { createTasaCambio, deleteTasaCambio } from '@/app/actions/tasas-cambio'
 import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/tasas-cambio'
 import type { Empresa, Proyecto, ProyectoMoneda } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ── Moneda flag map ─────────────────────────────────────────────────────────
 const CURRENCY_FLAG_MAP = new Map<string, string>([
@@ -264,6 +265,7 @@ export default function TasasCambioClient({
   const [viewTarget, setViewTarget]   = useState<TasaCambioGrupo | null>(null)
   const [form, setForm]               = useState<TasaCambioForm>(EMPTY_FORM)
   const [isPending, startTransition]  = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
   const [deleteTarget, setDeleteTarget] = useState<TasaCambio | null>(null)
 
   // ── Lookups ──────────────────────────────────────────────────────────────
@@ -300,6 +302,7 @@ export default function TasasCambioClient({
 
   // ── f() helper ────────────────────────────────────────────────────────────
   function f(key: keyof TasaCambioForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -315,12 +318,16 @@ export default function TasasCambioClient({
 
   // ── Modal functions ───────────────────────────────────────────────────────
   function openView(grupo: TasaCambioGrupo) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(grupo)
     setIsEditing(false)
     setDialogOpen(true)
   }
 
   function openCreate(preload?: { empresa: number; proyecto: number; moneda: string }) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     const firstEmpresa  = preload?.empresa  ?? empresas[0]?.codigo ?? 0
     const firstProyecto = preload?.proyecto ?? proyectos.filter((p) => p.empresa === firstEmpresa)[0]?.codigo ?? 0
     const firstMoneda   = preload?.moneda   ?? proyectoMonedas.find((pm) => pm.empresa === firstEmpresa && pm.proyecto === firstProyecto && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === firstEmpresa && pm.proyecto === firstProyecto && pm.activo === 1)?.moneda ?? ''
@@ -337,6 +344,7 @@ export default function TasasCambioClient({
   }
 
   function cancelCreate() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setIsEditing(false) // go back to Ver mode
     } else {
@@ -346,7 +354,7 @@ export default function TasasCambioClient({
 
   function handleSave() {
     if (!form.tasa_cambio || Number(form.tasa_cambio) <= 0) {
-      toast.error('La tasa de cambio debe ser mayor a cero.')
+      rechazar('tasa_cambio', 'La tasa de cambio debe ser mayor a cero.')
       return
     }
     const maxFecha = tasas
@@ -355,7 +363,7 @@ export default function TasasCambioClient({
       .sort()
       .at(-1)
     if (maxFecha && form.fecha <= maxFecha) {
-      toast.error('La fecha debe ser posterior a la última tasa registrada para esta moneda.')
+      rechazar('fecha', 'La fecha debe ser posterior a la última tasa registrada para esta moneda.')
       return
     }
     startTransition(async () => {
@@ -655,7 +663,7 @@ export default function TasasCambioClient({
 
             {/* ── Nuevo mode — form ── */}
             {isEditing && (
-              <Tabs defaultValue="general" className="flex flex-col">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
                 <div className="shrink-0 w-full">
                   <TabsList variant="line" className="">
                     <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -757,6 +765,7 @@ export default function TasasCambioClient({
                       <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha *</Label>
                       <Input variant="l-border"
                         id="fecha"
+                        aria-invalid={campoInvalido?.id === 'fecha' || undefined}
                         type="date"
                         value={form.fecha}
                         onChange={(e) => f('fecha', e.target.value)}
@@ -766,9 +775,13 @@ export default function TasasCambioClient({
                       <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio *</Label>
                       <Input variant="l-border"
                         id="tasa_cambio"
+                        aria-invalid={campoInvalido?.id === 'tasa_cambio' || undefined}
                         type="number"
                         value={form.tasa_cambio}
-                        onChange={(e) => setForm((p) => ({ ...p, tasa_cambio: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        onChange={(e) => {
+                          limpiarCampoInvalido()
+                          setForm((p) => ({ ...p, tasa_cambio: e.target.value === '' ? '' : Number(e.target.value) }))
+                        }}
                         placeholder="0.00000000"
                         className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />

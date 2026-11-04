@@ -34,6 +34,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { createSerieRecibo, updateSerieRecibo, deleteSerieRecibo } from '@/app/actions/series-recibos'
 import type { SerieRecibo, SerieReciboForm, Empresa, Proyecto, SerieFactura } from '@/lib/types/proyectos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -224,6 +225,7 @@ export function SeriesRecibosClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search, setSearch]             = useState('')
   const [dialogOpen, setDialogOpen]     = useState(false)
@@ -349,6 +351,7 @@ export function SeriesRecibosClient({
   // ─── Form helpers ────────────────────────────────────────────────────────
 
   function f(key: keyof SerieReciboForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -367,6 +370,8 @@ export function SeriesRecibosClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null); setIsEditing(true)
     const firstEmpresa  = empresas[0]?.codigo ?? 0
     const firstProyecto = proyectos.find((p) => p.empresa === firstEmpresa)?.codigo ?? 0
@@ -375,6 +380,8 @@ export function SeriesRecibosClient({
   }
 
   function openView(row: SerieRecibo) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(row); setIsEditing(false)
     setForm({
       empresa: row.empresa,
@@ -391,9 +398,14 @@ export function SeriesRecibosClient({
     setDialogOpen(true)
   }
 
-  function startEdit() { setIsEditing(true) }
+  function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
+    setIsEditing(true)
+  }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (!viewTarget) { setDialogOpen(false); return }
     setIsEditing(false)
     setForm({
@@ -411,9 +423,9 @@ export function SeriesRecibosClient({
   }
 
   function handleSave() {
-    if (!form.serie.trim()) { toast.error('La serie es requerida.'); return }
-    if (!form.empresa)  { toast.error('Selecciona la empresa.'); return }
-    if (!form.proyecto) { toast.error('Selecciona el proyecto.'); return }
+    if (!form.serie.trim()) { rechazar('serie', 'La serie es requerida.'); return }
+    if (!form.empresa)  { rechazar('empresa', 'Selecciona la empresa.'); return }
+    if (!form.proyecto) { rechazar('proyecto', 'Selecciona el proyecto.'); return }
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget) {
@@ -642,7 +654,7 @@ export function SeriesRecibosClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <Receipt className="h-3.5 w-3.5" />
@@ -687,7 +699,7 @@ export function SeriesRecibosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
                           {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                         </SelectValue>
@@ -700,7 +712,7 @@ export function SeriesRecibosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="l-border" className="w-full">
+                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
                           {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                         </SelectValue>
@@ -714,6 +726,7 @@ export function SeriesRecibosClient({
                     <Label htmlFor="serie" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie *</Label>
                     <Input variant="l-border"
                       id="serie"
+                      aria-invalid={campoInvalido?.id === 'serie' || undefined}
                       value={form.serie}
                       onChange={(e) => f('serie', e.target.value)}
                       placeholder="Ej: A, B, REC1..."

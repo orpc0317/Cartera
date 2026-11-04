@@ -36,6 +36,7 @@ import { createGface, updateGface, deleteGface } from '@/app/actions/gface'
 import type { Empresa, Proyecto } from '@/lib/types/proyectos'
 import type { Gface, GfaceForm } from '@/lib/types/gface'
 import { jaroWinkler, toDbString } from '@/lib/utils'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 type ColFilters = Record<string, Set<string>>
 type ColDef = { key: string; label: string; defaultVisible: boolean }
@@ -294,6 +295,7 @@ export function GfaceClient({
 }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search, setSearch] = useState('')
   const [colFilters, setColFilters] = useState<ColFilters>({})
@@ -416,6 +418,7 @@ export function GfaceClient({
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
   function f(key: keyof GfaceForm, value: string | number) {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -430,6 +433,8 @@ export function GfaceClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(null)
     setIsEditing(true)
     setSimilarWarning(null)
@@ -440,6 +445,8 @@ export function GfaceClient({
   }
 
   function openView(row: Gface) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(row)
     setForm(buildForm(row))
     setIsEditing(false)
@@ -447,9 +454,14 @@ export function GfaceClient({
     setDialogOpen(true)
   }
 
-  function startEdit() { setIsEditing(true) }
+  function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
+    setIsEditing(true)
+  }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) {
       setForm(buildForm(viewTarget))
       setIsEditing(false)
@@ -474,13 +486,17 @@ export function GfaceClient({
   }
 
   function handleSave() {
-    if (!form.nombre.trim()) { toast.error('El nombre es requerido.'); return }
-    if (!form.empresa) { toast.error('La empresa es requerida.'); return }
-    if (!form.proyecto) { toast.error('El proyecto es requerido.'); return }
+    if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
+    if (!form.empresa) { rechazar('empresa', 'La empresa es requerida.'); return }
+    if (!form.proyecto) { rechazar('proyecto', 'El proyecto es requerido.'); return }
     const correoEnvio = textOrEmpty(form.correo_envio).trim()
     const correoCopia = textOrEmpty(form.correo_copia).trim()
-    if ((correoEnvio && !EMAIL_RE.test(correoEnvio)) || (correoCopia && !EMAIL_RE.test(correoCopia))) {
-      toast.error('El correo electrónico no tiene un formato válido.')
+    if (correoEnvio && !EMAIL_RE.test(correoEnvio)) {
+      rechazar('correo_envio', 'El correo electrónico no tiene un formato válido.')
+      return
+    }
+    if (correoCopia && !EMAIL_RE.test(correoCopia)) {
+      rechazar('correo_copia', 'El correo electrónico no tiene un formato válido.')
       return
     }
 
@@ -734,7 +750,7 @@ export function GfaceClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <MapPin className="h-3.5 w-3.5" /> General
@@ -803,7 +819,7 @@ export function GfaceClient({
                           onValueChange={(v) => f('empresa', Number(v))}
                           disabled={!!viewTarget}
                         >
-                          <SelectTrigger variant="l-border" id="empresa" className="w-full">
+                          <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                             <SelectValue placeholder="Selecciona empresa">
                               {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
                             </SelectValue>
@@ -822,7 +838,7 @@ export function GfaceClient({
                           onValueChange={(v) => f('proyecto', Number(v))}
                           disabled={!!viewTarget || !form.empresa}
                         >
-                          <SelectTrigger variant="l-border" id="proyecto" className="w-full">
+                          <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                             <SelectValue placeholder="Selecciona proyecto">
                               {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                             </SelectValue>
@@ -838,7 +854,7 @@ export function GfaceClient({
                     <SegmentCard label="GENERAL">
                       <div className="col-span-2 grid gap-1">
                         <Label htmlFor="nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                        <Input variant="l-border" id="nombre" value={form.nombre} maxLength={100} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del certificador" />
+                        <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} maxLength={100} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del certificador" />
                       </div>
                       <div className="grid gap-1">
                         <Label htmlFor="requestor" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Requestor</Label>
@@ -893,11 +909,11 @@ export function GfaceClient({
                     <SegmentCard label="CORREO">
                       <div className="grid gap-1">
                         <Label htmlFor="correo_envio" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo de Envio</Label>
-                        <Input variant="l-border" id="correo_envio" type="email" value={textOrEmpty(form.correo_envio)} maxLength={50} onChange={(e) => f('correo_envio', e.target.value)} placeholder="Correo@ejemplo.com" />
+                        <Input variant="l-border" id="correo_envio" aria-invalid={campoInvalido?.id === 'correo_envio' || undefined} type="email" value={textOrEmpty(form.correo_envio)} maxLength={50} onChange={(e) => f('correo_envio', e.target.value)} placeholder="Correo@ejemplo.com" />
                       </div>
                       <div className="grid gap-1">
                         <Label htmlFor="correo_copia" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo Copia</Label>
-                        <Input variant="l-border" id="correo_copia" type="email" value={textOrEmpty(form.correo_copia)} maxLength={50} onChange={(e) => f('correo_copia', e.target.value)} placeholder="Correo@ejemplo.com" />
+                        <Input variant="l-border" id="correo_copia" aria-invalid={campoInvalido?.id === 'correo_copia' || undefined} type="email" value={textOrEmpty(form.correo_copia)} maxLength={50} onChange={(e) => f('correo_copia', e.target.value)} placeholder="Correo@ejemplo.com" />
                       </div>
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox

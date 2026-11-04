@@ -20,6 +20,7 @@ import {
 import { getReciboParaDeposito, depositarPagos } from '@/app/actions/depositar-pagos'
 import type { Empresa, Proyecto, Banco, CuentaBancaria, SerieRecibo } from '@/lib/types/proyectos'
 import type { ReciboDetalleItem } from '@/lib/types/depositar-pagos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // ─── Constantes ───────────────────────────────────────────────────────────
 
@@ -101,6 +102,7 @@ export function DepositarPagosClient({
 
   // ── Transiciones ──
   const [isPendingBuscar, startTransitionBuscar] = useTransition()
+  const { campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
   const [isPendingSave,   startTransitionSave]   = useTransition()
 
   // ── Inicialización en mount ──
@@ -131,6 +133,7 @@ export function DepositarPagosClient({
 
   // ── Cascada ──
   function onEmpresaChange(val: string | null) {
+    limpiarCampoInvalido()
     const emp         = Number(val ?? 0)
     const firstProy   = proyectos.filter((p) => p.empresa === emp)[0]?.codigo ?? 0
     const firstCuenta = cuentasBancarias.filter((c) => c.empresa === emp && c.proyecto === firstProy)[0]?.codigo ?? 0
@@ -144,6 +147,7 @@ export function DepositarPagosClient({
   }
 
   function onProyectoChange(val: string | null) {
+    limpiarCampoInvalido()
     const proy        = Number(val ?? 0)
     const firstCuenta = cuentasBancarias.filter((c) => c.empresa === empresa && c.proyecto === proy)[0]?.codigo ?? 0
     const firstSerie  = seriesRecibo.filter((s) => s.empresa === empresa && s.proyecto === proy && s.activo === 1)[0]?.serie ?? ''
@@ -192,6 +196,7 @@ export function DepositarPagosClient({
 
   function handleAgregarDesdePreview() {
     if (!reciboPreview) return
+    limpiarCampoInvalido()
     setRecibos((prev) => [...prev, reciboPreview])
     setReciboPreview(null)
     setBuscarNumero('')
@@ -203,6 +208,7 @@ export function DepositarPagosClient({
   }
 
   function handleLimpiar() {
+    limpiarCampoInvalido()
     setRecibos([])
     setNumeroDocumento('')
     setBuscarNumero('')
@@ -213,19 +219,19 @@ export function DepositarPagosClient({
   function handleGuardar() {
     if (!puedeAgregar) return
     if (recibos.length === 0) {
-      toast.error('Debe agregar al menos un recibo al deposito.')
+      rechazar('buscar_numero', 'Debe agregar al menos un recibo al deposito.')
       return
     }
     if (!fecha) {
-      toast.error('La fecha del deposito es requerida.')
+      rechazar('fecha', 'La fecha del deposito es requerida.')
       return
     }
     if (!numeroDocumento.trim()) {
-      toast.error('El numero de documento es requerido.')
+      rechazar('numero_documento', 'El numero de documento es requerido.')
       return
     }
     if (!cuentaBancaria) {
-      toast.error('Debe seleccionar una cuenta bancaria.')
+      rechazar('cuenta_bancaria', 'Debe seleccionar una cuenta bancaria.')
       return
     }
     startTransitionSave(async () => {
@@ -321,8 +327,8 @@ export function DepositarPagosClient({
             {/* Cuenta Bancaria */}
             <div className="col-span-2 grid gap-1">
               <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria *</Label>
-              <Select value={String(cuentaBancaria)} onValueChange={(v) => setCuentaBancaria(Number(v))} disabled={proyecto === 0}>
-                <SelectTrigger variant="l-border" className="w-full">
+              <Select value={String(cuentaBancaria)} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }} disabled={proyecto === 0}>
+                <SelectTrigger variant="l-border" id="cuenta_bancaria" aria-invalid={campoInvalido?.id === 'cuenta_bancaria' || undefined} className="w-full">
                   <SelectValue placeholder={cuentasBancariasFiltradas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>
                     {(v: string) => v && Number(v) ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}
                   </SelectValue>
@@ -348,9 +354,10 @@ export function DepositarPagosClient({
               <Input
                 variant="l-border"
                 id="fecha"
+                aria-invalid={campoInvalido?.id === 'fecha' || undefined}
                 type="date"
                 value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
+                onChange={(e) => { limpiarCampoInvalido(); setFecha(e.target.value) }}
               />
             </div>
 
@@ -360,9 +367,10 @@ export function DepositarPagosClient({
               <Input
                 variant="l-border"
                 id="numero_documento"
+                aria-invalid={campoInvalido?.id === 'numero_documento' || undefined}
                 value={numeroDocumento}
                 maxLength={15}
-                onChange={(e) => setNumeroDocumento(e.target.value)}
+                onChange={(e) => { limpiarCampoInvalido(); setNumeroDocumento(e.target.value) }}
                 placeholder="Numero de boleta"
               />
             </div>
@@ -387,7 +395,7 @@ export function DepositarPagosClient({
               {/* Serie */}
               <div className="grid gap-1">
                 <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie</Label>
-                <Select value={buscarSerie} onValueChange={(v) => { setBuscarSerie(v ?? ''); setBuscarNumero(''); setReciboPreview(null); setBuscarError('') }} disabled={proyecto === 0}>
+                <Select value={buscarSerie} onValueChange={(v) => { limpiarCampoInvalido(); setBuscarSerie(v ?? ''); setBuscarNumero(''); setReciboPreview(null); setBuscarError('') }} disabled={proyecto === 0}>
                   <SelectTrigger variant="l-border" className="w-full">
                     <SelectValue placeholder="Serie" />
                   </SelectTrigger>
@@ -404,9 +412,12 @@ export function DepositarPagosClient({
                 <Label className={LABEL_CLS} style={LABEL_STYLE}>Numero</Label>
                 <Input
                   variant="l-border"
+                  id="buscar_numero"
+                  aria-invalid={campoInvalido?.id === 'buscar_numero' || undefined}
                   type="number"
                   value={buscarNumero}
                   onChange={(e) => {
+                    limpiarCampoInvalido()
                     setBuscarNumero(e.target.value)
                     if (reciboPreview) setReciboPreview(null)
                     if (buscarError)  setBuscarError('')

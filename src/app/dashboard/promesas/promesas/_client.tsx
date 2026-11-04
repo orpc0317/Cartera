@@ -46,6 +46,7 @@ import type { TipoDocumento } from '@/lib/types/tipos-documento'
 import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
 import type { PromesaOtro, PromesaOtroPayload } from '@/lib/types/promesa-otros'
 import type { TipoIngreso } from '@/lib/types/tipos-ingresos'
+import { useCampoInvalido } from '@/lib/campo-invalido'
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -292,13 +293,15 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 }
 
 function ClienteCombobox({
-  clientes, value, onChange, disabled, placeholder,
+  clientes, value, onChange, disabled, placeholder, id, invalid,
 }: {
   clientes: Cliente[]
   value: number
   onChange: (v: number) => void
   disabled?: boolean
   placeholder?: string
+  id?: string
+  invalid?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -330,8 +333,10 @@ function ClienteCombobox({
         <PopoverTrigger render={
           <button
             type="button"
+            id={id}
+            data-invalid={invalid || undefined}
             disabled={disabled}
-            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/20"
+            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/20 data-invalid:border-destructive"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -419,6 +424,7 @@ export function PromesasClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search, setSearch]           = useState('')
   const [dialogOpen, setDialogOpen]   = useState(false)
@@ -606,6 +612,7 @@ export function PromesasClient({
 
   // -- form helper (cascade) ------------------------------------------------
   const f = useCallback((key: string, value: unknown) => {
+    limpiarCampoInvalido()
     const v = typeof value === 'string' && !SKIP_KEYS.has(key)
       ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
       : value
@@ -690,11 +697,13 @@ export function PromesasClient({
       const proObj = proyectos.find((p) => p.empresa === form.empresa && p.codigo === pCod)
       setTipoCalculo((proObj?.fijo_mora ?? 0) > 0 ? 1 : 0)
     }
-  }, [proyectos, fases, manzanas, lotes, vendedores, form.empresa])
+  }, [proyectos, fases, manzanas, lotes, vendedores, form.empresa, limpiarCampoInvalido])
 
   // -- Dialog open/close helpers --------------------------------------------
 
   function openView(promesa: Promesa) {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     setViewTarget(promesa)
     setTipoCalculo((promesa.fijo_mora ?? 0) > 0 ? 1 : 0)
     setIsEditing(false)
@@ -816,6 +825,8 @@ export function PromesasClient({
   }
 
   function openCreate() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     const empCod  = empresas[0]?.codigo ?? 0
     const firstPro = proyectos.find((p) => p.empresa === empCod)
     const proCod  = firstPro?.codigo ?? 0
@@ -848,6 +859,8 @@ export function PromesasClient({
   }
 
   function startEdit() {
+    limpiarCampoInvalido()
+    setActiveTab('general')
     if (!viewTarget) return
     setForm({
       empresa:              viewTarget.empresa,
@@ -888,6 +901,7 @@ export function PromesasClient({
   }
 
   function cancelEdit() {
+    limpiarCampoInvalido()
     if (viewTarget) setIsEditing(false)
     else setDialogOpen(false)
   }
@@ -907,50 +921,50 @@ export function PromesasClient({
     if (!viewTarget) {
       // -- Validaciones de negocio (solo al crear) ---------------------------
       if (!form.cliente) {
-        toast.error('El cliente es obligatorio.')
+        rechazar('cliente', 'El cliente es obligatorio.')
         return
       }
       if (form.subsidio < 0) {
-        toast.error('El subsidio debe ser mayor o igual a cero.')
+        rechazar('subsidio', 'El subsidio debe ser mayor o igual a cero.')
         return
       }
       if (form.subsidio > (form.valor_lote || 0)) {
-        toast.error('El subsidio no puede ser mayor al Valor Original del lote.')
+        rechazar('subsidio', 'El subsidio no puede ser mayor al Valor Original del lote.')
         return
       }
       if (form.arras < 0) {
-        toast.error('Las arras deben ser mayor o igual a cero.')
+        rechazar('arras', 'Las arras deben ser mayor o igual a cero.')
         return
       }
       if (form.arras > (form.valor_lote || 0)) {
-        toast.error('Las arras no pueden ser mayor al Valor Original del lote.')
+        rechazar('arras', 'Las arras no pueden ser mayor al Valor Original del lote.')
         return
       }
 
       const disponibleEnganche = (form.valor_lote || 0) - (form.subsidio || 0)
 
       if (form.monto_enganche < 0) {
-        toast.error('El monto de enganche debe ser mayor o igual a cero.')
+        rechazar('monto_enganche', 'El monto de enganche debe ser mayor o igual a cero.')
         return
       }
       if (form.monto_enganche > disponibleEnganche) {
-        toast.error('El monto de enganche no puede ser mayor a Valor Original menos Subsidio.')
+        rechazar('monto_enganche', 'El monto de enganche no puede ser mayor a Valor Original menos Subsidio.')
         return
       }
       if (form.monto_enganche > 0 && form.plazo_enganche <= 0) {
-        toast.error('El plazo de enganche debe ser mayor a cero cuando el monto de enganche es mayor a cero.')
+        rechazar('plazo_enganche', 'El plazo de enganche debe ser mayor a cero cuando el monto de enganche es mayor a cero.')
         return
       }
       if (form.interes_anual < 0) {
-        toast.error('El interes anual debe ser mayor o igual a cero.')
+        rechazar('interes_anual', 'El interes anual debe ser mayor o igual a cero.')
         return
       }
       if (montoFinancCalc > 0 && !form.fecha_financiamiento) {
-        toast.error('La fecha de 1era cuota es obligatoria cuando el monto de financiamiento es mayor a cero.')
+        rechazar('fecha_financiamiento', 'La fecha de 1era cuota es obligatoria cuando el monto de financiamiento es mayor a cero.')
         return
       }
       if (montoFinancCalc > 0 && form.plazo_financiamiento <= 0) {
-        toast.error('El plazo de financiamiento debe ser mayor a cero cuando el monto de financiamiento es mayor a cero.')
+        rechazar('plazo_financiamiento', 'El plazo de financiamiento debe ser mayor a cero cuando el monto de financiamiento es mayor a cero.')
         return
       }
     }
@@ -1286,7 +1300,7 @@ export function PromesasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
                 <FileSignature className="h-3.5 w-3.5" /> General
@@ -1603,7 +1617,9 @@ export function PromesasClient({
                     <ClienteCombobox
                       clientes={clientesFiltrados}
                       value={form.cliente}
-                      onChange={(v) => setForm((prev) => ({ ...prev, cliente: v }))}
+                      onChange={(v) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, cliente: v })) }}
+                      id="cliente"
+                      invalid={campoInvalido?.id === 'cliente'}
                       placeholder="Selecciona cliente..."
                     />
                   </div>
@@ -1675,18 +1691,22 @@ export function PromesasClient({
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Arras</Label>
                     <Input variant="l-border"
+                      id="arras"
+                      aria-invalid={campoInvalido?.id === 'arras' || undefined}
                       type="number" min={0} step={0.01}
                       value={form.arras || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, arras: Number(e.target.value) || 0 }))}
+                      onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, arras: Number(e.target.value) || 0 })) }}
                       placeholder="0.00"
                     />
                   </div>
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Subsidio</Label>
                     <Input variant="l-border"
+                      id="subsidio"
+                      aria-invalid={campoInvalido?.id === 'subsidio' || undefined}
                       type="number" min={0} step={0.01}
                       value={form.subsidio || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, subsidio: Number(e.target.value) || 0 }))}
+                      onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, subsidio: Number(e.target.value) || 0 })) }}
                       placeholder="0.00"
                     />
                   </div>
@@ -1698,18 +1718,22 @@ export function PromesasClient({
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Monto</Label>
                         <Input variant="l-border"
+                          id="monto_enganche"
+                          aria-invalid={campoInvalido?.id === 'monto_enganche' || undefined}
                           type="number" min={0} step={0.01}
                           value={form.monto_enganche || ''}
-                          onChange={(e) => setForm((prev) => ({ ...prev, monto_enganche: Number(e.target.value) || 0 }))}
+                          onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, monto_enganche: Number(e.target.value) || 0 })) }}
                           placeholder="0.00"
                         />
                       </div>
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Plazo</Label>
                         <Input variant="l-border"
+                          id="plazo_enganche"
+                          aria-invalid={campoInvalido?.id === 'plazo_enganche' || undefined}
                           type="number" min={0} step={1}
                           value={form.plazo_enganche || ''}
-                          onChange={(e) => setForm((prev) => ({ ...prev, plazo_enganche: Number(e.target.value) || 0 }))}
+                          onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, plazo_enganche: Number(e.target.value) || 0 })) }}
                           placeholder="0"
                         />
                       </div>
@@ -1756,18 +1780,22 @@ export function PromesasClient({
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Interes Anual (%)</Label>
                         <Input variant="l-border"
+                          id="interes_anual"
+                          aria-invalid={campoInvalido?.id === 'interes_anual' || undefined}
                           type="number" min={0} step={0.01}
                           value={form.interes_anual || ''}
-                          onChange={(e) => setForm((prev) => ({ ...prev, interes_anual: Number(e.target.value) || 0 }))}
+                          onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, interes_anual: Number(e.target.value) || 0 })) }}
                           placeholder="0.00"
                         />
                       </div>
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>1era Cuota</Label>
                         <Input variant="l-border"
+                          id="fecha_financiamiento"
+                          aria-invalid={campoInvalido?.id === 'fecha_financiamiento' || undefined}
                           type="date"
                           value={form.fecha_financiamiento ?? ''}
-                          onChange={(e) => setForm((prev) => ({ ...prev, fecha_financiamiento: e.target.value || null }))}
+                          onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, fecha_financiamiento: e.target.value || null })) }}
                         />
                       </div>
                     </div>
@@ -1776,9 +1804,11 @@ export function PromesasClient({
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Plazo</Label>
                         <Input variant="l-border"
+                          id="plazo_financiamiento"
+                          aria-invalid={campoInvalido?.id === 'plazo_financiamiento' || undefined}
                           type="number" min={0} step={1}
                           value={form.plazo_financiamiento || ''}
-                          onChange={(e) => setForm((prev) => ({ ...prev, plazo_financiamiento: Number(e.target.value) || 0 }))}
+                          onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, plazo_financiamiento: Number(e.target.value) || 0 })) }}
                           placeholder="0"
                         />
                       </div>

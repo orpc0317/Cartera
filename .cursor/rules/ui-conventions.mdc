@@ -186,7 +186,9 @@ El color del valor dice si el campo se puede editar. El subrayado no cambia. No 
 const SKIP_KEYS = new Set<keyof MyEntityForm>(['correo', 'moneda', ...])
 
 // ── Inside the component ───────────────────────────────────────────────────
+// limpiarCampoInvalido viene de useCampoInvalido. Ver crud-screens.mdc § Campo con error al grabar.
 function f(key: keyof MyEntityForm, value: string | number) {
+  limpiarCampoInvalido()
   const v = typeof value === 'string' && !SKIP_KEYS.has(key)
     ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
     : value

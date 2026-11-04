@@ -81,6 +81,18 @@ export async function createTipoIngreso(
   if (permCheck) return permCheck
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
+  const { data: max } = await admin
+    .schema('cartera')
+    .from('t_tipo_ingreso')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('empresa', form.empresa)
+    .eq('proyecto', form.proyecto)
+    .order('codigo', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const codigo = (max?.codigo ?? 0) + 1
+
   // Verificar duplicado de nombre
   const { data: dup } = await admin
     .schema('cartera')
@@ -111,7 +123,7 @@ export async function createTipoIngreso(
   const { data, error } = await admin
     .schema('cartera')
     .from('t_tipo_ingreso')
-    .insert(normalized)
+    .insert({ ...normalized, codigo })
     .select()
     .single()
 

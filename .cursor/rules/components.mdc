@@ -61,7 +61,7 @@ Copia cada sección verbatim — reemplaza los `<angle-bracket>` placeholders.
 
 ## A · Modal — State declarations
 
-Declare inside the component, after `colPrefs` state:
+Declare inside the component, after `colPrefs` state. Import `useCampoInvalido` from `@/lib/campo-invalido`.
 
 ```ts
 const [dialogOpen, setDialogOpen]         = useState(false)
@@ -69,6 +69,7 @@ const [isEditing, setIsEditing]           = useState(false)
 const [viewTarget, setViewTarget]         = useState<<Entity> | null>(null)
 const [form, setForm]                     = useState<<EntityForm>>(EMPTY_FORM)
 const [isPending, startTransition]        = useTransition()
+const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 const [hadConflict, setHadConflict]       = useState(false)
 const [similarWarning, setSimilarWarning] = useState<string[]>([])  // names of potential duplicates; non-empty = AlertDialog open
 const [deleteTarget, setDeleteTarget]     = useState<<Entity> | null>(null)
@@ -103,6 +104,8 @@ Copy all five. In `startEdit` list every `<EntityForm>` field. Replace `create<E
 
 ```ts
 function openCreate() {
+  limpiarCampoInvalido()
+  setActiveTab('general')
   // Pre-select first item for every dropdown in the form (cascade order)
   const firstEmpresa  = empresas[0]?.codigo ?? 0
   const firstProyecto = proyectos.filter((p) => p.empresa === firstEmpresa)[0]?.codigo ?? 0
@@ -113,12 +116,16 @@ function openCreate() {
 }
 
 function openView(row: <Entity>) {
+  limpiarCampoInvalido()
+  setActiveTab('general')
   setViewTarget(row)
   setIsEditing(false)
   setDialogOpen(true)
 }
 
 function startEdit() {
+  limpiarCampoInvalido()
+  setActiveTab('general')
   setForm({
     // List every field in <EntityForm> — copy EMPTY_FORM keys, source values from viewTarget
     campo1: viewTarget!.campo1,
@@ -129,11 +136,14 @@ function startEdit() {
 }
 
 function cancelEdit() {
+  limpiarCampoInvalido()
   if (viewTarget) setIsEditing(false)  // return to view mode — form re-populated on next startEdit()
   else            setDialogOpen(false) // was creating — close dialog
 }
 
 function handleSave() {
+  // Campo inválido: rechazar marca, enfoca y muestra el toast. Ver crud-screens.mdc § Campo con error al grabar.
+  if (!String(form.campo1 ?? '').trim()) { rechazar('campo1', '<mensaje de la pantalla>'); return }
   startTransition(async () => {
     const lastModified = viewTarget?.modifico_fecha ?? undefined
     const result = viewTarget
@@ -151,6 +161,8 @@ function handleSave() {
   })
 }
 ```
+
+> **Campo con error:** importa `useCampoInvalido` desde `@/lib/campo-invalido`. Un error de campo llama `rechazar` y hace `return` antes de `startTransition`. `toast.error(result.error)` queda para la respuesta del servidor. La regla completa está en `.cursor/rules/crud-screens.mdc` § Campo con error al grabar.
 
 > **Cascade in `openCreate`:** when the form has chained dropdowns (empresa → proyecto → fase), compute each first value from the filtered downstream list, in cascade order, and pass all of them to `setForm`.
 
@@ -183,6 +195,7 @@ Requires `f()` helper (see `ui-conventions.instructions.md § Text input normali
   <Input
     id="<field>"
     variant="l-border"
+    aria-invalid={campoInvalido?.id === '<field>' || undefined}
     value={form.<field>}
     onChange={(e) => f('<field>', e.target.value)}
     placeholder="<Sentence case placeholder>"
@@ -199,6 +212,7 @@ Requires `f()` helper (see `ui-conventions.instructions.md § Text input normali
 <Input
   id="<field>"
   type="number"
+  aria-invalid={campoInvalido?.id === '<field>' || undefined}
   value={form.<field>}
   onChange={(e) => f('<field>', Number(e.target.value))}
 />
@@ -209,6 +223,7 @@ Requires `f()` helper (see `ui-conventions.instructions.md § Text input normali
 <Input
   id="<field>"
   type="number"
+  aria-invalid={campoInvalido?.id === '<field>' || undefined}
   value={form.<field>}
   onChange={(e) => f('<field>', Number(e.target.value))}
   className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -221,7 +236,7 @@ Requires `f()` helper (see `ui-conventions.instructions.md § Text input normali
 
 ```tsx
 <Select value={String(form.<field>)} onValueChange={(v) => f('<field>', Number(v))}>
-  <SelectTrigger variant="l-border" className="w-full">
+  <SelectTrigger id="<field>" variant="l-border" aria-invalid={campoInvalido?.id === '<field>' || undefined} className="w-full">
 ```
 
 ---
@@ -236,7 +251,7 @@ const <LABELS>: Record<number, string> = { 1: 'Opción A', 2: 'Opción B' }
 
 ```tsx
 <Select value={String(form.<field>)} onValueChange={(v) => f('<field>', Number(v))}>
-  <SelectTrigger variant="l-border" className="w-full">
+  <SelectTrigger id="<field>" variant="l-border" aria-invalid={campoInvalido?.id === '<field>' || undefined} className="w-full">
     <SelectValue placeholder="<Selecciona opcion>">
       {(v: string) => v !== '' ? (<LABELS>[Number(v)] ?? v) : null}
     </SelectValue>
@@ -260,7 +275,7 @@ Regla: si el `<SelectItem value={x}>` y su texto visible son el mismo string, us
 
 ```tsx
 <Select value={form.<field>} onValueChange={(v) => f('<field>', v)}>
-  <SelectTrigger variant="l-border" className="w-full">
+  <SelectTrigger id="<field>" variant="l-border" aria-invalid={campoInvalido?.id === '<field>' || undefined} className="w-full">
     <SelectValue placeholder="<Selecciona opcion>" />
   </SelectTrigger>
   <SelectContent>
@@ -707,7 +722,7 @@ return (
       </div>
     </DialogHeader>
 
-    <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
       <div className="shrink-0 w-full">
         <TabsList variant="line" className="">
           <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">

@@ -310,6 +310,63 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   if ((cCliente ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene clientes registrados.' }
   if ((cPromesa ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene promesas de venta registradas.' }
 
+  // El alta inserta la moneda y su tasa. Esas filas referencian al proyecto.
+  const { data: tasas, error: tasasReadError } = await admin
+    .schema('cartera')
+    .from('t_moneda_tasa_cambio')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', codigo)
+  if (tasasReadError) return { error: tasasReadError.message }
+  if (tasas && tasas.length > 0) {
+    const { error: tasaError } = await admin
+      .schema('cartera')
+      .from('t_moneda_tasa_cambio')
+      .delete()
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', codigo)
+    if (tasaError) return { error: tasaError.message }
+    for (const tasa of tasas) {
+      const row = tasa as Record<string, unknown>
+      await writeAudit(admin, {
+        tabla: 't_moneda_tasa_cambio', operacion: 'DELETE', cuenta,
+        registroId: { empresa, proyecto: codigo, moneda: row.moneda, fecha: row.fecha },
+        datoAntes: row, datoDespues: null,
+        ...auditUser,
+      })
+    }
+  }
+
+  const { data: monedas, error: monedasReadError } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', codigo)
+  if (monedasReadError) return { error: monedasReadError.message }
+  if (monedas && monedas.length > 0) {
+    const { error: monedaError } = await admin
+      .schema('cartera')
+      .from('t_proyecto_moneda')
+      .delete()
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', codigo)
+    if (monedaError) return { error: monedaError.message }
+    for (const moneda of monedas) {
+      const row = moneda as Record<string, unknown>
+      await writeAudit(admin, {
+        tabla: 't_proyecto_moneda', operacion: 'DELETE', cuenta,
+        registroId: { empresa, proyecto: codigo, moneda: row.moneda },
+        datoAntes: row, datoDespues: null,
+        ...auditUser,
+      })
+    }
+  }
+
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_proyecto')

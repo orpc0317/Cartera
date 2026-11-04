@@ -124,17 +124,20 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
 
 Clase estándar (l-border, igual que los inputs del modal):
 ```
-w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed
+w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive
 ```
 Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}`.
 
 ```tsx
 {/* País — al cambiar, auto-selecciona primer depto y primer municipio */}
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</Label>
+  <Label htmlFor="pais" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</Label>
   <select
+    id="pais"
+    aria-invalid={campoInvalido?.id === 'pais' || undefined}
     value={form.pais}
     onChange={(e) => {
+      limpiarCampoInvalido()
       const codigo = e.target.value
       const firstDepto = departamentos.find((d) => d.pais === codigo)
       const dCode = firstDepto?.codigo ?? ''
@@ -145,7 +148,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
       setDeptoCodigo(dCode)
       setForm((p) => ({ ...p, pais: codigo, departamento: dCode, municipio: mCode }))
     }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">Selecciona país</option>
@@ -155,17 +158,20 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
 
 {/* Departamento — filtrado por pais; al cambiar, auto-selecciona primer municipio */}
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento</Label>
+  <Label htmlFor="departamento" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento</Label>
   <select
+    id="departamento"
+    aria-invalid={campoInvalido?.id === 'departamento' || undefined}
     value={form.departamento}
     disabled={!paisCodigo}
     onChange={(e) => {
+      limpiarCampoInvalido()
       const v = e.target.value
       const mCode = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''
       setDeptoCodigo(v)
       setForm((p) => ({ ...p, departamento: v, municipio: mCode }))
     }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un país'}</option>
@@ -175,12 +181,14 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
 
 {/* Municipio — filtrado por pais + departamento */}
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio</Label>
+  <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio</Label>
   <select
+    id="municipio"
+    aria-invalid={campoInvalido?.id === 'municipio' || undefined}
     value={form.municipio}
     disabled={!deptoCodigo}
-    onChange={(e) => setForm((p) => ({ ...p, municipio: e.target.value }))}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed"
+    onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, municipio: e.target.value })) }}
+    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
@@ -220,10 +228,12 @@ Estos son **separados** de `form.direccion_pais` / `form.direccion_departamento`
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+  <Label htmlFor="direccion_pais" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
   <CountrySelect
     paises={paises}
     value={paisCodigo}
+    id="direccion_pais"
+    invalid={campoInvalido?.id === 'direccion_pais'}
     onChange={(codigo, _nombre) => {
       setPaisCodigo(codigo)
       setDeptoCodigo('')
@@ -322,13 +332,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 ```tsx
 function ClienteCombobox({
-  clientes, value, onChange, disabled, placeholder,
+  clientes, value, onChange, disabled, placeholder, id, invalid = false,
 }: {
   clientes: Cliente[]
   value: number
   onChange: (v: number) => void
   disabled?: boolean
   placeholder?: string
+  id?: string
+  invalid?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -360,8 +372,10 @@ function ClienteCombobox({
         <PopoverTrigger render={
           <button
             type="button"
+            id={id}
             disabled={disabled}
-            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
+            data-invalid={invalid || undefined}
+            className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed data-invalid:border-destructive"
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -435,8 +449,12 @@ const clientesFiltrados = useMemo(
     onChange={(v) => f('cliente', v)}
     disabled={!isEditing}
     placeholder="Selecciona cliente..."
+    id="cliente"
+    invalid={campoInvalido?.id === 'cliente'}
   />
 </div>
 ```
 
 > **Regla:** el `ClienteCombobox` **nunca** se auto-selecciona al cambiar de proyecto — el usuario siempre debe elegirlo explícitamente. Al cambiar de proyecto, hacer `f('cliente', 0)` para limpiar.
+
+> **Campo con error:** el botón del combobox lleva `id` y `data-invalid={invalid || undefined}` con `data-invalid:border-destructive`. Un `<button>` no lleva `aria-invalid`. El `id` es el que recibe `rechazar`. Ver `.cursor/rules/crud-screens.mdc` § Campo con error al grabar.
