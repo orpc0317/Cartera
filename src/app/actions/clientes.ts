@@ -136,7 +136,7 @@ export async function updateCliente(
   codigo: number,
   form: Partial<ClienteForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Cliente }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.CLI_CAT, 'modificar')
@@ -197,7 +197,7 @@ export async function updateCliente(
   })
 
   revalidatePath('/dashboard/promesas/clientes')
-  return {}
+  return { row: data[0] as Cliente }
 }
 
 // ─── Eliminar ──────────────────────────────────────────────────────────────

@@ -288,6 +288,8 @@ test('dos pestañas editan la misma fase y solo la primera grabación vale', asy
     await dialogB.getByLabel('Nombre *').fill(primero)
     await dialogB.getByRole('button', { name: 'Guardar' }).click()
     await guardarAunqueParezca(otra, 'Fase actualizada.')
+    await expect(dialogB.getByRole('heading', { name: primero, exact: true })).toBeVisible()
+    await dialogB.getByRole('button', { name: 'Close' }).click()
     await expect(dialogB).toBeHidden()
 
     await dialogA.getByLabel('Nombre *').fill(segundo)

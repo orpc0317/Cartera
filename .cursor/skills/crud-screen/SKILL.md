@@ -122,7 +122,7 @@ Create `src/app/actions/<entity>.ts`. Required exports:
 |----------|-------------|
 | `getEntities()` | Fetch all rows filtered by cuenta |
 | `createEntity(form: EntityForm)` | Insert with audit fields |
-| `updateEntity(pk, form, lastModified?)` | Update with optimistic concurrency |
+| `updateEntity(pk, form, lastModified?)` | Update with optimistic concurrency and return `{ row }` |
 | `deleteEntity(pk)` | Hard delete |
 | `getRelation()` | One per FK in RELACIONES; call the existing action from `page.tsx` if it already exists — do not re-export values from a `"use server"` file |
 
@@ -131,7 +131,7 @@ Rules (from `.cursor/rules/server-actions.mdc`):
 - Import `getCuentaActiva` and `requirePermiso` from `@/app/actions/permisos`. Never redeclare `getCuentaActiva`.
 - Every write (`create*`, `update*`, `delete*`, `upload*`): `requirePermiso(...)` is the first instruction. If it returns `{ error }`, return that immediately.
 - Then `const cuenta = await getCuentaActiva(); if (!cuenta) return { error: 'Sesión no válida.' }`
-- `updateEntity` must use `modifico_fecha` for optimistic concurrency — see the rule for the exact query pattern
+- `updateEntity` must use `modifico_fecha` for optimistic concurrency and return `{ row: data[0] }` — see the rule for the exact query pattern. The client puts that row back into `viewTarget`.
 - Call `writeAudit(...)` after every successful mutation (import from `src/app/actions/audit.ts`)
 - Do not re-export values from a `"use server"` file. In `page.tsx`, import FK helpers from their source action file.
 
@@ -244,6 +244,7 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 - **View mode:** `ViewField` for each field, grouped into `SegmentCard` per section (title above a bordered card — replaces bare `SectionDivider`)
 - **Edit mode:** form fields per `CAMPOS_FORMULARIO`, same `SegmentCard` grouping; if RELACIONES defines cascade selects, on parent change reset child to first available item or `0`
 - **Footer (estándar 2026-08):** view mode → single row of ghost buttons: Historial, [acciones extra de la entidad], Eliminar (if `puedeEliminar`), Editar (if `puedeModificar`) — **no** botón "Cerrar" (la "x" del header ya cierra); edit mode → Cancelar/Volver + Guardar
+- **Tras guardar una edición:** el modal sigue abierto en Ver. `update*` devuelve `{ row }`. `setViewTarget(result.row)`, rearmar el formulario como `openView` y `setIsEditing(false)`. Sin cambios llama `cancelEdit()`. El alta cierra el modal con `setDialogOpen(false)`. `router.refresh()` actualiza la tabla. Este paso es obligatorio antes de dar la pantalla por terminada.
 - **Delete:** `AlertDialog` with "¿Estás seguro?" pattern, triggered from the footer's Eliminar button (not a row dropdown); only shown if `puedeEliminar`
 - **Guard obligatorio:** el `modal={false}` del Dialog principal debe ignorar `onOpenChange(false)` mientras `auditTarget`/`deleteTarget`/cualquier otro dialog anidado esté abierto — ver `.cursor/rules/base-ui-gotchas.mdc` § 5
 
@@ -305,9 +306,9 @@ Every new catalog file includes these tests:
 6. Edit with the required field empty. One tab: stay on General, as in Fases. More than one tab: switch to the other tab before Guardar, as in Proyectos, and expect the tab of the field to become selected. Cancelar, then Close. The row is unchanged. There is no success toast.
 7. Similar-name warning, only when `handleSave` opens that alert. Use an existing row's name. The alert heading is `Nombres similares encontrados`. Click `Cancelar`. Do not click `Si, es diferente — Continuar` in this test. The success toast has count 0 and the counter is unchanged.
 8. One create and one delete. Read `create*` and `delete*` first and fill only what the form still requires. The name is `E2E <ENTIDAD> ${Date.now()}`. The success and delete toasts are the exact strings from the client. The row count goes to 0. `finally` deletes the row if the test fails, and throws `Quedó <nombre>. Bórralo a mano.` when cleanup fails. A unique name may still trip the similar-name warning: only this test and the lock test may click `Si, es diferente — Continuar`, and only after the warning is actually visible. Copy `confirmarSiElNombreParece` from Bancos.
-9. Optimistic lock, when `update*` sends `modifico_fecha`. `test.setTimeout(90_000)`. `page.context().newPage()` shares the session. Create `E2E <ENTIDAD> ${marca}`. Edit it in both pages. The second page saves `KILO NORTE ${marca}` and sees the success toast. The first page saves `VASO SUR ${marca}` and sees exactly `Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.` The edit dialog stays open. The losing name is absent from the list. `finally` closes the extra page and deletes the row. Those two names stay far from each other and from existing catalog names.
+9. Optimistic lock, when `update*` sends `modifico_fecha`. `test.setTimeout(90_000)`. `page.context().newPage()` shares the session. Create `E2E <ENTIDAD> ${marca}`. Edit it in both pages. The second page saves `KILO NORTE ${marca}`, sees the success toast, and stays in Ver: the dialog remains visible and shows the saved value (heading or view field). Copy the assertion from `test/definidas/lotes.spec.ts`. Close that dialog with `Close` before searching the list. The first page saves `VASO SUR ${marca}` and sees exactly `Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.` The edit dialog stays open. The losing name is absent from the list. `finally` closes the extra page and deletes the row. Those two names stay far from each other and from existing catalog names.
 
-A new-mode footer has no Cancelar. Close it with `Close`. Edit mode uses Cancelar to leave edit and `Close` to leave the dialog.
+A new-mode footer has no Cancelar. Close it with `Close`. Edit mode uses Cancelar to leave edit and return to Ver. After a successful edit save the dialog stays in Ver; `Close` leaves the dialog. A successful create closes the dialog.
 
 Run this before the screen is finished:
 
@@ -336,5 +337,6 @@ Run these before reporting the screen finished. Do not use `get_errors` or Power
 - [ ] The spec file was not edited
 - [ ] `test/definidas/<entidad>.spec.ts` exists and `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` is green
 - [ ] Guardar on an invalid field toasts, selects that field's tab, marks the control, and focuses it
+- [ ] Guardar una edición vuelve a Ver con la fila de `update*` (`viewTarget` y formulario rearmados, `modifico_fecha` nuevo). El alta cierra el modal. Sin cambios llama `cancelEdit()`.
 
 Mark the task done only when the checks above are green. If the change is visible on screen, walk the flow in the browser first.

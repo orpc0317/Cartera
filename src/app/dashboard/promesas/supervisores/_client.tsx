@@ -414,7 +414,7 @@ export function SupervisoresClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromSupervisor(viewTarget))) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Verificar similitud de nombre (umbral 0.85) contra supervisores del mismo proyecto
@@ -432,21 +432,34 @@ export function SupervisoresClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateSupervisor(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createSupervisor(form)
-
+      if (editing) {
+        const result = await updateSupervisor(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildFormFromSupervisor(result.row))
+        setIsEditing(false)
+        toast.success('Supervisor actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createSupervisor(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Supervisor actualizado.' : 'Supervisor creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Supervisor creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

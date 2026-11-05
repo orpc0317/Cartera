@@ -144,7 +144,7 @@ export async function updateLote(
   empresa: number, proyecto: number, fase: number, manzana: string, codigo: string,
   form: Partial<LoteForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Lote }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'modificar')
@@ -192,7 +192,7 @@ export async function updateLote(
   })
 
   revalidatePath('/dashboard/proyectos/lotes')
-  return {}
+  return { row: data[0] as Lote }
 }
 
 export async function deleteLote(empresa: number, proyecto: number, fase: number, manzana: string, codigo: string): Promise<{ error?: string }> {

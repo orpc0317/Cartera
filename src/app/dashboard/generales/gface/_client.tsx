@@ -501,7 +501,7 @@ export function GfaceClient({
     }
 
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildForm(viewTarget))) {
-      setDialogOpen(false)
+      cancelEdit()
       return
     }
 
@@ -519,21 +519,34 @@ export function GfaceClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateGface(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createGface(form)
-
+      if (editing) {
+        const result = await updateGface(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildForm(result.row))
+        setIsEditing(false)
+        toast.success('Certificador actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createGface(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Certificador actualizado.' : 'Certificador creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Certificador creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

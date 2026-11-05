@@ -835,7 +835,7 @@ export function ProyectosClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && !logoFile && JSON.stringify(form) === JSON.stringify(buildFormFromProyecto(viewTarget).form)) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Verificar similitud de nombre (umbral 0.85) contra proyectos de la misma empresa
@@ -854,35 +854,58 @@ export function ProyectosClient({
     doSave()
   }
 
+  function aplicarProyecto(proyecto: Proyecto) {
+    const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromProyecto(proyecto)
+    const { iso: iso1, local: local1 } = splitPhone(proyecto.telefono1 ?? '')
+    const { iso: iso2, local: local2 } = splitPhone(proyecto.telefono2 ?? '')
+    const fallbackIso = pc || (paises.find((p) => p.nombre === (empresas.find((e) => e.codigo === proyecto.empresa)?.direccion_pais ?? ''))?.codigo ?? '')
+    setTel1Iso(iso1 || fallbackIso); setTel1Local(local1)
+    setTel2Iso(iso2 || fallbackIso); setTel2Local(local2)
+    setViewTarget(proyecto)
+    setForm(f)
+    setPaisCodigo(pc)
+    setDeptoCodigo(dc)
+    setTipoCalculo((proyecto.fijo_mora ?? 0) > 0 ? 1 : 0)
+    setMinMoraStr(formatMora(proyecto.minimo_mora ?? 0))
+    setLogoFile(null); setLogoPreviewUrl(''); setLogoError('')
+    setAddMonedaValue('')
+    setIsEditing(false)
+  }
+
   function doSave() {
+    const editing = viewTarget
     startTransition(async () => {
       let payload = { ...form }
       if (logoFile) {
         const fd = new FormData()
         fd.append('file', logoFile)
-        const up = await uploadProjectLogo(fd, viewTarget?.logo_url ?? undefined)
+        const up = await uploadProjectLogo(fd, editing?.logo_url ?? undefined)
         if (up.error) { toast.error(up.error); return }
         payload = { ...payload, logo_url: up.url ?? '' }
       }
-      const result = viewTarget
-        ? await updateProyecto(viewTarget.empresa, viewTarget.codigo, payload, viewTarget.modifico_fecha ?? undefined)
-        : await createProyecto(payload)
-
+      if (editing) {
+        const result = await updateProyecto(editing.empresa, editing.codigo, payload, editing.modifico_fecha ?? undefined)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        aplicarProyecto(result.row)
+        toast.success('Proyecto actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createProyecto(payload)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        if (viewTarget) {
-          toast.success('Proyecto actualizado.')
-          setDialogOpen(false)
-          router.refresh()
-        } else {
-          toast.success('Proyecto creado exitosamente.')
-          setDialogOpen(false)
-          router.refresh()
-        }
+        return
       }
+      setHadConflict(false)
+      toast.success('Proyecto creado exitosamente.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

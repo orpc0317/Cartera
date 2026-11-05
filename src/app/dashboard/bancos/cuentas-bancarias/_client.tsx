@@ -432,23 +432,46 @@ export function CuentasBancariasClient({
         form.nombre   === viewTarget.nombre   &&
         form.moneda   === viewTarget.moneda   &&
         form.activo   === viewTarget.activo
-      if (sinCambios) { setDialogOpen(false); return }
+      if (sinCambios) { cancelEdit(); return }
     }
 
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateCuentaBancaria(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createCuentaBancaria(form)
+      if (editing) {
+        const result = await updateCuentaBancaria(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        const row = result.row
+        setHadConflict(false)
+        setViewTarget(row)
+        setForm({
+          empresa: row.empresa,
+          proyecto: row.proyecto,
+          banco: row.banco,
+          numero: row.numero,
+          nombre: row.nombre,
+          moneda: row.moneda,
+          activo: row.activo,
+        })
+        setIsEditing(false)
+        toast.success('Cuenta bancaria actualizada.')
+        router.refresh()
+        return
+      }
+      const result = await createCuentaBancaria(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Cuenta bancaria actualizada.' : 'Cuenta bancaria creada.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Cuenta bancaria creada.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

@@ -149,7 +149,7 @@ export async function updateFase(
   nombre: string,
   medida: string,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Fase }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.FAS_CAT, 'modificar')
@@ -207,7 +207,7 @@ export async function updateFase(
   })
 
   revalidatePath('/dashboard/proyectos/fases')
-  return {}
+  return { row: data[0] as Fase }
 }
 
 export async function deleteFase(

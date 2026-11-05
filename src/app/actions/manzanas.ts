@@ -119,7 +119,7 @@ export async function updateManzana(
   empresa: number, proyecto: number, fase: number, codigo: string,
   form: Partial<ManzanaForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Manzana }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.MAN_CAT, 'modificar')
@@ -165,7 +165,7 @@ export async function updateManzana(
   })
 
   revalidatePath('/dashboard/proyectos/manzanas')
-  return {}
+  return { row: data[0] as Manzana }
 }
 
 export async function deleteManzana(empresa: number, proyecto: number, fase: number, codigo: string): Promise<{ error?: string }> {

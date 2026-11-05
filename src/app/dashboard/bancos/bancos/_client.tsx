@@ -380,7 +380,7 @@ export function BancosClient({
         form.nombre  === viewTarget.nombre  &&
         form.empresa === viewTarget.empresa &&
         form.proyecto === viewTarget.proyecto
-      if (sinCambios) { setDialogOpen(false); return }
+      if (sinCambios) { cancelEdit(); return }
     }
 
     // Verificar similitud de nombre (umbral 0.85) contra bancos del mismo proyecto
@@ -398,20 +398,35 @@ export function BancosClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateBanco(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createBanco(form)
+      if (editing) {
+        const result = await updateBanco(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        const row = result.row
+        setHadConflict(false)
+        setViewTarget(row)
+        setForm({ empresa: row.empresa, proyecto: row.proyecto, nombre: row.nombre })
+        setIsEditing(false)
+        toast.success('Banco actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createBanco(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Banco actualizado.' : 'Banco creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Banco creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

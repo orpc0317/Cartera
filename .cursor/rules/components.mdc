@@ -144,20 +144,40 @@ function cancelEdit() {
 function handleSave() {
   // Campo inválido: rechazar marca, enfoca y muestra el toast. Ver crud-screens.mdc § Campo con error al grabar.
   if (!String(form.campo1 ?? '').trim()) { rechazar('campo1', '<mensaje de la pantalla>'); return }
+  // Sin cambios: igual que Cancelar. Volver a Ver, sin request.
+  if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFrom<Entity>(viewTarget))) {
+    cancelEdit(); return
+  }
+  const editing = viewTarget
   startTransition(async () => {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
-    const result = viewTarget
-      ? await update<Entity>(viewTarget.codigo, form, lastModified)
-      : await create<Entity>(form)
+    const lastModified = editing?.modifico_fecha ?? undefined
+    if (editing) {
+      const result = await update<Entity>(editing.codigo, form, lastModified)
+      if (result.error) {
+        toast.error(result.error)
+        if (result.error.includes('modificado')) setHadConflict(true)
+        return
+      }
+      // La fila del servidor trae modifico_fecha nuevo. Sin ella, el siguiente guardado choca consigo mismo.
+      // Rama separada del alta: el tipo de create no tiene `row` y TypeScript no lo estrecha en un ternario.
+      if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+      setHadConflict(false)
+      setViewTarget(result.row)
+      setForm(buildFormFrom<Entity>(result.row))
+      setIsEditing(false)
+      toast.success('<Entidad> actualizada.')
+      router.refresh()
+      return
+    }
+    const result = await create<Entity>(form)
     if (result.error) {
       toast.error(result.error)
-      if (result.error.includes('modificado')) setHadConflict(true)
-    } else {
-      setHadConflict(false)
-      toast.success(viewTarget ? '<Entidad> actualizada.' : '<Entidad> creada.')
-      setDialogOpen(false)
-      router.refresh()
+      return
     }
+    setHadConflict(false)
+    toast.success('<Entidad> creada.')
+    setDialogOpen(false)
+    router.refresh()
   })
 }
 ```
@@ -166,20 +186,22 @@ function handleSave() {
 
 > **Cascade in `openCreate`:** when the form has chained dropdowns (empresa → proyecto → fase), compute each first value from the filtered downstream list, in cascade order, and pass all of them to `setForm`.
 
-> **Dirty check (obligatorio en todo `handleSave`):** si `viewTarget` existe, comparar `form` contra el original antes de llamar al servidor. Si no hay cambios, cerrar el modal sin request.
+> **Dirty check (obligatorio en todo `handleSave`):** si `viewTarget` existe, comparar `form` contra el original antes de llamar al servidor. Si no hay cambios, volver a Ver con `cancelEdit()`. No cerrar el modal.
 >
 > ```ts
 > // Con buildFormFromX:
 > if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFrom<Entity>(viewTarget))) {
->   setDialogOpen(false); return
+>   cancelEdit(); return
 > }
 > // Con geo (buildFormFromX retorna { form, paisCodigo, ... }):
 > if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFrom<Entity>(viewTarget).form)) {
->   setDialogOpen(false); return
+>   cancelEdit(); return
 > }
 > ```
 > — Sin `buildFormFromX`: comparar campo a campo con `viewTarget` respetando `?? null` / `?? ''`.
 > — Con campo `logoFile`: añadir `&& !logoFile` a la condición.
+>
+> **Tras un update exitoso:** `update*` devuelve `{ row }`. Asignar `setViewTarget(result.row)`, rearmar el formulario con la misma función que `openView` (geo, teléfonos, strings numéricos) y `setIsEditing(false)`. El diálogo sigue abierto. `router.refresh()` actualiza la tabla. El alta (`viewTarget` null) sí hace `setDialogOpen(false)`.
 
 ---
 

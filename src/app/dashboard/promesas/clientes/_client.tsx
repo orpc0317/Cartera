@@ -630,7 +630,7 @@ export function ClientesClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCliente(viewTarget).form)) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Verificar similitud de nombre (umbral 0.85) contra clientes del mismo proyecto
@@ -648,21 +648,37 @@ export function ClientesClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateCliente(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createCliente(form)
-
+      if (editing) {
+        const result = await updateCliente(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        const { form: fm, paisCodigo: pc, deptoCodigo: dc } = buildFormFromCliente(result.row)
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(fm)
+        setPaisCodigo(pc)
+        setDeptoCodigo(dc)
+        setIsEditing(false)
+        toast.success('Cliente actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createCliente(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Cliente actualizado.' : 'Cliente creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Cliente creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

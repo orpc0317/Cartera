@@ -153,7 +153,7 @@ export async function updateCuentaBancaria(
   codigo: number,
   form: Partial<CuentaBancariaForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: CuentaBancaria }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.CUE_BAN, 'modificar')
@@ -223,7 +223,7 @@ export async function updateCuentaBancaria(
   })
 
   revalidatePath('/dashboard/bancos/cuentas-bancarias')
-  return {}
+  return { row: data[0] as CuentaBancaria }
 }
 
 export async function deleteCuentaBancaria(

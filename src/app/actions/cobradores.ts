@@ -141,7 +141,7 @@ export async function updateCobrador(
   codigo: number,
   form: Partial<CobradorForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Cobrador }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.COB_CAT, 'modificar')
@@ -201,7 +201,7 @@ export async function updateCobrador(
   })
 
   revalidatePath('/dashboard/promesas/cobradores')
-  return {}
+  return { row: data[0] as Cobrador }
 }
 
 // ─── Eliminar ──────────────────────────────────────────────────────────────

@@ -992,7 +992,9 @@ export function PromesasClient({
           toast.error(res.error)
           return
         }
+        if (!res.row) { toast.error('No se pudo recargar el registro.'); return }
         toast.success('Promesa actualizada.')
+        setViewTarget(res.row)
         setIsEditing(false)
         router.refresh()
       } else {

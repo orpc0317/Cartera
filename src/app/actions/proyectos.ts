@@ -207,7 +207,7 @@ export async function updateProyecto(
   codigo: number,
   form: Partial<ProyectoForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Proyecto }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
@@ -274,7 +274,7 @@ export async function updateProyecto(
   })
 
   revalidatePath('/dashboard/proyectos/proyectos')
-  return {}
+  return { row: data[0] as Proyecto }
 }
 
 export async function deleteProyecto(empresa: number, codigo: number): Promise<{ error?: string }> {

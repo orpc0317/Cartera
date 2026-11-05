@@ -480,7 +480,7 @@ export function EmpresasClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromEmpresa(viewTarget).form)) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     const normalizedInput = toDbString(form.nombre)
@@ -497,20 +497,36 @@ export function EmpresasClient({
   }
 
   function doSave() {
+    const editing = viewTarget
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateEmpresa(viewTarget.codigo, form, viewTarget.modifico_fecha ?? undefined)
-        : await createEmpresa(form)
-
+      if (editing) {
+        const result = await updateEmpresa(editing.codigo, form, editing.modifico_fecha ?? undefined)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        const { form: f, paisCodigo: pc, deptoCodigo: dc } = buildFormFromEmpresa(result.row)
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(f)
+        setPaisCodigo(pc)
+        setDeptoCodigo(dc)
+        setIsEditing(false)
+        toast.success('Empresa actualizada.')
+        router.refresh()
+        return
+      }
+      const result = await createEmpresa(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Empresa actualizada.' : 'Empresa creada.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Empresa creada.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

@@ -147,7 +147,7 @@ export async function updateTipoIngreso(
   codigo: number,
   form: TipoIngresoForm,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: TipoIngreso }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'modificar')
@@ -211,7 +211,7 @@ export async function updateTipoIngreso(
     ...auditUser,
   })
 
-  return {}
+  return { row: data[0] as TipoIngreso }
 }
 
 export async function deleteTipoIngreso(

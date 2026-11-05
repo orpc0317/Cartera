@@ -166,7 +166,7 @@ export async function updateSerieRecibo(
   serie: string,
   form: Partial<SerieReciboForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: SerieRecibo }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.SER_REC, 'modificar')
@@ -233,7 +233,7 @@ export async function updateSerieRecibo(
     ...auditUser,
   })
 
-  return {}
+  return { row: (data as SerieRecibo[])[0] }
 }
 
 export async function deleteSerieRecibo(

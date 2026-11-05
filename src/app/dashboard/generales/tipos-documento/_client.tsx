@@ -422,7 +422,7 @@ export function TiposDocumentoClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromTipoDocumento(viewTarget))) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Frontend similarity check (jaroWinkler >= 0.85)
@@ -440,21 +440,34 @@ export function TiposDocumentoClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateTipoDocumento(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form.descripcion, lastModified)
-        : await createTipoDocumento(form)
-
+      if (editing) {
+        const result = await updateTipoDocumento(editing.empresa, editing.proyecto, editing.codigo, form.descripcion, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildFormFromTipoDocumento(result.row))
+        setIsEditing(false)
+        toast.success('Tipo de documento actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createTipoDocumento(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Tipo de documento actualizado.' : 'Tipo de documento creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Tipo de documento creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

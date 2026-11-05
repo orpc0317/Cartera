@@ -140,7 +140,7 @@ export async function updateCoordinador(
   codigo: number,
   form: CoordinadorForm,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Coordinador }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.COO_CAT, 'modificar')
@@ -201,7 +201,7 @@ export async function updateCoordinador(
   })
 
   revalidatePath('/dashboard/promesas/coordinadores')
-  return {}
+  return { row: data[0] as Coordinador }
 }
 
 // ─── Eliminar ──────────────────────────────────────────────────────────────
