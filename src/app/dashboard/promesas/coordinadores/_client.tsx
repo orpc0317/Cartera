@@ -437,7 +437,7 @@ export function CoordinadoresClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCoordinador(viewTarget))) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     const normalizedInput = toDbString(form.nombre)
@@ -454,21 +454,34 @@ export function CoordinadoresClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateCoordinador(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createCoordinador(form)
-
+      if (editing) {
+        const result = await updateCoordinador(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildFormFromCoordinador(result.row))
+        setIsEditing(false)
+        toast.success('Coordinador actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createCoordinador(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Coordinador actualizado.' : 'Coordinador creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Coordinador creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

@@ -146,7 +146,7 @@ export async function updateVendedor(
   codigo: number,
   form: Partial<VendedorForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Vendedor }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.VEN_CAT, 'modificar')
@@ -206,7 +206,7 @@ export async function updateVendedor(
   })
 
   revalidatePath('/dashboard/promesas/vendedores')
-  return {}
+  return { row: data[0] as Vendedor }
 }
 
 // ─── Eliminar ──────────────────────────────────────────────────────────────

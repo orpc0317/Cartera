@@ -177,7 +177,7 @@ export async function updatePromesa(
   form: Pick<PromesaForm, 'referencia' | 'observacion' | 'estado'>,
   lastModified?: string,
   otros: PromesaOtroPayload[] = [],
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Promesa }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'modificar')
@@ -254,7 +254,7 @@ export async function updatePromesa(
     ...auditUser,
   })
 
-  return {}
+  return { row: data[0] as Promesa }
 }
 
 // ─── Anular ────────────────────────────────────────────────────────────────

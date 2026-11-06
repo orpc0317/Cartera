@@ -437,7 +437,7 @@ export function FasesClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromFase(viewTarget))) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Frontend similarity check (jaroWinkler >= 0.85)
@@ -455,21 +455,34 @@ export function FasesClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateFase(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form.nombre, form.medida, lastModified)
-        : await createFase(form)
-
+      if (editing) {
+        const result = await updateFase(editing.empresa, editing.proyecto, editing.codigo, form.nombre, form.medida, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildFormFromFase(result.row))
+        setIsEditing(false)
+        toast.success('Fase actualizada.')
+        router.refresh()
+        return
+      }
+      const result = await createFase(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Fase actualizada.' : 'Fase creada.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Fase creada.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

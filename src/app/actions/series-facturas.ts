@@ -251,7 +251,7 @@ export async function updateSerieFactura(
   serie: string,
   form: SerieFacturaForm,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: SerieFactura }> {
   const guard = await requirePermiso(PERMISOS.SER_FAC, 'modificar')
   if (guard) return guard
 
@@ -323,7 +323,7 @@ export async function updateSerieFactura(
   })
 
   refrescar()
-  return {}
+  return { row: (data as SerieFactura[])[0] }
 }
 
 export async function deleteSerieFactura(

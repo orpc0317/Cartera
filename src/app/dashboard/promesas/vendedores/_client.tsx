@@ -408,7 +408,7 @@ export function VendedoresClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromVendedor(viewTarget))) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Verificar similitud de nombre (umbral 0.85) contra vendedores del mismo proyecto
@@ -426,21 +426,34 @@ export function VendedoresClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateVendedor(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createVendedor(form)
-
+      if (editing) {
+        const result = await updateVendedor(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildFormFromVendedor(result.row))
+        setIsEditing(false)
+        toast.success('Vendedor actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createVendedor(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Vendedor actualizado.' : 'Vendedor creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Vendedor creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

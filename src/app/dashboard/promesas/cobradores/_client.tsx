@@ -411,7 +411,7 @@ export function CobradoresClient({
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFromCobrador(viewTarget))) {
-      setDialogOpen(false); return
+      cancelEdit(); return
     }
 
     // Verificar similitud de nombre (umbral 0.85) contra cobradores del mismo proyecto
@@ -429,21 +429,34 @@ export function CobradoresClient({
   }
 
   function doSave() {
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateCobrador(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, form, lastModified)
-        : await createCobrador(form)
-
+      if (editing) {
+        const result = await updateCobrador(editing.empresa, editing.proyecto, editing.codigo, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setForm(buildFormFromCobrador(result.row))
+        setIsEditing(false)
+        toast.success('Cobrador actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createCobrador(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Cobrador actualizado.' : 'Cobrador creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Cobrador creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

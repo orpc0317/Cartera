@@ -256,7 +256,7 @@ export async function updateGface(
   codigo: number,
   form: GfaceForm,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Gface }> {
   const guard = await requirePermiso(PERMISOS.GFA_CAT, 'modificar')
   if (guard) return guard
 
@@ -328,7 +328,7 @@ export async function updateGface(
   })
 
   revalidatePath('/dashboard/generales/gface')
-  return {}
+  return { row: data[0] as Gface }
 }
 
 export async function deleteGface(

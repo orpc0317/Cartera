@@ -505,24 +505,36 @@ export function TiposIngresosClient({
         finalForm.impuesto            === viewTarget.impuesto            &&
         finalForm.editable            === viewTarget.editable            &&
         finalForm.activo              === viewTarget.activo
-      if (sinCambios) { setDialogOpen(false); return }
+      if (sinCambios) { cancelEdit(); return }
     }
 
+    const editing = viewTarget
     startTransition(async () => {
-      const lastModified = viewTarget?.modifico_fecha ?? undefined
-      const result = viewTarget
-        ? await updateTipoIngreso(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo, finalForm, lastModified)
-        : await createTipoIngreso(finalForm)
-
+      const lastModified = editing?.modifico_fecha ?? undefined
+      if (editing) {
+        const result = await updateTipoIngreso(editing.empresa, editing.proyecto, editing.codigo, finalForm, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        setHadConflict(false)
+        setViewTarget(result.row)
+        setIsEditing(false)
+        toast.success('Tipo ingreso actualizado.')
+        router.refresh()
+        return
+      }
+      const result = await createTipoIngreso(finalForm)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Tipo ingreso actualizado.' : 'Tipo ingreso creado.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Tipo ingreso creado.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

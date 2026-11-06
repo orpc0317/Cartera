@@ -537,20 +537,23 @@ export function LotesClient({
       if (sinCambios) { setIsEditing(false); return }
     }
 
+    const editing = viewTarget
     startTransition(async () => {
-      if (viewTarget) {
+      if (editing) {
         const res = await updateLote(
-          viewTarget.empresa, viewTarget.proyecto, viewTarget.fase, viewTarget.manzana, viewTarget.codigo,
+          editing.empresa, editing.proyecto, editing.fase, editing.manzana, editing.codigo,
           { moneda: form.moneda, valor, finca: form.finca, folio: form.folio, libro: form.libro,
             extension, norte: form.norte, sur: form.sur, este: form.este, oeste: form.oeste, otro: form.otro },
-          viewTarget.modifico_fecha,
+          editing.modifico_fecha,
         )
         if (res.error) {
           if (res.error.includes('modificado por otro usuario')) setHadConflict(true)
           toast.error(res.error)
           return
         }
+        if (!res.row) { toast.error('No se pudo recargar el registro.'); return }
         toast.success('Lote actualizado.')
+        setViewTarget(res.row)
         setIsEditing(false)
         router.refresh()
       } else {

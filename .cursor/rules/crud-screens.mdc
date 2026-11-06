@@ -15,6 +15,8 @@ _client.tsx  Client Component: all UI, state, mutations
 
 Mutations in `src/app/actions/<entity>.ts`. After mutations: `router.refresh()`.
 
+Al guardar la edición de un registro existente, el modal vuelve a Ver con la fila que devolvió `update*` (`modifico_fecha` incluido). No cerrar el diálogo. Sin cambios hace lo mismo que Cancelar. El alta cierra el modal. El snippet está en `components.mdc` § C.
+
 ---
 
 ## Page header

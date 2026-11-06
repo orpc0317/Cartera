@@ -440,23 +440,49 @@ export function SeriesRecibosClient({
         form.predeterminado   === viewTarget.predeterminado   &&
         form.recibo_automatico === viewTarget.recibo_automatico &&
         form.activo           === viewTarget.activo
-      if (sinCambios) { setDialogOpen(false); return }
+      if (sinCambios) { cancelEdit(); return }
     }
 
-    const lastModified = viewTarget?.modifico_fecha ?? undefined
+    const editing = viewTarget
+    const lastModified = editing?.modifico_fecha ?? undefined
     startTransition(async () => {
-      const result = viewTarget
-        ? await updateSerieRecibo(viewTarget.empresa, viewTarget.proyecto, viewTarget.serie, form, lastModified)
-        : await createSerieRecibo(form)
+      if (editing) {
+        const result = await updateSerieRecibo(editing.empresa, editing.proyecto, editing.serie, form, lastModified)
+        if (result.error) {
+          toast.error(result.error)
+          if (result.error.includes('modificado')) setHadConflict(true)
+          return
+        }
+        if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+        const row = result.row
+        setHadConflict(false)
+        setViewTarget(row)
+        setForm({
+          empresa: row.empresa,
+          proyecto: row.proyecto,
+          serie: row.serie,
+          serie_factura: row.serie_factura ?? null,
+          dias_fecha: row.dias_fecha,
+          correlativo: row.correlativo,
+          formato: row.formato,
+          predeterminado: row.predeterminado,
+          recibo_automatico: row.recibo_automatico,
+          activo: row.activo,
+        })
+        setIsEditing(false)
+        toast.success('Serie actualizada.')
+        router.refresh()
+        return
+      }
+      const result = await createSerieRecibo(form)
       if (result.error) {
         toast.error(result.error)
-        if (result.error.includes('modificado')) setHadConflict(true)
-      } else {
-        setHadConflict(false)
-        toast.success(viewTarget ? 'Serie actualizada.' : 'Serie creada.')
-        setDialogOpen(false)
-        router.refresh()
+        return
       }
+      setHadConflict(false)
+      toast.success('Serie creada.')
+      setDialogOpen(false)
+      router.refresh()
     })
   }
 

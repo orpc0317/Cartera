@@ -316,6 +316,8 @@ test('dos pestañas editan el mismo vendedor y solo la primera grabación vale',
     await dialogB.getByLabel('Nombre Vendedor *').fill(primero)
     await dialogB.getByRole('button', { name: 'Guardar' }).click()
     await confirmarSiParece(otra, 'Vendedor actualizado.')
+    await expect(dialogB.getByRole('heading', { name: primero, exact: true })).toBeVisible()
+    await dialogB.getByRole('button', { name: 'Close' }).click()
     await expect(dialogB).toBeHidden()
 
     await dialogA.getByLabel('Nombre Vendedor *').fill(segundo)

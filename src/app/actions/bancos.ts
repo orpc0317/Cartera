@@ -141,7 +141,7 @@ export async function updateBanco(
   codigo: number,
   form: Partial<BancoForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Banco }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.BAN_CAT, 'modificar')
@@ -205,7 +205,7 @@ export async function updateBanco(
   })
 
   revalidatePath('/dashboard/bancos/bancos')
-  return {}
+  return { row: data[0] as Banco }
 }
 
 export async function deleteBanco(empresa: number, proyecto: number, codigo: number): Promise<{ error?: string }> {

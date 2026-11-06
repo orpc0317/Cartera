@@ -141,7 +141,7 @@ export async function updateSupervisor(
   codigo: number,
   form: Partial<SupervisorForm>,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Supervisor }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.SUP_CAT, 'modificar')
@@ -201,7 +201,7 @@ export async function updateSupervisor(
   })
 
   revalidatePath('/dashboard/promesas/supervisores')
-  return {}
+  return { row: data[0] as Supervisor }
 }
 
 // ─── Eliminar ──────────────────────────────────────────────────────────────

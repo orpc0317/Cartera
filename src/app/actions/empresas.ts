@@ -184,7 +184,7 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
   return {}
 }
 
-export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, lastModified?: string): Promise<{ error?: string }> {
+export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, lastModified?: string): Promise<{ error?: string; row?: Empresa }> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'modificar')
@@ -246,7 +246,7 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
   })
 
   revalidatePath('/dashboard/proyectos/empresas')
-  return {}
+  return { row: data[0] as Empresa }
 }
 
 export async function deleteEmpresa(codigo: number): Promise<{ error?: string }> {

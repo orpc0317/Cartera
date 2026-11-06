@@ -137,7 +137,7 @@ export async function updateTipoDocumento(
   codigo: number,
   descripcion: string,
   lastModified?: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: TipoDocumento }> {
   const guard = await requirePermiso(PERMISOS.TDO_CAT, 'modificar')
   if (guard) return guard
 
@@ -196,7 +196,7 @@ export async function updateTipoDocumento(
   })
 
   revalidatePath('/dashboard/generales/tipos-documento')
-  return {}
+  return { row: data[0] as TipoDocumento }
 }
 
 export async function deleteTipoDocumento(

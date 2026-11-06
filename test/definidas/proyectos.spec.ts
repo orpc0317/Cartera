@@ -274,6 +274,8 @@ test('dos pestañas editan el mismo proyecto y solo la primera grabación vale',
     await dialogB.getByLabel('Nombre Proyecto *').fill(primero)
     await dialogB.getByRole('button', { name: 'Guardar' }).click()
     await guardarAunqueParezca(otra, 'Proyecto actualizado.')
+    await expect(dialogB.getByRole('heading', { name: primero, exact: true })).toBeVisible()
+    await dialogB.getByRole('button', { name: 'Close' }).click()
     await expect(dialogB).toBeHidden()
 
     await dialogA.getByLabel('Nombre Proyecto *').fill(segundo)

@@ -44,6 +44,7 @@ El protocolo de trabajo está en `AGENTS.md`. La arquitectura de la aplicación 
 - **Data fetching:** en `page.tsx` usar `Promise.all` con `.catch()` por llamada (nunca un `try/catch` global). Ver `.cursor/rules/server-actions.mdc`.
 - **Queries:** seleccionar solo las columnas necesarias (`.select('col1, col2')`), no `select('*')` salvo justificación.
 - **Revalidación:** usar `router.refresh()` después de mutaciones (patrón establecido del proyecto).
+- **Modal tras guardar una edición:** obligatorio en todo catálogo con Ver/Editar. El `update*` devuelve `{ row }` con la fila guardada, `modifico_fecha` incluido. El modal no se cierra: esa fila se asigna a `viewTarget`, el formulario se rearma como en `openView` y se vuelve a Ver con `setIsEditing(false)`. Sin cambios equivale a Cancelar. El alta sí cierra el modal. `router.refresh()` sigue actualizando la lista. El snippet que se copia está en `.cursor/rules/components.mdc` § C y en `.cursor/rules/server-actions.mdc`.
 - **Lazy loading:** preferir imports dinámicos para componentes pesados que no son necesarios en el render inicial.
 - **Evitar re-renders:** no crear objetos/funciones inline dentro del JSX de listas grandes; usar `useCallback`/`useMemo` cuando el profiler lo justifique, no de forma preventiva.
 

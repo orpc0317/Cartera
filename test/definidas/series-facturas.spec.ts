@@ -257,6 +257,8 @@ test('editar deja la serie bloqueada y no se puede vaciar', async ({ page }) => 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('La serie es requerida.')).toHaveCount(0)
   await expect(page.getByText('Serie actualizada.')).toHaveCount(0)
+  await expect(dialog.getByRole('heading', { name: serie, exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   await expect(fila.locator('td').first()).toHaveText(serie)
   if (propia) await eliminarSerie(page, serie)
@@ -315,6 +317,9 @@ test('dos pestañas editan la misma serie y solo la primera grabación vale', as
     await expect(dialogB.getByLabel('Formato')).toHaveValue('8')
     await dialogB.getByRole('button', { name: 'Guardar' }).click()
     await expect(otra.getByText('Serie actualizada.')).toBeVisible()
+    await expect(dialogB.getByRole('heading', { name: serie, exact: true })).toBeVisible()
+    expect(await valorDeVista(dialogB, 'Formato')).toBe('8')
+    await dialogB.getByRole('button', { name: 'Close' }).click()
     await expect(dialogB).toBeHidden()
 
     await dialogA.getByLabel('Formato').fill('3')

@@ -288,7 +288,7 @@ Every UPDATE guards against concurrent edits using `modifico_fecha` as a version
 ```ts
 export async function updateEntity(
   ..., form: EntityForm, lastModified?: string
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; row?: Entity }> {
   const now = new Date().toISOString()
   let query = admin.schema('cartera').from('t_entity')
     .update({ ...form, modifico_usuario: auditUser.userId, modifico_fecha: now })
@@ -301,6 +301,7 @@ export async function updateEntity(
   if (lastModified && (!data || data.length === 0))
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   // writeAudit...
+  return { row: data[0] as Entity }
 }
 ```
 
@@ -309,21 +310,35 @@ export async function updateEntity(
 ```ts
 const [hadConflict, setHadConflict] = useState(false)
 
-// In handleSave:
-const lastModified = viewTarget?.modifico_fecha ?? undefined
-const result = viewTarget
-  ? await updateEntity(..., form, lastModified)
-  : await createEntity(form)
-
+// In handleSave, keep update and create in separate branches.
+// A ternary union drops `row` because create does not return it.
+const editing = viewTarget
+const lastModified = editing?.modifico_fecha ?? undefined
+if (editing) {
+  const result = await updateEntity(..., form, lastModified)
+  if (result.error) {
+    toast.error(result.error)
+    if (result.error.includes('modificado')) setHadConflict(true)
+    return
+  }
+  if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
+  setHadConflict(false)
+  setViewTarget(result.row)
+  setForm(buildFormFromEntity(result.row))
+  setIsEditing(false)
+  toast.success('X actualizado.')
+  router.refresh()
+  return
+}
+const result = await createEntity(form)
 if (result.error) {
   toast.error(result.error)
-  if (result.error.includes('modificado')) setHadConflict(true)
-} else {
-  setHadConflict(false)
-  toast.success(viewTarget ? 'X actualizado.' : 'X creado.')
-  setDialogOpen(false)
-  router.refresh()
+  return
 }
+setHadConflict(false)
+toast.success('X creado.')
+setDialogOpen(false)
+router.refresh()
 
 // In Dialog onOpenChange:
 if (!open && hadConflict) { setHadConflict(false); router.refresh() }
@@ -331,5 +346,6 @@ if (!open && hadConflict) { setHadConflict(false); router.refresh() }
 
 Rules:
 - Always pass `viewTarget?.modifico_fecha ?? undefined` to every update call.
+- A successful update returns `{ row }` from `.select()`. Keep the update call in its own branch, apart from create: the create type has no `row`, and a ternary does not narrow it. The client assigns that row to `viewTarget`, rebuilds the form the same way `openView` does, and sets `setIsEditing(false)`. The dialog stays open. Create still calls `setDialogOpen(false)`.
 - Set `hadConflict(true)` **only** when `result.error.includes('modificado')`.
 - Conflict message is always exactly: `'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.'`
