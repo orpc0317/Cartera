@@ -1,6 +1,6 @@
 ---
 name: crud-screen
-description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, permission-gated UI, campo con error al grabar, and the Playwright file in test/definidas. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
+description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, re-read of the open record on Ver (obtener* + useRegistroVer), permission-gated UI, campo con error al grabar, and the Playwright file in test/definidas. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
 argument-hint: 'Ruta al spec, e.g. prompts/crud-bancos.md — o el pedido de la pantalla, si no hay spec'
 ---
 
@@ -121,6 +121,7 @@ Create `src/app/actions/<entity>.ts`. Required exports:
 | Function | Description |
 |----------|-------------|
 | `getEntities()` | Fetch all rows filtered by cuenta |
+| `obtenerEntity(...pk)` | Re-read one row when Ver opens. `requirePermiso(..., 'consultar')` first, then `getCuentaActiva`, then one row with reference names. See `server-actions.mdc` |
 | `createEntity(form: EntityForm)` | Insert with audit fields |
 | `updateEntity(pk, form, lastModified?)` | Update with optimistic concurrency and return `{ row }` |
 | `deleteEntity(pk)` | Hard delete |
@@ -245,6 +246,7 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 - **Edit mode:** form fields per `CAMPOS_FORMULARIO`, same `SegmentCard` grouping; if RELACIONES defines cascade selects, on parent change reset child to first available item or `0`
 - **Footer (estándar 2026-08):** view mode → single row of ghost buttons: Historial, [acciones extra de la entidad], Eliminar (if `puedeEliminar`), Editar (if `puedeModificar`) — **no** botón "Cerrar" (la "x" del header ya cierra); edit mode → Cancelar/Volver + Guardar
 - **Tras guardar una edición:** el modal sigue abierto en Ver. `update*` devuelve `{ row }`. `setViewTarget(result.row)`, rearmar el formulario como `openView` y `setIsEditing(false)`. Sin cambios llama `cancelEdit()`. El alta cierra el modal con `setDialogOpen(false)`. `router.refresh()` actualiza la tabla. Este paso es obligatorio antes de dar la pantalla por terminada.
+- **Al abrir Ver:** `useFilas(initialData)` y `useRegistroVer` llaman `obtenerEntity` solo de esa fila. Editar queda `disabled={lecturaPendiente}` hasta que la lectura termina. Los nombres de referencias usan `nombreLeido`. `alLlegar` reemplaza esa fila en la lista y, si el usuario ya está editando, solo actualiza `modifico_fecha`. El alta no llama `obtenerEntity`. No hagas `router.refresh()` al abrir. El snippet está en `.cursor/rules/components.mdc` § C.
 - **Delete:** `AlertDialog` with "¿Estás seguro?" pattern, triggered from the footer's Eliminar button (not a row dropdown); only shown if `puedeEliminar`
 - **Guard obligatorio:** el `modal={false}` del Dialog principal debe ignorar `onOpenChange(false)` mientras `auditTarget`/`deleteTarget`/cualquier otro dialog anidado esté abierto — ver `.cursor/rules/base-ui-gotchas.mdc` § 5
 
@@ -329,7 +331,7 @@ Run these before reporting the screen finished. Do not use `get_errors` or Power
 - [ ] `src/lib/types/<entity>.ts` created with `Entity` and `EntityForm`
 - [ ] `src/app/actions/<entity>.ts` created; all functions exported
 - [ ] `src/app/dashboard/<ruta>/page.tsx` created as Server Component
-- [ ] `src/app/dashboard/<ruta>/_client.tsx` created with `'use client'`, structured like Clientes
+- [ ] `src/app/dashboard/<ruta>/_client.tsx` created with `'use client'`, structured like Clientes, and Ver re-reads the record (`useRegistroVer` + `obtenerEntity`, Editar disabled until that read, names from `nombreLeido`)
 - [ ] `src/lib/permisos.ts` contains `PERMISOS.<PERMISO>`
 - [ ] `src/components/layout/app-sidebar.tsx` has the new route registered
 - [ ] Accent color table in `.cursor/rules/ui-conventions.mdc` updated (add row if new module)

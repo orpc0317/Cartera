@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import {
   createCoordinador, updateCoordinador, deleteCoordinador,
+  obtenerCoordinador,
 } from '@/app/actions/coordinadores'
 import type { Empresa, Proyecto, Supervisor, Coordinador, CoordinadorForm } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
@@ -230,6 +233,8 @@ export function CoordinadoresClient({
   initialData, empresas, proyectos, supervisores,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -242,7 +247,7 @@ export function CoordinadoresClient({
 
   // ── Estado de modal ───────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen]         = useState(false)
-  const [viewTarget, setViewTarget]         = useState<Coordinador | null>(null)
+  const [viewTarget, setViewTarget]         = useState<(Coordinador & NombresVer) | null>(null)
   const [isEditing, setIsEditing]           = useState(false)
   const [hadConflict, setHadConflict]       = useState(false)
   const [form, setForm]                     = useState<CoordinadorForm>(EMPTY_FORM)
@@ -265,14 +270,14 @@ export function CoordinadoresClient({
   // ── Filtrado ──────────────────────────────────────────────────────────
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return initialData
-    return initialData.filter((c) =>
+    if (!q) return filas
+    return filas.filter((c) =>
       c.nombre.toLowerCase().includes(q) ||
       (empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
       (proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q) ||
       (supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap, proyectoMap, supervisorMap])
+  }, [filas, search, empresaMap, proyectoMap, supervisorMap])
 
   const filtered = useMemo(() => afterSearch.filter((c) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -333,7 +338,7 @@ export function CoordinadoresClient({
   const visibleCols = colPrefs.filter((p) => p.visible && ALL_COLUMNS.some((c) => c.key === p.key))
 
   function uniqueVals(key: keyof Coordinador) {
-    return [...new Set(initialData.map((c) => String(c[key] ?? '')))].sort()
+    return [...new Set(filas.map((c) => String(c[key] ?? '')))].sort()
   }
 
   // ── Cursor de teclado ─────────────────────────────────────────────────
@@ -408,6 +413,26 @@ export function CoordinadoresClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerCoordinador(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(buildFormFromCoordinador(row))
+    },
+  })
+
   function openView(coordinador: Coordinador) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -441,7 +466,7 @@ export function CoordinadoresClient({
     }
 
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((c) =>
+    const candidates = filas.filter((c) =>
       c.empresa === form.empresa && c.proyecto === form.proyecto &&
       (viewTarget ? c.codigo !== viewTarget.codigo : true)
     )
@@ -581,7 +606,7 @@ export function CoordinadoresClient({
                     <TableHead key="__empresa">
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(initialData.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
                         active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -596,7 +621,7 @@ export function CoordinadoresClient({
                     <TableHead key="__proyecto">
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(initialData.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -611,7 +636,7 @@ export function CoordinadoresClient({
                     <TableHead key="__supervisor">
                       <ColumnFilter
                         label="Supervisor"
-                        values={[...new Set(initialData.map((c) => supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? `#${c.supervisor}`))].sort()}
+                        values={[...new Set(filas.map((c) => supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? `#${c.supervisor}`))].sort()}
                         active={new Set([...(colFilters['__supervisor'] ?? new Set())].map((k) => supervisorMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(supervisores.map((s) => [s.nombre, `${s.empresa}-${s.proyecto}-${s.codigo}`]))
@@ -764,7 +789,7 @@ export function CoordinadoresClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -785,12 +810,12 @@ export function CoordinadoresClient({
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
-                    <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`)} /></div>
+                    <div className="col-span-2"><ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
                     <div className="col-span-2"><ViewField locked label="Codigo"   value={String(viewTarget.codigo)} /></div>
                   </SegmentCard>
                   <SegmentCard label="GENERAL">
-                    <div className="col-span-2"><ViewField label="Supervisor" value={supervisorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.supervisor}`) ?? `#${viewTarget.supervisor}`} /></div>
+                    <div className="col-span-2"><ViewField label="Supervisor" value={nombreLeido(viewTarget.supervisor_nombre, supervisorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.supervisor}`) ?? `#${viewTarget.supervisor}`)} /></div>
                     <div className="col-span-2"><ViewField label="Nombre"     value={viewTarget.nombre} /></div>
                     <div className="col-span-2 flex items-center gap-2 py-1">
                       <Checkbox checked={!!viewTarget.activo} disabled />
@@ -880,7 +905,7 @@ export function CoordinadoresClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-950/30" onClick={() => setIsEditing(true)}>
+                  <Button variant="ghost" size="sm" className="hover:bg-blue-50 dark:hover:bg-blue-950/30" onClick={() => setIsEditing(true)} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Manzana, ManzanaForm } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -66,6 +68,23 @@ export async function getManzanas(empresa?: number, proyecto?: number, fase?: nu
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Manzana[]
+}
+
+export async function obtenerManzana(
+  empresa: number,
+  proyecto: number,
+  fase: number,
+  codigo: string,
+): Promise<{ row?: Manzana & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.MAN_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Manzana>(
+    createAdminClient(), cuenta, 't_manzana',
+    { cuenta, empresa, proyecto, fase, codigo }, '*',
+    { empresa, proyecto, fase },
+  )
 }
 
 export async function createManzana(form: ManzanaForm): Promise<{ error?: string }> {

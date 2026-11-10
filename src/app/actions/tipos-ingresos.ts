@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -68,6 +70,22 @@ export async function getTiposIngresos(): Promise<TipoIngreso[]> {
     .order('nombre')
   if (error) throw new Error(error.message)
   return (data ?? []) as TipoIngreso[]
+}
+
+export async function obtenerTipoIngreso(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: TipoIngreso & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.TIN_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<TipoIngreso>(
+    createAdminClient(), cuenta, 't_tipo_ingreso',
+    { cuenta, empresa, proyecto, codigo }, '*',
+    { empresa, proyecto },
+  )
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────

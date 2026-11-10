@@ -103,7 +103,7 @@ className={`group cursor-pointer transition-colors ${isActive ? 'bg-{accent}-50 
 isActive ? 'bg-{accent}-50 dark:bg-{accent}-950/30' : 'bg-card group-hover:bg-muted/40'
 ```
 
-Row interactions: `onClick`  `setCursorIdx(rowIdx)`, `onDoubleClick`  `openView(row)`.
+Row interactions: `onClick`  `setCursorIdx(rowIdx)`, `onDoubleClick`  `openView(row)`. The re-read of that record lives inside the client, in `components.mdc` § C. The double-click still calls `openView(row)`.
 PK key: `key={row.codigo}` for single PK, `key={`${row.empresa}-${row.codigo}`}` for composite PK.
 
 ---

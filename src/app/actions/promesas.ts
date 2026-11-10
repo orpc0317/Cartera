@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
 import type { PromesaOtroPayload } from '@/lib/types/promesa-otros'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -72,6 +74,28 @@ export async function getPromesas(empresa?: number, proyecto?: number): Promise<
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return (data ?? []) as Promesa[]
+}
+
+export async function obtenerPromesa(
+  empresa: number,
+  proyecto: number,
+  numero: number,
+): Promise<{ row?: Promesa & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.PRE_OPE, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Promesa>(
+    createAdminClient(), cuenta, 't_promesa',
+    { cuenta, empresa, proyecto, numero }, '*',
+    (row) => ({
+      empresa: row.empresa,
+      proyecto: row.proyecto,
+      fase: row.fase,
+      cliente: row.cliente,
+      vendedor: row.vendedor,
+    }),
+  )
 }
 
 // ─── Crear ─────────────────────────────────────────────────────────────────

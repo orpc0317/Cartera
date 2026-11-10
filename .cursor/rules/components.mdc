@@ -102,6 +102,40 @@ const subtitle = viewTarget ? (empresaMap.get(viewTarget.empresa) ?? '') : ''   
 
 Copy all five. In `startEdit` list every `<EntityForm>` field. Replace `create<Entity>` / `update<Entity>` with the actual action import names (convención: `createBanco`, `updateBanco`, `deleteBanco` — camelCase `create/update/delete` + PascalCase entity, importados desde `@/app/actions/<entity-kebab>.ts`).
 
+`openView` sigue asignando la fila de la tabla para pintar de inmediato. Además, toda pantalla con modal Ver relee solo ese registro. El alta (`viewTarget === null`) no dispara la lectura. No uses `router.refresh()` al abrir.
+
+```ts
+import { obtener<Entity> } from '@/app/actions/<entity-kebab>'
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
+
+const [filas, setFilas] = useFilas(initialData)
+const [viewTarget, setViewTarget] = useState<(<Entity> & NombresVer) | null>(null)
+
+const claveVer = dialogOpen && viewTarget
+  ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}`
+  : null
+const { lecturaPendiente } = useRegistroVer({
+  activo: dialogOpen && viewTarget != null,
+  clave: claveVer,
+  editando: isEditing,
+  leer: () => viewTarget
+    ? obtener<Entity>(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+    : Promise.resolve({ error: 'Registro no encontrado.' }),
+  alLlegar: (row, editando) => {
+    setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+    if (editando) {
+      setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+      return
+    }
+    setViewTarget(row)
+    setForm(/* the same rebuild openView uses */)
+  },
+})
+```
+
+Usa `filas` en la tabla. La clave repite la PK de la entidad. Editar lleva `disabled={lecturaPendiente}`: sigue deshabilitado si la lectura falla, para no grabar con un `modifico_fecha` viejo. El nombre visible de una referencia sale de la lectura: `nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')`. Una pestaña que ya consulta su detalle por id puede seguir haciéndolo; la cabecera y los nombres no quedan exentos. `server-actions.mdc` define `obtener<Entity>`.
+
 ```ts
 function openCreate() {
   limpiarCampoInvalido()
@@ -791,7 +825,7 @@ return (
             </Button>
           )}
           {puedeModificar && (
-            <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={startEdit}>
+            <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={startEdit} disabled={lecturaPendiente}>
               <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
             </Button>
           )}

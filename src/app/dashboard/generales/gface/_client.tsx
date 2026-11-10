@@ -1,5 +1,8 @@
 'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
+
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,7 +35,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { createGface, updateGface, deleteGface } from '@/app/actions/gface'
+import { createGface, updateGface, deleteGface,
+  obtenerGface,
+} from '@/app/actions/gface'
 import type { Empresa, Proyecto } from '@/lib/types/proyectos'
 import type { Gface, GfaceForm } from '@/lib/types/gface'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -293,6 +298,8 @@ export function GfaceClient({
   initialData, empresas, proyectos,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -303,7 +310,7 @@ export function GfaceClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Gface | null>(null)
+  const [viewTarget, setViewTarget] = useState<(Gface & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Gface | null>(null)
   const [auditTarget, setAuditTarget] = useState<Gface | null>(null)
   const [form, setForm] = useState<GfaceForm>(EMPTY_FORM)
@@ -316,18 +323,18 @@ export function GfaceClient({
     [proyectos, form.empresa],
   )
 
-  const uniqueEmpresaNames = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? String(r.empresa)))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? String(r.proyecto)))].sort(), [initialData, proyectoMap])
+  const uniqueEmpresaNames = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? String(r.empresa)))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? String(r.proyecto)))].sort(), [filas, proyectoMap])
   const uniqueText = useMemo(() => {
     const keys = ['nombre', 'requestor', 'entity', 'user_name', 'web_service', 'web_service_documento', 'certificado_post', 'certificado_ruta', 'certificado_nombre', 'correo_envio', 'correo_copia'] as const
     const out: Record<string, string[]> = {}
     for (const key of keys) {
-      out[key] = [...new Set(initialData.map((r) => textOrEmpty(r[key])).filter(Boolean))].sort()
+      out[key] = [...new Set(filas.map((r) => textOrEmpty(r[key])).filter(Boolean))].sort()
     }
     return out
-  }, [initialData])
-  const uniquePrimera = useMemo(() => [...new Set(initialData.map((r) => flagLabel(r.primera_firma)))].sort(), [initialData])
-  const uniqueValidar = useMemo(() => [...new Set(initialData.map((r) => flagLabel(r.validar_identificacion)))].sort(), [initialData])
+  }, [filas])
+  const uniquePrimera = useMemo(() => [...new Set(filas.map((r) => flagLabel(r.primera_firma)))].sort(), [filas])
+  const uniqueValidar = useMemo(() => [...new Set(filas.map((r) => flagLabel(r.validar_identificacion)))].sort(), [filas])
 
   function setColFilter(col: string, next: Set<string>) {
     setColFilters((prev) => {
@@ -338,7 +345,7 @@ export function GfaceClient({
     })
   }
 
-  const afterSearch = useMemo(() => initialData.filter((row) => {
+  const afterSearch = useMemo(() => filas.filter((row) => {
     const q = search.toLowerCase()
     return !q ||
       row.nombre.toLowerCase().includes(q) ||
@@ -349,7 +356,7 @@ export function GfaceClient({
       textOrEmpty(row.correo_envio).toLowerCase().includes(q) ||
       textOrEmpty(row.correo_copia).toLowerCase().includes(q) ||
       textOrEmpty(row.web_service).toLowerCase().includes(q)
-  }), [initialData, search])
+  }), [filas, search])
 
   const filtered = useMemo(() => afterSearch.filter((row) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -444,6 +451,26 @@ export function GfaceClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerGface(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(buildForm(row))
+    },
+  })
+
   function openView(row: Gface) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -506,7 +533,7 @@ export function GfaceClient({
     }
 
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((row) =>
+    const candidates = filas.filter((row) =>
       row.empresa === form.empresa && row.proyecto === form.proyecto &&
       (viewTarget ? row.codigo !== viewTarget.codigo : true)
     )
@@ -564,7 +591,7 @@ export function GfaceClient({
       : (viewTarget?.nombre ?? '')
 
   const dialogSubtitle = viewTarget
-    ? `${empresaMap.get(viewTarget.empresa) ?? ''} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
+    ? `${nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
     : undefined
 
   function filterValues(key: string): string[] {
@@ -776,10 +803,10 @@ export function GfaceClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2">
-                        <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
+                        <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
                       </div>
                       <div className="col-span-2">
-                        <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} />
+                        <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
                       </div>
                       <div className="col-span-2">
                         <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
@@ -963,7 +990,7 @@ export function GfaceClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-gray-50 dark:hover:bg-gray-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-gray-50 dark:hover:bg-gray-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

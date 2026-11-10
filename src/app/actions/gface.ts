@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Gface, GfaceForm } from '@/lib/types/gface'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -175,6 +177,22 @@ export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gf
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Gface[]
+}
+
+export async function obtenerGface(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: Gface & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.GFA_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Gface>(
+    createAdminClient(), cuenta, 't_gface',
+    { cuenta, empresa, proyecto, codigo }, GFACE_COLUMNS,
+    { empresa, proyecto },
+  )
 }
 
 export async function createGface(form: GfaceForm): Promise<{ error?: string }> {

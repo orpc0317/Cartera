@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -28,7 +30,9 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { createEmpresa, updateEmpresa, deleteEmpresa } from '@/app/actions/empresas'
+import { createEmpresa, updateEmpresa, deleteEmpresa,
+  obtenerEmpresa,
+} from '@/app/actions/empresas'
 import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
 import { REGIMENES_ISR, validarNIT } from '@/lib/constants'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -243,6 +247,8 @@ export function EmpresasClient({
   initialData, paises, departamentos, municipios,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -251,7 +257,7 @@ export function EmpresasClient({
   const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [auditTarget, setAuditTarget] = useState<Empresa | null>(null)
-  const [viewTarget, setViewTarget]   = useState<Empresa | null>(null)
+  const [viewTarget, setViewTarget]   = useState<(Empresa & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Empresa | null>(null)
   const [form, setForm]               = useState<EmpresaForm>(EMPTY_FORM)
   const [similarWarning, setSimilarWarning] = useState<Empresa[] | null>(null)
@@ -285,9 +291,9 @@ export function EmpresasClient({
   }
 
   const uniqueVals = (key: keyof Empresa) =>
-    [...new Set(initialData.map((e) => String(e[key] ?? '')))].sort()
+    [...new Set(filas.map((e) => String(e[key] ?? '')))].sort()
 
-  const afterSearch = initialData.filter((e) => {
+  const afterSearch = filas.filter((e) => {
     const q = search.toLowerCase()
     return !q ||
       e.nombre?.toLowerCase().includes(q) ||
@@ -408,6 +414,29 @@ export function EmpresasClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerEmpresa(viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => String(r.codigo), row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      const built = buildFormFromEmpresa(row)
+      setForm(built.form)
+      setPaisCodigo(built.paisCodigo)
+      setDeptoCodigo(built.deptoCodigo)
+    },
+  })
+
   function openView(empresa: Empresa) {
     setCampoInvalido(null)
     setActiveTab('general')
@@ -484,7 +513,7 @@ export function EmpresasClient({
     }
 
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((e) => viewTarget ? e.codigo !== viewTarget.codigo : true)
+    const candidates = filas.filter((e) => viewTarget ? e.codigo !== viewTarget.codigo : true)
     const similar = candidates.filter(
       (e) => e.nombre && jaroWinkler(normalizedInput, toDbString(e.nombre)) >= 0.85,
     )
@@ -533,7 +562,7 @@ export function EmpresasClient({
   function exportCSV() {
     const date = new Date().toISOString().slice(0, 10)
     const headers = ['Codigo', 'Nombre', 'Razon Social', 'ID Tributaria', 'Direccion', 'Pais', 'Departamento', 'Municipio', 'Codigo Postal', 'Regimen ISR']
-    const rows = initialData.map((e) => [
+    const rows = filas.map((e) => [
       e.codigo,
       e.nombre,
       e.razon_social,
@@ -636,7 +665,7 @@ export function EmpresasClient({
                     <TableHead key="__regimen">
                       <ColumnFilter
                         label="Regimen ISR"
-                        values={[...new Set(initialData.map((e) => REGIMENES_ISR[e.regimen_isr] ?? String(e.regimen_isr)))].sort()}
+                        values={[...new Set(filas.map((e) => REGIMENES_ISR[e.regimen_isr] ?? String(e.regimen_isr)))].sort()}
                         active={new Set([...(colFilters['__regimen'] ?? new Set())].map((k) => REGIMENES_ISR[Number(k)] ?? k))}
                         onChange={(labels) => {
                           const byLabel = Object.fromEntries(
@@ -655,11 +684,11 @@ export function EmpresasClient({
                       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                       values={
                         col.key === 'direccion_pais'
-                          ? [...new Set(initialData.map((e) => paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais ?? ''))].sort()
+                          ? [...new Set(filas.map((e) => paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais ?? ''))].sort()
                           : col.key === 'direccion_departamento'
-                          ? [...new Set(initialData.map((e) => departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento ?? ''))].sort()
+                          ? [...new Set(filas.map((e) => departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento ?? ''))].sort()
                           : col.key === 'direccion_municipio'
-                          ? [...new Set(initialData.map((e) => municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio ?? ''))].sort()
+                          ? [...new Set(filas.map((e) => municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio ?? ''))].sort()
                           : uniqueVals(col.key as keyof Empresa)
                       }
                       active={colFilters[col.key] ?? new Set()}
@@ -860,7 +889,7 @@ export function EmpresasClient({
                                   height={14}
                                   className="object-cover rounded-sm shrink-0"
                                 />
-                                {p?.nombre ?? viewTarget.direccion_pais}
+                                {nombreLeido(viewTarget.pais_nombre, p?.nombre ?? viewTarget.direccion_pais)}
                               </span>
                             )
                           })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}></span>}
@@ -868,11 +897,11 @@ export function EmpresasClient({
                       </div>
                       <ViewField
                         label="Departamento"
-                        value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
+                        value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)}
                       />
                       <ViewField
                         label="Municipio"
-                        value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
+                        value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)}
                       />
                       <ViewField label="Codigo Postal" value={viewTarget.codigo_postal} />
                     </SegmentCard>
@@ -1073,7 +1102,7 @@ export function EmpresasClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

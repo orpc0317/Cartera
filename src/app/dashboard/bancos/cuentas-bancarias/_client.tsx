@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -34,6 +36,7 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   createCuentaBancaria, updateCuentaBancaria, deleteCuentaBancaria,
+  obtenerCuentaBancaria,
 } from '@/app/actions/cuentas-bancarias'
 import type { CuentaBancaria, CuentaBancariaForm, Empresa, Proyecto, Banco, Moneda } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
@@ -224,6 +227,8 @@ export function CuentasBancariasClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -232,7 +237,7 @@ export function CuentasBancariasClient({
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
-  const [viewTarget, setViewTarget]     = useState<CuentaBancaria | null>(null)
+  const [viewTarget, setViewTarget]     = useState<(CuentaBancaria & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CuentaBancaria | null>(null)
   const [auditTarget, setAuditTarget]   = useState<CuentaBancaria | null>(null)
   const [form, setForm]                 = useState<CuentaBancariaForm>(EMPTY_FORM)
@@ -258,22 +263,22 @@ export function CuentasBancariasClient({
   }
 
   // Unique values for column filters
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)  ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueBancoNames    = useMemo(() => [...new Set(initialData.map((r) => bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? ''))].sort(), [initialData, bancoMap])
-  const uniqueMonedaLabels  = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(), [initialData])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)  ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueBancoNames    = useMemo(() => [...new Set(filas.map((r) => bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? ''))].sort(), [filas, bancoMap])
+  const uniqueMonedaLabels  = useMemo(() => [...new Set(filas.map((r) => r.moneda))].sort(), [filas])
 
   // ─── Filtering pipeline ───────────────────────────────────────────────────
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    return !q ? initialData : initialData.filter((r) =>
+    return !q ? filas : filas.filter((r) =>
       r.nombre?.toLowerCase().includes(q) ||
       r.numero?.toLowerCase().includes(q) ||
       (bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '').toLowerCase().includes(q) ||
       String(r.codigo).includes(q)
     )
-  }, [initialData, search, bancoMap])
+  }, [filas, search, bancoMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
@@ -376,6 +381,26 @@ export function CuentasBancariasClient({
     setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto, banco: firstBanco })
     setDialogOpen(true)
   }
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerCuentaBancaria(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm({ empresa: row.empresa, proyecto: row.proyecto, banco: row.banco, numero: row.numero, nombre: row.nombre, moneda: row.moneda, activo: row.activo })
+    },
+  })
 
   function openView(cb: CuentaBancaria) {
     limpiarCampoInvalido()
@@ -561,7 +586,7 @@ export function CuentasBancariasClient({
                       col.key === 'banco'    ? uniqueBancoNames    :
                       col.key === 'moneda'   ? uniqueMonedaLabels  :
                       col.key === 'activo'   ? ['Activo', 'Inactivo'] :
-                      [...new Set(initialData.map((r) => String(r[col.key as keyof CuentaBancaria] ?? '')))].sort()
+                      [...new Set(filas.map((r) => String(r[col.key as keyof CuentaBancaria] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
                     onChange={(v) => setColFilter(col.key, v)}
@@ -682,7 +707,7 @@ export function CuentasBancariasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? ''}
+                    {nombreLeido(viewTarget.banco_nombre, bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -703,12 +728,12 @@ export function CuentasBancariasClient({
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="Identificacion">
-                    <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`} /></div>
-                    <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
                     <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                   </SegmentCard>
                   <SegmentCard label="General">
-                    <div className="col-span-2"><ViewField label="Banco"    value={bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`} /></div>
+                    <div className="col-span-2"><ViewField label="Banco"    value={nombreLeido(viewTarget.banco_nombre, bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`)} /></div>
                     <div className="col-span-2"><ViewField label="Nombre Cuenta"  value={viewTarget.nombre} /></div>
                     <ViewField label="Numero Cuenta" value={viewTarget.numero} />
                     <div className="grid gap-1">
@@ -840,7 +865,7 @@ export function CuentasBancariasClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-cyan-50 dark:hover:bg-cyan-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-cyan-50 dark:hover:bg-cyan-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

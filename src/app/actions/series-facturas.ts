@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { SerieFactura, SerieFacturaForm } from '@/lib/types/series-facturas'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -170,6 +172,22 @@ export async function getSeriesFacturas(): Promise<SerieFactura[]> {
     .order('serie')
   if (error) throw new Error(error.message)
   return data as SerieFactura[]
+}
+
+export async function obtenerSerieFactura(
+  empresa: number,
+  proyecto: number,
+  serie: string,
+): Promise<{ row?: SerieFactura & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.SER_FAC, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<SerieFactura>(
+    createAdminClient(), cuenta, 't_serie_factura',
+    { cuenta, empresa, proyecto, serie }, COLUMNS,
+    (row) => ({ empresa: row.empresa, proyecto: row.proyecto, gface: row.gface }),
+  )
 }
 
 export async function createSerieFactura(form: SerieFacturaForm): Promise<{ error?: string }> {

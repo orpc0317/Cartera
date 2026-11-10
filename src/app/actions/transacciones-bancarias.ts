@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { TransaccionBancaria } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -41,6 +43,32 @@ export async function getTransaccionesBancarias(): Promise<TransaccionBancaria[]
 
   if (error) throw new Error(error.message)
   return (data ?? []) as TransaccionBancaria[]
+}
+
+export async function obtenerTransaccionBancaria(
+  empresa: number,
+  cuentaBancaria: number,
+  numeroTransaccion: string,
+): Promise<{ row?: TransaccionBancaria & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.TRX_BAN, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+  const { data: propia } = await admin
+    .schema('cartera')
+    .from('t_cuenta_bancaria')
+    .select('codigo')
+    .eq('cuenta', cuenta)
+    .eq('codigo', cuentaBancaria)
+    .maybeSingle()
+  if (!propia) return { error: 'Registro no encontrado.' }
+  return filaConNombres<TransaccionBancaria>(
+    admin, cuenta, 't_transaccion_bancaria',
+    { empresa, cuenta_bancaria: cuentaBancaria, numero_transaccion: numeroTransaccion },
+    '*',
+    { empresa, cuentaBancaria },
+  )
 }
 
 // ─── Anular ───────────────────────────────────────────────────────────────

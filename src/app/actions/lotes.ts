@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Lote, LoteForm, SerieRecibo } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres, leerNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -67,6 +69,24 @@ export async function getLotes(empresa?: number, proyecto?: number, fase?: numbe
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Lote[]
+}
+
+export async function obtenerLote(
+  empresa: number,
+  proyecto: number,
+  fase: number,
+  manzana: string,
+  codigo: string,
+): Promise<{ row?: Lote & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.LOT_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Lote>(
+    createAdminClient(), cuenta, 't_lote',
+    { cuenta, empresa, proyecto, fase, manzana, codigo }, '*',
+    { empresa, proyecto, fase },
+  )
 }
 
 export async function getSeriesRecibo(): Promise<SerieRecibo[]> {
@@ -364,6 +384,89 @@ export async function getReservas(empresa?: number, proyecto?: number): Promise<
       cobrador:         rc?.cobrador ?? 0,
     }
   })
+}
+
+export async function obtenerReserva(
+  empresa: number,
+  proyecto: number,
+  numero: number,
+): Promise<{ row?: ReservaRow & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.RES_OPE, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_reserva')
+    .select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('numero', numero)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!data) return { error: 'Registro no encontrado.' }
+  let recibo: {
+    fecha?: string
+    monto?: number
+    moneda?: string
+    forma_pago?: number
+    banco?: number
+    numero_cuenta?: string
+    numero_documento?: string
+    cuenta_deposito?: number
+    cobrador?: number
+  } | null = null
+  if (data.recibo_numero > 0) {
+    const rec = await admin
+      .schema('cartera')
+      .from('t_recibo_caja')
+      .select('fecha, monto, moneda, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, cobrador')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .eq('serie', data.recibo_serie)
+      .eq('numero', data.recibo_numero)
+      .maybeSingle()
+    if (rec.error) return { error: rec.error.message }
+    recibo = rec.data
+  }
+  const nombres = await leerNombres(admin, cuenta, {
+    empresa,
+    proyecto,
+    fase: data.fase,
+    cliente: data.cliente,
+    vendedor: data.vendedor,
+    banco: recibo?.banco ?? 0,
+    cobrador: recibo?.cobrador ?? 0,
+    cuentaDeposito: recibo?.cuenta_deposito ?? 0,
+  })
+  const row: ReservaRow & NombresVer = {
+    cuenta,
+    numero: data.numero,
+    empresa: data.empresa,
+    proyecto: data.proyecto,
+    fase: data.fase,
+    manzana: data.manzana,
+    lote: data.lote,
+    cliente: data.cliente,
+    vendedor: data.vendedor,
+    recibo_serie: data.recibo_serie ?? '',
+    recibo_numero: data.recibo_numero,
+    estado: data.estado,
+    fecha: recibo?.fecha ?? '',
+    monto: recibo?.monto ?? 0,
+    moneda: recibo?.moneda ?? 'GTQ',
+    forma_pago: recibo?.forma_pago ?? 0,
+    banco: recibo?.banco ?? 0,
+    numero_cuenta: recibo?.numero_cuenta ?? '',
+    numero_documento: recibo?.numero_documento ?? '',
+    cuenta_deposito: recibo?.cuenta_deposito ?? 0,
+    cobrador: recibo?.cobrador ?? 0,
+    ...nombres,
+  }
+  return { row }
 }
 
 // ─── Crear Reserva ────────────────────────────────────────────────────────────

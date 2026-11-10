@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,7 +34,9 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createSerieRecibo, updateSerieRecibo, deleteSerieRecibo } from '@/app/actions/series-recibos'
+import { createSerieRecibo, updateSerieRecibo, deleteSerieRecibo,
+  obtenerSerieRecibo,
+} from '@/app/actions/series-recibos'
 import type { SerieRecibo, SerieReciboForm, Empresa, Proyecto, SerieFactura } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 
@@ -223,6 +227,8 @@ export function SeriesRecibosClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -231,7 +237,7 @@ export function SeriesRecibosClient({
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
-  const [viewTarget, setViewTarget]     = useState<SerieRecibo | null>(null)
+  const [viewTarget, setViewTarget]     = useState<(SerieRecibo & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SerieRecibo | null>(null)
   const [auditTarget, setAuditTarget]   = useState<SerieRecibo | null>(null)
   const [form, setForm]                 = useState<SerieReciboForm>(EMPTY_FORM)
@@ -252,21 +258,21 @@ export function SeriesRecibosClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames   = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames  = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueFormatoNames   = useMemo(() => [...new Set(initialData.map((r) => String(r.formato)))].sort(), [initialData])
+  const uniqueEmpresaNames   = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames  = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueFormatoNames   = useMemo(() => [...new Set(filas.map((r) => String(r.formato)))].sort(), [filas])
 
   // ─── Filtering pipeline ──────────────────────────────────────────────────
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    return !q ? initialData : initialData.filter((r) =>
+    return !q ? filas : filas.filter((r) =>
       r.serie.toLowerCase().includes(q) ||
       (r.serie_factura ?? '').toLowerCase().includes(q) ||
       (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
       (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap, proyectoMap])
+  }, [filas, search, empresaMap, proyectoMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
@@ -378,6 +384,26 @@ export function SeriesRecibosClient({
     setForm({ ...EMPTY_FORM, empresa: firstEmpresa, proyecto: firstProyecto })
     setDialogOpen(true)
   }
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.serie}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerSerieRecibo(viewTarget.empresa, viewTarget.proyecto, viewTarget.serie)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.serie}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm({ empresa: row.empresa, proyecto: row.proyecto, serie: row.serie, serie_factura: row.serie_factura ?? null, dias_fecha: row.dias_fecha, correlativo: row.correlativo, formato: row.formato, predeterminado: row.predeterminado, recibo_automatico: row.recibo_automatico, activo: row.activo })
+    },
+  })
 
   function openView(row: SerieRecibo) {
     limpiarCampoInvalido()
@@ -573,7 +599,7 @@ export function SeriesRecibosClient({
                       col.key === 'predeterminado'    ? ['Si', 'No'] :
                       col.key === 'recibo_automatico' ? ['Si', 'No'] :
                       col.key === 'activo'         ? ['Si', 'No'] :
-                      [...new Set(initialData.map((r) => String(r[col.key as keyof SerieRecibo] ?? '')))].sort()
+                      [...new Set(filas.map((r) => String(r[col.key as keyof SerieRecibo] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
                     onChange={(v) => setColFilter(col.key, v)}
@@ -672,7 +698,7 @@ export function SeriesRecibosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.serie}</span>
                   </p>
                 )}
@@ -693,8 +719,8 @@ export function SeriesRecibosClient({
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
-                    <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
                     <div className="col-span-2"><ViewField locked label="Serie"    value={viewTarget.serie} /></div>
                   </SegmentCard>
                   <SegmentCard label="CONFIGURACION">
@@ -855,7 +881,7 @@ export function SeriesRecibosClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-green-50 dark:hover:bg-green-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-green-50 dark:hover:bg-green-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

@@ -31,8 +31,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { createFase, updateFase, deleteFase } from '@/app/actions/fases'
+import { createFase, updateFase, deleteFase, obtenerFase } from '@/app/actions/fases'
 import type { Empresa, Proyecto, Fase, FaseForm } from '@/lib/types/proyectos'
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { UNIDAD_MEDIDA } from '@/lib/constants'
 import { useCampoInvalido } from '@/lib/campo-invalido'
@@ -226,6 +228,7 @@ export function FasesClient({
   initialData, empresas, proyectos,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -238,7 +241,7 @@ export function FasesClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Fase | null>(null)
+  const [viewTarget, setViewTarget] = useState<(Fase & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Fase | null>(null)
   const [auditTarget, setAuditTarget] = useState<Fase | null>(null)
 
@@ -257,10 +260,10 @@ export function FasesClient({
   )
 
   // -- Unique filter values -----------------------------------------------
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((f) => proyectoMap.get(`${f.empresa}-${f.proyecto}`) ?? String(f.proyecto)))].sort(), [initialData, proyectoMap])
-  const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((f) => f.nombre).filter(Boolean))].sort(), [initialData])
-  const uniqueMedidaLabels  = useMemo(() => [...new Set(initialData.map((f) => UNIDAD_MEDIDA[f.medida] ?? f.medida))].sort(), [initialData])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((f) => proyectoMap.get(`${f.empresa}-${f.proyecto}`) ?? String(f.proyecto)))].sort(), [filas, proyectoMap])
+  const uniqueNombreValues  = useMemo(() => [...new Set(filas.map((f) => f.nombre).filter(Boolean))].sort(), [filas])
+  const uniqueMedidaLabels  = useMemo(() => [...new Set(filas.map((f) => UNIDAD_MEDIDA[f.medida] ?? f.medida))].sort(), [filas])
   const medidaLabelToKey    = useMemo(() => new Map(Object.entries(UNIDAD_MEDIDA).map(([k, v]) => [v, k])), [])
 
   // -- Filter helpers -----------------------------------------------------
@@ -273,12 +276,12 @@ export function FasesClient({
     })
   }
 
-  const afterSearch = useMemo(() => initialData.filter((fase) => {
+  const afterSearch = useMemo(() => filas.filter((fase) => {
     const q = search.toLowerCase()
     return !q ||
       fase.nombre?.toLowerCase().includes(q) ||
       String(fase.codigo).includes(q)
-  }), [initialData, search])
+  }), [filas, search])
 
   const filtered = useMemo(() => afterSearch.filter((fase) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -388,6 +391,25 @@ export function FasesClient({
     setDialogOpen(true)
   }
 
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerFase(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(buildFormFromFase(row))
+    },
+  })
+
   function openView(fase: Fase) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -442,7 +464,7 @@ export function FasesClient({
 
     // Frontend similarity check (jaroWinkler >= 0.85)
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((fase) =>
+    const candidates = filas.filter((fase) =>
       fase.empresa === form.empresa && fase.proyecto === form.proyecto &&
       (viewTarget ? fase.codigo !== viewTarget.codigo : true)
     )
@@ -501,7 +523,7 @@ export function FasesClient({
       : (viewTarget?.nombre ?? '')
 
   const dialogSubtitle = viewTarget
-    ? `${empresaMap.get(viewTarget.empresa) ?? ''} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
+    ? `${nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa))} / ${nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))}`
     : undefined
 
   return (
@@ -725,10 +747,10 @@ export function FasesClient({
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="Identificacion">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
+                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} />
+                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
                     </div>
                     <div className="col-span-2">
                       <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
@@ -851,7 +873,7 @@ export function FasesClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

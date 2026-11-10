@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { SerieRecibo, SerieReciboForm, SerieFactura } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -87,6 +89,22 @@ export async function getSeriesRecibos(empresa?: number, proyecto?: number): Pro
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as SerieRecibo[]
+}
+
+export async function obtenerSerieRecibo(
+  empresa: number,
+  proyecto: number,
+  serie: string,
+): Promise<{ row?: SerieRecibo & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.SER_REC, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<SerieRecibo>(
+    createAdminClient(), cuenta, 't_serie_recibo',
+    { cuenta, empresa, proyecto, serie }, '*',
+    { empresa, proyecto },
+  )
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────

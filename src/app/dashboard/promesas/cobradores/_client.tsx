@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import {
   createCobrador, updateCobrador, deleteCobrador,
+  obtenerCobrador,
 } from '@/app/actions/cobradores'
 import type { Cobrador, CobradorForm, Empresa, Proyecto } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
@@ -229,6 +232,8 @@ export function CobradoresClient({
   initialData, empresas, proyectos,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -241,7 +246,7 @@ export function CobradoresClient({
 
   // ── Estado de modal ───────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen]     = useState(false)
-  const [viewTarget, setViewTarget]     = useState<Cobrador | null>(null)
+  const [viewTarget, setViewTarget]     = useState<(Cobrador & NombresVer) | null>(null)
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
   const [form, setForm]                 = useState<CobradorForm>(EMPTY_FORM)
@@ -258,13 +263,13 @@ export function CobradoresClient({
   // ── Filtrado ──────────────────────────────────────────────────────────
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return initialData
-    return initialData.filter((c) =>
+    if (!q) return filas
+    return filas.filter((c) =>
       c.nombre.toLowerCase().includes(q) ||
       (empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
       (proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap, proyectoMap])
+  }, [filas, search, empresaMap, proyectoMap])
 
   const filtered = useMemo(() => afterSearch.filter((c) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -383,6 +388,26 @@ export function CobradoresClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerCobrador(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(buildFormFromCobrador(row))
+    },
+  })
+
   function openView(cobrador: Cobrador) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -416,7 +441,7 @@ export function CobradoresClient({
 
     // Verificar similitud de nombre (umbral 0.85) contra cobradores del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((c) =>
+    const candidates = filas.filter((c) =>
       c.empresa === form.empresa && c.proyecto === form.proyecto &&
       (viewTarget ? c.codigo !== viewTarget.codigo : true)
     )
@@ -556,7 +581,7 @@ export function CobradoresClient({
                     <TableHead key="__empresa">
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(initialData.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
                         active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -571,7 +596,7 @@ export function CobradoresClient({
                     <TableHead key="__proyecto">
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(initialData.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -600,7 +625,7 @@ export function CobradoresClient({
                   <TableHead key={col.key}>
                     <ColumnFilter
                       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
-                      values={[...new Set(initialData.map((c) => String(c[col.key as keyof Cobrador] ?? '')))].sort()}
+                      values={[...new Set(filas.map((c) => String(c[col.key as keyof Cobrador] ?? '')))].sort()}
                       active={colFilters[col.key] ?? new Set()}
                       onChange={(v) => setColFilter(col.key, v)}
                     />
@@ -737,7 +762,7 @@ export function CobradoresClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -760,10 +785,10 @@ export function CobradoresClient({
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
+                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
+                      <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
                     </div>
                     <div className="col-span-2">
                       <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
@@ -854,7 +879,7 @@ export function CobradoresClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-orange-50 dark:hover:bg-orange-950/30" onClick={() => setIsEditing(true)}>
+                  <Button variant="ghost" size="sm" className="hover:bg-orange-50 dark:hover:bg-orange-950/30" onClick={() => setIsEditing(true)} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
