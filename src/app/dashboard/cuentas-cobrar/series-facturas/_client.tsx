@@ -1,5 +1,8 @@
 'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
+
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,7 +35,9 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createSerieFactura, updateSerieFactura, deleteSerieFactura } from '@/app/actions/series-facturas'
+import { createSerieFactura, updateSerieFactura, deleteSerieFactura,
+  obtenerSerieFactura,
+} from '@/app/actions/series-facturas'
 import type { SerieFactura, SerieFacturaForm } from '@/lib/types/series-facturas'
 import type { Empresa, Proyecto } from '@/lib/types/proyectos'
 import type { Gface } from '@/lib/types/gface'
@@ -237,6 +242,8 @@ export function SeriesFacturasClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -245,7 +252,7 @@ export function SeriesFacturasClient({
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
-  const [viewTarget, setViewTarget]     = useState<SerieFactura | null>(null)
+  const [viewTarget, setViewTarget]     = useState<(SerieFactura & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SerieFactura | null>(null)
   const [auditTarget, setAuditTarget]   = useState<SerieFactura | null>(null)
   const [form, setForm]                 = useState<SerieFacturaForm>(EMPTY_FORM)
@@ -278,16 +285,16 @@ export function SeriesFacturasClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueGfaceNames    = useMemo(() => [...new Set(initialData.map((r) => nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface)))].sort(), [initialData, gfaceMap])
-  const uniqueFormato       = useMemo(() => [...new Set(initialData.map((r) => String(r.formato)))].sort(), [initialData])
-  const uniqueEstablecimiento = useMemo(() => [...new Set(initialData.map((r) => String(r.establecimiento)))].sort(), [initialData])
-  const uniqueDispositivo   = useMemo(() => [...new Set(initialData.map((r) => String(r.dispositivo)))].sort(), [initialData])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueGfaceNames    = useMemo(() => [...new Set(filas.map((r) => nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface)))].sort(), [filas, gfaceMap])
+  const uniqueFormato       = useMemo(() => [...new Set(filas.map((r) => String(r.formato)))].sort(), [filas])
+  const uniqueEstablecimiento = useMemo(() => [...new Set(filas.map((r) => String(r.establecimiento)))].sort(), [filas])
+  const uniqueDispositivo   = useMemo(() => [...new Set(filas.map((r) => String(r.dispositivo)))].sort(), [filas])
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    return !q ? initialData : initialData.filter((r) =>
+    return !q ? filas : filas.filter((r) =>
       r.serie.toLowerCase().includes(q) ||
       (r.id_docto_gface ?? '').toLowerCase().includes(q) ||
       (r.carpeta_dtes ?? '').toLowerCase().includes(q) ||
@@ -295,7 +302,7 @@ export function SeriesFacturasClient({
       (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
       (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap, proyectoMap, gfaceMap])
+  }, [filas, search, empresaMap, proyectoMap, gfaceMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
@@ -408,6 +415,26 @@ export function SeriesFacturasClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.serie}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerSerieFactura(viewTarget.empresa, viewTarget.proyecto, viewTarget.serie)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.serie}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(formDesde(row))
+    },
+  })
+
   function openView(row: SerieFactura) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -512,7 +539,7 @@ export function SeriesFacturasClient({
       : <Pencil className={`h-4 w-4 ${iconBadgeClr}`} />
 
   const subtitle = viewTarget
-    ? [empresaMap.get(viewTarget.empresa), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ')
+    ? [nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ')
     : ''
 
   return (
@@ -591,7 +618,7 @@ export function SeriesFacturasClient({
                       col.key === 'dispositivo' ? uniqueDispositivo :
                       col.key === 'predeterminado' ? ['Si', 'No'] :
                       col.key === 'activo' ? ['Si', 'No'] :
-                      [...new Set(initialData.map((r) => String(r[col.key as keyof SerieFactura] ?? '')))].sort()
+                      [...new Set(filas.map((r) => String(r[col.key as keyof SerieFactura] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
                     onChange={(v) => setColFilter(col.key, v)}
@@ -724,8 +751,8 @@ export function SeriesFacturasClient({
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2"><ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? ''} /></div>
-                      <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
+                      <div className="col-span-2"><ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} /></div>
+                      <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
                       <div className="col-span-2"><ViewField locked label="Serie" value={viewTarget.serie} /></div>
                     </SegmentCard>
                     <SegmentCard label="CONFIGURACION">
@@ -743,7 +770,7 @@ export function SeriesFacturasClient({
                   <div className="w-px self-stretch bg-primary/30" />
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="DOCUMENTOS ELECTRONICOS">
-                      <div className="col-span-2"><ViewField label="Gface" value={nombreGface(viewTarget.empresa, viewTarget.proyecto, viewTarget.gface) || 'Sin certificador'} /></div>
+                      <div className="col-span-2"><ViewField label="Gface" value={viewTarget.gface ? nombreLeido(viewTarget.gface_nombre, nombreGface(viewTarget.empresa, viewTarget.proyecto, viewTarget.gface) || 'Sin certificador') : 'Sin certificador'} /></div>
                       <div className="col-span-2"><ViewField label="Id Documento" value={viewTarget.id_docto_gface ?? ''} /></div>
                       <ViewField label="Establecimiento" value={String(viewTarget.establecimiento)} />
                       <ViewField label="Dispositivo" value={String(viewTarget.dispositivo)} />
@@ -909,7 +936,7 @@ export function SeriesFacturasClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-neutral-50 dark:hover:bg-neutral-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-neutral-50 dark:hover:bg-neutral-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

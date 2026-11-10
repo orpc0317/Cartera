@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,7 +34,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { createLote, updateLote, deleteLote, getLoteReservaInfo, desistirReserva, type LoteReservaInfo } from '@/app/actions/lotes'
+import { createLote, updateLote, deleteLote, getLoteReservaInfo, desistirReserva, type LoteReservaInfo,
+  obtenerLote,
+} from '@/app/actions/lotes'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { getLoteEstado, LOTE_ESTADO_BADGE } from '@/lib/constants'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
@@ -231,6 +235,8 @@ export function LotesClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -240,7 +246,7 @@ export function LotesClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Lote | null>(null)
+  const [viewTarget, setViewTarget] = useState<(Lote & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Lote | null>(null)
   const [auditTarget, setAuditTarget] = useState<Lote | null>(null)
   const [form, setForm] = useState<LoteForm>(EMPTY_FORM)
@@ -321,16 +327,16 @@ export function LotesClient({
     })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueFaseNames     = useMemo(() => [...new Set(initialData.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [initialData, faseMap])
-  const uniqueManzanaVals   = useMemo(() => [...new Set(initialData.map((r) => r.manzana))].sort(),                         [initialData])
-  const uniqueMonedaVals    = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(),                          [initialData])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [filas, faseMap])
+  const uniqueManzanaVals   = useMemo(() => [...new Set(filas.map((r) => r.manzana))].sort(),                         [filas])
+  const uniqueMonedaVals    = useMemo(() => [...new Set(filas.map((r) => r.moneda))].sort(),                          [filas])
   const uniqueEstadoVals    = ['Disponible', 'Reservado', 'Vendido']
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return initialData.filter((l) => {
+    return filas.filter((l) => {
       if (q &&
           !l.codigo.toLowerCase().includes(q) &&
           !l.manzana.toLowerCase().includes(q) &&
@@ -346,7 +352,7 @@ export function LotesClient({
         return vals.has(String((l as Record<string, unknown>)[col] ?? ''))
       })
     })
-  }, [initialData, search, colFilters, empresaMap, proyectoMap, faseMap])
+  }, [filas, search, colFilters, empresaMap, proyectoMap, faseMap])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -436,6 +442,25 @@ export function LotesClient({
   }, [proyectos, fases, manzanas, proyectoMonedas, monedas, limpiarCampoInvalido])
 
   // --- Abrir dialog ---
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}-${viewTarget.manzana}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerLote(viewTarget.empresa, viewTarget.proyecto, viewTarget.fase, viewTarget.manzana, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.fase}-${r.manzana}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+    },
+  })
 
   function openView(lote: Lote) {
     limpiarCampoInvalido()
@@ -874,7 +899,7 @@ export function LotesClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} · {faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} · {viewTarget.manzana}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} · {faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} · {viewTarget.manzana}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -900,9 +925,9 @@ export function LotesClient({
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
-                      <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
-                      <ViewField locked label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} />
+                      <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? '')} /></div>
+                      <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
+                      <ViewField locked label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} />
                       <ViewField locked label="Manzana" value={viewTarget.manzana} />
                       <ViewField locked label="Codigo"  value={viewTarget.codigo}  />
                     </SegmentCard>
@@ -1150,7 +1175,7 @@ export function LotesClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

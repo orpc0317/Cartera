@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -34,7 +36,9 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { PlanPagoDialog } from '@/components/ui/plan-pago-dialog'
-import { createPromesa, updatePromesa, deletePromesa, anularPromesa } from '@/app/actions/promesas'
+import { createPromesa, updatePromesa, deletePromesa, anularPromesa,
+  obtenerPromesa,
+} from '@/app/actions/promesas'
 import {
   getPromesaDocumentos, uploadPromesaDocumento,
   deletePromesaDocumento, getPromesaDocumentoUrl,
@@ -422,6 +426,8 @@ export function PromesasClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -430,7 +436,7 @@ export function PromesasClient({
   const [dialogOpen, setDialogOpen]   = useState(false)
   const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget]   = useState<Promesa | null>(null)
+  const [viewTarget, setViewTarget]   = useState<(Promesa & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Promesa | null>(null)
   const [auditTarget, setAuditTarget]   = useState<Promesa | null>(null)
   const [planPagoTarget, setPlanPagoTarget] = useState<Promesa | null>(null)
@@ -526,19 +532,19 @@ export function PromesasClient({
   ), [tiposIngreso, form.empresa, form.proyecto, otros])
 
   // -- Unique filter values for table columns --------------------------------
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa)   ?? ''))].filter(Boolean).sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].filter(Boolean).sort(), [initialData, proyectoMap])
-  const uniqueFechaVals     = useMemo(() => [...new Set(initialData.map((r) => r.fecha))].filter(Boolean).sort(), [initialData])
-  const uniqueFaseNames     = useMemo(() => [...new Set(initialData.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].filter(Boolean).sort(), [initialData, faseMap])
-  const uniqueManzanaVals   = useMemo(() => [...new Set(initialData.map((r) => r.manzana))].filter(Boolean).sort(), [initialData])
-  const uniqueLoteVals      = useMemo(() => [...new Set(initialData.map((r) => r.lote))].filter(Boolean).sort(), [initialData])
-  const uniqueClienteNames  = useMemo(() => [...new Set(initialData.map((r) => clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? ''))].filter(Boolean).sort(), [initialData, clienteMap])
-  const uniqueVendedorNames = useMemo(() => [...new Set(initialData.map((r) => vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? ''))].filter(Boolean).sort(), [initialData, vendedorMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)   ?? ''))].filter(Boolean).sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].filter(Boolean).sort(), [filas, proyectoMap])
+  const uniqueFechaVals     = useMemo(() => [...new Set(filas.map((r) => r.fecha))].filter(Boolean).sort(), [filas])
+  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].filter(Boolean).sort(), [filas, faseMap])
+  const uniqueManzanaVals   = useMemo(() => [...new Set(filas.map((r) => r.manzana))].filter(Boolean).sort(), [filas])
+  const uniqueLoteVals      = useMemo(() => [...new Set(filas.map((r) => r.lote))].filter(Boolean).sort(), [filas])
+  const uniqueClienteNames  = useMemo(() => [...new Set(filas.map((r) => clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? ''))].filter(Boolean).sort(), [filas, clienteMap])
+  const uniqueVendedorNames = useMemo(() => [...new Set(filas.map((r) => vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? ''))].filter(Boolean).sort(), [filas, vendedorMap])
 
   // -- Filtered rows ---------------------------------------------------------
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return initialData.filter((r) => {
+    return filas.filter((r) => {
       if (q &&
           !String(r.numero).includes(q) &&
           !r.referencia.toLowerCase().includes(q) &&
@@ -559,7 +565,7 @@ export function PromesasClient({
         return vals.has(String((r as Record<string, unknown>)[col] ?? ''))
       })
     })
-  }, [initialData, search, colFilters, empresaMap, proyectoMap, faseMap, clienteMap, vendedorMap])
+  }, [filas, search, colFilters, empresaMap, proyectoMap, faseMap, clienteMap, vendedorMap])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -700,6 +706,26 @@ export function PromesasClient({
   }, [proyectos, fases, manzanas, lotes, vendedores, form.empresa, limpiarCampoInvalido])
 
   // -- Dialog open/close helpers --------------------------------------------
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.numero}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerPromesa(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.numero}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setTipoCalculo((row.fijo_mora ?? 0) > 0 ? 1 : 0)
+    },
+  })
 
   function openView(promesa: Promesa) {
     limpiarCampoInvalido()
@@ -1295,7 +1321,7 @@ export function PromesasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {[empresaMap.get(viewTarget.empresa), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' Â· ')}
+                    {[nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' Â· ')}
                   </p>
                 )}
               </div>
@@ -1325,8 +1351,8 @@ export function PromesasClient({
                 <div className="flex gap-6 items-start">
                   <div className="flex-1 grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2"><ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? ''} /></div>
-                    <div className="col-span-2"><ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} /></div>
+                    <div className="col-span-2"><ViewField label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? '')} /></div>
+                    <div className="col-span-2"><ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
                     <div className="col-span-2 grid grid-cols-3 gap-2">
                       <ViewField label="Numero" value={String(viewTarget.numero)} />
                     </div>
@@ -1337,8 +1363,8 @@ export function PromesasClient({
                       <div />
                       <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
                     </div>
-                    <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
-                    <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
+                    <div className="col-span-2"><ViewField label="Cliente"  value={nombreLeido(viewTarget.cliente_nombre, clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? '')} /></div>
+                    <div className="col-span-2"><ViewField label="Vendedor" value={nombreLeido(viewTarget.vendedor_nombre, vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? '')} /></div>
                     <div className="col-span-2 grid grid-cols-3 gap-2">
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={viewTarget.venta === 1} disabled />
@@ -1348,7 +1374,7 @@ export function PromesasClient({
                   </SegmentCard>
                   <SegmentCard label="LOTE">
                     <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
+                      <div className="col-span-2"><ViewField label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} /></div>
                       <ViewField label="Manzana" value={viewTarget.manzana} />
                       <ViewField label="Lote"    value={viewTarget.lote} />
                     </div>
@@ -1460,8 +1486,8 @@ export function PromesasClient({
                       <div />
                       <ViewField label="Fecha"      value={fmtDate(viewTarget.fecha)} />
                     </div>
-                    <div className="col-span-2"><ViewField label="Cliente"  value={clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? ''} /></div>
-                    <div className="col-span-2"><ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? ''} /></div>
+                    <div className="col-span-2"><ViewField label="Cliente"  value={nombreLeido(viewTarget.cliente_nombre, clienteMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cliente}`)  ?? '')} /></div>
+                    <div className="col-span-2"><ViewField label="Vendedor" value={nombreLeido(viewTarget.vendedor_nombre, vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`) ?? '')} /></div>
                     <div className="col-span-2 flex items-center gap-2 pt-1">
                       <Checkbox id="es-venta-edit" checked={viewTarget.venta === 1} disabled />
                       <Label htmlFor="es-venta-edit" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Es Venta</Label>
@@ -1469,7 +1495,7 @@ export function PromesasClient({
                   </SegmentCard>
                   <SegmentCard label="LOTE">
                     <div className="col-span-2 grid grid-cols-4 gap-2">
-                      <div className="col-span-2"><ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? ''} /></div>
+                      <div className="col-span-2"><ViewField label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} /></div>
                       <ViewField label="Manzana" value={viewTarget.manzana} />
                       <ViewField label="Lote"    value={viewTarget.lote} />
                     </div>
@@ -2162,7 +2188,7 @@ export function PromesasClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

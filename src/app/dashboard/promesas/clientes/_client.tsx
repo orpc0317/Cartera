@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -35,7 +37,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { CountrySelect } from '@/components/ui/country-select'
 import { PhoneField, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
-import { createCliente, updateCliente, deleteCliente } from '@/app/actions/clientes'
+import { createCliente, updateCliente, deleteCliente,
+  obtenerCliente,
+} from '@/app/actions/clientes'
 import { TIPO_IDENTIFICACION, REGIMENES_IVA, validarNIT, validarDPI } from '@/lib/constants'
 import type { Empresa, Proyecto, Cliente, ClienteForm } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
@@ -249,6 +253,8 @@ export function ClientesClient({
   initialData, empresas, proyectos, paises, departamentos, municipios,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   // Telefono: logica igual que Proyectos
   const [tel1Iso, setTel1Iso] = useState('')
   const [tel1Local, setTel1Local] = useState('')
@@ -268,7 +274,7 @@ export function ClientesClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Cliente | null>(null)
+  const [viewTarget, setViewTarget] = useState<(Cliente & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null)
   const [auditTarget, setAuditTarget] = useState<Cliente | null>(null)
 
@@ -316,7 +322,7 @@ export function ClientesClient({
     })
   }
 
-  const afterSearch = useMemo(() => initialData.filter((c) => {
+  const afterSearch = useMemo(() => filas.filter((c) => {
     const q = search.toLowerCase()
     return !q ||
       c.nombre?.toLowerCase().includes(q) ||
@@ -324,7 +330,7 @@ export function ClientesClient({
       c.correo?.toLowerCase().includes(q) ||
       c.identificacion_tributaria?.toLowerCase().includes(q) ||
       String(c.codigo).includes(q)
-  }), [initialData, search])
+  }), [filas, search])
 
   const filtered = useMemo(() => afterSearch.filter((c) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -388,7 +394,7 @@ export function ClientesClient({
 
   // ── Valores unicos para filtros de columna ────────────────────────────
   function uniqueVals(key: keyof Cliente) {
-    return [...new Set(initialData.map((c) => String(c[key] ?? '')))].sort()
+    return [...new Set(filas.map((c) => String(c[key] ?? '')))].sort()
   }
 
   // ── Cursor de teclado ─────────────────────────────────────────────────
@@ -563,6 +569,29 @@ export function ClientesClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerCliente(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      const built = buildFormFromCliente(row)
+      setForm(built.form)
+      setPaisCodigo(built.paisCodigo)
+      setDeptoCodigo(built.deptoCodigo)
+    },
+  })
+
   function openView(cliente: Cliente) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -635,7 +664,7 @@ export function ClientesClient({
 
     // Verificar similitud de nombre (umbral 0.85) contra clientes del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((cl) =>
+    const candidates = filas.filter((cl) =>
       cl.empresa === form.empresa && cl.proyecto === form.proyecto &&
       (viewTarget ? cl.codigo !== viewTarget.codigo : true)
     )
@@ -752,7 +781,7 @@ export function ClientesClient({
                     <TableHead key="empresa">
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(initialData.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
                         active={new Set([...(colFilters['empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -767,7 +796,7 @@ export function ClientesClient({
                     <TableHead key="proyecto">
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(initialData.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
                         active={new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -797,7 +826,7 @@ export function ClientesClient({
                     <TableHead key="regimen_iva">
                       <ColumnFilter
                         label="Regimen IVA"
-                        values={[...new Set(initialData.map((c) => REGIMENES_IVA[c.regimen_iva] ?? `#${c.regimen_iva}`))].sort()}
+                        values={[...new Set(filas.map((c) => REGIMENES_IVA[c.regimen_iva] ?? `#${c.regimen_iva}`))].sort()}
                         active={new Set([...(colFilters['regimen_iva'] ?? new Set())].map((k) => REGIMENES_IVA[Number(k)] ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = Object.fromEntries(Object.entries(REGIMENES_IVA).map(([k, v]) => [v, k]))
@@ -812,7 +841,7 @@ export function ClientesClient({
                     <TableHead key="direccion_pais">
                       <ColumnFilter
                         label="Pais"
-                        values={[...new Set(initialData.map((c) => {
+                        values={[...new Set(filas.map((c) => {
                           const p = paises.find((x) => x.codigo === c.direccion_pais)
                           return c.direccion_pais ? (p?.nombre ?? c.direccion_pais) : ''
                         }))].filter(Boolean).sort()}
@@ -827,7 +856,7 @@ export function ClientesClient({
                     <TableHead key="direccion_departamento">
                       <ColumnFilter
                         label="Departamento"
-                        values={[...new Set(initialData.map((c) => {
+                        values={[...new Set(filas.map((c) => {
                           const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
                           return d?.nombre ?? c.direccion_departamento ?? ''
                         }))].filter(Boolean).sort()}
@@ -842,7 +871,7 @@ export function ClientesClient({
                     <TableHead key="direccion_municipio">
                       <ColumnFilter
                         label="Municipio"
-                        values={[...new Set(initialData.map((c) => {
+                        values={[...new Set(filas.map((c) => {
                           const m = municipios.find((x) => x.pais === c.direccion_pais && x.departamento === c.direccion_departamento && x.codigo === c.direccion_municipio)
                           return m?.nombre ?? c.direccion_municipio ?? ''
                         }))].filter(Boolean).sort()}
@@ -1066,7 +1095,7 @@ export function ClientesClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -1090,10 +1119,10 @@ export function ClientesClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
+                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
+                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
                     </div>
                     <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                     </SegmentCard>
@@ -1155,7 +1184,7 @@ export function ClientesClient({
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                               {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                              {p?.nombre ?? viewTarget.direccion_pais}
+                              {nombreLeido(viewTarget.pais_nombre, p?.nombre ?? viewTarget.direccion_pais)}
                             </span>
                           )
                         })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>—</span>}
@@ -1163,11 +1192,11 @@ export function ClientesClient({
                     </div>
                     <ViewField
                       label="Departamento"
-                      value={departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento}
+                      value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)}
                     />
                     <ViewField
                       label="Municipio"
-                      value={municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio}
+                      value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)}
                     />
                     <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
                     </SegmentCard>
@@ -1376,7 +1405,7 @@ export function ClientesClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

@@ -333,3 +333,56 @@ test('dos pestañas editan la misma fase y solo la primera grabación vale', asy
     }
   }
 })
+
+test('ver relee la fase y muestra el nombre guardado en otra pestaña', async ({ page }) => {
+  test.setTimeout(90_000)
+  const marca = Date.now()
+  const original = `E2E FASE ${marca}`
+  const nuevo = `E2E FASE ${marca} LEIDA`
+  const otra = await page.context().newPage()
+  let creada = false
+  try {
+    await crearFaseDePrueba(page, original)
+    creada = true
+
+    await otra.goto('/dashboard/proyectos/fases')
+    await expect(otra).not.toHaveURL(/\/login/)
+    await expect(otra.getByRole('heading', { level: 1, name: 'Fases' })).toBeVisible()
+    const dialogB = await abrirEdicionDeFase(otra, original)
+    await dialogB.getByLabel('Nombre *').fill(nuevo)
+    await dialogB.getByRole('button', { name: 'Guardar' }).click()
+    await guardarAunqueParezca(otra, 'Fase actualizada.')
+    await dialogB.getByRole('button', { name: 'Close' }).click()
+    await expect(dialogB).toBeHidden()
+
+    await page.getByPlaceholder('Buscar fases...').fill(original)
+    const fila = page.locator('tbody tr').filter({ has: page.getByText(original, { exact: true }) })
+    await expect(fila).toHaveCount(1)
+    await fila.dblclick()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('heading', { name: nuevo, exact: true })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Close' }).click()
+    await expect(dialog).toBeHidden()
+
+    await eliminarFase(page, nuevo)
+    creada = false
+  } finally {
+    await otra.close()
+    if (creada) {
+      const busqueda = page.getByPlaceholder('Buscar fases...')
+      await busqueda.fill(String(marca))
+      const fila = page.locator('tbody tr').filter({ hasText: String(marca) })
+      if ((await fila.count()) > 0) {
+        const nombre = (await fila.first().locator('td.font-medium').innerText()).trim()
+        const abierto = page.getByRole('dialog')
+        if (await abierto.isVisible().catch(() => false)) {
+          await abierto.getByRole('button', { name: 'Close' }).click({ force: true }).catch(() => undefined)
+        }
+        await eliminarFase(page, nombre).catch((error: unknown) => {
+          const detalle = error instanceof Error ? error.message : String(error)
+          throw new Error(`Quedó la fase ${nombre}. Bórrala a mano. ${detalle}`)
+        })
+      }
+    }
+  }
+})

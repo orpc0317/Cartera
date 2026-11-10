@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Fase, FaseForm } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { leerNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -67,6 +69,31 @@ export async function getFases(empresa?: number, proyecto?: number): Promise<Fas
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Fase[]
+}
+
+export async function obtenerFase(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: Fase & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.FAS_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_fase')
+    .select('cuenta, empresa, proyecto, codigo, nombre, medida, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('codigo', codigo)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!data) return { error: 'Registro no encontrado.' }
+  const nombres = await leerNombres(admin, cuenta, { empresa, proyecto })
+  return { row: { ...(data as Fase), ...nombres } }
 }
 
 export async function createFase(form: FaseForm): Promise<{ error?: string }> {

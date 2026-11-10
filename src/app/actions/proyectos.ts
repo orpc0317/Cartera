@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { leerNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -65,6 +67,42 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Proyecto[]
+}
+
+export type ProyectoVer = Proyecto & NombresVer & { monedas_del_proyecto?: ProyectoMoneda[] }
+
+export async function obtenerProyecto(empresa: number, codigo: number): Promise<{ row?: ProyectoVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.PRO_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_proyecto')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('codigo', codigo)
+    .maybeSingle()
+  if (error) return { error: error.message }
+  if (!data) return { error: 'Registro no encontrado.' }
+  const row = data as Proyecto
+  const [monedasResult, nombres] = await Promise.all([
+    admin.schema('cartera').from('t_proyecto_moneda').select('*')
+      .eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo)
+      .order('predeterminado', { ascending: false }).order('moneda'),
+    leerNombres(admin, cuenta, {
+      empresa,
+      pais: row.direccion_pais ?? '',
+      departamento: row.direccion_departamento ?? '',
+      municipio: row.direccion_municipio ?? '',
+    }),
+  ])
+  if (monedasResult.error) return { error: monedasResult.error.message }
+  return {
+    row: { ...row, ...nombres, monedas_del_proyecto: (monedasResult.data ?? []) as ProyectoMoneda[] },
+  }
 }
 
 /**

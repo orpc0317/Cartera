@@ -92,7 +92,27 @@ Internamente verifica (en orden):
 1. Usuario autenticado (JWT).
 2. **Membresía en `t_usuario`** para el tenant del cookie — previene cookie-tampering cross-tenant: un atacante que falsifique la cookie a otra cuenta obtiene `Acceso denegado.` en lugar del fallback "sin filas = Admin".
 3. Si el usuario no tiene filas en `t_menu_usuario` → modo Admin (acceso total).
-4. Si tiene filas → verifica el flag `agregar` / `modificar` / `eliminar` para el `indice` dado.
+4. Si tiene filas → verifica el flag `consultar` / `agregar` / `modificar` / `eliminar` para el `indice` dado.
+
+## obtener* — relectura de un registro al abrir Ver
+
+Toda pantalla con modal Ver exporta `obtener<Entity>(...pk)` junto a `get*`. Es la lectura de una sola fila, con los nombres de sus referencias ya resueltos. No recarga el catálogo.
+
+```ts
+export async function obtenerEntity(empresa: number, proyecto: number, codigo: number): Promise<{ row?: Entity & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.XXX_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+  return filaConNombres<Entity>(admin, cuenta, 't_entity', { cuenta, empresa, proyecto, codigo }, 'col1, col2', {
+    empresa,
+    proyecto,
+  })
+}
+```
+
+`requirePermiso(..., 'consultar')` es la primera instrucción. `filaConNombres` y `leerNombres` viven en `src/lib/leer-nombres.ts`. El cliente abre Ver con `useRegistroVer` (`components.mdc` § C): pide esta función, reemplaza solo esa fila en la lista y, si el usuario ya está editando, no pisa lo que está escribiendo. El alta no llama `obtener*`.
 
 ---
 

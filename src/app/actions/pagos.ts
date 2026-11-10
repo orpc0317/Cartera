@@ -2,7 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCuentaActiva } from '@/app/actions/permisos'
+import { getCuentaActiva, requirePermiso } from '@/app/actions/permisos'
+import { PERMISOS } from '@/lib/permisos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import type {
   ReciboCaja, DetalleReciboCaja, PagosFiltros, ReciboCajaDetalleExtra, ReciboOtroColumna, DetalleReciboOtro,
 } from '@/lib/types/pagos'
@@ -156,6 +159,31 @@ export async function getRecibosCaja(
   return { data: limitReached ? rows.slice(0, LIMITE_FILAS) : rows, limitReached }
 }
 
+export async function obtenerReciboCaja(
+  empresa: number,
+  proyecto: number,
+  serie: string,
+  numero: number,
+): Promise<{ row?: ReciboCaja & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.PAG_MAN, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<ReciboCaja>(
+    createAdminClient(), cuenta, 't_recibo_caja',
+    { cuenta, empresa, proyecto, serie, numero }, '*',
+    (row) => ({
+      empresa: row.empresa,
+      proyecto: row.proyecto,
+      fase: row.fase,
+      cliente: row.cliente,
+      banco: row.banco,
+      cobrador: row.cobrador,
+      cuentaDeposito: row.cuenta_deposito,
+    }),
+  )
+}
+
 /**
  * Datos adicionales del recibo que solo se necesitan al abrir el modal Ver
  * (no en la tabla): lineas de t_detalle_recibo_caja y, si aplica, la
@@ -215,7 +243,7 @@ export async function getReciboCajaExtra(
   // Desglose de "Otros" aplicados por este recibo (t_detalle_recibo_otros), resuelto contra
   // t_tipo_ingreso via t_promesa_otros.secuencia -> tipo_otros (mismo patron que getPlanPago
   // en plan-pago.ts). Solo aplica si el recibo esta ligado a una promesa.
-  let otrosColumnas: ReciboOtroColumna[] = []
+  const otrosColumnas: ReciboOtroColumna[] = []
   let otros: DetalleReciboOtro[] = []
   if (recibo.promesa) {
     const { data: detalleOtros, error: detalleOtrosError } = await admin

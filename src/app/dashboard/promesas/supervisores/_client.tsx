@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import {
   createSupervisor, updateSupervisor, deleteSupervisor,
+  obtenerSupervisor,
 } from '@/app/actions/supervisores'
 import type { Empresa, Proyecto, Supervisor, SupervisorForm } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
@@ -228,6 +231,8 @@ export function SupervisoresClient({
   initialData, empresas, proyectos,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -240,7 +245,7 @@ export function SupervisoresClient({
 
   // ── Estado de modal ───────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen]   = useState(false)
-  const [viewTarget, setViewTarget]   = useState<Supervisor | null>(null)
+  const [viewTarget, setViewTarget]   = useState<(Supervisor & NombresVer) | null>(null)
   const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [form, setForm]               = useState<SupervisorForm>(EMPTY_FORM)
@@ -257,13 +262,13 @@ export function SupervisoresClient({
   // ── Filtrado ──────────────────────────────────────────────────────────
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return initialData
-    return initialData.filter((s) =>
+    if (!q) return filas
+    return filas.filter((s) =>
       s.nombre.toLowerCase().includes(q) ||
       (empresaMap.get(s.empresa) ?? '').toLowerCase().includes(q) ||
       (proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? '').toLowerCase().includes(q)
     )
-  }, [initialData, search, empresaMap, proyectoMap])
+  }, [filas, search, empresaMap, proyectoMap])
 
   const filtered = useMemo(() => afterSearch.filter((s) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -323,7 +328,7 @@ export function SupervisoresClient({
   const visibleCols = colPrefs.filter((p) => p.visible && ALL_COLUMNS.some((c) => c.key === p.key))
 
   function uniqueVals(key: keyof Supervisor) {
-    return [...new Set(initialData.map((s) => String(s[key] ?? '')))].sort()
+    return [...new Set(filas.map((s) => String(s[key] ?? '')))].sort()
   }
 
   // ── Cursor de teclado ─────────────────────────────────────────────────
@@ -386,6 +391,26 @@ export function SupervisoresClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerSupervisor(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(buildFormFromSupervisor(row))
+    },
+  })
+
   function openView(supervisor: Supervisor) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -419,7 +444,7 @@ export function SupervisoresClient({
 
     // Verificar similitud de nombre (umbral 0.85) contra supervisores del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((s) =>
+    const candidates = filas.filter((s) =>
       s.empresa === form.empresa && s.proyecto === form.proyecto &&
       (viewTarget ? s.codigo !== viewTarget.codigo : true)
     )
@@ -559,7 +584,7 @@ export function SupervisoresClient({
                     <TableHead key="__empresa">
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(initialData.map((s) => empresaMap.get(s.empresa) ?? `#${s.empresa}`))].sort()}
+                        values={[...new Set(filas.map((s) => empresaMap.get(s.empresa) ?? `#${s.empresa}`))].sort()}
                         active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -574,7 +599,7 @@ export function SupervisoresClient({
                     <TableHead key="__proyecto">
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(initialData.map((s) => proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? `#${s.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((s) => proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? `#${s.proyecto}`))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -740,7 +765,7 @@ export function SupervisoresClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -763,10 +788,10 @@ export function SupervisoresClient({
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
+                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} />
+                      <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
                     </div>
                     <div className="col-span-2">
                       <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
@@ -853,7 +878,7 @@ export function SupervisoresClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="font-bold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30" onClick={() => setIsEditing(true)}>
+                  <Button variant="ghost" size="sm" className="font-bold text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30" onClick={() => setIsEditing(true)} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

@@ -2,7 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { TasaCambio, TasaCambioForm } from '@/lib/types/tasas-cambio'
+import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/tasas-cambio'
+import type { NombresVer } from '@/lib/registro-ver'
+import { leerNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 export type { TasaCambio, TasaCambioForm } from '@/lib/types/tasas-cambio'
@@ -65,6 +67,44 @@ export async function getTasasCambio(): Promise<TasaCambio[]> {
     .order('fecha', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as TasaCambio[]
+}
+
+export type GrupoTasasVer = TasaCambioGrupo & NombresVer & { historial: TasaCambio[] }
+
+export async function obtenerGrupoTasas(
+  empresa: number,
+  proyecto: number,
+  moneda: string,
+): Promise<{ row?: GrupoTasasVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.TSC_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_moneda_tasa_cambio')
+    .select('*')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('moneda', moneda)
+    .order('fecha', { ascending: false })
+  if (error) return { error: error.message }
+  const historial = (data ?? []) as TasaCambio[]
+  const nombres = await leerNombres(admin, cuenta, { empresa, proyecto })
+  const primera = historial[0]
+  return {
+    row: {
+      empresa,
+      proyecto,
+      moneda,
+      ultima_fecha: primera?.fecha ?? '',
+      ultima_tasa: primera?.tasa_cambio ?? 0,
+      historial,
+      ...nombres,
+    },
+  }
 }
 
 export async function createTasaCambio(form: TasaCambioForm): Promise<{ error?: string }> {

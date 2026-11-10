@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Cobrador, CobradorForm } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -67,6 +69,22 @@ export async function getCobradores(empresa?: number, proyecto?: number): Promis
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Cobrador[]
+}
+
+export async function obtenerCobrador(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: Cobrador & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.COB_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Cobrador>(
+    createAdminClient(), cuenta, 't_cobrador',
+    { cuenta, empresa, proyecto, codigo }, '*',
+    { empresa, proyecto },
+  )
 }
 
 // ─── Crear ─────────────────────────────────────────────────────────────────

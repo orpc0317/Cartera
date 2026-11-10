@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -30,7 +32,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador, SerieRecibo, ProyectoMoneda } from '@/lib/types/proyectos'
 import type { TasaCambio } from '@/lib/types/tasas-cambio'
-import { createReserva, type ReservaRow } from '@/app/actions/lotes'
+import { createReserva, type ReservaRow,
+  obtenerReserva,
+} from '@/app/actions/lotes'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 
@@ -496,7 +500,7 @@ export function ReservasClient({
   // ── Dialogo ───────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Reserva | null>(null)
+  const [viewTarget, setViewTarget] = useState<(Reserva & NombresVer) | null>(null)
   const [auditTarget, setAuditTarget] = useState<Reserva | null>(null)
 
   // ── Formulario ────────────────────────────────────────────────────────
@@ -863,6 +867,33 @@ export function ReservasClient({
     })
     setDialogOpen(true)
   }
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.numero}` : null
+  useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerReserva(viewTarget.empresa, viewTarget.proyecto, viewTarget.numero)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      const [mapped] = mapReservas([row])
+      const fresco = {
+        ...mapped,
+        empresa_nombre: row.empresa_nombre,
+        proyecto_nombre: row.proyecto_nombre,
+        fase_nombre: row.fase_nombre,
+        cliente_nombre: row.cliente_nombre,
+        vendedor_nombre: row.vendedor_nombre,
+        banco_nombre: row.banco_nombre,
+        cobrador_nombre: row.cobrador_nombre,
+      }
+      setReservas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.numero}`, fresco))
+      if (editando) return
+      setViewTarget(fresco)
+    },
+  })
 
   function openView(r: Reserva) {
     limpiarCampoInvalido()
@@ -1378,7 +1409,7 @@ export function ReservasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} — Lote {viewTarget.lote}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))} — Lote {viewTarget.lote}
                   </p>
                 )}
               </div>
@@ -1403,10 +1434,10 @@ export function ReservasClient({
 
                     <SectionDivider label="Identificacion" />
                   <div className="col-span-2">
-                    <ViewField label="Empresa"  value={empresaMap.get(viewTarget.empresa)} />
+                    <ViewField label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa))} />
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} />
+                    <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))} />
                   </div>
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField label="Numero" value={String(viewTarget.numero)} />
@@ -1429,13 +1460,13 @@ export function ReservasClient({
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <ViewField label="Cliente" value={clienteMap.get(viewTarget.cliente)} />
+                    <ViewField label="Cliente" value={nombreLeido(viewTarget.cliente_nombre, clienteMap.get(viewTarget.cliente))} />
                   </div>
-                  <ViewField label="Vendedor" value={vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`)} />
+                  <ViewField label="Vendedor" value={nombreLeido(viewTarget.vendedor_nombre, vendedorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.vendedor}`))} />
 
                   <SectionDivider label="Lote" />
                   <div className="col-span-2 grid grid-cols-3 gap-2">
-                    <ViewField label="Fase"    value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`)} />
+                    <ViewField label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`))} />
                     <ViewField label="Manzana" value={viewTarget.manzana} />
                     <ViewField label="Lote"    value={viewTarget.lote} />
                   </div>
@@ -1467,7 +1498,7 @@ export function ReservasClient({
                     </div>
                     <ViewField label="Monto" value={viewTarget.monto ? fmt(viewTarget.monto) : ''} />
                     <div className="col-span-2">
-                      <ViewField label="Cobrador" value={cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`)} />
+                      <ViewField label="Cobrador" value={nombreLeido(viewTarget.cobrador_nombre, cobradorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.cobrador}`))} />
                     </div>
 
                     {viewTarget.forma_pago !== 1 && (
@@ -1478,7 +1509,7 @@ export function ReservasClient({
                         </div>
                         {viewTarget.forma_pago === 2 && (
                           <>
-                            <ViewField label="Banco"         value={bancoMap.get(viewTarget.banco)} />
+                            <ViewField label="Banco"         value={nombreLeido(viewTarget.banco_nombre, bancoMap.get(viewTarget.banco))} />
                             <ViewField label="No. Cuenta"    value={viewTarget.num_cuenta} />
                             <div className="col-span-2">
                               <ViewField label="No. Documento" value={viewTarget.num_documento} />

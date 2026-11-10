@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Coordinador, CoordinadorForm } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -67,6 +69,22 @@ export async function getCoordinadores(empresa?: number, proyecto?: number): Pro
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Coordinador[]
+}
+
+export async function obtenerCoordinador(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: Coordinador & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.COO_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Coordinador>(
+    createAdminClient(), cuenta, 't_coordinador',
+    { cuenta, empresa, proyecto, codigo }, '*',
+    (row) => ({ empresa: row.empresa, proyecto: row.proyecto, supervisor: row.supervisor }),
+  )
 }
 
 // ─── Crear ─────────────────────────────────────────────────────────────────

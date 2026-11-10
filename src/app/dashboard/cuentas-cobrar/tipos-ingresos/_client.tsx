@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,7 +34,9 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createTipoIngreso, updateTipoIngreso, deleteTipoIngreso } from '@/app/actions/tipos-ingresos'
+import { createTipoIngreso, updateTipoIngreso, deleteTipoIngreso,
+  obtenerTipoIngreso,
+} from '@/app/actions/tipos-ingresos'
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 import type { Empresa, Proyecto, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -252,6 +256,8 @@ export function TiposIngresosClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -268,7 +274,7 @@ export function TiposIngresosClient({
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
-  const [viewTarget, setViewTarget]     = useState<TipoIngreso | null>(null)
+  const [viewTarget, setViewTarget]     = useState<(TipoIngreso & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TipoIngreso | null>(null)
   const [auditTarget, setAuditTarget]   = useState<TipoIngreso | null>(null)
   const [similarWarning, setSimilarWarning] = useState<string[]>([])
@@ -351,23 +357,23 @@ export function TiposIngresosClient({
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
   // ── Unique filter values ──────────────────────────────────────────────────
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
-  const uniqueNombreValues  = useMemo(() => [...new Set(initialData.map((r) => r.nombre))].sort(), [initialData])
-  const uniqueMonedaValues  = useMemo(() => [...new Set(initialData.map((r) => r.moneda))].sort(), [initialData])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueNombreValues  = useMemo(() => [...new Set(filas.map((r) => r.nombre))].sort(), [filas])
+  const uniqueMonedaValues  = useMemo(() => [...new Set(filas.map((r) => r.moneda))].sort(), [filas])
 
   // ── Filtering pipeline ────────────────────────────────────────────────────
   const visibleCols = useMemo(() => colPrefs.filter((p) => p.visible), [colPrefs])
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return initialData
-    return initialData.filter((r) =>
+    if (!q) return filas
+    return filas.filter((r) =>
       r.nombre.toLowerCase().includes(q) ||
       r.etiqueta.toLowerCase().includes(q) ||
       String(r.codigo).includes(q)
     )
-  }, [initialData, search])
+  }, [filas, search])
 
   const filtered = useMemo(() => {
     let rows = afterSearch
@@ -400,6 +406,25 @@ export function TiposIngresosClient({
   }, [filtered, cursorIdx])
 
   // ── Dialog helpers ────────────────────────────────────────────────────────
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerTipoIngreso(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+    },
+  })
+
   function openView(row: TipoIngreso) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -552,7 +577,7 @@ export function TiposIngresosClient({
     }
 
     // Jaro-Winkler similarity check
-    const relevantRows = initialData.filter(
+    const relevantRows = filas.filter(
       (x) => x.empresa === form.empresa && x.proyecto === form.proyecto &&
       (viewTarget ? x.codigo !== viewTarget.codigo : true)
     )
@@ -808,7 +833,7 @@ export function TiposIngresosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -829,8 +854,8 @@ export function TiposIngresosClient({
                   {/* Columna izquierda: IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                  <div className="col-span-2"><ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa)} /></div>
-                  <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)} /></div>
+                  <div className="col-span-2"><ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa))} /></div>
+                  <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))} /></div>
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
                     <div /><div />
@@ -1218,7 +1243,7 @@ export function TiposIngresosClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

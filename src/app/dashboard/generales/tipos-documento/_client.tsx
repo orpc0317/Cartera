@@ -1,5 +1,8 @@
 'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
+
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,7 +34,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { createTipoDocumento, updateTipoDocumento, deleteTipoDocumento } from '@/app/actions/tipos-documento'
+import { createTipoDocumento, updateTipoDocumento, deleteTipoDocumento,
+  obtenerTipoDocumento,
+} from '@/app/actions/tipos-documento'
 import type { Empresa, Proyecto } from '@/lib/types/proyectos'
 import type { TipoDocumento, TipoDocumentoForm } from '@/lib/types/tipos-documento'
 import { jaroWinkler, toDbString } from '@/lib/utils'
@@ -217,6 +222,8 @@ export function TiposDocumentoClient({
   initialData, empresas, proyectos,
   puedeAgregar, puedeModificar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -229,7 +236,7 @@ export function TiposDocumentoClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<TipoDocumento | null>(null)
+  const [viewTarget, setViewTarget] = useState<(TipoDocumento & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<TipoDocumento | null>(null)
   const [auditTarget, setAuditTarget] = useState<TipoDocumento | null>(null)
 
@@ -248,9 +255,9 @@ export function TiposDocumentoClient({
   )
 
   // -- Unique filter values -----------------------------------------------
-  const uniqueEmpresaNames    = useMemo(() => [...new Set(initialData.map((t) => empresaMap.get(t.empresa) ?? String(t.empresa)))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames   = useMemo(() => [...new Set(initialData.map((t) => proyectoMap.get(`${t.empresa}-${t.proyecto}`) ?? String(t.proyecto)))].sort(), [initialData, proyectoMap])
-  const uniqueDescripcionVals = useMemo(() => [...new Set(initialData.map((t) => t.descripcion).filter(Boolean))].sort(), [initialData])
+  const uniqueEmpresaNames    = useMemo(() => [...new Set(filas.map((t) => empresaMap.get(t.empresa) ?? String(t.empresa)))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames   = useMemo(() => [...new Set(filas.map((t) => proyectoMap.get(`${t.empresa}-${t.proyecto}`) ?? String(t.proyecto)))].sort(), [filas, proyectoMap])
+  const uniqueDescripcionVals = useMemo(() => [...new Set(filas.map((t) => t.descripcion).filter(Boolean))].sort(), [filas])
 
   // -- Filter helpers -----------------------------------------------------
   function setColFilter(col: string, next: Set<string>) {
@@ -262,12 +269,12 @@ export function TiposDocumentoClient({
     })
   }
 
-  const afterSearch = useMemo(() => initialData.filter((tipo) => {
+  const afterSearch = useMemo(() => filas.filter((tipo) => {
     const q = search.toLowerCase()
     return !q ||
       tipo.descripcion?.toLowerCase().includes(q) ||
       String(tipo.codigo).includes(q)
-  }), [initialData, search])
+  }), [filas, search])
 
   const filtered = useMemo(() => afterSearch.filter((tipo) =>
     Object.entries(colFilters).every(([col, vals]) => {
@@ -374,6 +381,26 @@ export function TiposDocumentoClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerTipoDocumento(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm(buildFormFromTipoDocumento(row))
+    },
+  })
+
   function openView(tipo: TipoDocumento) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -427,7 +454,7 @@ export function TiposDocumentoClient({
 
     // Frontend similarity check (jaroWinkler >= 0.85)
     const normalizedInput = toDbString(form.descripcion)
-    const candidates = initialData.filter((tipo) =>
+    const candidates = filas.filter((tipo) =>
       tipo.empresa === form.empresa && tipo.proyecto === form.proyecto &&
       (viewTarget ? tipo.codigo !== viewTarget.codigo : true)
     )
@@ -486,7 +513,7 @@ export function TiposDocumentoClient({
       : (viewTarget?.descripcion ?? '')
 
   const dialogSubtitle = viewTarget
-    ? `${empresaMap.get(viewTarget.empresa) ?? ''} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
+    ? `${nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
     : undefined
 
   return (
@@ -700,10 +727,10 @@ export function TiposDocumentoClient({
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="Identificacion">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa)} />
+                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} />
+                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
                     </div>
                     <div className="col-span-2">
                       <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
@@ -801,7 +828,7 @@ export function TiposDocumentoClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-slate-50 dark:hover:bg-slate-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-slate-50 dark:hover:bg-slate-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

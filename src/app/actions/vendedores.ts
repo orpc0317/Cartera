@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Vendedor, VendedorForm } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -67,6 +69,22 @@ export async function getVendedores(empresa?: number, proyecto?: number): Promis
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Vendedor[]
+}
+
+export async function obtenerVendedor(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: Vendedor & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.VEN_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Vendedor>(
+    createAdminClient(), cuenta, 't_vendedor',
+    { cuenta, empresa, proyecto, codigo }, '*',
+    (row) => ({ empresa: row.empresa, proyecto: row.proyecto, coordinador: row.coordinador ?? 0 }),
+  )
 }
 
 // ─── Crear ─────────────────────────────────────────────────────────────────

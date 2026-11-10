@@ -126,7 +126,7 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
 }
 
 /**
- * Guard para server actions de escritura.
+ * Guard para server actions. La lectura por id usa 'consultar'; las mutaciones usan agregar, modificar o eliminar.
  *
  * Verifica que el usuario autenticado tenga el permiso requerido para el
  * índice de menú indicado. Devuelve `{ error }` si el acceso está denegado,
@@ -138,7 +138,7 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
  */
 export async function requirePermiso(
   indice: string,
-  operacion: 'agregar' | 'modificar' | 'eliminar',
+  operacion: 'consultar' | 'agregar' | 'modificar' | 'eliminar',
 ): Promise<{ error: string } | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

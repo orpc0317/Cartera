@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { TipoDocumento, TipoDocumentoForm } from '@/lib/types/tipos-documento'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -67,6 +69,23 @@ export async function getTiposDocumento(empresa?: number, proyecto?: number): Pr
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as TipoDocumento[]
+}
+
+export async function obtenerTipoDocumento(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: TipoDocumento & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.TDO_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<TipoDocumento>(
+    createAdminClient(), cuenta, 't_tipo_documento',
+    { cuenta, empresa, proyecto, codigo },
+    'cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
+    { empresa, proyecto },
+  )
 }
 
 export async function createTipoDocumento(form: TipoDocumentoForm): Promise<{ error?: string }> {

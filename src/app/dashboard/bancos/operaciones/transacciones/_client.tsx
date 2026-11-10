@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,6 +34,7 @@ import type { TransaccionBancaria, Empresa, Proyecto, CuentaBancaria, Banco } fr
 import {
   anularTransaccionBancaria,
   eliminarTransaccionBancaria,
+  obtenerTransaccionBancaria,
 } from '@/app/actions/transacciones-bancarias'
 
 // ─── Mapas de catálogos ───────────────────────────────────────────────────
@@ -193,6 +196,8 @@ export function TransaccionesBancariasClient({
   initialData, empresas, proyectos, cuentasBancarias, bancos,
   puedeAnular, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -202,7 +207,7 @@ export function TransaccionesBancariasClient({
   const [fechaDesde, setFechaDesde]     = useState('')
   const [fechaHasta, setFechaHasta]     = useState('')
   const [dialogOpen, setDialogOpen]     = useState(false)
-  const [viewTarget, setViewTarget]     = useState<TransaccionBancaria | null>(null)
+  const [viewTarget, setViewTarget]     = useState<(TransaccionBancaria & NombresVer) | null>(null)
   const [anularTarget, setAnularTarget] = useState<TransaccionBancaria | null>(null)
   const [eliminarTarget, setEliminarTarget] = useState<TransaccionBancaria | null>(null)
   const [auditTarget, setAuditTarget]   = useState<TransaccionBancaria | null>(null)
@@ -243,7 +248,8 @@ export function TransaccionesBancariasClient({
   )
 
   // Proyecto display for a transaction (via cuenta_bancaria → proyecto)
-  function getProyectoNombre(r: TransaccionBancaria): string {
+  function getProyectoNombre(r: TransaccionBancaria & NombresVer): string {
+    if (r.proyecto_nombre !== undefined) return r.proyecto_nombre ?? ''
     const cb = cuentaBancariaObjMap.get(r.cuenta_bancaria)
     if (!cb) return `#${r.cuenta_bancaria}`
     return proyectoMap.get(`${r.empresa}-${cb.proyecto}`) ?? `#${cb.proyecto}`
@@ -261,8 +267,8 @@ export function TransaccionesBancariasClient({
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return initialData
-    return initialData.filter((r) => {
+    if (!q) return filas
+    return filas.filter((r) => {
       const proy = getProyectoNombre(r).toLowerCase()
       const cb   = cuentaBancariaDisplayMap.get(r.cuenta_bancaria)?.toLowerCase() ?? ''
       return (
@@ -274,7 +280,7 @@ export function TransaccionesBancariasClient({
       )
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialData, search, cuentaBancariaDisplayMap])
+  }, [filas, search, cuentaBancariaDisplayMap])
 
   const filtered = useMemo(() => afterSearch.filter((r) => {
     if (fechaDesde && r.fecha < fechaDesde) return false
@@ -292,10 +298,10 @@ export function TransaccionesBancariasClient({
   const hasActiveFilters = Object.keys(colFilters).length > 0 || !!fechaDesde || !!fechaHasta
 
   // ── Unique values para filtros ─────────────────────────────────────────
-  const uniqueProyectos   = useMemo(() => [...new Set(initialData.map((r) => getProyectoNombre(r)))].sort(), [initialData, proyectoMap, cuentaBancariaObjMap]) // eslint-disable-line react-hooks/exhaustive-deps
-  const uniqueCuentas     = useMemo(() => [...new Set(initialData.map((r) => cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? ''))].sort(), [initialData, cuentaBancariaDisplayMap])
-  const uniqueTipos       = useMemo(() => [...new Set(initialData.map((r) => TIPOS_TRANSACCION[r.tipo_transaccion] ?? String(r.tipo_transaccion)))].sort(), [initialData])
-  const uniqueEstados     = useMemo(() => [...new Set(initialData.map((r) => ESTADOS_TRANSACCION[r.estado]?.label ?? String(r.estado)))].sort(), [initialData])
+  const uniqueProyectos   = useMemo(() => [...new Set(filas.map((r) => getProyectoNombre(r)))].sort(), [filas, proyectoMap, cuentaBancariaObjMap]) // eslint-disable-line react-hooks/exhaustive-deps
+  const uniqueCuentas     = useMemo(() => [...new Set(filas.map((r) => cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? ''))].sort(), [filas, cuentaBancariaDisplayMap])
+  const uniqueTipos       = useMemo(() => [...new Set(filas.map((r) => TIPOS_TRANSACCION[r.tipo_transaccion] ?? String(r.tipo_transaccion)))].sort(), [filas])
+  const uniqueEstados     = useMemo(() => [...new Set(filas.map((r) => ESTADOS_TRANSACCION[r.estado]?.label ?? String(r.estado)))].sort(), [filas])
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `trx_ban_cols_v1_${userId}`
@@ -373,6 +379,22 @@ export function TransaccionesBancariasClient({
   useEffect(() => { setCursorIdx(null); setPage(0) }, [search, colFilters, fechaDesde, fechaHasta])
 
   // ── Acciones ──────────────────────────────────────────────────────────
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.cuenta_bancaria}-${viewTarget.numero_transaccion}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: false,
+    leer: () => viewTarget
+      ? obtenerTransaccionBancaria(viewTarget.empresa, viewTarget.cuenta_bancaria, viewTarget.numero_transaccion)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.cuenta_bancaria}-${r.numero_transaccion}`, row))
+      if (editando) return
+      setViewTarget(row)
+    },
+  })
 
   function openView(r: TransaccionBancaria) {
     setViewTarget(r)
@@ -700,7 +722,7 @@ export function TransaccionesBancariasClient({
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {getProyectoNombre(viewTarget)}
                     {' · '}
-                    {cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria) ?? ''}
+                    {nombreLeido(viewTarget.cuenta_bancaria_nombre, cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria))}
                   </p>
                 )}
               </div>
@@ -725,13 +747,13 @@ export function TransaccionesBancariasClient({
 
                     <SectionDivider label="Identificacion" />
                     <div className="col-span-2">
-                      <ViewField label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} />
+                      <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField label="Proyecto" value={getProyectoNombre(viewTarget)} />
+                      <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, getProyectoNombre(viewTarget))} />
                     </div>
                     <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Cuenta Bancaria" value={cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria) ?? `#${viewTarget.cuenta_bancaria}`} />
+                      <ViewField label="Cuenta Bancaria" value={nombreLeido(viewTarget.cuenta_bancaria_nombre, cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria) ?? `#${viewTarget.cuenta_bancaria}`)} />
                       <ViewField label="Numero Transaccion" value={viewTarget.numero_transaccion} />
                     </div>
 
@@ -762,7 +784,7 @@ export function TransaccionesBancariasClient({
                         <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Monto</span>
                         <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                           <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                            <span className="text-muted-foreground mr-1">{cuentaBancariaMonedaMap.get(viewTarget.cuenta_bancaria) ?? ''}</span>
+                            <span className="text-muted-foreground mr-1">{nombreLeido(viewTarget.moneda_nombre, cuentaBancariaMonedaMap.get(viewTarget.cuenta_bancaria))}</span>
                             {fmt(viewTarget.valor)}
                           </span>
                         </div>
@@ -817,7 +839,7 @@ export function TransaccionesBancariasClient({
                   size="sm"
                   className="text-amber-700 hover:text-amber-700"
                   onClick={() => { setAnularTarget(viewTarget); }}
-                  disabled={isPending}
+                  disabled={isPending || lecturaPendiente}
                 >
                   <Ban className="mr-1.5 h-3.5 w-3.5" /> Anular
                 </Button>

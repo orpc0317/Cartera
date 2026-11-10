@@ -1,5 +1,8 @@
 'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useRegistroVer } from '@/lib/use-registro-ver'
+
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
@@ -27,7 +30,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
-import { getRecibosCaja, getReciboCajaExtra } from '@/app/actions/pagos'
+import { getRecibosCaja, getReciboCajaExtra,
+  obtenerReciboCaja,
+} from '@/app/actions/pagos'
 import type { ReciboCaja, ReciboCajaDetalleExtra, PagosFiltros } from '@/lib/types/pagos'
 import type {
   Empresa, Proyecto, Cliente, Cobrador, Banco, CuentaBancaria, SerieRecibo,
@@ -339,7 +344,7 @@ export function PagosClient({
 
   // ── Modal Ver ──
   const [dialogOpen, setDialogOpen]   = useState(false)
-  const [viewTarget, setViewTarget]   = useState<ReciboCaja | null>(null)
+  const [viewTarget, setViewTarget]   = useState<(ReciboCaja & NombresVer) | null>(null)
   const [extra, setExtra]             = useState<ReciboCajaDetalleExtra | null>(null)
   const [isPendingExtra, startExtraTransition] = useTransition()
   const [auditTarget, setAuditTarget] = useState<ReciboCaja | null>(null)
@@ -352,13 +357,14 @@ export function PagosClient({
   const bancoMap    = useMemo(() => new Map(bancos.map((b) => [`${b.empresa}-${b.proyecto}-${b.codigo}`, b.nombre])), [bancos])
   const cuentaBancariaObjMap = useMemo(() => new Map(cuentasBancarias.map((c) => [c.codigo, c])), [cuentasBancarias])
 
-  function empresaNombre(r: ReciboCaja)  { return empresaMap.get(r.empresa) ?? `#${r.empresa}` }
-  function proyectoNombre(r: ReciboCaja) { return proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}` }
-  function clienteNombre(r: ReciboCaja)  { return clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? `#${r.cliente}` }
-  function cobradorNombre(r: ReciboCaja) { return r.cobrador ? (cobradorMap.get(`${r.empresa}-${r.proyecto}-${r.cobrador}`) ?? `#${r.cobrador}`) : '' }
-  function bancoNombre(r: ReciboCaja)    { return r.banco ? (bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? `#${r.banco}`) : '' }
-  function cuentaDepositoDisplay(r: ReciboCaja): string {
+  function empresaNombre(r: ReciboCaja & NombresVer)  { return nombreLeido(r.empresa_nombre, empresaMap.get(r.empresa) ?? `#${r.empresa}`) }
+  function proyectoNombre(r: ReciboCaja & NombresVer) { return nombreLeido(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`) }
+  function clienteNombre(r: ReciboCaja & NombresVer)  { return nombreLeido(r.cliente_nombre, clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? `#${r.cliente}`) }
+  function cobradorNombre(r: ReciboCaja & NombresVer) { return r.cobrador ? nombreLeido(r.cobrador_nombre, cobradorMap.get(`${r.empresa}-${r.proyecto}-${r.cobrador}`) ?? `#${r.cobrador}`) : '' }
+  function bancoNombre(r: ReciboCaja & NombresVer)    { return r.banco ? nombreLeido(r.banco_nombre, bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? `#${r.banco}`) : '' }
+  function cuentaDepositoDisplay(r: ReciboCaja & NombresVer): string {
     if (!r.cuenta_deposito) return ''
+    if (r.cuenta_deposito_nombre !== undefined) return r.cuenta_deposito_nombre ?? ''
     const cb = cuentaBancariaObjMap.get(r.cuenta_deposito)
     if (!cb) return `#${r.cuenta_deposito}`
     const banco = bancoMap.get(`${cb.empresa}-${cb.proyecto}-${cb.banco}`) ?? `#${cb.banco}`
@@ -578,6 +584,25 @@ export function PagosClient({
   // ── Cursor de teclado ──
   const tableRef = useRef<HTMLDivElement>(null)
   const [cursorIdx, setCursorIdx] = useState<number | null>(null)
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.serie}-${viewTarget.numero}` : null
+  useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: false,
+    leer: () => viewTarget
+      ? obtenerReciboCaja(viewTarget.empresa, viewTarget.proyecto, viewTarget.serie, viewTarget.numero)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setData((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.serie}-${r.numero}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+    },
+  })
 
   function openView(row: ReciboCaja) {
     setViewTarget(row)

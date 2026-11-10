@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -30,6 +32,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   createProyecto, updateProyecto, deleteProyecto, uploadProjectLogo,
   addProyectoMoneda, toggleProyectoMonedaActivo, setProyectoMonedaPredeterminada,
+  obtenerProyecto,
+  type ProyectoVer,
 } from '@/app/actions/proyectos'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import type { Empresa, Proyecto, ProyectoForm, Fase, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
@@ -454,6 +458,8 @@ export function ProyectosClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -461,7 +467,7 @@ export function ProyectosClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget] = useState<Proyecto | null>(null)
+  const [viewTarget, setViewTarget] = useState<ProyectoVer | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Proyecto | null>(null)
   const [auditTarget, setAuditTarget] = useState<Proyecto | null>(null)
   const [form, setForm] = useState<ProyectoForm>(EMPTY_FORM)
@@ -508,12 +514,11 @@ export function ProyectosClient({
   )
 
   // Monedas del proyecto actualmente en vista
-  const proyectoMonedasActuales = useMemo(
-    () => viewTarget
-      ? proyectoMonedas.filter((m) => m.empresa === viewTarget.empresa && m.proyecto === viewTarget.codigo)
-      : [],
-    [proyectoMonedas, viewTarget],
-  )
+  const proyectoMonedasActuales = useMemo(() => {
+    if (!viewTarget) return []
+    if (Array.isArray(viewTarget.monedas_del_proyecto)) return viewTarget.monedas_del_proyecto
+    return proyectoMonedas.filter((m) => m.empresa === viewTarget.empresa && m.proyecto === viewTarget.codigo)
+  }, [proyectoMonedas, viewTarget])
 
   // Monedas del catálogo aún no agregadas al proyecto
   const monedasDisponibles = useMemo(
@@ -536,14 +541,14 @@ export function ProyectosClient({
   }
 
   const uniqueEmpresaNames = useMemo(
-    () => [...new Set(initialData.map((p) => empresaMap.get(p.empresa) ?? ''))].sort(),
-    [initialData, empresaMap]
+    () => [...new Set(filas.map((p) => empresaMap.get(p.empresa) ?? ''))].sort(),
+    [filas, empresaMap]
   )
 
   const uniqueVals = (key: keyof Proyecto) =>
-    [...new Set(initialData.map((p) => String(p[key] ?? '')))].sort()
+    [...new Set(filas.map((p) => String(p[key] ?? '')))].sort()
 
-  const afterSearch = initialData.filter((p) => {
+  const afterSearch = filas.filter((p) => {
     const q = search.toLowerCase()
     return !q ||
       p.nombre?.toLowerCase().includes(q) ||
@@ -686,6 +691,37 @@ export function ProyectosClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerProyecto(viewTarget.empresa, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha, monedas_del_proyecto: row.monedas_del_proyecto } : row)
+        return
+      }
+      setViewTarget(row)
+      const built = buildFormFromProyecto(row)
+      const phones1 = splitPhone(row.telefono1 ?? '')
+      const phones2 = splitPhone(row.telefono2 ?? '')
+      const fallbackIso = built.paisCodigo || (paises.find((p) => p.nombre === (empresas.find((e) => e.codigo === row.empresa)?.direccion_pais ?? ''))?.codigo ?? '')
+      setTel1Iso(phones1.iso || fallbackIso); setTel1Local(phones1.local)
+      setTel2Iso(phones2.iso || fallbackIso); setTel2Local(phones2.local)
+      setForm(built.form)
+      setPaisCodigo(built.paisCodigo)
+      setDeptoCodigo(built.deptoCodigo)
+      setTipoCalculo((row.fijo_mora ?? 0) > 0 ? 1 : 0)
+      setMinMoraStr(formatMora(row.minimo_mora ?? 0))
+      setLogoFile(null); setLogoPreviewUrl(''); setLogoError('')
+    },
+  })
+
   function openView(proyecto: Proyecto) {
     setCampoInvalido(null)
     setActiveTab('general')
@@ -786,6 +822,10 @@ export function ProyectosClient({
       } else {
         toast.success('Moneda agregada al proyecto.')
         setAddMonedaValue('')
+        const fresco = await obtenerProyecto(viewTarget.empresa, viewTarget.codigo)
+        if (fresco.row) {
+          setViewTarget((prev) => prev ? { ...prev, monedas_del_proyecto: fresco.row!.monedas_del_proyecto } : prev)
+        }
         router.refresh()
       }
     })
@@ -799,6 +839,10 @@ export function ProyectosClient({
         toast.error(result.error)
       } else {
         toast.success(nuevoActivo === 1 ? 'Moneda activada.' : 'Moneda desactivada.')
+        const fresco = await obtenerProyecto(viewTarget.empresa, viewTarget.codigo)
+        if (fresco.row) {
+          setViewTarget((prev) => prev ? { ...prev, monedas_del_proyecto: fresco.row!.monedas_del_proyecto } : prev)
+        }
         router.refresh()
       }
     })
@@ -812,6 +856,10 @@ export function ProyectosClient({
         toast.error(result.error)
       } else {
         toast.success('Moneda predeterminada actualizada.')
+        const fresco = await obtenerProyecto(viewTarget.empresa, viewTarget.codigo)
+        if (fresco.row) {
+          setViewTarget((prev) => prev ? { ...prev, monedas_del_proyecto: fresco.row!.monedas_del_proyecto } : prev)
+        }
         router.refresh()
       }
     })
@@ -840,7 +888,7 @@ export function ProyectosClient({
 
     // Verificar similitud de nombre (umbral 0.85) contra proyectos de la misma empresa
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((p) =>
+    const candidates = filas.filter((p) =>
       p.empresa === form.empresa && (viewTarget ? p.codigo !== viewTarget.codigo : true)
     )
     const similar = candidates.filter(
@@ -1147,7 +1195,7 @@ export function ProyectosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {empresaMap.get(viewTarget.empresa) ?? ''}
+                    {nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -1176,7 +1224,7 @@ export function ProyectosClient({
                   {/* Left column — IDENTIFICACION + GENERAL */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="Identificacion">
-                    <div className="col-span-2"><ViewField locked label="Empresa" value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} /></div>
                     <div className="col-span-1"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                     </SegmentCard>
                     <SegmentCard label="General">
@@ -1191,15 +1239,15 @@ export function ProyectosClient({
                             {p ? (
                               <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
                                 <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                {p.nombre}
+                                {nombreLeido(viewTarget.pais_nombre, p.nombre)}
                               </span>
                             ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.direccion_pais ?? '—'}</span>}
                           </div>
                         </div>
                       )
                     })()}
-                    <ViewField label="Departamento" value={departamentos.find((d) => d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento} />
-                    <ViewField label="Municipio" value={municipios.find((m) => m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio} />
+                    <ViewField label="Departamento" value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)} />
+                    <ViewField label="Municipio" value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)} />
                     <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
                     <div className="col-span-2"><ViewField label="Telefono 1" value={viewTarget.telefono1} /></div>
                     <div className="col-span-2"><ViewField label="Telefono 2" value={viewTarget.telefono2} /></div>
@@ -1711,7 +1759,7 @@ export function ProyectosClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,7 +33,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createManzana, deleteManzana } from '@/app/actions/manzanas'
+import { createManzana, deleteManzana,
+  obtenerManzana,
+} from '@/app/actions/manzanas'
 import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 
@@ -182,6 +186,8 @@ export function ManzanasClient({
   puedeEliminar:  boolean
   userId:         string
 }) {
+  const [filas, setFilas] = useFilas(manzanas)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -189,7 +195,7 @@ export function ManzanasClient({
   const [search,       setSearch]       = useState('')
   const [dialogOpen,   setDialogOpen]   = useState(false)
   const [isCreating,   setIsCreating]   = useState(false)
-  const [viewTarget,   setViewTarget]   = useState<Manzana | null>(null)
+  const [viewTarget,   setViewTarget]   = useState<(Manzana & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Manzana | null>(null)
   const [auditTarget,  setAuditTarget]  = useState<Manzana | null>(null)
   const [form,         setForm]         = useState<ManzanaForm>(EMPTY_FORM)
@@ -222,13 +228,13 @@ export function ManzanasClient({
     })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(manzanas.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [manzanas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(manzanas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [manzanas, proyectoMap])
-  const uniqueFaseNames     = useMemo(() => [...new Set(manzanas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [manzanas, faseMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [filas, faseMap])
 
   // --- Filtering pipeline ---------------------------------------------------
 
-  const afterSearch = manzanas.filter((r) => {
+  const afterSearch = filas.filter((r) => {
     const q = search.toLowerCase()
     return !q ||
       r.codigo.toLowerCase().includes(q) ||
@@ -347,6 +353,22 @@ export function ManzanasClient({
     setIsCreating(true)
     setDialogOpen(true)
   }
+
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}-${viewTarget.codigo}` : null
+  useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: false,
+    leer: () => viewTarget
+      ? obtenerManzana(viewTarget.empresa, viewTarget.proyecto, viewTarget.fase, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.fase}-${r.codigo}`, row))
+      if (editando) return
+      setViewTarget(row)
+    },
+  })
 
   function openView(m: Manzana) {
     limpiarCampoInvalido()
@@ -570,7 +592,7 @@ export function ManzanasClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -643,9 +665,9 @@ export function ManzanasClient({
               ) : viewTarget ? (
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                  <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa)} /></div>
-                  <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto)} /></div>
-                  <ViewField locked label="Fase"   value={faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase)} />
+                  <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa))} /></div>
+                  <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} /></div>
+                  <ViewField locked label="Fase"   value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase))} />
                   <ViewField locked label="Codigo" value={viewTarget.codigo} />
                   </SegmentCard>
                 </div>

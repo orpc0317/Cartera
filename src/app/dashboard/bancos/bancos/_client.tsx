@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -31,7 +33,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { createBanco, updateBanco, deleteBanco } from '@/app/actions/bancos'
+import { createBanco, updateBanco, deleteBanco,
+  obtenerBanco,
+} from '@/app/actions/bancos'
 import type { Banco, BancoForm, Empresa, Proyecto } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
@@ -200,6 +204,8 @@ export function BancosClient({
   puedeEliminar: boolean
   userId: string
 }) {
+  const [filas, setFilas] = useFilas(initialData)
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -207,7 +213,7 @@ export function BancosClient({
   const [dialogOpen, setDialogOpen]   = useState(false)
   const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
-  const [viewTarget, setViewTarget]   = useState<Banco | null>(null)
+  const [viewTarget, setViewTarget]   = useState<(Banco & NombresVer) | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Banco | null>(null)
   const [auditTarget, setAuditTarget]   = useState<Banco | null>(null)
   const [form, setForm]               = useState<BancoForm>(EMPTY_FORM)
@@ -232,19 +238,19 @@ export function BancosClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(initialData.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [initialData, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(initialData.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [initialData, proyectoMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
 
   // ─── Filtering pipeline ──────────────────────────────────────────────────
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
-    return !q ? initialData : initialData.filter((r) =>
+    return !q ? filas : filas.filter((r) =>
       r.nombre?.toLowerCase().includes(q) ||
       (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
       String(r.codigo).includes(q)
     )
-  }, [initialData, search, empresaMap])
+  }, [filas, search, empresaMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
@@ -352,6 +358,26 @@ export function BancosClient({
     setDialogOpen(true)
   }
 
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.codigo}` : null
+  const { lecturaPendiente } = useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerBanco(viewTarget.empresa, viewTarget.proyecto, viewTarget.codigo)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => reemplazarFila(prev, (r) => `${r.empresa}-${r.proyecto}-${r.codigo}`, row))
+      if (editando) {
+        setViewTarget((prev) => prev ? { ...prev, modifico_fecha: row.modifico_fecha } : row)
+        return
+      }
+      setViewTarget(row)
+      setForm({ empresa: row.empresa, proyecto: row.proyecto, nombre: row.nombre })
+    },
+  })
+
   function openView(banco: Banco) {
     setCampoInvalido(null)
     setActiveTab('general')
@@ -385,7 +411,7 @@ export function BancosClient({
 
     // Verificar similitud de nombre (umbral 0.85) contra bancos del mismo proyecto
     const normalizedInput = toDbString(form.nombre)
-    const candidates = initialData.filter((b) =>
+    const candidates = filas.filter((b) =>
       b.empresa === form.empresa && b.proyecto === form.proyecto &&
       (viewTarget ? b.codigo !== viewTarget.codigo : true)
     )
@@ -513,7 +539,7 @@ export function BancosClient({
                     values={
                       col.key === 'empresa'  ? uniqueEmpresaNames :
                       col.key === 'proyecto' ? uniqueProyectoNames :
-                      [...new Set(initialData.map((r) => String(r[col.key as keyof Banco] ?? '')))].sort()
+                      [...new Set(filas.map((r) => String(r[col.key as keyof Banco] ?? '')))].sort()
                     }
                     active={colFilters[col.key] ?? new Set()}
                     onChange={(v) => setColFilter(col.key, v)}
@@ -606,7 +632,7 @@ export function BancosClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
                     <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
                   </p>
                 )}
@@ -629,8 +655,8 @@ export function BancosClient({
                 /* ── View mode ── */
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2"><ViewField locked label="Empresa"  value={empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`} /></div>
-                    <div className="col-span-2"><ViewField locked label="Proyecto" value={proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`} /></div>
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
                     <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
                   </SegmentCard>
                   <SegmentCard label="GENERAL">
@@ -686,7 +712,7 @@ export function BancosClient({
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={startEdit}>
+                  <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}

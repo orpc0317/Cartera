@@ -1,5 +1,7 @@
-﻿'use client'
+'use client'
 
+import { nombreLeido, type NombresVer } from '@/lib/registro-ver'
+import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -27,7 +29,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { createTasaCambio, deleteTasaCambio } from '@/app/actions/tasas-cambio'
+import { createTasaCambio, deleteTasaCambio,
+  obtenerGrupoTasas,
+} from '@/app/actions/tasas-cambio'
 import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/tasas-cambio'
 import type { Empresa, Proyecto, ProyectoMoneda } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
@@ -206,6 +210,8 @@ export default function TasasCambioClient({
   tasas, empresas, proyectos, proyectoMonedas,
   puedeAgregar, puedeEliminar, userId,
 }: Props) {
+  const [filas, setFilas] = useFilas(tasas)
+
   const router = useRouter()
   const tableRef = useRef<HTMLDivElement>(null)
 
@@ -262,7 +268,7 @@ export default function TasasCambioClient({
   // ── Modal state ──────────────────────────────────────────────────────────
   const [dialogOpen, setDialogOpen]   = useState(false)
   const [isEditing, setIsEditing]     = useState(false)   // true = Nuevo form
-  const [viewTarget, setViewTarget]   = useState<TasaCambioGrupo | null>(null)
+  const [viewTarget, setViewTarget]   = useState<(TasaCambioGrupo & NombresVer) | null>(null)
   const [form, setForm]               = useState<TasaCambioForm>(EMPTY_FORM)
   const [isPending, startTransition]  = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
@@ -275,21 +281,21 @@ export default function TasasCambioClient({
   // ── Aggregated grupos ─────────────────────────────────────────────────────
   const grupos = useMemo(() => {
     const map = new Map<string, TasaCambioGrupo>()
-    for (const t of tasas) {
+    for (const t of filas) {
       const key = `${t.empresa}-${t.proyecto}-${t.moneda}`
       if (!map.has(key)) map.set(key, { empresa: t.empresa, proyecto: t.proyecto, moneda: t.moneda, ultima_fecha: t.fecha, ultima_tasa: t.tasa_cambio })
     }
     return Array.from(map.values())
-  }, [tasas])
+  }, [filas])
 
   // ── History for current group ─────────────────────────────────────────────
   const historialActual = useMemo(() =>
     viewTarget
-      ? tasas
+      ? filas
           .filter((t) => t.empresa === viewTarget.empresa && t.proyecto === viewTarget.proyecto && t.moneda === viewTarget.moneda)
           .sort((a, b) => b.fecha.localeCompare(a.fecha))
       : [],
-    [tasas, viewTarget])
+    [filas, viewTarget])
 
   // ── Form derived state ────────────────────────────────────────────────────
   const proyectosFiltrados = useMemo(
@@ -317,6 +323,33 @@ export default function TasasCambioClient({
     : <ArrowLeftRight className={`h-4 w-4 ${iconBadgeClr}`} />
 
   // ── Modal functions ───────────────────────────────────────────────────────
+
+  const claveVer = dialogOpen && viewTarget ? `${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.moneda}` : null
+  useRegistroVer({
+    activo: dialogOpen && viewTarget != null,
+    clave: claveVer,
+    editando: isEditing,
+    leer: () => viewTarget
+      ? obtenerGrupoTasas(viewTarget.empresa, viewTarget.proyecto, viewTarget.moneda)
+      : Promise.resolve({ error: 'Registro no encontrado.' }),
+    alLlegar: (row, editando) => {
+      setFilas((prev) => {
+        const resto = prev.filter((t) => !(t.empresa === row.empresa && t.proyecto === row.proyecto && t.moneda === row.moneda))
+        return [...resto, ...row.historial]
+      })
+      if (editando) return
+      setViewTarget({
+        empresa: row.empresa,
+        proyecto: row.proyecto,
+        moneda: row.moneda,
+        ultima_fecha: row.ultima_fecha,
+        ultima_tasa: row.ultima_tasa,
+        empresa_nombre: row.empresa_nombre,
+        proyecto_nombre: row.proyecto_nombre,
+      })
+    },
+  })
+
   function openView(grupo: TasaCambioGrupo) {
     limpiarCampoInvalido()
     setActiveTab('general')
@@ -357,7 +390,7 @@ export default function TasasCambioClient({
       rechazar('tasa_cambio', 'La tasa de cambio debe ser mayor a cero.')
       return
     }
-    const maxFecha = tasas
+    const maxFecha = filas
       .filter((t) => t.empresa === form.empresa && t.proyecto === form.proyecto && t.moneda === form.moneda)
       .map((t) => t.fecha)
       .sort()
@@ -601,7 +634,7 @@ export default function TasasCambioClient({
                 </DialogTitle>
                 {viewTarget && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {empresaMap.get(viewTarget.empresa) ?? ''} · {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} · {viewTarget.moneda}
+                    {nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} · {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} · {viewTarget.moneda}
                     {(() => {
                       const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
                       return flag ? (

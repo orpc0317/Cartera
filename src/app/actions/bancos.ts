@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { toDbString } from '@/lib/utils'
 import type { Banco, BancoForm } from '@/lib/types/proyectos'
+import type { NombresVer } from '@/lib/registro-ver'
+import { filaConNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
@@ -68,6 +70,18 @@ export async function getBancos(empresa?: number, proyecto?: number): Promise<Ba
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Banco[]
+}
+
+export async function obtenerBanco(
+  empresa: number,
+  proyecto: number,
+  codigo: number,
+): Promise<{ row?: Banco & NombresVer; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.BAN_CAT, 'consultar')
+  if (guard) return guard
+  const cuenta = await getCuentaActiva()
+  if (!cuenta) return { error: 'Sesión no válida.' }
+  return filaConNombres<Banco>(createAdminClient(), cuenta, 't_banco', { cuenta, empresa, proyecto, codigo }, '*', { empresa, proyecto })
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────
