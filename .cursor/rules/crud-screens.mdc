@@ -23,7 +23,7 @@ Al guardar la edición de un registro existente, el modal vuelve a Ver con la fi
 
 → **Copiar verbatim de `components.instructions.md § Q · Page header`**
 
-- The outer container uses `gap-6 p-6 md:p-8` — **not** `gap-4 p-6`.
+- The outer container is `LIST_SHELL` from `src/lib/list-table.ts` (`flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-6 md:p-8`). Header, toolbar and the record counter use `LIST_BLOCK`. The list table uses `LIST_SCROLLPORT` — see `data-tables.mdc`.
 - `<Button>Nuevo…</Button>` lives **only** in the header — do **not** duplicate it in the toolbar.
 - `h1` always `className="text-xl font-bold tracking-tight text-foreground"` — never accent-colored.
 - Use the module's accent color (see `ui-conventions.instructions.md`) for icon badge and button.

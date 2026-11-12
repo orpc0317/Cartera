@@ -13,6 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
 } from '@/components/ui/table'
+import { LIST_BLOCK, LIST_HEAD, LIST_HEAD_BG, LIST_HEAD_LEFT, LIST_HEAD_RIGHT, LIST_SCROLLPORT, LIST_SHELL, LIST_THEAD } from '@/lib/list-table'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -266,10 +267,10 @@ export function DepositarPagosClient({
   const LABEL_STYLE = { fontSize: 'var(--ui-form-label)' }
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8 pb-24">
+    <div className={LIST_SHELL}>
 
       {/* ── Header ── */}
-      <div className="flex items-start">
+      <div className={`${LIST_BLOCK} flex items-start`}>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-pink-100 p-2.5">
             <CircleDollarSign className="h-5 w-5 text-pink-600" />
@@ -282,10 +283,10 @@ export function DepositarPagosClient({
       </div>
 
       {/* ── Dos paneles ── */}
-      <div className="flex gap-6 items-start">
+      <div className="flex min-h-0 flex-1 gap-6">
 
         {/* ── Panel izquierdo — Encabezado ── */}
-        <div className="w-80 shrink-0 rounded-xl border border-border/60 bg-card p-4">
+        <div className="w-80 shrink-0 min-h-0 overflow-y-auto rounded-xl border border-border/60 bg-card p-4">
           <div className="grid grid-cols-2 gap-2">
 
             <SectionDivider label="Identificacion" />
@@ -382,10 +383,10 @@ export function DepositarPagosClient({
         <div className="w-px self-stretch bg-border/60" />
 
         {/* ── Panel derecho — Detalle ── */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
 
           {/* Buscador */}
-          <div className="rounded-xl border border-border/60 bg-card p-4">
+          <div className={`${LIST_BLOCK} rounded-xl border border-border/60 bg-card p-4`}>
             <div className="grid grid-cols-2 gap-2 mb-3">
               <SectionDivider label="Detalle" />
             </div>
@@ -494,19 +495,19 @@ export function DepositarPagosClient({
           </div>
 
           {/* Tabla de recibos */}
-          <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-x-auto outline-none">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">
+          <div className={LIST_SCROLLPORT}>
+            <Table scrollable={false}>
+              <TableHeader className={LIST_THEAD}>
+                <TableRow className={LIST_HEAD_BG}>
+                  <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
                     <span className="text-xs font-medium text-muted-foreground">Serie</span>
                   </TableHead>
-                  <TableHead>Numero</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead className="sticky right-0 z-20 w-10 bg-muted/30" />
+                  <TableHead className={LIST_HEAD}>Numero</TableHead>
+                  <TableHead className={LIST_HEAD}>Fecha</TableHead>
+                  <TableHead className={LIST_HEAD}>Cliente</TableHead>
+                  <TableHead className={LIST_HEAD}>Tipo</TableHead>
+                  <TableHead className={`${LIST_HEAD} text-right`}>Monto</TableHead>
+                  <TableHead className={`${LIST_HEAD_RIGHT} w-10`} />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -557,7 +558,7 @@ export function DepositarPagosClient({
       </div>
 
       {/* ── Footer sticky ── */}
-      <div className="sticky bottom-0 bg-card border-t border-border/60 px-6 py-3 flex items-center justify-end">
+      <div className={`${LIST_BLOCK} bg-card border-t border-border/60 px-6 py-3 flex items-center justify-end`}>
         <div className="flex gap-2">
           <Button
             variant="outline"

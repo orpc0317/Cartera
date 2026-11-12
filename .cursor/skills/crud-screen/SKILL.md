@@ -32,6 +32,8 @@ Before writing a new catalog CRUD, read these files:
 
 Follow that structure: list, modal, create, update, delete. Do not move `Cliente` out of `proyectos.ts`.
 
+The list fills the free height of the screen. Vertical and horizontal scroll stay inside the table, and the column titles stay fixed. Copy that from Clientes and from `.cursor/rules/data-tables.mdc`: `LIST_SHELL`, `LIST_SCROLLPORT`, `<Table scrollable={false}>`, and the `LIST_HEAD*` classes in `src/lib/list-table.ts`. Do not give the page the scroll, and do not pin headers of tables that live inside a modal.
+
 Table, fields, route, permission, and relations come from the request or from a new spec. They do not come from copying Clientes' columns.
 
 If the request includes a widget Clientes does not have (image, geo, currency, combobox), use the snippet in the matching rule and the component in `src/components/ui`. The screen layout stays Clientes.

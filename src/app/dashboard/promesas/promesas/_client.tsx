@@ -1,5 +1,16 @@
 'use client'
 
+import {
+  LIST_BLOCK,
+  LIST_HEAD,
+  LIST_HEAD_BG,
+  LIST_HEAD_LEFT,
+  LIST_HEAD_RIGHT,
+  LIST_SCROLLPORT,
+  LIST_SHELL,
+  LIST_THEAD,
+} from '@/lib/list-table'
+
 import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -1116,10 +1127,10 @@ export function PromesasClient({
   // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8">
+    <div className={LIST_SHELL}>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-zinc-100 p-2.5">
             <FileSignature className="h-5 w-5 text-zinc-600" />
@@ -1138,7 +1149,7 @@ export function PromesasClient({
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className={`${LIST_BLOCK} flex items-center justify-between gap-3 flex-wrap`}>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="relative max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -1155,7 +1166,7 @@ export function PromesasClient({
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className={`${LIST_BLOCK} flex items-center gap-2`}>
           <Button variant="outline" size="sm" onClick={exportCsv} className="gap-1.5">
             <Download className="h-3.5 w-3.5" /> Exportar CSV
           </Button>
@@ -1166,15 +1177,15 @@ export function PromesasClient({
       {/* Tabla */}
       <div
         ref={tableRef}
-        className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
+        className={LIST_SCROLLPORT}
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
         onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
       >
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30">
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
                 <span className="text-xs font-medium text-muted-foreground">Numero</span>
               </TableHead>
               {colPrefs.filter((p) => p.visible).map((pref) => {
@@ -1189,7 +1200,7 @@ export function PromesasClient({
                   pref.key === 'cliente'  ? uniqueClienteNames  :
                   pref.key === 'vendedor' ? uniqueVendedorNames : null
                 return (
-                  <TableHead key={pref.key} className="whitespace-nowrap">
+                  <TableHead key={pref.key} className={`${LIST_HEAD} whitespace-nowrap`}>
                     {filterValues ? (
                       <ColumnFilter
                         label={col.label}
@@ -1201,7 +1212,7 @@ export function PromesasClient({
                   </TableHead>
                 )
               })}
-              <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1274,7 +1285,7 @@ export function PromesasClient({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
+      <div className={`${LIST_BLOCK} flex items-center justify-between`}>
         <p className="text-xs text-muted-foreground">
           {filtered.length > 0
             ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} promesa${filtered.length !== 1 ? 's' : ''}`

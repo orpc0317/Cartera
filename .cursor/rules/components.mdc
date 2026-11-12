@@ -710,10 +710,10 @@ function SegmentCard({ label, children }: { label: string; children: React.React
 
 ```tsx
 return (
-  <div className="flex flex-col gap-6 p-6 md:p-8">
+  <div className={LIST_SHELL}>
 
     {/* ── Header ── */}
-    <div className="flex items-start justify-between">
+    <div className={`${LIST_BLOCK} flex items-start justify-between`}>
       <div className="flex items-center gap-3">
         <div className="rounded-xl bg-<accent>-100 p-2.5">
           <<EntityIcon> className="h-5 w-5 text-<accent>-600" />
@@ -741,6 +741,7 @@ return (
 ```
 
 **Reglas:**
+- La raíz de una lista es `LIST_SHELL` (`src/lib/list-table.ts`). El encabezado, la toolbar y el contador llevan `LIST_BLOCK`. La tabla de la lista es `LIST_SCROLLPORT` con el encabezado fijo — ver `data-tables.mdc`. No volver a `flex flex-col gap-6 p-6 md:p-8`.
 - El `<Button>Nuevo</Button>` vive **solo** en el header — no duplicar en toolbar.
 - `h1` siempre `text-xl font-bold tracking-tight text-foreground` — nunca con color de acento.
 - Acento: ver tabla maestra en `ui-conventions.instructions.md`.
@@ -883,7 +884,7 @@ return (
 
 ```tsx
 {/* ── Toolbar ── */}
-<div className="flex items-center gap-2">
+<div className={`${LIST_BLOCK} flex items-center gap-2`}>
 
   {/* Búsqueda — ancho fijo a la izquierda */}
   <div className="relative max-w-xs">

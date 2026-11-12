@@ -28,13 +28,36 @@ const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVi
 
 ## Table wrapper
 
+The list fills the free height of the dashboard. Vertical and horizontal scroll belong to the table, not the page. Column titles stay fixed. Search, filters and the counter stay outside the scroll. Constants live in `src/lib/list-table.ts`. Reference: `promesas/clientes/_client.tsx`.
+
 ```tsx
-<div ref={tableRef} className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
-  tabIndex={0} onKeyDown={handleTableKeyDown}
-  onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}>
+<div className={LIST_SHELL}>
+  <div className={`${LIST_BLOCK} flex items-start justify-between`}>{/* header */}</div>
+  <div className={`${LIST_BLOCK} flex items-center gap-2`}>{/* toolbar */}</div>
+  <div ref={tableRef} className={LIST_SCROLLPORT}
+    tabIndex={0} onKeyDown={handleTableKeyDown}
+    onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}>
+    <Table scrollable={false}>
+      <TableHeader className={LIST_THEAD}>
+        <TableRow className={LIST_HEAD_BG}>
+          <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
+            <span className="text-xs font-medium text-muted-foreground">Codigo</span>
+          </TableHead>
+          <TableHead className={LIST_HEAD}>{/* ColumnFilter */}</TableHead>
+          <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
 ```
 
-Header row: `bg-muted/30`. Sticky code cell: `sticky left-0 z-20 w-20 bg-muted/30`  label `Codigo`. Sticky actions cell: `sticky right-0 z-20 w-12 bg-muted/30`.
+`LIST_SCROLLPORT` is the only scroll container (`overflow-auto` on both axes). `<Table scrollable={false}>` is required on that list: the default `overflow-x-auto` inside `Table` would become the sticky ancestor and the header would scroll away.
+
+`LIST_HEAD_BG` is opaque (`color-mix` of `--muted` and `--card`). Do not use `bg-muted/30` on a fixed header — the rows show through.
+
+Every `<th>` of the list is `LIST_HEAD` (`sticky top-0`). The identifier column adds `LIST_HEAD_LEFT` and its width (`w-20`, `w-24`, …). The actions column adds `LIST_HEAD_RIGHT` and its width (`w-12`). Body cells keep `sticky left-0` / `sticky right-0` only, with an opaque row background.
+
+The counter and the page buttons are the next sibling of the scrollport, with `LIST_BLOCK`. They are not inside the scroll.
+
+Tables inside a modal or a tab do not use this shell. Leave `<Table>` scrollable (the default) and do not pin their header to the viewport.
+
+The dashboard `main` is `flex min-h-0 flex-1 flex-col overflow-y-auto`. `LIST_SHELL` is `flex-1 min-h-0 overflow-hidden`, so the list takes the remaining height and Home can still scroll.
 
 ### Sticky column header text
 
@@ -42,12 +65,12 @@ The sticky "Codigo" (or "Serie") `<TableHead>` must wrap its label in a `<span>`
 
 ```tsx
 {/* ✅ Correct */}
-<TableHead className="sticky left-0 z-20 w-20 bg-muted/30">
+<TableHead className={`${LIST_HEAD_LEFT} w-20`}>
   <span className="text-xs font-medium text-muted-foreground">Codigo</span>
 </TableHead>
 
 {/* ❌ Wrong — inherits font-semibold from TableHead; appears bold vs other headers */}
-<TableHead className="sticky left-0 z-20 w-20 bg-muted/30">Codigo</TableHead>
+<TableHead className={`${LIST_HEAD_LEFT} w-20`}>Codigo</TableHead>
 ```
 
 For screens like **Lotes** where some dynamic columns don't use `<ColumnFilter>` (plain label), wrap them the same way:
@@ -63,7 +86,7 @@ For screens like **Lotes** where some dynamic columns don't use `<ColumnFilter>`
 ```tsx
 {/* ✅ Correct — all columns use ColumnFilter */}
 {visibleCols.map((col) => (
-  <TableHead key={col.key}>
+  <TableHead key={col.key} className={LIST_HEAD}>
     <ColumnFilter
       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
       values={
@@ -281,7 +304,7 @@ Just add a counter (no navigation controls):
 
 1. `ALL_COLUMNS` / `DEFAULT_PREFS` / `STORAGE_KEY`
 2. Copy `ColumnFilter`, `ColumnManager`, `handleTableKeyDown` from `components.instructions.md § M`
-3. Sticky left `Codigo` (w-20), sticky right actions (w-12)
+3. Scrollport + fixed header (`LIST_SHELL`, `LIST_SCROLLPORT`, `scrollable={false}`, `LIST_HEAD` / `LIST_HEAD_LEFT` / `LIST_HEAD_RIGHT`). Sticky left `Codigo` (w-20), sticky right actions (w-12)
 4. Active row: module accent color (see ui-conventions.instructions.md)
 5. Cell `switch`: explicit cases for nombre, pais, FK lookups, enums; geo codes  resolve to name
 6. Empty state with `search || hasActiveFilters` ternary
