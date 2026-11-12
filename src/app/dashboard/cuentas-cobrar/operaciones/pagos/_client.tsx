@@ -1,5 +1,16 @@
 'use client'
 
+import {
+  LIST_BLOCK,
+  LIST_HEAD,
+  LIST_HEAD_BG,
+  LIST_HEAD_LEFT,
+  LIST_HEAD_RIGHT,
+  LIST_SCROLLPORT,
+  LIST_SHELL,
+  LIST_THEAD,
+} from '@/lib/list-table'
+
 import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useRegistroVer } from '@/lib/use-registro-ver'
 
@@ -708,10 +719,10 @@ export function PagosClient({
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8">
+    <div className={LIST_SHELL}>
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between">
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-stone-100 p-2.5">
             <ReceiptText className="h-5 w-5 text-stone-600" />
@@ -724,7 +735,7 @@ export function PagosClient({
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="flex items-center gap-2">
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -890,21 +901,21 @@ export function PagosClient({
       {/* ── Tabla ── */}
       <div
         ref={tableRef}
-        className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
+        className={LIST_SCROLLPORT}
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
         onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
       >
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-24 bg-muted/30">
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-24`}>
                 <span className="text-xs font-medium text-muted-foreground">Recibo</span>
               </TableHead>
               {visibleCols.map((col) => {
                 if (col.key === 'monto') {
                   return (
-                    <TableHead key="monto" className="text-right">
+                    <TableHead key="monto" className={`${LIST_HEAD} text-right`}>
                       <span className="text-xs font-medium text-muted-foreground">Monto</span>
                     </TableHead>
                   )
@@ -919,7 +930,7 @@ export function PagosClient({
                   col.key === '__cobrador'   ? uniqueCobradores  :
                   col.key === '__estado'     ? uniqueEstados     : []
                 return (
-                  <TableHead key={col.key}>
+                  <TableHead key={col.key} className={LIST_HEAD}>
                     <ColumnFilter
                       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                       values={values}
@@ -929,7 +940,7 @@ export function PagosClient({
                   </TableHead>
                 )
               })}
-              <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1016,7 +1027,7 @@ export function PagosClient({
       </div>
 
       {/* ── Contador + paginación ── */}
-      <div className="flex items-center justify-between">
+      <div className={`${LIST_BLOCK} flex items-center justify-between`}>
         <p className="text-xs text-muted-foreground">
           {filtered.length > 0
             ? `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} pagos`

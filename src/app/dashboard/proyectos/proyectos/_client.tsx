@@ -1,5 +1,16 @@
 'use client'
 
+import {
+  LIST_BLOCK,
+  LIST_HEAD,
+  LIST_HEAD_BG,
+  LIST_HEAD_LEFT,
+  LIST_HEAD_RIGHT,
+  LIST_SCROLLPORT,
+  LIST_SHELL,
+  LIST_THEAD,
+} from '@/lib/list-table'
+
 import { nombreLeido, reemplazarFila } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
@@ -997,9 +1008,9 @@ export function ProyectosClient({
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8">
+    <div className={LIST_SHELL}>
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-sky-100 p-2.5">
             <FolderKanban className="h-5 w-5 text-sky-700" />
@@ -1024,7 +1035,7 @@ export function ProyectosClient({
       )}
 
       {/* Search + Filters */}
-      <div className="flex items-center gap-2">
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input variant="l-border"
@@ -1057,17 +1068,17 @@ export function ProyectosClient({
       {/* Table */}
       <div
         ref={tableRef}
-        className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
+        className={LIST_SCROLLPORT}
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
         onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
       >
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => (
-                <TableHead key={col.key}>
+                <TableHead key={col.key} className={LIST_HEAD}>
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={col.key === 'empresa' ? uniqueEmpresaNames : uniqueVals(col.key as keyof Proyecto)}
@@ -1076,7 +1087,7 @@ export function ProyectosClient({
                   />
                 </TableHead>
               ))}
-              <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1156,7 +1167,7 @@ export function ProyectosClient({
         </Table>
       </div>
 
-      <p className="text-xs text-muted-foreground">{filtered.length} proyecto{filtered.length !== 1 ? 's' : ''}</p>
+      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} proyecto{filtered.length !== 1 ? 's' : ''}</p>
 
       {/* Ver / Crear / Editar Dialog */}
       <Dialog

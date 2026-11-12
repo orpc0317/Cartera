@@ -1,5 +1,16 @@
 'use client'
 
+import {
+  LIST_BLOCK,
+  LIST_HEAD,
+  LIST_HEAD_BG,
+  LIST_HEAD_LEFT,
+  LIST_HEAD_RIGHT,
+  LIST_SCROLLPORT,
+  LIST_SHELL,
+  LIST_THEAD,
+} from '@/lib/list-table'
+
 import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
@@ -502,10 +513,10 @@ export function CobradoresClient({
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8">
+    <div className={LIST_SHELL}>
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between">
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-orange-100 p-2.5">
             <Banknote className="h-5 w-5 text-orange-700" />
@@ -530,7 +541,7 @@ export function CobradoresClient({
       )}
 
       {/* ── Busqueda + ColumnManager ── */}
-      <div className="flex items-center gap-2">
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input variant="l-border"
@@ -566,19 +577,19 @@ export function CobradoresClient({
       {/* ── Tabla ── */}
       <div
         ref={tableRef}
-        className="rounded-xl border border-border/60 bg-card shadow-sm outline-none overflow-x-auto"
+        className={LIST_SCROLLPORT}
         tabIndex={0}
         onKeyDown={handleTableKeyDown}
         onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
       >
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="sticky left-0 z-20 w-20 bg-muted/30"><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
               {visibleCols.map((col) => {
                 if (col.key === '__empresa') {
                   return (
-                    <TableHead key="__empresa">
+                    <TableHead key="__empresa" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Empresa"
                         values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
@@ -593,7 +604,7 @@ export function CobradoresClient({
                 }
                 if (col.key === '__proyecto') {
                   return (
-                    <TableHead key="__proyecto">
+                    <TableHead key="__proyecto" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Proyecto"
                         values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
@@ -608,7 +619,7 @@ export function CobradoresClient({
                 }
                 if (col.key === '__activo') {
                   return (
-                    <TableHead key="__activo">
+                    <TableHead key="__activo" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Activo"
                         values={Object.values(ACTIVO_LABELS)}
@@ -622,7 +633,7 @@ export function CobradoresClient({
                   )
                 }
                 return (
-                  <TableHead key={col.key}>
+                  <TableHead key={col.key} className={LIST_HEAD}>
                     <ColumnFilter
                       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                       values={[...new Set(filas.map((c) => String(c[col.key as keyof Cobrador] ?? '')))].sort()}
@@ -632,7 +643,7 @@ export function CobradoresClient({
                   </TableHead>
                 )
               })}
-              <TableHead className="sticky right-0 z-20 w-12 bg-muted/30" />
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -729,7 +740,7 @@ export function CobradoresClient({
         </Table>
       </div>
 
-      <p className="text-xs text-muted-foreground">{filtered.length} cobrador{filtered.length !== 1 ? 'es' : ''}</p>
+      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} cobrador{filtered.length !== 1 ? 'es' : ''}</p>
 
       {/* ── Dialogo Ver / Crear / Editar ── */}
       <Dialog

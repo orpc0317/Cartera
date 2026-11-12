@@ -13,6 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
 } from '@/components/ui/table'
+import { LIST_BLOCK, LIST_HEAD, LIST_HEAD_BG, LIST_SCROLLPORT, LIST_SHELL, LIST_THEAD } from '@/lib/list-table'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -476,10 +477,10 @@ export function PagoCuotasClient({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-6 p-6 md:p-8 pb-24">
+    <div className={LIST_SHELL}>
 
       {/* ── Header ── */}
-      <div className="flex items-start">
+      <div className={`${LIST_BLOCK} flex items-start`}>
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-red-100 p-2.5">
             <HandCoins className="h-5 w-5 text-red-600" />
@@ -495,6 +496,7 @@ export function PagoCuotasClient({
 
       {/* ── Identificar promesa (solo si no hay una seleccionada) ── */}
       {!promesa && (
+        <div className="min-h-0 flex-1 overflow-auto">
         <div className="rounded-xl border border-border/60 bg-card p-4">
           <div className="grid grid-cols-2 gap-2 mb-3">
             <SectionDivider label="Identificar Promesa" />
@@ -594,13 +596,14 @@ export function PagoCuotasClient({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* ── Promesa identificada + resto de la pantalla ── */}
       {promesa && (
         <>
           {/* Barra resumen de la promesa */}
-          <div className="rounded-xl border border-red-200 bg-red-50/40 p-4 flex items-start justify-between gap-4">
+          <div className={`${LIST_BLOCK} rounded-xl border border-red-200 bg-red-50/40 p-4 flex items-start justify-between gap-4`}>
             <div className="grid grid-cols-4 md:grid-cols-7 gap-3 flex-1">
               <ViewField label="Promesa"    value={String(promesa.numero)} />
               <ViewField label="Referencia" value={promesa.referencia} />
@@ -615,10 +618,10 @@ export function PagoCuotasClient({
           </div>
 
           {/* ── Dos paneles ── */}
-          <div className="flex gap-6 items-start">
+          <div className="flex min-h-0 flex-1 gap-6">
 
             {/* ── Panel izquierdo — Encabezado + Forma de Pago ── */}
-            <div className="w-80 shrink-0 rounded-xl border border-border/60 bg-card p-4">
+            <div className="w-80 shrink-0 min-h-0 overflow-y-auto rounded-xl border border-border/60 bg-card p-4">
               <div className="grid grid-cols-2 gap-2">
 
                 <SectionDivider label="Encabezado Recibo" />
@@ -804,27 +807,27 @@ export function PagoCuotasClient({
             <div className="w-px self-stretch bg-border/60" />
 
             {/* ── Panel derecho — Cuotas a Pagar ── */}
-            <div className="flex-1 min-w-0 flex flex-col gap-4">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
 
-              <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-x-auto outline-none">
+              <div className={LIST_SCROLLPORT}>
                 {isPendingPlan ? (
                   <div className="py-10 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Cargando cuotas...
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>No.</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Cuota</TableHead>
+                  <Table scrollable={false}>
+                    <TableHeader className={LIST_THEAD}>
+                      <TableRow className={LIST_HEAD_BG}>
+                        <TableHead className={LIST_HEAD}>Tipo</TableHead>
+                        <TableHead className={LIST_HEAD}>No.</TableHead>
+                        <TableHead className={LIST_HEAD}>Fecha</TableHead>
+                        <TableHead className={`${LIST_HEAD} text-right`}>Cuota</TableHead>
                         {planPago?.otrosColumnas.map((col) => (
-                          <TableHead key={col.codigo} className="text-right">{col.etiqueta}</TableHead>
+                          <TableHead key={col.codigo} className={`${LIST_HEAD} text-right`}>{col.etiqueta}</TableHead>
                         ))}
-                        <TableHead className="text-right">Mora</TableHead>
-                        <TableHead className="text-right">Saldo</TableHead>
-                        <TableHead className="text-right">Pagar</TableHead>
+                        <TableHead className={`${LIST_HEAD} text-right`}>Mora</TableHead>
+                        <TableHead className={`${LIST_HEAD} text-right`}>Saldo</TableHead>
+                        <TableHead className={`${LIST_HEAD} text-right`}>Pagar</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -878,7 +881,7 @@ export function PagoCuotasClient({
           </div>
 
           {/* ── Footer sticky ── */}
-          <div className="sticky bottom-0 bg-card border-t border-border/60 px-6 py-3 flex items-center justify-between gap-4">
+          <div className={`${LIST_BLOCK} bg-card border-t border-border/60 px-6 py-3 flex items-center justify-between gap-4`}>
             <p className="text-xs text-muted-foreground max-w-xs">
               El monto se aplica de la cuota mas antigua a la mas reciente (mora, otros ingresos, intereses y capital, en ese orden).
             </p>
