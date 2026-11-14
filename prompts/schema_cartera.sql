@@ -898,4 +898,6 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 --   Solo authenticated y service_role pueden invocarla.
 -- * La función cartera.fn_genera_cuentaid() debe existir antes del
 --   CREATE TABLE t_cuenta.
+-- * RLS de todo el schema (anon sin privilegio): scripts/rls_cartera_anon.sql.
+--   Este dump no trae las políticas. Ejecutar ese script en el SQL Editor.
 -- =============================================================
