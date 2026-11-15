@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { toDbString } from '@/lib/utils'
 import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
@@ -17,8 +18,7 @@ async function getAuditUser() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
 
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -33,7 +33,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -46,6 +45,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -64,7 +64,7 @@ async function writeAudit(
 export async function getEmpresas(): Promise<Empresa[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_empresa')
@@ -88,7 +88,7 @@ export async function getEmpresa(codigo: number): Promise<Empresa> {
   const acceso = await leerAcceso()
   if (!acceso || !puedeEmpresa(acceso, codigo)) throw new Error('Acceso denegado.')
   const cuenta = acceso.cuenta
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_empresa')
@@ -107,7 +107,7 @@ export async function obtenerEmpresa(codigo: number): Promise<{ row?: Empresa & 
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_empresa')
@@ -133,7 +133,7 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'agregar')
   if (permCheck) return permCheck
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const normalized: EmpresaForm = {
     ...form,
@@ -174,7 +174,7 @@ export async function createEmpresa(form: EmpresaForm): Promise<{ error?: string
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_empresa', operacion: 'INSERT', cuenta,
     codigo: (data as Empresa).codigo,
     datoAntes: null, datoDespues: data as Record<string, unknown>,
@@ -193,7 +193,7 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
   if (permCheck) return permCheck
   const alcance = await exigirEmpresa(codigo)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Capturar estado anterior para auditoría
   const { data: oldRow } = await admin
@@ -242,7 +242,7 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_empresa', operacion: 'UPDATE', cuenta, codigo,
     datoAntes: oldRow as Record<string, unknown> | null,
     datoDespues: data?.[0] as Record<string, unknown> | null,
@@ -260,7 +260,7 @@ export async function deleteEmpresa(codigo: number): Promise<{ error?: string }>
   if (permCheck) return permCheck
   const alcance = await exigirEmpresa(codigo)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Verificar restricción de cascada: no eliminar si hay proyectos asociados
   const { count } = await admin
@@ -290,7 +290,7 @@ export async function deleteEmpresa(codigo: number): Promise<{ error?: string }>
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_empresa', operacion: 'DELETE', cuenta, codigo,
     datoAntes: oldRow as Record<string, unknown> | null,
     datoDespues: null,

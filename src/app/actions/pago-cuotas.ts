@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { getCuentaActiva, requirePermiso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 import { getPlanPago } from '@/app/actions/plan-pago'
@@ -13,8 +14,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -27,7 +27,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -40,6 +39,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -73,7 +73,7 @@ export async function buscarPromesas(
   const q = query.trim()
   if (!q || !empresa || !proyecto) return []
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const numericQ = /^\d+$/.test(q) ? Number(q) : null
   const qLower = q.toLowerCase()
 
@@ -250,7 +250,7 @@ export async function registrarPagoCuotas(
       .eq('cuenta', cuenta).eq('empresa', payload.empresa).eq('proyecto', payload.proyecto)
       .eq('serie', payload.serie).eq('numero', result.numero_recibo).maybeSingle()
 
-    await writeAudit(admin, {
+    await writeAudit({
       tabla: 't_recibo_caja', operacion: 'INSERT', cuenta,
       registroId: { empresa: payload.empresa, proyecto: payload.proyecto, serie: payload.serie, numero: result.numero_recibo },
       datoAntes: null, datoDespues: nuevoRecibo as Record<string, unknown> | null,

@@ -1,13 +1,12 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, FolderKanban, MapPin, Layers, BarChart3 } from 'lucide-react'
-import { getPermisosUsuario } from '@/app/actions/permisos'
+import { getCuentaActiva, getPermisosUsuario } from '@/app/actions/permisos'
 import { tienePermiso, PERMISOS } from '@/lib/permisos'
 
 async function getMetrics(cuentaActiva: string) {
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const [empresas, proyectos, fases, lotes] = await Promise.all([
     admin.schema('cartera').from('t_empresa').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuentaActiva),
     admin.schema('cartera').from('t_proyecto').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuentaActiva),
@@ -29,12 +28,8 @@ export default async function KpisPage() {
     redirect('/dashboard/home')
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const cuentaActiva = (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  const cuentaActiva = await getCuentaActiva()
+  if (!cuentaActiva) redirect('/dashboard/home')
   const metrics = await getMetrics(cuentaActiva)
 
   const cards = [

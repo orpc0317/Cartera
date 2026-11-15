@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/tasas-cambio'
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
@@ -14,8 +15,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -28,7 +28,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -41,6 +40,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -57,7 +57,7 @@ async function writeAudit(
 export async function getTasasCambio(): Promise<TasaCambio[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
@@ -87,7 +87,7 @@ export async function obtenerGrupoTasas(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
@@ -126,7 +126,7 @@ export async function createTasaCambio(form: TasaCambioForm): Promise<{ error?: 
   if (!form.tasa_cambio || Number(form.tasa_cambio) <= 0)
     return { error: 'La tasa de cambio debe ser mayor a cero.' }
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Validate: new fecha must be strictly after all existing fechas for this group
   const { data: fechaConflicto } = await admin
@@ -160,7 +160,7 @@ export async function createTasaCambio(form: TasaCambioForm): Promise<{ error?: 
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_moneda_tasa_cambio',
     operacion: 'INSERT',
     cuenta,
@@ -188,7 +188,7 @@ export async function deleteTasaCambio(
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Check restriction: t_recibo_caja with same keys and fecha >= fecha_a_eliminar
   const { data: recibos } = await admin
@@ -229,7 +229,7 @@ export async function deleteTasaCambio(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_moneda_tasa_cambio',
     operacion: 'DELETE',
     cuenta,

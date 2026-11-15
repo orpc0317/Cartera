@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { leerAcceso } from '@/app/actions/permisos'
 import { construirMenu, type MenuModulo, type PantallaMenu } from '@/lib/navigation'
 
@@ -15,7 +15,7 @@ export async function getMenuPrincipal(): Promise<MenuModulo[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const [menuRes, modulosRes] = await Promise.all([
     admin.schema('cartera').from('t_menu').select('indice, menu_array, nombre, mantenimiento'),
     admin.schema('cartera').from('t_menu_modulo').select('nombre').eq('cuenta', acceso.cuenta),

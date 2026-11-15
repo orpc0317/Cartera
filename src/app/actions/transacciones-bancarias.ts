@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { TransaccionBancaria } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
@@ -27,7 +27,7 @@ async function proyectosDeCuentaBancaria(
 ): Promise<{ cuenta: string; esAdmin: boolean; proyectos: number[] } | { error: string }> {
   const acceso = await leerAcceso()
   if (!acceso) return { error: 'Sesión no válida.' }
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
@@ -49,7 +49,7 @@ async function proyectosDeCuentaBancaria(
 export async function getTransaccionesBancarias(): Promise<TransaccionBancaria[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const consulta = admin
     .schema('cartera')
@@ -75,7 +75,7 @@ export async function obtenerTransaccionBancaria(
   if (guard) return guard
   const alcance = await proyectosDeCuentaBancaria(empresa, cuentaBancaria)
   if ('error' in alcance) return alcance
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let consulta = admin
     .schema('cartera')
     .from('t_transaccion_bancaria')
@@ -109,7 +109,7 @@ export async function anularTransaccionBancaria(
   const alcance = await proyectosDeCuentaBancaria(empresa, cuentaBancaria)
   if ('error' in alcance) return alcance
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { userId } = await getAuditUser()
   const now = new Date().toISOString()
 
@@ -156,7 +156,7 @@ export async function eliminarTransaccionBancaria(
   const alcance = await proyectosDeCuentaBancaria(empresa, cuentaBancaria)
   if ('error' in alcance) return alcance
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   let baja = admin
     .schema('cartera')

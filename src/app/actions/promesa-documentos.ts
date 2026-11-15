@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
 import { requirePermiso, getCuentaActiva, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
@@ -15,8 +16,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -29,7 +29,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -42,6 +41,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -72,7 +72,7 @@ export async function getPromesaDocumentos(empresa: number, proyecto: number, pr
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return []
   const cuenta = await getCuentaActiva()
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_promesa_documentos')
@@ -101,7 +101,7 @@ export async function getPromesaDocumentoUrl(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data: doc } = await admin
     .schema('cartera')
     .from('t_promesa_documentos')
@@ -115,7 +115,8 @@ export async function getPromesaDocumentoUrl(
 
   if (!doc) return { error: 'El documento ya no existe.' }
 
-  const { data, error } = await admin.storage
+  const almacenamiento = createAdminClient()
+  const { data, error } = await almacenamiento.storage
     .from(BUCKET)
     .createSignedUrl((doc as { archivo_path: string }).archivo_path, SIGNED_URL_TTL)
 
@@ -155,12 +156,13 @@ export async function uploadPromesaDocumento(
   const buffer = new Uint8Array(arrayBuffer)
   if (!verifyPdfMagicBytes(buffer)) return { error: 'El contenido del archivo no coincide con el tipo declarado.' }
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
+  const almacenamiento = createAdminClient()
 
   // Nombre de archivo generado — nunca el nombre original del usuario
   const path = `${cuenta}/${empresa}/${proyecto}/${promesa}/${crypto.randomUUID()}.pdf`
 
-  const { error: uploadError } = await admin.storage
+  const { error: uploadError } = await almacenamiento.storage
     .from(BUCKET)
     .upload(path, buffer, { contentType: ALLOWED_TYPE, upsert: false })
 
@@ -188,11 +190,11 @@ export async function uploadPromesaDocumento(
 
   if (error) {
     // La subida ya se hizo — si el INSERT falla, eliminar el archivo huérfano.
-    await admin.storage.from(BUCKET).remove([path]).catch(() => {})
+    await almacenamiento.storage.from(BUCKET).remove([path]).catch(() => {})
     return { error: error.message }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa_documentos',
     operacion: 'INSERT',
     cuenta,
@@ -220,7 +222,7 @@ export async function deletePromesaDocumento(
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { data: existing } = await admin
     .schema('cartera')
@@ -247,10 +249,10 @@ export async function deletePromesaDocumento(
 
   if (error) return { error: error.message }
 
-  await admin.storage.from(BUCKET).remove([(existing as PromesaDocumento).archivo_path]).catch(() => {})
+  await createAdminClient().storage.from(BUCKET).remove([(existing as PromesaDocumento).archivo_path]).catch(() => {})
 
   const auditUser = await getAuditUser()
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa_documentos',
     operacion: 'DELETE',
     cuenta,

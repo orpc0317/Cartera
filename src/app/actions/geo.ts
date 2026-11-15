@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { leerAcceso } from '@/app/actions/permisos'
 import type { Moneda } from '@/lib/types/proyectos'
 
@@ -54,7 +54,7 @@ export async function getMunicipios(): Promise<Municipio[]> {
 export async function getMonedas(): Promise<Moneda[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_moneda')

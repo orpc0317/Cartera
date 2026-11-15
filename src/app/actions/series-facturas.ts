@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos, type ClienteDatos } from '@/lib/supabase/datos'
 import type { SerieFactura, SerieFacturaForm } from '@/lib/types/series-facturas'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
@@ -33,8 +34,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -47,7 +47,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -60,6 +59,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -117,7 +117,7 @@ function parseForm(form: SerieFacturaForm): { error: string } | {
 }
 
 async function gfaceExiste(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: ClienteDatos,
   cuenta: string,
   empresa: number,
   proyecto: number,
@@ -139,7 +139,7 @@ async function gfaceExiste(
 }
 
 async function quitarPredeterminado(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: ClienteDatos,
   cuenta: string,
   empresa: number,
   proyecto: number,
@@ -163,7 +163,7 @@ function refrescar() {
 export async function getSeriesFacturas(): Promise<SerieFactura[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_serie_factura')
@@ -191,7 +191,7 @@ export async function obtenerSerieFactura(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<SerieFactura>(
-    createAdminClient(), cuenta, 't_serie_factura',
+    await clienteDatos(), cuenta, 't_serie_factura',
     { cuenta, empresa, proyecto, serie }, COLUMNS,
     (row) => ({ empresa: row.empresa, proyecto: row.proyecto, gface: row.gface }),
   )
@@ -210,7 +210,7 @@ export async function createSerieFactura(form: SerieFacturaForm): Promise<{ erro
   if ('error' in parsed) return parsed
   const value = parsed.value
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const gface = await gfaceExiste(admin, cuenta, form.empresa, form.proyecto, value.gface)
   if (gface.error) return gface
@@ -258,7 +258,7 @@ export async function createSerieFactura(form: SerieFacturaForm): Promise<{ erro
     await quitarPredeterminado(admin, cuenta, form.empresa, form.proyecto, value.serie)
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_serie_factura',
     operacion: 'INSERT',
     cuenta,
@@ -291,7 +291,7 @@ export async function updateSerieFactura(
   if ('error' in parsed) return parsed
   const value = parsed.value
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const gface = await gfaceExiste(admin, cuenta, empresa, proyecto, value.gface)
   if (gface.error) return gface
@@ -341,7 +341,7 @@ export async function updateSerieFactura(
     await quitarPredeterminado(admin, cuenta, empresa, proyecto, serie)
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_serie_factura',
     operacion: 'UPDATE',
     cuenta,
@@ -368,7 +368,7 @@ export async function deleteSerieFactura(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { count: recibos, error: recibosError } = await admin
     .schema('cartera')
@@ -416,7 +416,7 @@ export async function deleteSerieFactura(
     .eq('serie', serie)
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_serie_factura',
     operacion: 'DELETE',
     cuenta,

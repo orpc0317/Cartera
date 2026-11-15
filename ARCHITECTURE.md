@@ -70,8 +70,8 @@ Browser
         └── Llaman Server Actions para data fetching inicial
               │
               └── Server Actions (src/app/actions/*.ts)
-                    ├── createClient()   ← cliente usuario (RLS activo)
-                    └── createAdminClient() ← solo cuando RLS no aplica
+                    ├── clienteDatos()      ← tablas del negocio, con RLS
+                    └── createAdminClient() ← auth admin, auditoría, storage y RPC
                           │
                           └── Supabase PostgreSQL (schema cartera)
 ```
@@ -96,18 +96,19 @@ Browser
 
 ### Modelo de permisos
 
-- Los permisos se almacenan en `cartera.t_menu` por usuario.
+- Los permisos se almacenan en `cartera.t_menu_usuario` por usuario y cuenta.
 - Se resuelven en `layout.tsx` con `getPermisosUsuario()` y se pasan al sidebar.
 - Cada pantalla tiene un código de permiso definido en `src/lib/permisos.ts` (ej. `EMP.CAT`, `PRO.CAT`).
-- La UI oculta/deshabilita acciones según `tienePermiso(permisos, PERMISOS.XXX)`.
-- **Los permisos son solo UI** — las Server Actions no los verifican (la RLS de Supabase es la barrera real).
+- La UI oculta o deshabilita acciones según `tienePermiso(permisos, PERMISOS.XXX)`.
+- Las Server Actions verifican el permiso con `requirePermiso` antes de mutar, y la cuenta con `getCuentaActiva`. `es_admin = 1` en `t_usuario` es el administrador. Cero filas de menú no conceden acceso total.
+- La RLS de Supabase es la barrera de las consultas hechas con el cliente del usuario. Las políticas leen la cuenta del JWT con `fn_cuenta_del_usuario()`.
 
 ### Clientes Supabase
 
 | Cliente | Archivo | Cuándo usar |
 |---------|---------|-------------|
-| Usuario | `src/lib/supabase/server.ts` → `createClient()` | Reads y writes normales (RLS activo) |
-| Admin | `src/lib/supabase/admin.ts` → `createAdminClient()` | Solo cuando RLS no aplica o se necesitan privilegios elevados |
+| Usuario | `src/lib/supabase/datos.ts` → `clienteDatos()` | Lecturas y escrituras de las tablas del negocio. Pasa por RLS. |
+| Admin | `src/lib/supabase/admin.ts` → `createAdminClient()` | Auth admin, auditoría, storage y funciones `SECURITY DEFINER` que el rol de la sesión no ejecuta |
 
 El cliente admin usa `SUPABASE_SERVICE_ROLE_KEY` — **nunca exponer al browser**.
 
@@ -117,7 +118,7 @@ El cliente admin usa `SUPABASE_SERVICE_ROLE_KEY` — **nunca exponer al browser*
 
 > Patrones completos en `server-actions.instructions.md`. Resumen:
 
-- **`getCuentaActiva()`**: obtener `user.app_metadata.cuenta_activa` via `supabase.auth.getUser()`. Guard `if (!cuenta) return { error: ... }` en toda mutación. Toda query filtra `.eq('cuenta', cuenta)`.
+- **`getCuentaActiva()`**: cookie `cartera-cuenta` y, si no hay cookie, `app_metadata.cuenta_activa`. Solo devuelve la cuenta si el usuario tiene fila en `t_usuario`. Toda query filtra `.eq('cuenta', cuenta)`.
 - **`page.tsx`**: `Promise.all` con `.catch(() => [])` **por llamada individual** — nunca un try/catch global.
 - **`modifico_fecha`**: toda tabla editable tiene este campo; el update lleva `.eq('modifico_fecha', modificoFecha)` para detectar concurrencia.
 - **Exports**: solo `async function` y `export type`. Prohibido re-exportar valores desde `"use server"` — rompe el build (no detectable por `get_errors`).
@@ -179,9 +180,9 @@ Los componentes headless usan `@base-ui/react`. Diferencias críticas:
 
 Prohibido en todo el codebase. React escapa los valores por defecto — no hay justificación para bypasearlo.
 
-### ADR-06: `admin.schema('cartera')` para todas las queries
+### ADR-06: `.schema('cartera')` para todas las queries
 
-Las queries de Server Actions usan el cliente admin (o user) con `.schema('cartera')` explícito. Sin esto, PostgREST busca en `public` y no encuentra las tablas.
+Las queries de Server Actions usan `.schema('cartera')` explícito. Sin esto, PostgREST busca en `public` y no encuentra las tablas. El CRUD ordinario usa `clienteDatos()`. `createAdminClient()` queda para auth admin, el insert y la lectura de `t_audit_log`, storage, y las RPC `SECURITY DEFINER`.
 
 ---
 
@@ -192,7 +193,7 @@ Las queries de Server Actions usan el cliente admin (o user) con `.schema('carte
 | SQL Injection | Cliente Supabase con queries parametrizadas — nunca interpolar strings |
 | XSS | Sin `dangerouslySetInnerHTML`. React escapa por defecto |
 | CSRF | Server Actions de Next.js incluyen protección CSRF nativa |
-| Broken Access Control | Toda query filtrada por `cuenta`. RLS de Supabase como barrera de fondo |
+| Broken Access Control | `requirePermiso` y filtro por `cuenta` en la action. RLS con `fn_cuenta_del_usuario()` en el cliente del usuario |
 | Security Misconfiguration | `SUPABASE_SERVICE_ROLE_KEY` nunca al cliente. Variables públicas con prefijo `NEXT_PUBLIC_` |
 | Broken Authentication | `getUser()` siempre (valida token en servidor). Nunca `getSession()` |
 

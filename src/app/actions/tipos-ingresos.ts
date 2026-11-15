@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { toDbString } from '@/lib/utils'
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 import type { NombresVer } from '@/lib/registro-ver'
@@ -17,8 +18,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -31,7 +31,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
     cuenta: string
@@ -43,6 +42,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: 't_tipo_ingreso',
     operacion: opts.operacion,
@@ -61,7 +61,7 @@ async function writeAudit(
 export async function getTiposIngresos(): Promise<TipoIngreso[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_tipo_ingreso')
@@ -89,7 +89,7 @@ export async function obtenerTipoIngreso(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<TipoIngreso>(
-    createAdminClient(), cuenta, 't_tipo_ingreso',
+    await clienteDatos(), cuenta, 't_tipo_ingreso',
     { cuenta, empresa, proyecto, codigo }, '*',
     { empresa, proyecto },
   )
@@ -106,7 +106,7 @@ export async function createTipoIngreso(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(form.empresa, form.proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: max } = await admin
     .schema('cartera')
@@ -156,7 +156,7 @@ export async function createTipoIngreso(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     operacion: 'INSERT',
     cuenta,
     registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo: (data as TipoIngreso).codigo },
@@ -181,7 +181,7 @@ export async function updateTipoIngreso(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Verificar duplicado de nombre excluyendo el registro actual
   const { data: dup } = await admin
@@ -231,7 +231,7 @@ export async function updateTipoIngreso(
   if (lastModified && (!data || data.length === 0))
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
 
-  await writeAudit(admin, {
+  await writeAudit({
     operacion: 'UPDATE',
     cuenta,
     registroId: { empresa, proyecto, codigo },
@@ -254,7 +254,7 @@ export async function deleteTipoIngreso(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Restricción: verificar recibos asociados
   const { count: countRecibos } = await admin
@@ -293,7 +293,7 @@ export async function deleteTipoIngreso(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     operacion: 'DELETE',
     cuenta,
     registroId: { empresa, proyecto, codigo },

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { toDbString } from '@/lib/utils'
 import type { SerieRecibo, SerieReciboForm, SerieFactura } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
@@ -14,8 +15,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -28,7 +28,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -41,6 +40,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -59,7 +59,7 @@ async function writeAudit(
 export async function getSeriesFactura(empresa?: number, proyecto?: number): Promise<SerieFactura[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_serie_factura')
@@ -79,7 +79,7 @@ export async function getSeriesFactura(empresa?: number, proyecto?: number): Pro
 export async function getSeriesRecibos(empresa?: number, proyecto?: number): Promise<SerieRecibo[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_serie_recibo')
@@ -108,7 +108,7 @@ export async function obtenerSerieRecibo(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<SerieRecibo>(
-    createAdminClient(), cuenta, 't_serie_recibo',
+    await clienteDatos(), cuenta, 't_serie_recibo',
     { cuenta, empresa, proyecto, serie }, '*',
     { empresa, proyecto },
   )
@@ -123,7 +123,7 @@ export async function createSerieRecibo(form: SerieReciboForm): Promise<{ error?
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(form.empresa, form.proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const serie = toDbString(form.serie)
 
@@ -177,7 +177,7 @@ export async function createSerieRecibo(form: SerieReciboForm): Promise<{ error?
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_serie_recibo', operacion: 'INSERT', cuenta,
     registroId: { empresa: form.empresa, proyecto: form.proyecto, serie },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
@@ -200,7 +200,7 @@ export async function updateSerieRecibo(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -254,7 +254,7 @@ export async function updateSerieRecibo(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_serie_recibo', operacion: 'UPDATE', cuenta,
     registroId: { empresa, proyecto, serie },
     datoAntes: oldRow as Record<string, unknown> | null,
@@ -276,7 +276,7 @@ export async function deleteSerieRecibo(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Restriction: cannot delete if there are associated recibos de caja
   const { count } = await admin
@@ -312,7 +312,7 @@ export async function deleteSerieRecibo(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_serie_recibo', operacion: 'DELETE', cuenta,
     registroId: { empresa, proyecto, serie },
     datoAntes: oldRow as Record<string, unknown> | null,

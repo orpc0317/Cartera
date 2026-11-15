@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { Promesa, PromesaForm } from '@/lib/types/promesas'
 import type { PromesaOtroPayload } from '@/lib/types/promesa-otros'
 import type { NombresVer } from '@/lib/registro-ver'
@@ -17,8 +18,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -31,7 +31,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -44,6 +43,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -62,7 +62,7 @@ async function writeAudit(
 export async function getPromesas(empresa?: number, proyecto?: number): Promise<Promesa[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_promesa')
@@ -91,7 +91,7 @@ export async function obtenerPromesa(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Promesa>(
-    createAdminClient(), cuenta, 't_promesa',
+    await clienteDatos(), cuenta, 't_promesa',
     { cuenta, empresa, proyecto, numero }, '*',
     (row) => ({
       empresa: row.empresa,
@@ -174,7 +174,7 @@ export async function createPromesa(
 
   const numeroCreado = (result.promesa?.numero as number | undefined) ?? form.numero
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa',
     operacion: 'INSERT',
     cuenta,
@@ -185,7 +185,7 @@ export async function createPromesa(
   })
 
   if (otros.length > 0) {
-    await writeAudit(admin, {
+    await writeAudit({
       tabla: 't_promesa_otros',
       operacion: 'INSERT',
       cuenta,
@@ -216,7 +216,7 @@ export async function updatePromesa(
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { data: original } = await admin
     .schema('cartera')
@@ -254,7 +254,7 @@ export async function updatePromesa(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa',
     operacion: 'UPDATE',
     cuenta,
@@ -266,7 +266,8 @@ export async function updatePromesa(
 
   // Sincroniza el detalle de "otros ingresos" (reemplazo completo, delete-then-insert,
   // con validacion de forma_pago > 0 / activo = 1 dentro de la funcion SECURITY DEFINER).
-  const { data: otrosResult, error: otrosError } = await admin.schema('cartera').rpc('fn_actualizar_promesa_otros', {
+  const privilegiado = createAdminClient()
+  const { data: otrosResult, error: otrosError } = await privilegiado.schema('cartera').rpc('fn_actualizar_promesa_otros', {
     p_cuenta: cuenta,
     p_empresa: empresa,
     p_proyecto: proyecto,
@@ -277,7 +278,7 @@ export async function updatePromesa(
   const otrosCheck = otrosResult as { ok: boolean; error?: string }
   if (!otrosCheck.ok) return { error: otrosCheck.error ?? 'No se pudo actualizar el detalle de otros ingresos.' }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa_otros',
     operacion: 'UPDATE',
     cuenta,
@@ -309,7 +310,7 @@ export async function anularPromesa(
   const motivo = comentario.trim()
   if (!motivo) return { error: 'El motivo de la anulación es obligatorio.' }
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { data: original } = await admin
     .schema('cartera')
@@ -353,7 +354,7 @@ export async function anularPromesa(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa',
     operacion: 'UPDATE',
     cuenta,
@@ -380,7 +381,7 @@ export async function deletePromesa(
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { count } = await admin
     .schema('cartera')
@@ -418,7 +419,7 @@ export async function deletePromesa(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_promesa',
     operacion: 'DELETE',
     cuenta,

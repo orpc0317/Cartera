@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { Gface, GfaceForm } from '@/lib/types/gface'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
@@ -137,8 +138,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -151,7 +151,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -164,6 +163,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -182,7 +182,7 @@ const GFACE_COLUMNS = 'cuenta, empresa, proyecto, codigo, nombre, requestor, ent
 export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gface[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_gface')
@@ -211,7 +211,7 @@ export async function obtenerGface(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const result = await filaConNombres<Gface>(
-    createAdminClient(), cuenta, 't_gface',
+    await clienteDatos(), cuenta, 't_gface',
     { cuenta, empresa, proyecto, codigo }, GFACE_COLUMNS,
     { empresa, proyecto },
   )
@@ -232,7 +232,7 @@ export async function createGface(form: GfaceForm): Promise<{ error?: string }> 
   if ('error' in parsed) return parsed
   const value = parsed.value
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: existente, error: dupError } = await admin
     .schema('cartera')
@@ -280,7 +280,7 @@ export async function createGface(form: GfaceForm): Promise<{ error?: string }> 
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_gface',
     operacion: 'INSERT',
     cuenta,
@@ -313,7 +313,7 @@ export async function updateGface(
   if ('error' in parsed) return parsed
   const value = parsed.value
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow, error: oldError } = await admin
     .schema('cartera')
@@ -363,7 +363,7 @@ export async function updateGface(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_gface',
     operacion: 'UPDATE',
     cuenta,
@@ -390,7 +390,7 @@ export async function deleteGface(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow, error: oldError } = await admin
     .schema('cartera')
@@ -414,7 +414,7 @@ export async function deleteGface(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_gface',
     operacion: 'DELETE',
     cuenta,

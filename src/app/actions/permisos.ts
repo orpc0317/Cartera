@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { PERMISOS } from '@/lib/permisos'
 import {
   puedeEmpresa,
@@ -27,7 +27,7 @@ export async function getCuentaActiva(): Promise<string> {
   const cuenta = fromCookie || fromJwt
   if (!cuenta) return ''
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { count, error } = await admin
     .schema('cartera')
     .from('t_usuario')
@@ -75,7 +75,7 @@ export async function leerAcceso(): Promise<AccesoLectura | null> {
   const cuenta = await getCuentaActiva()
   if (!cuenta) return null
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const [usuarioRes, accesosRes] = await Promise.all([
     admin
       .schema('cartera')
@@ -128,7 +128,7 @@ export async function getPermisosUsuario(): Promise<string[]> {
   if (!acceso) return []
   if (acceso.esAdmin) return Object.values(PERMISOS)
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
@@ -150,7 +150,7 @@ export async function getPermisosDetalle(indice: string): Promise<PermisosDetall
   if (!acceso) return DENEGADO
   if (acceso.esAdmin) return COMPLETO
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
@@ -185,7 +185,7 @@ export async function requirePermiso(
   if (!acceso) return { error: 'Sesión no válida.' }
   if (acceso.esAdmin) return null
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
