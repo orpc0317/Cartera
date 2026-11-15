@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { headers, cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { bloqueadoPorConteo, ipDeLockout, omitirTurnstile } from '@/lib/login-perimetro'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tipos (exportados para usar en componentes cliente)
@@ -80,17 +81,28 @@ async function getIpDelRequest(): Promise<string> {
   )
 }
 
-async function estaBloquedoPorIntentos(email: string): Promise<boolean> {
+async function contarFallos(
+  columna: 'email' | 'ip',
+  valor: string,
+  desde: string,
+): Promise<number> {
   const admin = createAdminClient()
-  const desde = new Date(Date.now() - VENTANA_LOCKOUT_MIN * 60_000).toISOString()
   const { count } = await admin
     .schema('cartera')
     .from('t_login_attempt')
     .select('*', { count: 'exact', head: true })
-    .eq('email', email)
+    .eq(columna, valor)
     .eq('exitoso', false)
     .gte('fecha', desde)
-  return (count ?? 0) >= MAX_INTENTOS_FALLIDOS
+  return count ?? 0
+}
+
+async function estaBloquedoPorIntentos(email: string, ip: string): Promise<boolean> {
+  const desde = new Date(Date.now() - VENTANA_LOCKOUT_MIN * 60_000).toISOString()
+  const porCorreo = await contarFallos('email', email, desde)
+  const ipLock = ipDeLockout(ip)
+  const porIp = ipLock ? await contarFallos('ip', ipLock, desde) : null
+  return bloqueadoPorConteo(porCorreo, porIp, MAX_INTENTOS_FALLIDOS)
 }
 
 async function registrarIntento(
@@ -100,7 +112,12 @@ async function registrarIntento(
 ): Promise<void> {
   const admin = createAdminClient()
 
-  await admin.schema('cartera').from('t_login_attempt').insert({ email, ip, exitoso })
+  const ipGuardada = ipDeLockout(ip) ?? ip
+  await admin.schema('cartera').from('t_login_attempt').insert({
+    email,
+    ip: ipGuardada,
+    exitoso,
+  })
 
   // Housekeeping: eliminar registros con más de 7 días
   const limite7d = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString()
@@ -108,44 +125,61 @@ async function registrarIntento(
 
   if (!exitoso) {
     const desde = new Date(Date.now() - VENTANA_ALERTA_MIN * 60_000).toISOString()
-    const { count } = await admin
-      .schema('cartera')
-      .from('t_login_attempt')
-      .select('*', { count: 'exact', head: true })
-      .eq('email', email)
-      .eq('exitoso', false)
-      .gte('fecha', desde)
-
-    // Generar alerta en múltiplos del umbral para no duplicar
-    if ((count ?? 0) >= UMBRAL_ALERTA && (count ?? 0) % UMBRAL_ALERTA === 0) {
-      await admin.schema('cartera').from('t_audit_log').insert({
-        tabla: 'auth',
-        operacion: 'SECURITY_ALERT',
-        cuenta: null,
-        registro_id: { email },
-        datos_antes: null,
-        datos_despues: { ip, intentos_en_ventana: count },
-        usuario_email: email,
-      })
-      console.error(
-        `[SECURITY] Alerta: ${count} intentos fallidos para ${email} en ${VENTANA_ALERTA_MIN} minutos (IP: ${ip})`
-      )
+    await alertarSiUmbral(admin, email, ipGuardada, 'email', email, desde)
+    if (ipDeLockout(ipGuardada)) {
+      await alertarSiUmbral(admin, email, ipGuardada, 'ip', ipGuardada, desde)
     }
   }
 }
 
+async function alertarSiUmbral(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string,
+  ip: string,
+  columna: 'email' | 'ip',
+  valor: string,
+  desde: string,
+): Promise<void> {
+  const count = await contarFallos(columna, valor, desde)
+  if (count < UMBRAL_ALERTA || count % UMBRAL_ALERTA !== 0) return
+
+  const registroId = columna === 'email' ? { email } : { ip }
+  await admin.schema('cartera').from('t_audit_log').insert({
+    tabla: 'auth',
+    operacion: 'SECURITY_ALERT',
+    cuenta: null,
+    registro_id: registroId,
+    datos_antes: null,
+    datos_despues: { ip, intentos_en_ventana: count },
+    usuario_email: email,
+  })
+  console.error(
+    `[SECURITY] Alerta: ${count} intentos fallidos por ${columna} en ${VENTANA_ALERTA_MIN} minutos (IP: ${ip})`
+  )
+}
+
 async function verificarTurnstile(token: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY
-  // Sin clave configurada (dev local sin .env.local) → se omite la verificación
-  if (!secret) return true
+  if (omitirTurnstile(secret, process.env.NODE_ENV)) return true
+  if (!secret?.trim()) {
+    console.error('[SECURITY] TURNSTILE_SECRET_KEY no está configurada. Login rechazado.')
+    return false
+  }
+  if (!token.trim()) return false
 
-  const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret, response: token }),
-  })
-  const data = (await resp.json()) as { success: boolean }
-  return data.success === true
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret, response: token }),
+    })
+    if (!resp.ok) return false
+    const data = (await resp.json()) as { success?: boolean }
+    return data.success === true
+  } catch (error) {
+    console.error('[SECURITY] Turnstile no respondió.', error)
+    return false
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -156,7 +190,7 @@ export async function login(
   _prevState: LoginState,
   formData: FormData
 ): Promise<LoginState> {
-  const email = formData.get('email') as string
+  const email = String(formData.get('email') ?? '').trim()
   const password = formData.get('password') as string
   const turnstileToken = (formData.get('cf-turnstile-response') as string) ?? ''
 
@@ -167,7 +201,7 @@ export async function login(
 
   // 2. Verificar lockout por intentos fallidos
   const ip = await getIpDelRequest()
-  if (await estaBloquedoPorIntentos(email)) {
+  if (await estaBloquedoPorIntentos(email, ip)) {
     return {
       error: `Acceso bloqueado por múltiples intentos fallidos. Espera ${VENTANA_LOCKOUT_MIN} minutos e inténtalo de nuevo.`,
     }
