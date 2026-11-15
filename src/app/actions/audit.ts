@@ -2,7 +2,54 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leerAcceso } from '@/app/actions/permisos'
-import { puedeEmpresa, puedeProyecto } from '@/lib/acceso-proyecto'
+import { puedeEmpresa, puedeProyecto, type AccesoLectura } from '@/lib/acceso-proyecto'
+
+function entero(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value)
+}
+
+async function transaccionPermitida(
+  acceso: AccesoLectura,
+  registroId: Record<string, unknown>,
+): Promise<boolean> {
+  const empresa = registroId.empresa
+  const codigo = registroId.cuenta_bancaria
+  const numero = registroId.numero_transaccion
+  if (!entero(empresa) || !entero(codigo)) return false
+  if (typeof numero !== 'string' || numero.trim() === '') return false
+  if (acceso.esAdmin) return true
+  if (entero(registroId.proyecto)) return puedeProyecto(acceso, empresa, registroId.proyecto)
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_cuenta_bancaria')
+    .select('proyecto')
+    .eq('cuenta', acceso.cuenta)
+    .eq('empresa', empresa)
+    .eq('codigo', codigo)
+  if (error || !data || data.length === 0) return false
+  return data.every((fila) => puedeProyecto(acceso, empresa, fila.proyecto as number))
+}
+
+function registroPermitido(
+  acceso: AccesoLectura,
+  tabla: string,
+  registroId: Record<string, unknown>,
+): boolean {
+  if (acceso.esAdmin) return true
+  const empresa = registroId.empresa
+  const proyecto = registroId.proyecto
+  if (entero(empresa) && entero(proyecto)) return puedeProyecto(acceso, empresa, proyecto)
+  if (tabla === 't_proyecto' && entero(empresa) && entero(registroId.codigo)) {
+    return puedeProyecto(acceso, empresa, registroId.codigo)
+  }
+  if (tabla === 't_empresa') {
+    const codigo = entero(registroId.codigo) ? registroId.codigo : empresa
+    return entero(codigo) && puedeEmpresa(acceso, codigo)
+  }
+  return false
+}
 
 export type AuditEntry = {
   id: number
@@ -25,18 +72,10 @@ export async function getAuditLog(
 ): Promise<AuditEntry[]> {
   const acceso = await leerAcceso()
   if (!acceso || cuenta !== acceso.cuenta) return []
-
-  const empresa = registroId.empresa
-  const proyecto = registroId.proyecto
-  if (typeof empresa === 'number' && typeof proyecto === 'number') {
-    if (!puedeProyecto(acceso, empresa, proyecto)) return []
-  } else if (typeof empresa === 'number') {
-    if (!puedeEmpresa(acceso, empresa)) return []
-  } else if (tabla === 't_empresa' && typeof registroId.codigo === 'number') {
-    if (!puedeEmpresa(acceso, registroId.codigo)) return []
-  } else if (!acceso.esAdmin) {
-    return []
-  }
+  const permitido = tabla === 't_transaccion_bancaria'
+    ? await transaccionPermitida(acceso, registroId)
+    : registroPermitido(acceso, tabla, registroId)
+  if (!permitido) return []
 
   const admin = createAdminClient()
   const { data, error } = await admin

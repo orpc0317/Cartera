@@ -271,7 +271,9 @@ export async function deleteCuentaBancaria(
     .schema('cartera')
     .from('t_transaccion_bancaria')
     .select('*', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
     .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
     .eq('cuenta_bancaria', codigo)
 
   if ((count ?? 0) > 0) {
