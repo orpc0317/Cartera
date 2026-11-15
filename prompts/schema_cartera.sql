@@ -809,11 +809,12 @@ CREATE TABLE IF NOT EXISTS cartera.t_tipo_ingreso (
 );
 
 -- Movimientos bancarios (conciliación)
--- cuenta y proyecto identifican al tenant. Sin ellas, (empresa, cuenta_bancaria)
--- se repite entre cuentas. Ver scripts/transaccion_bancaria_cuenta.sql.
+-- La base actual ya tiene cuenta y proyecto, ambos NOT NULL y parte de la
+-- llave primaria junto con empresa, cuenta_bancaria y numero_transaccion.
+-- No hace falta scripts/transaccion_bancaria_cuenta.sql.
 CREATE TABLE IF NOT EXISTS cartera.t_transaccion_bancaria (
-  cuenta                    varchar       NULL,
-  proyecto                  integer       NULL,
+  cuenta                    varchar       NOT NULL,
+  proyecto                  integer       NOT NULL,
   empresa                   integer       NOT NULL DEFAULT 0,
   cuenta_bancaria           integer       NOT NULL DEFAULT 0,
   numero_transaccion        varchar(11)   NOT NULL,
@@ -822,7 +823,6 @@ CREATE TABLE IF NOT EXISTS cartera.t_transaccion_bancaria (
   numero_documento          varchar(15)   NOT NULL,
   partida                   varchar(11)   NULL,
   valor                     numeric(18,2) NOT NULL DEFAULT 0,
-  valor_en_letras           varchar(100)  NULL,
   tipo_saldo                smallint      NOT NULL DEFAULT 0,
   en_circulacion            smallint      NOT NULL DEFAULT 0,
   a_nombre_de               varchar(100)  NULL,
@@ -837,7 +837,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_transaccion_bancaria (
   fecha_agrego              timestamptz   NOT NULL DEFAULT now(),
   usuario_modifico          uuid          NOT NULL,
   fecha_modifico            timestamptz   NOT NULL DEFAULT now(),
-  PRIMARY KEY (empresa, cuenta_bancaria, numero_transaccion)
+  PRIMARY KEY (cuenta, empresa, proyecto, cuenta_bancaria, numero_transaccion)
 );
 
 -- Usuarios del sistema por cuenta
@@ -889,7 +889,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 -- * t_coordinador.supervisor es FK lógica a t_supervisor.codigo (mismo cuenta/empresa/proyecto);
 --   no existe FOREIGN KEY declarada en la DB.
 -- * t_empresa_usuario fue eliminada; reemplazada por t_usuario_proyecto.
--- * t_transaccion_bancaria.cuenta y proyecto se agregan con scripts/transaccion_bancaria_cuenta.sql.
+-- * t_transaccion_bancaria ya tiene cuenta y proyecto (NOT NULL, parte de la llave primaria). No correr scripts/transaccion_bancaria_cuenta.sql.
 --   Toda lectura o cambio filtra por cuenta. Una fila sin cuenta no se muestra.
 -- * t_usuario_proyecto: sin filas para un usuario = sin acceso (no hay fallback libre).
 --   El usuario Admin de la cuenta (t_usuario.es_admin = 1) tiene acceso irrestricto.
