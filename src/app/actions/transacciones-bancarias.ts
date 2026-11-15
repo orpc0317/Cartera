@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { TransaccionBancaria } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { puedeProyecto, restringirProyecto } from '@/lib/acceso-proyecto'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -20,24 +21,52 @@ async function getAuditUser() {
 
 // ─── Lectura ──────────────────────────────────────────────────────────────
 
-export async function getTransaccionesBancarias(): Promise<TransaccionBancaria[]> {
-  const cuenta = await getCuentaActiva()
+async function exigirCuentaBancaria(
+  empresa: number,
+  cuentaBancaria: number,
+): Promise<{ error: string } | null> {
+  const acceso = await leerAcceso()
+  if (!acceso) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()
-
-  const { data: cbs } = await admin
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
-    .select('codigo')
-    .eq('cuenta', cuenta)
+    .select('proyecto')
+    .eq('cuenta', acceso.cuenta)
+    .eq('empresa', empresa)
+    .eq('codigo', cuentaBancaria)
+    .maybeSingle()
+  if (error || !data || !puedeProyecto(acceso, empresa, data.proyecto)) {
+    return { error: 'Acceso denegado.' }
+  }
+  return null
+}
 
-  const cbIds = (cbs ?? []).map((cb: { codigo: number }) => cb.codigo)
-  if (cbIds.length === 0) return []
+export async function getTransaccionesBancarias(): Promise<TransaccionBancaria[]> {
+  const acceso = await leerAcceso()
+  if (!acceso) return []
+  const admin = createAdminClient()
+
+  const consulta = admin
+    .schema('cartera')
+    .from('t_cuenta_bancaria')
+    .select('empresa, codigo')
+    .eq('cuenta', acceso.cuenta)
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return []
+  const { data: cbs } = await acotada
+
+  const pares = (cbs ?? []) as { empresa: number; codigo: number }[]
+  if (pares.length === 0) return []
+  const filtro = pares
+    .map((par) => `and(empresa.eq.${par.empresa},cuenta_bancaria.eq.${par.codigo})`)
+    .join(',')
 
   const { data, error } = await admin
     .schema('cartera')
     .from('t_transaccion_bancaria')
     .select('*')
-    .in('cuenta_bancaria', cbIds)
+    .or(filtro)
     .order('fecha', { ascending: false })
     .order('numero_transaccion', { ascending: false })
 
@@ -52,6 +81,8 @@ export async function obtenerTransaccionBancaria(
 ): Promise<{ row?: TransaccionBancaria & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.TRX_BAN, 'consultar')
   if (guard) return guard
+  const alcance = await exigirCuentaBancaria(empresa, cuentaBancaria)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()
@@ -80,6 +111,8 @@ export async function anularTransaccionBancaria(
 ): Promise<{ error?: string }> {
   const permCheck = await requirePermiso(PERMISOS.TRX_BAN, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirCuentaBancaria(empresa, cuentaBancaria)
+  if (alcance) return alcance
 
   const admin = createAdminClient()
   const { userId } = await getAuditUser()
@@ -120,6 +153,8 @@ export async function eliminarTransaccionBancaria(
 ): Promise<{ error?: string }> {
   const permCheck = await requirePermiso(PERMISOS.TRX_BAN, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirCuentaBancaria(empresa, cuentaBancaria)
+  if (alcance) return alcance
 
   const admin = createAdminClient()
 

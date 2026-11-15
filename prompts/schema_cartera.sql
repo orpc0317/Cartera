@@ -843,6 +843,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_usuario (
   nombres             varchar       NOT NULL,
   apellidos           varchar       NOT NULL,
   activo              smallint      NOT NULL DEFAULT 0,
+  es_admin            smallint      NOT NULL DEFAULT 0, -- 1 = admin de la cuenta. El alta sin filas de menú ya no concede admin. Ver scripts/es_admin_usuario.sql
   agrego_usuario      uuid          NOT NULL,
   agrego_fecha        timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
   modifico_usuario    uuid          NOT NULL,
@@ -885,7 +886,9 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 --   no existe FOREIGN KEY declarada en la DB.
 -- * t_empresa_usuario fue eliminada; reemplazada por t_usuario_proyecto.
 -- * t_usuario_proyecto: sin filas para un usuario = sin acceso (no hay fallback libre).
---   El usuario Admin de la cuenta tiene acceso irrestricto (se gestiona en creación de cuenta).
+--   El usuario Admin de la cuenta (t_usuario.es_admin = 1) tiene acceso irrestricto.
+--   scripts/es_admin_usuario.sql agrega la columna y marca como admin a quien hoy
+--   no tiene filas en t_menu_usuario.
 -- * La secuencia t_audit_log_id_seq debe existir antes del CREATE TABLE.
 -- * t_audit_log.operacion puede ser 'INSERT'|'UPDATE'|'DELETE'|'SECURITY_ALERT'.
 --   Los registros SECURITY_ALERT los genera auth.ts cuando hay >=10 intentos

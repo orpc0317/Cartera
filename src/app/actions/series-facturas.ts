@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { SerieFactura, SerieFacturaForm } from '@/lib/types/series-facturas'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 const COLUMNS = 'cuenta, empresa, proyecto, serie, gface, id_docto_gface, establecimiento, dispositivo, carpeta_dtes, formato, predeterminado, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha'
 
@@ -160,16 +161,20 @@ function refrescar() {
 }
 
 export async function getSeriesFacturas(): Promise<SerieFactura[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  const { data, error } = await admin
+  const consulta = admin
     .schema('cartera')
     .from('t_serie_factura')
     .select(COLUMNS)
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
     .order('serie')
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return []
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
   return data as SerieFactura[]
 }
@@ -181,6 +186,8 @@ export async function obtenerSerieFactura(
 ): Promise<{ row?: SerieFactura & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.SER_FAC, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<SerieFactura>(
@@ -193,6 +200,8 @@ export async function obtenerSerieFactura(
 export async function createSerieFactura(form: SerieFacturaForm): Promise<{ error?: string }> {
   const guard = await requirePermiso(PERMISOS.SER_FAC, 'agregar')
   if (guard) return guard
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -272,6 +281,8 @@ export async function updateSerieFactura(
 ): Promise<{ error?: string; row?: SerieFactura }> {
   const guard = await requirePermiso(PERMISOS.SER_FAC, 'modificar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -351,6 +362,8 @@ export async function deleteSerieFactura(
 ): Promise<{ error?: string }> {
   const guard = await requirePermiso(PERMISOS.SER_FAC, 'eliminar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }

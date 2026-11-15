@@ -7,7 +7,7 @@ import { getFases }                                  from '@/app/actions/fases'
 import { getBancos }                                 from '@/app/actions/bancos'
 import { getCuentasBancarias }                       from '@/app/actions/cuentas-bancarias'
 import { getPermisosDetalle }                        from '@/app/actions/permisos'
-import { PERMISOS }                                  from '@/lib/permisos'
+import { PERMISOS, PERMISOS_CERRADOS }            from '@/lib/permisos'
 import { PagoCuotasClient }                          from './_client'
 
 export default async function PagoCuotasPage() {
@@ -24,7 +24,7 @@ export default async function PagoCuotasPage() {
     getFases().catch((e: Error)             => { console.error('getFases:', e.message);             return [] as Awaited<ReturnType<typeof getFases>> }),
     getBancos().catch((e: Error)            => { console.error('getBancos:', e.message);            return [] as Awaited<ReturnType<typeof getBancos>> }),
     getCuentasBancarias().catch((e: Error)  => { console.error('getCuentasBancarias:', e.message);  return [] as Awaited<ReturnType<typeof getCuentasBancarias>> }),
-    getPermisosDetalle(PERMISOS.PAG_CUO).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+    getPermisosDetalle(PERMISOS.PAG_CUO).catch((e: Error) => { console.error('getPermisosDetalle:', e.message); return PERMISOS_CERRADOS }),
   ])
 
   return (

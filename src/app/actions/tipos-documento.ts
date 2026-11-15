@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { TipoDocumento, TipoDocumentoForm } from '@/lib/types/tipos-documento'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 async function getAuditUser() {
   const supabase = await createClient()
@@ -54,18 +55,20 @@ async function writeAudit(
 }
 
 export async function getTiposDocumento(empresa?: number, proyecto?: number): Promise<TipoDocumento[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_tipo_documento')
     .select('cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
     .order('descripcion')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as TipoDocumento[]
@@ -78,6 +81,8 @@ export async function obtenerTipoDocumento(
 ): Promise<{ row?: TipoDocumento & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.TDO_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<TipoDocumento>(
@@ -91,6 +96,8 @@ export async function obtenerTipoDocumento(
 export async function createTipoDocumento(form: TipoDocumentoForm): Promise<{ error?: string }> {
   const guard = await requirePermiso(PERMISOS.TDO_CAT, 'agregar')
   if (guard) return guard
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -159,6 +166,8 @@ export async function updateTipoDocumento(
 ): Promise<{ error?: string; row?: TipoDocumento }> {
   const guard = await requirePermiso(PERMISOS.TDO_CAT, 'modificar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -225,6 +234,8 @@ export async function deleteTipoDocumento(
 ): Promise<{ error?: string }> {
   const guard = await requirePermiso(PERMISOS.TDO_CAT, 'eliminar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }

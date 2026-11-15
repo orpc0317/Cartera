@@ -31,6 +31,13 @@ export const PERMISOS = {
 
 export type Permiso = (typeof PERMISOS)[keyof typeof PERMISOS]
 
+export const PERMISOS_CERRADOS = {
+  consultar: false,
+  agregar: false,
+  modificar: false,
+  eliminar: false,
+} as const
+
 export function tienePermiso(permisos: string[], permiso: string): boolean {
   return permisos.includes(permiso)
 }

@@ -2,7 +2,7 @@ import { getGfaces } from '@/app/actions/gface'
 import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getEmpresasUsuario } from '@/app/actions/empresas'
 import { getPermisosDetalle } from '@/app/actions/permisos'
-import { PERMISOS } from '@/lib/permisos'
+import { PERMISOS, PERMISOS_CERRADOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
 import { GfaceClient } from './_client'
 
@@ -14,7 +14,7 @@ export default async function GfacePage() {
     getGfaces().catch((e: Error) => { console.error('getGfaces:', e.message); return [] as Awaited<ReturnType<typeof getGfaces>> }),
     getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
     getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
-    getPermisosDetalle(PERMISOS.GFA_CAT).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+    getPermisosDetalle(PERMISOS.GFA_CAT).catch((e: Error) => { console.error('getPermisosDetalle:', e.message); return PERMISOS_CERRADOS }),
   ])
 
   return (

@@ -7,7 +7,8 @@ import { toDbString } from '@/lib/utils'
 import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto, exigirEmpresa } from '@/app/actions/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
 
 async function getAuditUser() {
@@ -55,16 +56,23 @@ async function writeAudit(
 }
 
 export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  let query = admin
+  const consulta = admin
     .schema('cartera')
     .from('t_proyecto')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('nombre')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  const { data, error } = await query
+  const acotada = restringirProyecto(
+    consulta,
+    acceso,
+    { empresa },
+    { empresa: 'empresa', proyecto: 'codigo' },
+  )
+  if (!acotada) return []
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
   return data as Proyecto[]
 }
@@ -74,6 +82,8 @@ export type ProyectoVer = Proyecto & NombresVer & { monedas_del_proyecto?: Proye
 export async function obtenerProyecto(empresa: number, codigo: number): Promise<{ row?: ProyectoVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.PRO_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, codigo)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()
@@ -105,53 +115,8 @@ export async function obtenerProyecto(empresa: number, codigo: number): Promise<
   }
 }
 
-/**
- * Proyectos a los que el usuario autenticado tiene acceso según t_usuario_proyecto.
- * Sin filas en esa tabla → array vacío (sin acceso).
- * El usuario Admin de la cuenta tiene acceso irrestricto (su setup no usa esta tabla).
- * Opcionalmente filtrar por empresa.
- */
 export async function getProyectosUsuario(empresa?: number): Promise<Proyecto[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
-  if (!cuenta) return []
-
-  const admin = createAdminClient()
-
-  // Obtener los proyectos a los que este usuario tiene acceso explícito
-  let accesoQuery = admin
-    .schema('cartera')
-    .from('t_usuario_proyecto')
-    .select('empresa, proyecto')
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
-  if (empresa !== undefined) accesoQuery = accesoQuery.eq('empresa', empresa)
-
-  const { data: accesos, error: accesoError } = await accesoQuery
-  if (accesoError) throw new Error(accesoError.message)
-  if (!accesos || accesos.length === 0) return []
-
-  // Construir filtro: traer solo los proyectos permitidos
-  // Agrupamos por empresa para construir el filtro OR compuesto
-  const filters = accesos
-    .map((a) => `and(empresa.eq.${a.empresa},codigo.eq.${a.proyecto})`)
-    .join(',')
-
-  let proyQuery = admin
-    .schema('cartera')
-    .from('t_proyecto')
-    .select('*')
-    .eq('cuenta', cuenta)
-    .or(filters)
-    .order('nombre')
-  if (empresa !== undefined) proyQuery = proyQuery.eq('empresa', empresa)
-
-  const { data, error } = await proyQuery
-  if (error) throw new Error(error.message)
-  return data as Proyecto[]
+  return getProyectos(empresa)
 }
 
 export async function createProyecto(form: ProyectoForm): Promise<{ error?: string; codigo?: number }> {
@@ -159,6 +124,8 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirEmpresa(form.empresa)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -250,6 +217,8 @@ export async function updateProyecto(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, codigo)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -320,6 +289,8 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, codigo)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar restricciones referenciales antes de eliminar
@@ -526,15 +497,19 @@ export async function uploadProjectLogo(
 // ─── Monedas por Proyecto ─────────────────────────────────────────────────────
 
 export async function getProyectoMonedas(): Promise<ProyectoMoneda[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  const { data, error } = await admin
+  const consulta = admin
     .schema('cartera')
     .from('t_proyecto_moneda')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('predeterminado', { ascending: false })
     .order('moneda')
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return []
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
   return (data ?? []) as ProyectoMoneda[]
 }
@@ -544,6 +519,10 @@ export async function addProyectoMoneda(
   proyecto: number,
   moneda: string,
 ): Promise<{ error?: string }> {
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
+  if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
@@ -607,6 +586,10 @@ export async function toggleProyectoMonedaActivo(
   moneda: string,
   nuevoActivo: number,
 ): Promise<{ error?: string }> {
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
+  if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
@@ -653,6 +636,10 @@ export async function setProyectoMonedaPredeterminada(
   proyecto: number,
   moneda: string,
 ): Promise<{ error?: string }> {
+  const permCheck = await requirePermiso(PERMISOS.PRO_CAT, 'modificar')
+  if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()

@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCuentaActiva } from '@/app/actions/permisos'
+import { getCuentaActiva, exigirProyecto } from '@/app/actions/permisos'
 import type { PromesaOtro } from '@/lib/types/promesa-otros'
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
@@ -11,6 +11,8 @@ export async function getPromesaOtros(
   proyecto: number,
   promesa: number,
 ): Promise<PromesaOtro[]> {
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return []
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
   const { data, error } = await admin

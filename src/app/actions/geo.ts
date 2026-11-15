@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { leerAcceso } from '@/app/actions/permisos'
 import type { Moneda } from '@/lib/types/proyectos'
 
 export type Pais = { codigo: string; nombre: string }
@@ -42,6 +43,8 @@ export async function getMunicipios(): Promise<Municipio[]> {
 }
 
 export async function getMonedas(): Promise<Moneda[]> {
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   const { data, error } = await admin
     .schema('cartera')

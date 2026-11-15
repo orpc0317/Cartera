@@ -2,7 +2,7 @@ import { getFases } from '@/app/actions/fases'
 import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getEmpresasUsuario } from '@/app/actions/empresas'
 import { getPermisosDetalle } from '@/app/actions/permisos'
-import { PERMISOS } from '@/lib/permisos'
+import { PERMISOS, PERMISOS_CERRADOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
 import { FasesClient } from './_client'
 
@@ -14,7 +14,7 @@ export default async function FasesPage() {
     getFases().catch((e: Error) => { console.error('getFases:', e.message); return [] as Awaited<ReturnType<typeof getFases>> }),
     getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
     getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
-    getPermisosDetalle(PERMISOS.FAS_CAT).catch(() => ({ consultar: true, agregar: true, modificar: true, eliminar: true })),
+    getPermisosDetalle(PERMISOS.FAS_CAT).catch((e: Error) => { console.error('getPermisosDetalle:', e.message); return PERMISOS_CERRADOS }),
   ])
 
   return (

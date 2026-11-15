@@ -2,7 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCuentaActiva, requirePermiso } from '@/app/actions/permisos'
+import { requirePermiso, leerAcceso } from '@/app/actions/permisos'
+import { puedeProyecto } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
 import type { ReciboDetalleItem, DepositarPagosServerPayload } from '@/lib/types/depositar-pagos'
 
@@ -19,7 +20,9 @@ export async function getReciboParaDeposito(
   serie: string,
   numero: number,
 ): Promise<{ data?: ReciboDetalleItem; error?: string }> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso || !puedeProyecto(acceso, empresa, proyecto)) return { error: 'Acceso denegado.' }
+  const cuenta = acceso.cuenta
   const admin  = createAdminClient()
 
   const { data: recibo, error } = await admin
@@ -114,7 +117,15 @@ export async function depositarPagos(
   const guard = await requirePermiso(PERMISOS.DEP_BAN, 'agregar')
   if (guard) return guard
 
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso || !puedeProyecto(acceso, payload.empresa, payload.proyecto)) {
+    return { error: 'Acceso denegado.' }
+  }
+  if (payload.recibos.some((recibo) => !puedeProyecto(acceso, recibo.empresa, recibo.proyecto))) {
+    return { error: 'Acceso denegado.' }
+  }
+
+  const cuenta = acceso.cuenta
   if (!cuenta) return { error: 'Sesion no valida.' }
 
   if (payload.recibos.length === 0)

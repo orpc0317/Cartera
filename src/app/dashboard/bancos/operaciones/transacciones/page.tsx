@@ -4,7 +4,7 @@ import { getEmpresasUsuario } from '@/app/actions/empresas'
 import { getProyectosUsuario } from '@/app/actions/proyectos'
 import { getBancos } from '@/app/actions/bancos'
 import { getPermisosDetalle } from '@/app/actions/permisos'
-import { PERMISOS } from '@/lib/permisos'
+import { PERMISOS, PERMISOS_CERRADOS } from '@/lib/permisos'
 import { createClient } from '@/lib/supabase/server'
 import { TransaccionesBancariasClient } from './_client'
 
@@ -18,7 +18,7 @@ export default async function TransaccionesBancariasPage() {
     getProyectosUsuario().catch((e: Error)          => { console.error('getProyectosUsuario:', e.message);         return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
     getCuentasBancarias().catch((e: Error)          => { console.error('getCuentasBancarias:', e.message);         return [] as Awaited<ReturnType<typeof getCuentasBancarias>> }),
     getBancos().catch((e: Error)                    => { console.error('getBancos:', e.message);                   return [] as Awaited<ReturnType<typeof getBancos>> }),
-    getPermisosDetalle(PERMISOS.TRX_BAN).catch(() => ({ consultar: true, agregar: false, modificar: false, eliminar: false })),
+    getPermisosDetalle(PERMISOS.TRX_BAN).catch((e: Error) => { console.error('getPermisosDetalle:', e.message); return PERMISOS_CERRADOS }),
   ])
 
   return (
