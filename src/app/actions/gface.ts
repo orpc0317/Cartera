@@ -177,7 +177,39 @@ async function writeAudit(
   })
 }
 
-const GFACE_COLUMNS = 'cuenta, empresa, proyecto, codigo, nombre, requestor, entity, user_name, token, web_service, web_service_documento, certificado_post, certificado_ruta, certificado_nombre, certificado_contrasena, correo_envio, correo_copia, primera_firma, validar_identificacion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha'
+const GFACE_COLUMNS = 'cuenta, empresa, proyecto, codigo, nombre, requestor, entity, user_name, web_service, web_service_documento, certificado_post, certificado_ruta, certificado_nombre, correo_envio, correo_copia, primera_firma, validar_identificacion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha'
+
+type MarcaSecreto = {
+  empresa: number
+  proyecto: number
+  codigo: number
+  token_configurado: boolean
+  certificado_configurado: boolean
+}
+
+async function marcasSecreto(): Promise<MarcaSecreto[]> {
+  const datos = await clienteDatos()
+  const { data, error } = await datos.schema('cartera').rpc('fn_gface_configurado')
+  if (error) throw new Error(error.message)
+  return (data ?? []) as MarcaSecreto[]
+}
+
+function conMarcas<T extends { empresa: number; proyecto: number; codigo: number; token?: string | null; certificado_contrasena?: string | null }>(
+  rows: T[],
+  marcas: MarcaSecreto[],
+): T[] {
+  const porClave = new Map(marcas.map((marca) => [`${marca.empresa}:${marca.proyecto}:${marca.codigo}`, marca]))
+  return rows.map((row) => {
+    const limpio = quitarSecretos(row)
+    const marca = porClave.get(`${row.empresa}:${row.proyecto}:${row.codigo}`)
+    if (!marca) return limpio as T
+    return {
+      ...limpio,
+      token_configurado: marca.token_configurado,
+      certificado_configurado: marca.certificado_configurado,
+    } as T
+  })
+}
 
 export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gface[]> {
   const acceso = await leerAcceso()
@@ -196,7 +228,7 @@ export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gf
   query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return (data as Gface[]).map(quitarSecretos)
+  return conMarcas(data as Gface[], await marcasSecreto())
 }
 
 export async function obtenerGface(
@@ -215,7 +247,7 @@ export async function obtenerGface(
     { cuenta, empresa, proyecto, codigo }, GFACE_COLUMNS,
     { empresa, proyecto },
   )
-  if (result.row) return { row: quitarSecretos(result.row) }
+  if (result.row) return { row: conMarcas([result.row], await marcasSecreto())[0] }
   return result
 }
 
@@ -374,7 +406,7 @@ export async function updateGface(
   })
 
   revalidatePath('/dashboard/generales/gface')
-  return { row: quitarSecretos(data[0] as Gface) }
+  return { row: conMarcas([data[0] as Gface], await marcasSecreto())[0] }
 }
 
 export async function deleteGface(
