@@ -118,7 +118,7 @@ El cliente admin usa `SUPABASE_SERVICE_ROLE_KEY` — **nunca exponer al browser*
 
 > Patrones completos en `server-actions.instructions.md`. Resumen:
 
-- **`getCuentaActiva()`**: cookie `cartera-cuenta` y, si no hay cookie, `app_metadata.cuenta_activa`. Solo devuelve la cuenta si el usuario tiene fila en `t_usuario`. Toda query filtra `.eq('cuenta', cuenta)`.
+- **`getCuentaActiva()`**: la cuenta del JWT `app_metadata.cuenta_activa`, la misma que lee `fn_cuenta_del_usuario()`. Solo la devuelve si el usuario tiene fila en `t_usuario`. Si la cookie `cartera-cuenta` difiere, se reescribe con ese valor. Toda query filtra `.eq('cuenta', cuenta)`.
 - **`page.tsx`**: `Promise.all` con `.catch(() => [])` **por llamada individual** — nunca un try/catch global.
 - **`modifico_fecha`**: toda tabla editable tiene este campo; el update lleva `.eq('modifico_fecha', modificoFecha)` para detectar concurrencia.
 - **Exports**: solo `async function` y `export type`. Prohibido re-exportar valores desde `"use server"` — rompe el build (no detectable por `get_errors`).

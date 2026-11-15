@@ -51,9 +51,7 @@ Toda query filtra por `cuenta`. Un usuario de cuenta A nunca puede ver datos de 
 
 **Modelo multi-cuenta**: un mismo `userid` (mismo email / fila en `auth.users`) puede pertenecer a múltiples cuentas. `t_usuario` tiene PK `(cuenta, userid)`. El usuario puede cambiar de cuenta activa sin cerrar sesión mediante el selector de cuenta del sidebar.
 
-**Fuente del tenant ID** — en orden de precedencia:
-1. Cookie `cartera-cuenta` (HttpOnly, Secure, SameSite=lax) — aislamiento por navegador/perfil. Permite que Chrome use Cuenta A y Edge use Cuenta B simultáneamente.
-2. JWT `app_metadata.cuenta_activa` — fallback para sesiones sin cookie (compatibilidad con sesiones anteriores al mecanismo de cookie).
+**Fuente del tenant ID**: `app_metadata.cuenta_activa` del JWT. Es el valor que lee `fn_cuenta_del_usuario()` en las políticas RLS. La cookie `cartera-cuenta` se guarda al cambiar de cuenta y se reescribe si queda distinta del JWT. Dos navegadores no mantienen cuentas distintas: `app_metadata` es uno por usuario y, al refrescar el token, los dos quedan en la misma cuenta.
 
 La función `getCuentaActiva()` exportada desde `src/app/actions/permisos.ts` encapsula esta lógica. **Nunca leer la cookie ni el app_metadata directamente en los action files.**
 

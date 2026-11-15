@@ -50,7 +50,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCuentaActiva, requirePermiso } from '@/app/actions/permisos'
 ```
 
-La función lee la cookie `cartera-cuenta` (aislamiento por navegador/perfil) como primera fuente, y cae al JWT `app_metadata.cuenta_activa` como fallback. Es la única fuente de verdad — los action files **no leen** la cookie ni el app_metadata directamente.
+La función devuelve el JWT `app_metadata.cuenta_activa`, la misma cuenta que lee `fn_cuenta_del_usuario()` en la RLS, y reescribe la cookie `cartera-cuenta` si quedó distinta. Es la única fuente de verdad — los action files **no leen** la cookie ni el app_metadata directamente.
 
 Toda query debe llevar `.eq('cuenta', cuenta)`. Si `cuenta` está vacía, las queries de lectura retornan 0 filas silenciosamente (no es un error).
 

@@ -11,24 +11,21 @@ import {
 } from '@/lib/acceso-proyecto'
 
 /**
- * Devuelve la cuenta activa del usuario.
- * Lee primero la cookie `cartera-cuenta` (aislada por navegador/perfil);
- * si no existe, recurre al JWT app_metadata como fallback.
- * La cuenta solo se devuelve si el usuario tiene fila en t_usuario.
+ * Devuelve la cuenta que la RLS va a permitir.
+ * fn_cuenta_del_usuario() lee app_metadata.cuenta_activa del JWT.
+ * La cookie se alinea con ese valor. Si difieren, consultar la cookie
+ * deja la pantalla vacía y el INSERT no pasa el WITH CHECK.
  */
 export async function getCuentaActiva(): Promise<string> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return ''
 
-  const cookieStore = await cookies()
-  const fromCookie = cookieStore.get('cartera-cuenta')?.value?.trim() ?? ''
-  const fromJwt = (user.app_metadata as Record<string, string> | undefined)?.cuenta_activa ?? ''
-  const cuenta = fromCookie || fromJwt
+  const cuenta = (user.app_metadata as Record<string, string> | undefined)?.cuenta_activa?.trim() ?? ''
   if (!cuenta) return ''
 
-  const admin = await clienteDatos()
-  const { count, error } = await admin
+  const datos = await clienteDatos()
+  const { count, error } = await datos
     .schema('cartera')
     .from('t_usuario')
     .select('userid', { count: 'exact', head: true })
@@ -36,6 +33,22 @@ export async function getCuentaActiva(): Promise<string> {
     .eq('userid', user.id)
 
   if (error || !count) return ''
+
+  const cookieStore = await cookies()
+  const fromCookie = cookieStore.get('cartera-cuenta')?.value?.trim() ?? ''
+  if (fromCookie !== cuenta) {
+    try {
+      cookieStore.set('cartera-cuenta', cuenta, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 365,
+      })
+    } catch {
+      // En un Server Component las cookies son de solo lectura.
+    }
+  }
   return cuenta
 }
 

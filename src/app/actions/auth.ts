@@ -69,7 +69,7 @@ async function setCuentaActivaInterna(
   })
   if (error) return { error: 'No se pudo establecer la cuenta activa.' }
 
-  // Cookie cartera-cuenta: aislamiento por navegador/perfil (no afecta otros navegadores)
+  // La cookie acompaña al JWT. La RLS lee la cuenta del JWT, no de la cookie.
   const cookieStore = await cookies()
   cookieStore.set('cartera-cuenta', cuentaId, {
     httpOnly: true,
