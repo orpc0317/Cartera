@@ -39,8 +39,6 @@ export async function getCuentaActiva(): Promise<string> {
   return cuenta
 }
 
-export type { AccesoLectura }
-
 export type PermisosDetalle = {
   consultar: boolean
   agregar: boolean
