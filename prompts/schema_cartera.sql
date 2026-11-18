@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS cartera.t_audit_log (
   PRIMARY KEY (id)
 );
 
--- Intentos de login (exitosos y fallidos) para lockout y alertas de seguridad
+-- Intentos de login (exitosos y fallidos) para lockout y alertas de seguridad.
+-- El bloqueo cuenta fallos por email y, con una IP válida, también por IP.
 -- RLS habilitado sin policies = solo service_role puede acceder.
 -- Se auto-limpia entradas con más de 7 días en cada intento de login.
 CREATE TABLE IF NOT EXISTS cartera.t_login_attempt (
@@ -58,8 +59,9 @@ CREATE TABLE IF NOT EXISTS cartera.t_login_attempt (
   fecha    timestamptz  NOT NULL DEFAULT now(),
   PRIMARY KEY (id)
 );
--- Índice para consultas de lockout: email + fecha DESC
+-- Índices de lockout. Ver scripts/login_attempt_acceso.sql.
 -- CREATE INDEX idx_login_attempt_email_fecha ON cartera.t_login_attempt (email, fecha DESC);
+-- CREATE INDEX idx_login_attempt_ip_fecha ON cartera.t_login_attempt (ip, fecha DESC);
 
 -- Catálogo de bancos por proyecto
 CREATE TABLE IF NOT EXISTS cartera.t_banco (
@@ -900,9 +902,9 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 --   Los registros SECURITY_ALERT los genera auth.ts cuando hay >=10 intentos
 --   fallidos de login en 60 minutos para el mismo email.
 -- * t_login_attempt: registra cada intento de login (exitoso o fallido).
---   El lockout se activa con 5 fallos en 15 minutos (constantes en auth.ts).
+--   El lockout se activa con 5 fallos en 15 minutos, por email y por IP válida.
 --   Se auto-purga entradas con más de 7 días en cada intento.
---   Solo accesible via service_role (RLS sin policies).
+--   service_role necesita SELECT, INSERT y DELETE. Ver scripts/login_attempt_acceso.sql.
 -- * cartera_cuentas_usuario_by_id (RPC pública): REVOKE EXECUTE FROM anon.
 --   Solo authenticated y service_role pueden invocarla.
 -- * La función cartera.fn_genera_cuentaid() debe existir antes del
