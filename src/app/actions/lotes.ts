@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Lote, LoteForm, SerieRecibo } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres, leerNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 async function getAuditUser() {
   const supabase = await createClient()
@@ -54,16 +55,18 @@ async function writeAudit(
 }
 
 export async function getLotes(empresa?: number, proyecto?: number, fase?: number, manzana?: string): Promise<Lote[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_lote')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('fase').order('manzana').order('codigo')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   if (fase !== undefined) query = query.eq('fase', fase)
   if (manzana !== undefined) query = query.eq('manzana', manzana)
   const { data, error } = await query
@@ -80,6 +83,8 @@ export async function obtenerLote(
 ): Promise<{ row?: Lote & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.LOT_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Lote>(
@@ -90,31 +95,37 @@ export async function obtenerLote(
 }
 
 export async function getSeriesRecibo(): Promise<SerieRecibo[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  const { data, error } = await admin
+  const consulta = admin
     .schema('cartera')
     .from('t_serie_recibo')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('serie')
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return []
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
   return data as SerieRecibo[]
 }
 
 export async function getLotesDisponibles(empresa?: number, proyecto?: number): Promise<Lote[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_lote')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .eq('promesa', 0)
     .eq('recibo_numero', 0)
     .order('empresa').order('proyecto').order('fase').order('manzana').order('codigo')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Lote[]
@@ -125,6 +136,8 @@ export async function createLote(form: LoteForm): Promise<{ error?: string }> {
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
   const now = new Date().toISOString()
 
@@ -169,6 +182,8 @@ export async function updateLote(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -220,6 +235,8 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.LOT_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Cascade checks
@@ -324,7 +341,9 @@ export type ReservaRow = {
 }
 
 export async function getReservas(empresa?: number, proyecto?: number): Promise<ReservaRow[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
+  const cuenta = acceso.cuenta
   const admin  = createAdminClient()
 
   let reservaQuery = admin
@@ -333,8 +352,9 @@ export async function getReservas(empresa?: number, proyecto?: number): Promise<
     .select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
     .eq('cuenta', cuenta)
     .order('numero', { ascending: false })
-  if (empresa !== undefined) reservaQuery = reservaQuery.eq('empresa', empresa)
-  if (proyecto !== undefined) reservaQuery = reservaQuery.eq('proyecto', proyecto)
+  const reservasAcotadas = restringirProyecto(reservaQuery, acceso, { empresa, proyecto })
+  if (!reservasAcotadas) return []
+  reservaQuery = reservasAcotadas
   const { data: reservas, error: err1 } = await reservaQuery
   if (err1) throw new Error(err1.message)
   if (!reservas || reservas.length === 0) return []
@@ -347,8 +367,9 @@ export async function getReservas(empresa?: number, proyecto?: number): Promise<
     .select('empresa, proyecto, serie, numero, fecha, monto, moneda, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, cobrador')
     .eq('cuenta', cuenta)
     .in('numero', numerosRecibo)
-  if (empresa !== undefined) reciboQuery = reciboQuery.eq('empresa', empresa)
-  if (proyecto !== undefined) reciboQuery = reciboQuery.eq('proyecto', proyecto)
+  const recibosAcotados = restringirProyecto(reciboQuery, acceso, { empresa, proyecto })
+  if (!recibosAcotados) return []
+  reciboQuery = recibosAcotados
   const { data: recibos, error: err2 } = await reciboQuery
   if (err2) throw new Error(err2.message)
 
@@ -393,6 +414,8 @@ export async function obtenerReserva(
 ): Promise<{ row?: ReservaRow & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.RES_OPE, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()
@@ -510,6 +533,8 @@ export async function createReserva(
   if (!cuenta) return { ok: false, error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.RES_OPE, 'agregar')
   if (permCheck) return { ok: false, error: permCheck.error }
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return { ok: false, error: alcance.error }
   const auditUser = await getAuditUser()
   if (!auditUser.userId) return { ok: false, error: 'Usuario no autenticado.' }
 
@@ -607,6 +632,8 @@ export async function getLoteReservaInfo(
   manzana: string,
   codigo: string,
 ): Promise<LoteReservaInfo | null> {
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return null
   const cuenta = await getCuentaActiva()
   if (!cuenta) return null
   const admin = createAdminClient()
@@ -666,6 +693,10 @@ export async function desistirReserva(
   codigo: string,
   reservaNumero: number,
 ): Promise<{ error?: string }> {
+  const permCheck = await requirePermiso(PERMISOS.RES_OPE, 'modificar')
+  if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]

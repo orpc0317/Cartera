@@ -828,7 +828,7 @@ export function GfaceClient({
                       <ViewField label="Requestor" value={viewTarget.requestor} />
                       <ViewField label="Entidad" value={viewTarget.entity} />
                       <ViewField label="Usuario" value={viewTarget.user_name} />
-                      <ViewField label="Token" value={secretMask(viewTarget.token)} />
+                      <ViewField label="Token" value={secretMask(viewTarget.token_configurado ? 'configurado' : null)} />
                     </SegmentCard>
                   </div>
 
@@ -843,7 +843,7 @@ export function GfaceClient({
                       <div className="col-span-2"><ViewField label="Certificado Post" value={viewTarget.certificado_post} /></div>
                       <div className="col-span-2"><ViewField label="Ruta del Certificado" value={viewTarget.certificado_ruta} /></div>
                       <ViewField label="Nombre del Certificado" value={viewTarget.certificado_nombre} />
-                      <ViewField label="Contrasena del Certificado" value={secretMask(viewTarget.certificado_contrasena)} />
+                      <ViewField label="Contrasena del Certificado" value={secretMask(viewTarget.certificado_configurado ? 'configurado' : null)} />
                     </SegmentCard>
                     <SegmentCard label="CORREO">
                       <ViewField label="Correo de Envio" value={viewTarget.correo_envio} />

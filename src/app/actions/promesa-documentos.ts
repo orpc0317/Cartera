@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 
 const BUCKET          = 'promesa-documentos'
@@ -67,6 +67,10 @@ function verifyPdfMagicBytes(buffer: Uint8Array): boolean {
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
 export async function getPromesaDocumentos(empresa: number, proyecto: number, promesa: number): Promise<PromesaDocumento[]> {
+  const guard = await requirePermiso(PERMISOS.PRE_OPE, 'consultar')
+  if (guard) return []
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return []
   const cuenta = await getCuentaActiva()
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -90,6 +94,10 @@ export async function getPromesaDocumentoUrl(
   promesa: number,
   secuencia: number,
 ): Promise<{ url?: string; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.PRE_OPE, 'consultar')
+  if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
@@ -128,6 +136,8 @@ export async function uploadPromesaDocumento(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   if (!tipoDocumento) return { error: 'Selecciona el tipo de documento.' }
 
@@ -207,6 +217,8 @@ export async function deletePromesaDocumento(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const admin = createAdminClient()
 

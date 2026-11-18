@@ -24,7 +24,7 @@ export default async function DashboardLayout({
   const userEmail = user.email
   const [cuentaActiva, cuentas, menu] = await Promise.all([
     getCuentaActiva(),
-    getCuentasDelUsuario(user.id),
+    getCuentasDelUsuario(),
     getMenuPrincipal().catch((e: Error) => {
       console.error('getMenuPrincipal:', e.message)
       return [] as MenuModulo[]

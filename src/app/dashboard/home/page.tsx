@@ -19,7 +19,7 @@ export default async function HomePage() {
       return ''
     }),
     user
-      ? getCuentasDelUsuario(user.id).catch((e: Error) => {
+      ? getCuentasDelUsuario().catch((e: Error) => {
           console.error('getCuentasDelUsuario:', e.message)
           return [] as Awaited<ReturnType<typeof getCuentasDelUsuario>>
         })

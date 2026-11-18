@@ -1,0 +1,13 @@
+-- =============================================================================
+-- NO EJECUTAR.
+--
+-- Revisión contra la base actual de Supabase (14 nov 2026):
+-- cartera.t_transaccion_bancaria ya tiene las columnas cuenta (varchar,
+-- NOT NULL) y proyecto (integer, NOT NULL). Las dos forman parte de la
+-- llave primaria, junto con empresa, cuenta_bancaria y numero_transaccion.
+-- Las filas existentes tienen cuenta y proyecto informados.
+--
+-- Un ALTER ADD COLUMN, un backfill o un trigger BEFORE INSERT no aportan
+-- y pueden pisar la lógica que ya graba esas columnas (fn_crear_reserva
+-- y el depósito de pagos).
+-- =============================================================================

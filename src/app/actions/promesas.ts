@@ -6,8 +6,9 @@ import type { Promesa, PromesaForm } from '@/lib/types/promesas'
 import type { PromesaOtroPayload } from '@/lib/types/promesa-otros'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -59,18 +60,20 @@ async function writeAudit(
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
 export async function getPromesas(empresa?: number, proyecto?: number): Promise<Promesa[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_promesa')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
     .order('numero')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return (data ?? []) as Promesa[]
@@ -83,6 +86,8 @@ export async function obtenerPromesa(
 ): Promise<{ row?: Promesa & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.PRE_OPE, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Promesa>(
@@ -109,6 +114,8 @@ export async function createPromesa(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
 
   const admin = createAdminClient()
   const auditUser = await getAuditUser()
@@ -206,6 +213,8 @@ export async function updatePromesa(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const admin = createAdminClient()
 
@@ -294,6 +303,8 @@ export async function anularPromesa(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const motivo = comentario.trim()
   if (!motivo) return { error: 'El motivo de la anulación es obligatorio.' }
@@ -366,6 +377,8 @@ export async function deletePromesa(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.PRE_OPE, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const admin = createAdminClient()
 

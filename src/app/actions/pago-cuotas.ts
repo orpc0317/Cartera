@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCuentaActiva, requirePermiso } from '@/app/actions/permisos'
+import { getCuentaActiva, requirePermiso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
 import { getPlanPago } from '@/app/actions/plan-pago'
 import type {
@@ -67,6 +67,8 @@ export async function buscarPromesas(
   proyecto: number,
   query: string,
 ): Promise<PromesaBusqueda[]> {
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return []
   const cuenta = await getCuentaActiva()
   const q = query.trim()
   if (!q || !empresa || !proyecto) return []
@@ -188,6 +190,8 @@ export async function registrarPagoCuotas(
 ): Promise<{ error?: string; numero_recibo?: number; promesa_pagada?: boolean }> {
   const guard = await requirePermiso(PERMISOS.PAG_CUO, 'agregar')
   if (guard) return guard
+  const alcance = await exigirProyecto(payload.empresa, payload.proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesion no valida.' }

@@ -7,7 +7,8 @@ import { toDbString } from '@/lib/utils'
 import type { Empresa, EmpresaForm } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirEmpresa } from '@/app/actions/permisos'
+import { empresasVisibles, puedeEmpresa } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
 
 // Obtiene info del usuario para auditoría
@@ -61,59 +62,32 @@ async function writeAudit(
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
 export async function getEmpresas(): Promise<Empresa[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  const { data, error } = await admin
+  let query = admin
     .schema('cartera')
     .from('t_empresa')
     .select('*')
-    .eq('cuenta', cuenta)
-    .order('nombre')
+    .eq('cuenta', acceso.cuenta)
+  const ids = empresasVisibles(acceso)
+  if (ids) {
+    if (ids.length === 0) return []
+    query = query.in('codigo', ids)
+  }
+  const { data, error } = await query.order('nombre')
   if (error) throw new Error(error.message)
   return data as Empresa[]
 }
 
-/**
- * Empresas a las que el usuario autenticado tiene acceso según t_usuario_proyecto.
- * Deduplica en código porque PostgREST no soporta DISTINCT y t_usuario_proyecto
- * puede tener N filas con el mismo empresa (una por proyecto).
- * Sin filas en t_usuario_proyecto → array vacío (sin acceso).
- */
 export async function getEmpresasUsuario(): Promise<Empresa[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
-  const cuenta = (user.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
-  if (!cuenta) return []
-
-  const admin = createAdminClient()
-
-  const { data: accesos, error: accesoError } = await admin
-    .schema('cartera')
-    .from('t_usuario_proyecto')
-    .select('empresa')
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
-  if (accesoError) throw new Error(accesoError.message)
-  if (!accesos || accesos.length === 0) return []
-
-  // Deduplicar — un usuario con 3 proyectos en empresa 1 genera 3 filas
-  const empresasUnicas = [...new Set(accesos.map((a) => a.empresa as number))]
-
-  const { data, error } = await admin
-    .schema('cartera')
-    .from('t_empresa')
-    .select('*')
-    .eq('cuenta', cuenta)
-    .in('codigo', empresasUnicas)
-    .order('nombre')
-  if (error) throw new Error(error.message)
-  return data as Empresa[]
+  return getEmpresas()
 }
 
 export async function getEmpresa(codigo: number): Promise<Empresa> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso || !puedeEmpresa(acceso, codigo)) throw new Error('Acceso denegado.')
+  const cuenta = acceso.cuenta
   const admin = createAdminClient()
   const { data, error } = await admin
     .schema('cartera')
@@ -129,6 +103,8 @@ export async function getEmpresa(codigo: number): Promise<Empresa> {
 export async function obtenerEmpresa(codigo: number): Promise<{ row?: Empresa & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.EMP_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirEmpresa(codigo)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()
@@ -215,6 +191,8 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirEmpresa(codigo)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Capturar estado anterior para auditoría
@@ -280,6 +258,8 @@ export async function deleteEmpresa(codigo: number): Promise<{ error?: string }>
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.EMP_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirEmpresa(codigo)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar restricción de cascada: no eliminar si hay proyectos asociados

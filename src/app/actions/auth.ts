@@ -31,7 +31,7 @@ const VENTANA_ALERTA_MIN    = 60  // ventana de tiempo para alerta (minutos)
 // Helpers privados
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getCuentasDelUsuario(userId: string): Promise<Cuenta[]> {
+async function cuentasPorId(userId: string): Promise<Cuenta[]> {
   const admin = createAdminClient()
   const { data, error } = await admin.rpc('cartera_cuentas_usuario_by_id', {
     p_userid: userId,
@@ -40,11 +40,22 @@ export async function getCuentasDelUsuario(userId: string): Promise<Cuenta[]> {
   return (data ?? []) as Cuenta[]
 }
 
+export async function getCuentasDelUsuario(): Promise<Cuenta[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  return cuentasPorId(user.id)
+}
+
 async function setCuentaActivaInterna(
   userId: string,
   cuentaId: string
 ): Promise<{ error: string } | null> {
-  const cuentas = await getCuentasDelUsuario(userId)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.id !== userId) return { error: 'Sesión no válida.' }
+
+  const cuentas = await cuentasPorId(user.id)
   const pertenece = cuentas.some((c) => c.cuenta === cuentaId)
   if (!pertenece) {
     return { error: 'El usuario no tiene acceso a la cuenta indicada.' }
@@ -188,7 +199,7 @@ export async function login(
   await registrarIntento(email, ip, true)
 
   const userId = authData.user.id
-  const cuentas = await getCuentasDelUsuario(userId)
+  const cuentas = await cuentasPorId(userId)
 
   if (cuentas.length === 0) {
     await supabase.auth.signOut()

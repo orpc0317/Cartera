@@ -809,7 +809,12 @@ CREATE TABLE IF NOT EXISTS cartera.t_tipo_ingreso (
 );
 
 -- Movimientos bancarios (conciliación)
+-- La base actual ya tiene cuenta y proyecto, ambos NOT NULL y parte de la
+-- llave primaria junto con empresa, cuenta_bancaria y numero_transaccion.
+-- No hace falta scripts/transaccion_bancaria_cuenta.sql.
 CREATE TABLE IF NOT EXISTS cartera.t_transaccion_bancaria (
+  cuenta                    varchar       NOT NULL,
+  proyecto                  integer       NOT NULL,
   empresa                   integer       NOT NULL DEFAULT 0,
   cuenta_bancaria           integer       NOT NULL DEFAULT 0,
   numero_transaccion        varchar(11)   NOT NULL,
@@ -818,7 +823,6 @@ CREATE TABLE IF NOT EXISTS cartera.t_transaccion_bancaria (
   numero_documento          varchar(15)   NOT NULL,
   partida                   varchar(11)   NULL,
   valor                     numeric(18,2) NOT NULL DEFAULT 0,
-  valor_en_letras           varchar(100)  NULL,
   tipo_saldo                smallint      NOT NULL DEFAULT 0,
   en_circulacion            smallint      NOT NULL DEFAULT 0,
   a_nombre_de               varchar(100)  NULL,
@@ -833,7 +837,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_transaccion_bancaria (
   fecha_agrego              timestamptz   NOT NULL DEFAULT now(),
   usuario_modifico          uuid          NOT NULL,
   fecha_modifico            timestamptz   NOT NULL DEFAULT now(),
-  PRIMARY KEY (empresa, cuenta_bancaria, numero_transaccion)
+  PRIMARY KEY (cuenta, empresa, proyecto, cuenta_bancaria, numero_transaccion)
 );
 
 -- Usuarios del sistema por cuenta
@@ -843,6 +847,7 @@ CREATE TABLE IF NOT EXISTS cartera.t_usuario (
   nombres             varchar       NOT NULL,
   apellidos           varchar       NOT NULL,
   activo              smallint      NOT NULL DEFAULT 0,
+  es_admin            smallint      NOT NULL DEFAULT 0, -- 1 = admin de la cuenta. El alta sin filas de menú ya no concede admin. Ver scripts/es_admin_usuario.sql
   agrego_usuario      uuid          NOT NULL,
   agrego_fecha        timestamptz   NOT NULL DEFAULT '1900-01-01 00:00:00+00',
   modifico_usuario    uuid          NOT NULL,
@@ -884,8 +889,12 @@ CREATE TABLE IF NOT EXISTS cartera.t_vendedor (
 -- * t_coordinador.supervisor es FK lógica a t_supervisor.codigo (mismo cuenta/empresa/proyecto);
 --   no existe FOREIGN KEY declarada en la DB.
 -- * t_empresa_usuario fue eliminada; reemplazada por t_usuario_proyecto.
+-- * t_transaccion_bancaria ya tiene cuenta y proyecto (NOT NULL, parte de la llave primaria). No correr scripts/transaccion_bancaria_cuenta.sql.
+--   Toda lectura o cambio filtra por cuenta. Una fila sin cuenta no se muestra.
 -- * t_usuario_proyecto: sin filas para un usuario = sin acceso (no hay fallback libre).
---   El usuario Admin de la cuenta tiene acceso irrestricto (se gestiona en creación de cuenta).
+--   El usuario Admin de la cuenta (t_usuario.es_admin = 1) tiene acceso irrestricto.
+--   scripts/es_admin_usuario.sql agrega la columna y marca como admin a quien hoy
+--   no tiene filas en t_menu_usuario.
 -- * La secuencia t_audit_log_id_seq debe existir antes del CREATE TABLE.
 -- * t_audit_log.operacion puede ser 'INSERT'|'UPDATE'|'DELETE'|'SECURITY_ALERT'.
 --   Los registros SECURITY_ALERT los genera auth.ts cuando hay >=10 intentos

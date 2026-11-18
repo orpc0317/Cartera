@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Supervisor, SupervisorForm } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 async function getAuditUser() {
   const supabase = await createClient()
@@ -56,16 +57,18 @@ async function writeAudit(
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
 export async function getSupervisores(empresa?: number, proyecto?: number): Promise<Supervisor[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_supervisor')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Supervisor[]
@@ -78,6 +81,8 @@ export async function obtenerSupervisor(
 ): Promise<{ row?: Supervisor & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.SUP_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Supervisor>(
@@ -94,6 +99,8 @@ export async function createSupervisor(form: SupervisorForm): Promise<{ error?: 
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.SUP_CAT, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -164,6 +171,8 @@ export async function updateSupervisor(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.SUP_CAT, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -233,6 +242,8 @@ export async function deleteSupervisor(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.SUP_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin

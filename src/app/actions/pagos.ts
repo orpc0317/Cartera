@@ -1,8 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCuentaActiva, requirePermiso } from '@/app/actions/permisos'
+import { getCuentaActiva, requirePermiso, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
@@ -11,23 +11,6 @@ import type {
 } from '@/lib/types/pagos'
 
 const LIMITE_FILAS = 500
-
-/**
- * Obtiene los pares (empresa, proyecto) a los que el usuario autenticado
- * tiene acceso explícito (t_usuario_proyecto). Sin filas = sin acceso.
- * Mismo patrón que getProyectosUsuario (src/app/actions/proyectos.ts).
- */
-async function getAccesos(cuenta: string, userId: string, admin: ReturnType<typeof createAdminClient>) {
-  const { data, error } = await admin
-    .schema('cartera')
-    .from('t_usuario_proyecto')
-    .select('empresa, proyecto')
-    .eq('cuenta', cuenta)
-    .eq('userid', userId)
-
-  if (error) throw new Error(error.message)
-  return (data ?? []) as { empresa: number; proyecto: number }[]
-}
 
 function rangoDia(fecha: string): { desde: string; hasta: string } {
   const desde = new Date(`${fecha}T00:00:00.000Z`)
@@ -50,17 +33,11 @@ function rangoDia(fecha: string): { desde: string; hasta: string } {
 export async function getRecibosCaja(
   filtros: PagosFiltros,
 ): Promise<{ data: ReciboCaja[]; limitReached: boolean; error?: string }> {
-  const cuenta = await getCuentaActiva()
-  if (!cuenta) return { data: [], limitReached: false, error: 'Sesión no válida.' }
+  const acceso = await leerAcceso()
+  if (!acceso) return { data: [], limitReached: false, error: 'Sesión no válida.' }
+  const cuenta = acceso.cuenta
 
   const admin = createAdminClient()
-
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { data: [], limitReached: false, error: 'Sesión no válida.' }
-
-  const accesos = await getAccesos(cuenta, user.id, admin)
-  if (accesos.length === 0) return { data: [], limitReached: false }
 
   let query = admin
     .schema('cartera')
@@ -68,27 +45,12 @@ export async function getRecibosCaja(
     .select('*')
     .eq('cuenta', cuenta)
 
-  // Filtro de empresa/proyecto: si el usuario indica un proyecto especifico,
-  // validar que tenga acceso a el. Si solo indica empresa, restringir a los
-  // proyectos de esa empresa a los que tiene acceso. Sin ninguno de los dos,
-  // restringir a todos los accesos concedidos.
-  if (filtros.proyecto !== undefined && filtros.empresa !== undefined) {
-    const tieneAcceso = accesos.some((a) => a.empresa === filtros.empresa && a.proyecto === filtros.proyecto)
-    if (!tieneAcceso) return { data: [], limitReached: false }
-    query = query.eq('empresa', filtros.empresa).eq('proyecto', filtros.proyecto)
-  } else if (filtros.empresa !== undefined) {
-    const accesosEmpresa = accesos.filter((a) => a.empresa === filtros.empresa)
-    if (accesosEmpresa.length === 0) return { data: [], limitReached: false }
-    const filtroEmpresa = accesosEmpresa
-      .map((a) => `and(empresa.eq.${a.empresa},proyecto.eq.${a.proyecto})`)
-      .join(',')
-    query = query.or(filtroEmpresa)
-  } else {
-    const filtroAccesos = accesos
-      .map((a) => `and(empresa.eq.${a.empresa},proyecto.eq.${a.proyecto})`)
-      .join(',')
-    query = query.or(filtroAccesos)
-  }
+  const acotada = restringirProyecto(query, acceso, {
+    empresa: filtros.empresa,
+    proyecto: filtros.proyecto,
+  })
+  if (!acotada) return { data: [], limitReached: false }
+  query = acotada
 
   // Fecha del recibo (columna date simple): si solo se manda "desde" (sin "hasta"),
   // se interpreta como busqueda exacta por ese dia, no como rango abierto.
@@ -130,15 +92,14 @@ export async function getRecibosCaja(
   }
 
   if (filtros.cliente?.trim()) {
-    const filtroClienteAccesos = accesos
-      .map((a) => `and(empresa.eq.${a.empresa},proyecto.eq.${a.proyecto})`)
-      .join(',')
-    const { data: clientesMatch, error: clienteError } = await admin
+    const clientesConsulta = admin
       .schema('cartera')
       .from('t_cliente')
       .select('empresa, proyecto, codigo')
       .eq('cuenta', cuenta)
-      .or(filtroClienteAccesos)
+    const clientesAcotados = restringirProyecto(clientesConsulta, acceso)
+    if (!clientesAcotados) return { data: [], limitReached: false }
+    const { data: clientesMatch, error: clienteError } = await clientesAcotados
       .ilike('nombre', `%${filtros.cliente.trim()}%`)
 
     if (clienteError) return { data: [], limitReached: false, error: clienteError.message }
@@ -167,6 +128,8 @@ export async function obtenerReciboCaja(
 ): Promise<{ row?: ReciboCaja & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.PAG_MAN, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<ReciboCaja>(
@@ -195,6 +158,8 @@ export async function getReciboCajaExtra(
   serie: string,
   numero: number,
 ): Promise<{ data?: ReciboCajaDetalleExtra; error?: string }> {
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
@@ -233,7 +198,9 @@ export async function getReciboCajaExtra(
       .schema('cartera')
       .from('t_transaccion_bancaria')
       .select('numero_transaccion, fecha, numero_documento, valor, tipo_transaccion')
+      .eq('cuenta', cuenta)
       .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
       .eq('cuenta_bancaria', recibo.cuenta_deposito)
       .eq('numero_transaccion', recibo.transaccion_bancaria)
       .maybeSingle()

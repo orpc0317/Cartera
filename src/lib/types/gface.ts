@@ -10,12 +10,14 @@ export type Gface = {
   entity: string | null
   user_name: string | null
   token: string | null
+  token_configurado?: boolean
   web_service: string | null
   web_service_documento: string | null
   certificado_post: string | null
   certificado_ruta: string | null
   certificado_nombre: string | null
   certificado_contrasena: string | null
+  certificado_configurado?: boolean
   correo_envio: string | null
   correo_copia: string | null
   primera_firma: number

@@ -6,8 +6,9 @@ import { toDbString } from '@/lib/utils'
 import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 // ─── Helpers privados ─────────────────────────────────────────────────────
 
@@ -58,16 +59,20 @@ async function writeAudit(
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
 export async function getTiposIngresos(): Promise<TipoIngreso[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  const { data, error } = await admin
+  const consulta = admin
     .schema('cartera')
     .from('t_tipo_ingreso')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
     .order('nombre')
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return []
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
   return (data ?? []) as TipoIngreso[]
 }
@@ -79,6 +84,8 @@ export async function obtenerTipoIngreso(
 ): Promise<{ row?: TipoIngreso & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.TIN_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<TipoIngreso>(
@@ -97,6 +104,8 @@ export async function createTipoIngreso(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -170,6 +179,8 @@ export async function updateTipoIngreso(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Verificar duplicado de nombre excluyendo el registro actual
@@ -241,6 +252,8 @@ export async function deleteTipoIngreso(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.TIN_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Restricción: verificar recibos asociados

@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Vendedor, VendedorForm } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 async function getAuditUser() {
   const supabase = await createClient()
@@ -56,16 +57,18 @@ async function writeAudit(
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
 export async function getVendedores(empresa?: number, proyecto?: number): Promise<Vendedor[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_vendedor')
     .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return data as Vendedor[]
@@ -78,6 +81,8 @@ export async function obtenerVendedor(
 ): Promise<{ row?: Vendedor & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.VEN_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Vendedor>(
@@ -99,6 +104,8 @@ export async function createVendedor(form: VendedorForm): Promise<{ error?: stri
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.VEN_CAT, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: max } = await admin
@@ -169,6 +176,8 @@ export async function updateVendedor(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.VEN_CAT, 'modificar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   const { data: oldRow } = await admin
@@ -238,6 +247,8 @@ export async function deleteVendedor(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.VEN_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
   // Restricción: no eliminar si tiene promesas asociadas

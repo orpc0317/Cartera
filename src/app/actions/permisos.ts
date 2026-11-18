@@ -4,21 +4,42 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PERMISOS } from '@/lib/permisos'
+import {
+  puedeEmpresa,
+  puedeProyecto,
+  type AccesoLectura,
+} from '@/lib/acceso-proyecto'
 
 /**
  * Devuelve la cuenta activa del usuario.
  * Lee primero la cookie `cartera-cuenta` (aislada por navegador/perfil);
  * si no existe, recurre al JWT app_metadata como fallback.
+ * La cuenta solo se devuelve si el usuario tiene fila en t_usuario.
  */
 export async function getCuentaActiva(): Promise<string> {
-  const cookieStore = await cookies()
-  const fromCookie = cookieStore.get('cartera-cuenta')?.value
-  if (fromCookie) return fromCookie
-  // Fallback: JWT app_metadata (sesión sin cookie, p.ej. primer login)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  return (user?.app_metadata as Record<string, string>)?.cuenta_activa ?? ''
+  if (!user) return ''
+
+  const cookieStore = await cookies()
+  const fromCookie = cookieStore.get('cartera-cuenta')?.value?.trim() ?? ''
+  const fromJwt = (user.app_metadata as Record<string, string> | undefined)?.cuenta_activa ?? ''
+  const cuenta = fromCookie || fromJwt
+  if (!cuenta) return ''
+
+  const admin = createAdminClient()
+  const { count, error } = await admin
+    .schema('cartera')
+    .from('t_usuario')
+    .select('userid', { count: 'exact', head: true })
+    .eq('cuenta', cuenta)
+    .eq('userid', user.id)
+
+  if (error || !count) return ''
+  return cuenta
 }
+
+export type { AccesoLectura }
 
 export type PermisosDetalle = {
   consultar: boolean
@@ -27,164 +48,158 @@ export type PermisosDetalle = {
   eliminar: boolean
 }
 
-/**
- * Devuelve los índices de t_menu a los que el usuario tiene acceso (consultar = 1).
- *
- * Regla de fallback:
- *   - Si el usuario NO tiene ninguna fila en t_menu_usuario → acceso total
- *     (modo "setup inicial", sin restricciones configuradas aún)
- *   - Si el usuario SÍ tiene filas → solo los índices con consultar = 1
- */
-export async function getPermisosUsuario(): Promise<string[]> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+const DENEGADO: PermisosDetalle = {
+  consultar: false,
+  agregar: false,
+  modificar: false,
+  eliminar: false,
+}
 
-  if (!user) return []
+const COMPLETO: PermisosDetalle = {
+  consultar: true,
+  agregar: true,
+  modificar: true,
+  eliminar: true,
+}
+
+/**
+ * Sesión, membresía de la cuenta y pares empresa/proyecto.
+ * es_admin = 1 concede la cuenta completa. Sin fila, o si la columna
+ * todavía no existe, la lectura queda cerrada.
+ */
+export async function leerAcceso(): Promise<AccesoLectura | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
   const cuenta = await getCuentaActiva()
-  if (!cuenta) return []
+  if (!cuenta) return null
 
   const admin = createAdminClient()
+  const [usuarioRes, accesosRes] = await Promise.all([
+    admin
+      .schema('cartera')
+      .from('t_usuario')
+      .select('es_admin')
+      .eq('cuenta', cuenta)
+      .eq('userid', user.id)
+      .maybeSingle(),
+    admin
+      .schema('cartera')
+      .from('t_usuario_proyecto')
+      .select('empresa, proyecto')
+      .eq('cuenta', cuenta)
+      .eq('userid', user.id),
+  ])
 
-  // Contar cuántas filas tiene este usuario en t_menu_usuario
-  const { count } = await admin
-    .schema('cartera')
-    .from('t_menu_usuario')
-    .select('indice', { count: 'exact', head: true })
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
+  if (usuarioRes.error || !usuarioRes.data || accesosRes.error) return null
 
-  // Sin configuración = acceso completo (modo Admin)
-  if (!count || count === 0) {
-    return Object.values(PERMISOS)
+  return {
+    cuenta,
+    userId: user.id,
+    esAdmin: usuarioRes.data.es_admin === 1,
+    accesos: (accesosRes.data ?? []) as AccesoLectura['accesos'],
   }
+}
 
-  // Con configuración = solo lo que explícitamente tiene consultar = 1
-  const { data } = await admin
+export async function exigirProyecto(
+  empresa: number,
+  proyecto: number,
+): Promise<{ error: string } | null> {
+  const acceso = await leerAcceso()
+  if (!acceso) return { error: 'Sesión no válida.' }
+  if (!puedeProyecto(acceso, empresa, proyecto)) return { error: 'Acceso denegado.' }
+  return null
+}
+
+export async function exigirEmpresa(empresa: number): Promise<{ error: string } | null> {
+  const acceso = await leerAcceso()
+  if (!acceso) return { error: 'Sesión no válida.' }
+  if (!puedeEmpresa(acceso, empresa)) return { error: 'Acceso denegado.' }
+  return null
+}
+
+/**
+ * Índices de t_menu con consultar = 1.
+ * es_admin = 1 devuelve el catálogo. Sin esa marca, solo las filas explícitas.
+ */
+export async function getPermisosUsuario(): Promise<string[]> {
+  const acceso = await leerAcceso()
+  if (!acceso) return []
+  if (acceso.esAdmin) return Object.values(PERMISOS)
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
     .select('indice')
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
+    .eq('cuenta', acceso.cuenta)
+    .eq('userid', acceso.userId)
     .eq('consultar', 1)
 
-  return (data ?? []).map((d) => d.indice as string)
+  if (error) return []
+  return (data ?? []).map((fila) => fila.indice as string)
 }
 
 /**
- * Devuelve el detalle de permisos (consultar/agregar/modificar/eliminar) para
- * un índice de menú específico y el usuario autenticado.
- *
- * Fallback: si el usuario no tiene configuración → acceso total.
+ * Detalle consultar/agregar/modificar/eliminar de un índice.
+ * es_admin = 1 concede los cuatro. Sin fila para el índice, quedan en falso.
  */
 export async function getPermisosDetalle(indice: string): Promise<PermisosDetalle> {
-  const fullAccess: PermisosDetalle = { consultar: true, agregar: true, modificar: true, eliminar: true }
-
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return { consultar: false, agregar: false, modificar: false, eliminar: false }
-
-  const cuenta = await getCuentaActiva()
-  if (!cuenta) return { consultar: false, agregar: false, modificar: false, eliminar: false }
+  const acceso = await leerAcceso()
+  if (!acceso) return DENEGADO
+  if (acceso.esAdmin) return COMPLETO
 
   const admin = createAdminClient()
-
-  // Contar cuántas filas tiene este usuario en t_menu_usuario
-  const { count } = await admin
-    .schema('cartera')
-    .from('t_menu_usuario')
-    .select('indice', { count: 'exact', head: true })
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
-
-  // Sin configuración = acceso completo (modo Admin)
-  if (!count || count === 0) return fullAccess
-
-  const { data } = await admin
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
     .select('consultar, agregar, modificar, eliminar')
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
+    .eq('cuenta', acceso.cuenta)
+    .eq('userid', acceso.userId)
     .eq('indice', indice)
     .maybeSingle()
 
-  // Índice no registrado = sin permisos asignados
-  if (!data) return { consultar: false, agregar: false, modificar: false, eliminar: false }
+  if (error || !data) return DENEGADO
 
   return {
     consultar: data.consultar === 1,
-    agregar:   data.agregar   === 1,
+    agregar: data.agregar === 1,
     modificar: data.modificar === 1,
-    eliminar:  data.eliminar  === 1,
+    eliminar: data.eliminar === 1,
   }
 }
 
 /**
- * Guard para server actions. La lectura por id usa 'consultar'; las mutaciones usan agregar, modificar o eliminar.
+ * Guard de server actions. La lectura por id usa 'consultar'; las mutaciones
+ * usan agregar, modificar o eliminar.
  *
- * Verifica que el usuario autenticado tenga el permiso requerido para el
- * índice de menú indicado. Devuelve `{ error }` si el acceso está denegado,
- * o `null` si está permitido.
- *
- * Aplica la misma regla de fallback que getPermisosDetalle:
- *   - Sin filas en t_menu_usuario → Admin, acceso completo.
- *   - Con filas pero sin el índice, o con el flag en 0 → denegado.
+ * es_admin = 1 permite la operación. Con filas de menú, solo el flag en 1.
+ * Sin fila de usuario en la cuenta, o sin el flag, la acción se niega.
  */
 export async function requirePermiso(
   indice: string,
   operacion: 'consultar' | 'agregar' | 'modificar' | 'eliminar',
 ): Promise<{ error: string } | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'Sesión no válida.' }
-
-  const cuenta = await getCuentaActiva()
-  if (!cuenta) return { error: 'Sesión no válida.' }
+  const acceso = await leerAcceso()
+  if (!acceso) return { error: 'Sesión no válida.' }
+  if (acceso.esAdmin) return null
 
   const admin = createAdminClient()
-
-  // Verificar que el usuario pertenece a esta cuenta antes de cualquier
-  // comprobación de permisos. Sin esta guarda, un atacante que falsifique
-  // el valor de la cookie 'cartera-cuenta' a una cuenta ajena obtendría
-  // count=0 en t_menu_usuario y quedaría clasificado como "Admin sin
-  // restricciones", obteniendo escritura total sobre esa cuenta.
-  const { count: membership } = await admin
-    .schema('cartera')
-    .from('t_usuario')
-    .select('userid', { count: 'exact', head: true })
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
-
-  if (!membership) return { error: 'Acceso denegado.' }
-
-  const { count } = await admin
-    .schema('cartera')
-    .from('t_menu_usuario')
-    .select('indice', { count: 'exact', head: true })
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
-
-  // Sin configuración = Admin → acceso completo
-  if (!count || count === 0) return null
-
-  const { data } = await admin
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_menu_usuario')
     .select(operacion)
-    .eq('cuenta', cuenta)
-    .eq('userid', user.id)
+    .eq('cuenta', acceso.cuenta)
+    .eq('userid', acceso.userId)
     .eq('indice', indice)
     .maybeSingle()
 
-  const row = data as Record<string, boolean | null> | null
-  if (!row || !row[operacion]) {
+  if (error) return { error: 'No tienes permiso para realizar esta acción.' }
+
+  const row = data as Record<string, number | boolean | null> | null
+  const flag = row?.[operacion]
+  if (flag !== 1 && flag !== true) {
     return { error: 'No tienes permiso para realizar esta acción.' }
   }
 

@@ -6,8 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Gface, GfaceForm } from '@/lib/types/gface'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -32,6 +33,23 @@ function secretToNull(value: string | null | undefined): string | null {
 
 function ilikeLiteral(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+function quitarSecretos<T extends { token?: string | null; certificado_contrasena?: string | null }>(row: T) {
+  return {
+    ...row,
+    token_configurado: Boolean(row.token),
+    certificado_configurado: Boolean(row.certificado_contrasena),
+    token: null,
+    certificado_contrasena: null,
+  }
+}
+
+function sinSecretoVacio(value: GfaceWrite): Partial<GfaceWrite> {
+  const next: Partial<GfaceWrite> = { ...value }
+  if (!next.token) delete next.token
+  if (!next.certificado_contrasena) delete next.certificado_contrasena
+  return next
 }
 
 function omitSecrets(row: Record<string, unknown> | null): Record<string, unknown> | null {
@@ -162,21 +180,23 @@ async function writeAudit(
 const GFACE_COLUMNS = 'cuenta, empresa, proyecto, codigo, nombre, requestor, entity, user_name, token, web_service, web_service_documento, certificado_post, certificado_ruta, certificado_nombre, certificado_contrasena, correo_envio, correo_copia, primera_firma, validar_identificacion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha'
 
 export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gface[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
   let query = admin
     .schema('cartera')
     .from('t_gface')
     .select(GFACE_COLUMNS)
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
     .order('nombre')
-  if (empresa !== undefined) query = query.eq('empresa', empresa)
-  if (proyecto !== undefined) query = query.eq('proyecto', proyecto)
+  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+  if (!acotada) return []
+  query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as Gface[]
+  return (data as Gface[]).map(quitarSecretos)
 }
 
 export async function obtenerGface(
@@ -186,18 +206,24 @@ export async function obtenerGface(
 ): Promise<{ row?: Gface & NombresVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.GFA_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  return filaConNombres<Gface>(
+  const result = await filaConNombres<Gface>(
     createAdminClient(), cuenta, 't_gface',
     { cuenta, empresa, proyecto, codigo }, GFACE_COLUMNS,
     { empresa, proyecto },
   )
+  if (result.row) return { row: quitarSecretos(result.row) }
+  return result
 }
 
 export async function createGface(form: GfaceForm): Promise<{ error?: string }> {
   const guard = await requirePermiso(PERMISOS.GFA_CAT, 'agregar')
   if (guard) return guard
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -277,6 +303,8 @@ export async function updateGface(
 ): Promise<{ error?: string; row?: Gface }> {
   const guard = await requirePermiso(PERMISOS.GFA_CAT, 'modificar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
@@ -318,7 +346,7 @@ export async function updateGface(
     .schema('cartera')
     .from('t_gface')
     .update({
-      ...value,
+      ...sinSecretoVacio(value),
       modifico_usuario: auditUser.userId,
       modifico_fecha: now,
     })
@@ -346,7 +374,7 @@ export async function updateGface(
   })
 
   revalidatePath('/dashboard/generales/gface')
-  return { row: data[0] as Gface }
+  return { row: quitarSecretos(data[0] as Gface) }
 }
 
 export async function deleteGface(
@@ -356,6 +384,8 @@ export async function deleteGface(
 ): Promise<{ error?: string }> {
   const guard = await requirePermiso(PERMISOS.GFA_CAT, 'eliminar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }

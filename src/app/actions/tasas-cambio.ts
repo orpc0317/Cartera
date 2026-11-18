@@ -5,8 +5,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/tasas-cambio'
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
-import { requirePermiso, getCuentaActiva } from '@/app/actions/permisos'
+import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { PERMISOS } from '@/lib/permisos'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 export type { TasaCambio, TasaCambioForm } from '@/lib/types/tasas-cambio'
 
 async function getAuditUser() {
@@ -54,17 +55,21 @@ async function writeAudit(
 }
 
 export async function getTasasCambio(): Promise<TasaCambio[]> {
-  const cuenta = await getCuentaActiva()
+  const acceso = await leerAcceso()
+  if (!acceso) return []
   const admin = createAdminClient()
-  const { data, error } = await admin
+  const consulta = admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
     .select('*')
-    .eq('cuenta', cuenta)
+    .eq('cuenta', acceso.cuenta)
     .order('empresa', { ascending: true })
     .order('proyecto', { ascending: true })
     .order('moneda', { ascending: true })
     .order('fecha', { ascending: false })
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return []
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
   return (data ?? []) as TasaCambio[]
 }
@@ -78,6 +83,8 @@ export async function obtenerGrupoTasas(
 ): Promise<{ row?: GrupoTasasVer; error?: string }> {
   const guard = await requirePermiso(PERMISOS.TSC_CAT, 'consultar')
   if (guard) return guard
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   const admin = createAdminClient()
@@ -112,6 +119,8 @@ export async function createTasaCambio(form: TasaCambioForm): Promise<{ error?: 
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.TSC_CAT, 'agregar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(form.empresa, form.proyecto)
+  if (alcance) return alcance
 
   // Validate tasa_cambio > 0
   if (!form.tasa_cambio || Number(form.tasa_cambio) <= 0)
@@ -176,6 +185,8 @@ export async function deleteTasaCambio(
   if (!cuenta) return { error: 'Sesión no válida.' }
   const permCheck = await requirePermiso(PERMISOS.TSC_CAT, 'eliminar')
   if (permCheck) return permCheck
+  const alcance = await exigirProyecto(empresa, proyecto)
+  if (alcance) return alcance
 
   const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
 
