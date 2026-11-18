@@ -8,9 +8,16 @@ export type Pais = { codigo: string; nombre: string }
 export type Departamento = { pais: string; codigo: string; nombre: string }
 export type Municipio = { pais: string; departamento: string; codigo: string; nombre: string }
 
-export async function getPaises(): Promise<Pais[]> {
+async function haySesion(): Promise<boolean> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  return user !== null
+}
+
+export async function getPaises(): Promise<Pais[]> {
+  if (!(await haySesion())) return []
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_pais')
     .select('codigo, nombre')
@@ -20,8 +27,9 @@ export async function getPaises(): Promise<Pais[]> {
 }
 
 export async function getDepartamentos(): Promise<Departamento[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
+  if (!(await haySesion())) return []
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_departamento')
     .select('pais, codigo, nombre')
@@ -31,8 +39,9 @@ export async function getDepartamentos(): Promise<Departamento[]> {
 }
 
 export async function getMunicipios(): Promise<Municipio[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
+  if (!(await haySesion())) return []
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .schema('cartera')
     .from('t_municipio')
     .select('pais, departamento, codigo, nombre')
