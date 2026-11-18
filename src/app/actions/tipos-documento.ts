@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { TipoDocumento, TipoDocumentoForm } from '@/lib/types/tipos-documento'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
@@ -14,8 +15,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -28,7 +28,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -41,6 +40,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -57,7 +57,7 @@ async function writeAudit(
 export async function getTiposDocumento(empresa?: number, proyecto?: number): Promise<TipoDocumento[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_tipo_documento')
@@ -86,7 +86,7 @@ export async function obtenerTipoDocumento(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<TipoDocumento>(
-    createAdminClient(), cuenta, 't_tipo_documento',
+    await clienteDatos(), cuenta, 't_tipo_documento',
     { cuenta, empresa, proyecto, codigo },
     'cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto },
@@ -101,7 +101,7 @@ export async function createTipoDocumento(form: TipoDocumentoForm): Promise<{ er
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: max } = await admin
     .schema('cartera')
@@ -146,7 +146,7 @@ export async function createTipoDocumento(form: TipoDocumentoForm): Promise<{ er
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_tipo_documento', operacion: 'INSERT', cuenta,
     registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
@@ -171,7 +171,7 @@ export async function updateTipoDocumento(
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -215,7 +215,7 @@ export async function updateTipoDocumento(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_tipo_documento', operacion: 'UPDATE', cuenta,
     registroId: { empresa, proyecto, codigo },
     datoAntes: oldRow as Record<string, unknown> | null,
@@ -239,7 +239,7 @@ export async function deleteTipoDocumento(
 
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -262,7 +262,7 @@ export async function deleteTipoDocumento(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_tipo_documento', operacion: 'DELETE', cuenta,
     registroId: { empresa, proyecto, codigo },
     datoAntes: oldRow as Record<string, unknown> | null,

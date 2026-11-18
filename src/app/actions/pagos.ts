@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { getCuentaActiva, requirePermiso, leerAcceso, exigirProyecto } from '@/app/actions/permisos'
 import { restringirProyecto } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
@@ -37,7 +37,7 @@ export async function getRecibosCaja(
   if (!acceso) return { data: [], limitReached: false, error: 'Sesión no válida.' }
   const cuenta = acceso.cuenta
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   let query = admin
     .schema('cartera')
@@ -133,7 +133,7 @@ export async function obtenerReciboCaja(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<ReciboCaja>(
-    createAdminClient(), cuenta, 't_recibo_caja',
+    await clienteDatos(), cuenta, 't_recibo_caja',
     { cuenta, empresa, proyecto, serie, numero }, '*',
     (row) => ({
       empresa: row.empresa,
@@ -163,7 +163,7 @@ export async function getReciboCajaExtra(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
 
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { data: recibo, error: reciboError } = await admin
     .schema('cartera')

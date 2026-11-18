@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { Vendedor, VendedorForm } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres } from '@/lib/leer-nombres'
@@ -14,8 +15,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -28,7 +28,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -41,6 +40,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -59,7 +59,7 @@ async function writeAudit(
 export async function getVendedores(empresa?: number, proyecto?: number): Promise<Vendedor[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_vendedor')
@@ -86,7 +86,7 @@ export async function obtenerVendedor(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Vendedor>(
-    createAdminClient(), cuenta, 't_vendedor',
+    await clienteDatos(), cuenta, 't_vendedor',
     { cuenta, empresa, proyecto, codigo }, '*',
     (row) => ({ empresa: row.empresa, proyecto: row.proyecto, coordinador: row.coordinador ?? 0 }),
   )
@@ -106,7 +106,7 @@ export async function createVendedor(form: VendedorForm): Promise<{ error?: stri
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(form.empresa, form.proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: max } = await admin
     .schema('cartera')
@@ -151,7 +151,7 @@ export async function createVendedor(form: VendedorForm): Promise<{ error?: stri
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_vendedor', operacion: 'INSERT', cuenta,
     registroId: { empresa: form.empresa, proyecto: form.proyecto, codigo: (data as Vendedor).codigo },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
@@ -178,7 +178,7 @@ export async function updateVendedor(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -224,7 +224,7 @@ export async function updateVendedor(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_vendedor', operacion: 'UPDATE', cuenta,
     registroId: { empresa, proyecto, codigo },
     datoAntes: oldRow as Record<string, unknown> | null,
@@ -249,7 +249,7 @@ export async function deleteVendedor(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Restricción: no eliminar si tiene promesas asociadas
   const { count: promesaCount } = await admin
@@ -298,7 +298,7 @@ export async function deleteVendedor(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_vendedor', operacion: 'DELETE', cuenta,
     registroId: { empresa, proyecto, codigo },
     datoAntes: oldRow as Record<string, unknown> | null,

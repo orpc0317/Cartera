@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { leerAcceso } from '@/app/actions/permisos'
 import { puedeEmpresa, puedeProyecto, type AccesoLectura } from '@/lib/acceso-proyecto'
 
@@ -20,8 +21,8 @@ async function transaccionPermitida(
   if (acceso.esAdmin) return true
   if (entero(registroId.proyecto)) return puedeProyecto(acceso, empresa, registroId.proyecto)
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
+  const datos = await clienteDatos()
+  const { data, error } = await datos
     .schema('cartera')
     .from('t_cuenta_bancaria')
     .select('proyecto')

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import type { Lote, LoteForm, SerieRecibo } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
 import { filaConNombres, leerNombres } from '@/lib/leer-nombres'
@@ -14,8 +15,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -28,7 +28,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -41,6 +40,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -57,7 +57,7 @@ async function writeAudit(
 export async function getLotes(empresa?: number, proyecto?: number, fase?: number, manzana?: string): Promise<Lote[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_lote')
@@ -88,7 +88,7 @@ export async function obtenerLote(
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Lote>(
-    createAdminClient(), cuenta, 't_lote',
+    await clienteDatos(), cuenta, 't_lote',
     { cuenta, empresa, proyecto, fase, manzana, codigo }, '*',
     { empresa, proyecto, fase },
   )
@@ -97,7 +97,7 @@ export async function obtenerLote(
 export async function getSeriesRecibo(): Promise<SerieRecibo[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_serie_recibo')
@@ -114,7 +114,7 @@ export async function getSeriesRecibo(): Promise<SerieRecibo[]> {
 export async function getLotesDisponibles(empresa?: number, proyecto?: number): Promise<Lote[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
     .from('t_lote')
@@ -138,7 +138,7 @@ export async function createLote(form: LoteForm): Promise<{ error?: string }> {
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(form.empresa, form.proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
   const now = new Date().toISOString()
 
   const { data, error } = await admin
@@ -161,7 +161,7 @@ export async function createLote(form: LoteForm): Promise<{ error?: string }> {
     return { error: error.message }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_lote', operacion: 'INSERT', cuenta,
     registroId: { empresa: form.empresa, proyecto: form.proyecto, fase: form.fase, manzana: form.manzana, codigo: form.codigo },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
@@ -184,7 +184,7 @@ export async function updateLote(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -218,7 +218,7 @@ export async function updateLote(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_lote', operacion: 'UPDATE', cuenta,
     registroId: { empresa, proyecto, fase, manzana, codigo },
     datoAntes: oldRow as Record<string, unknown> | null,
@@ -237,7 +237,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Cascade checks
   const { count: cPromesa } = await admin
@@ -301,7 +301,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_lote', operacion: 'DELETE', cuenta,
     registroId: { empresa, proyecto, fase, manzana, codigo },
     datoAntes: oldRow as Record<string, unknown> | null, datoDespues: null,
@@ -344,7 +344,7 @@ export async function getReservas(empresa?: number, proyecto?: number): Promise<
   const acceso = await leerAcceso()
   if (!acceso) return []
   const cuenta = acceso.cuenta
-  const admin  = createAdminClient()
+  const admin  = await clienteDatos()
 
   let reservaQuery = admin
     .schema('cartera')
@@ -418,7 +418,7 @@ export async function obtenerReserva(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_reserva')
@@ -549,9 +549,9 @@ export async function createReserva(
   if (!form.tasa_cambio || form.tasa_cambio <= 0)
     return { ok: false, error: 'La tasa de cambio debe ser mayor a cero.' }
 
-  const admin = createAdminClient()
+  const privilegiado = createAdminClient()
 
-  const { data, error } = await admin
+  const { data, error } = await privilegiado
     .schema('cartera')
     .rpc('fn_crear_reserva', {
       p_cuenta:              cuenta,
@@ -591,6 +591,7 @@ export async function createReserva(
   // el resto de entidades del sistema (Historial vacio en Reservas/Pagos era
   // un hueco: la creacion pasa por RPC, no por el flujo estandar create<Entidad>
   // que ya llama writeAudit automaticamente).
+  const admin = await clienteDatos()
   const [{ data: nuevaReserva }, { data: nuevoRecibo }] = await Promise.all([
     admin.schema('cartera').from('t_reserva').select('*')
       .eq('cuenta', cuenta).eq('numero', result.numero!).maybeSingle(),
@@ -600,13 +601,13 @@ export async function createReserva(
   ])
 
   await Promise.all([
-    writeAudit(admin, {
+    writeAudit({
       tabla: 't_reserva', operacion: 'INSERT', cuenta,
       registroId: { numero: result.numero },
       datoAntes: null, datoDespues: nuevaReserva as Record<string, unknown> | null,
       ...auditUser,
     }),
-    writeAudit(admin, {
+    writeAudit({
       tabla: 't_recibo_caja', operacion: 'INSERT', cuenta,
       registroId: { empresa: form.empresa, proyecto: form.proyecto, serie: form.serie_recibo, numero: result.recibo },
       datoAntes: null, datoDespues: nuevoRecibo as Record<string, unknown> | null,
@@ -636,7 +637,7 @@ export async function getLoteReservaInfo(
   if (alcance) return null
   const cuenta = await getCuentaActiva()
   if (!cuenta) return null
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { data: reserva } = await admin
     .schema('cartera')
@@ -699,7 +700,7 @@ export async function desistirReserva(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
   const now = new Date().toISOString()
 
   const [{ data: oldLote }, { data: oldReserva }] = await Promise.all([
@@ -726,14 +727,14 @@ export async function desistirReserva(
   if (errReserva) return { error: errReserva.message }
 
   await Promise.all([
-    writeAudit(admin, {
+    writeAudit({
       tabla: 't_lote', operacion: 'UPDATE', cuenta,
       registroId: { empresa, proyecto, fase, manzana, codigo },
       datoAntes: oldLote as Record<string, unknown> | null,
       datoDespues: newLote?.[0] as Record<string, unknown> | null,
       ...auditUser,
     }),
-    writeAudit(admin, {
+    writeAudit({
       tabla: 't_reserva', operacion: 'UPDATE', cuenta,
       registroId: { numero: reservaNumero },
       datoAntes: oldReserva as Record<string, unknown> | null,

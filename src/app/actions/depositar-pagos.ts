@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { requirePermiso, leerAcceso } from '@/app/actions/permisos'
 import { puedeProyecto } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
@@ -23,7 +24,7 @@ export async function getReciboParaDeposito(
   const acceso = await leerAcceso()
   if (!acceso || !puedeProyecto(acceso, empresa, proyecto)) return { error: 'Acceso denegado.' }
   const cuenta = acceso.cuenta
-  const admin  = createAdminClient()
+  const admin  = await clienteDatos()
 
   const { data: recibo, error } = await admin
     .schema('cartera')

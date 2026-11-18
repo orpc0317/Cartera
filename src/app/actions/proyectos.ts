@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { toDbString } from '@/lib/utils'
 import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyectos'
 import type { NombresVer } from '@/lib/registro-ver'
@@ -15,8 +16,7 @@ async function getAuditUser() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { userId: null, email: null, nombre: null }
-  const admin = createAdminClient()
-  const { data } = await admin
+  const { data } = await supabase
     .schema('cartera')
     .from('t_usuario')
     .select('nombres, apellidos')
@@ -29,7 +29,6 @@ async function getAuditUser() {
 }
 
 async function writeAudit(
-  admin: ReturnType<typeof createAdminClient>,
   opts: {
     tabla: string
     operacion: 'INSERT' | 'UPDATE' | 'DELETE'
@@ -42,6 +41,7 @@ async function writeAudit(
     nombre: string | null
   },
 ) {
+  const admin = createAdminClient()
   await admin.schema('cartera').from('t_audit_log').insert({
     tabla: opts.tabla,
     operacion: opts.operacion,
@@ -58,7 +58,7 @@ async function writeAudit(
 export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_proyecto')
@@ -86,7 +86,7 @@ export async function obtenerProyecto(empresa: number, codigo: number): Promise<
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_proyecto')
@@ -126,7 +126,7 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
   if (permCheck) return permCheck
   const alcance = await exigirEmpresa(form.empresa)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: max } = await admin
     .schema('cartera')
@@ -195,7 +195,7 @@ export async function createProyecto(form: ProyectoForm): Promise<{ error?: stri
     .insert({ cuenta, empresa: form.empresa, proyecto: dbCodigo, moneda: form.moneda, fecha: new Date().toISOString().slice(0, 10), tasa_cambio: 1.00, agrego_usuario: auditUser.userId, agrego_fecha: now })
   if (tasaError) return { error: tasaError.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_proyecto', operacion: 'INSERT', cuenta,
     registroId: { empresa: form.empresa, codigo: dbCodigo },
     datoAntes: null, datoDespues: data as Record<string, unknown>,
@@ -219,7 +219,7 @@ export async function updateProyecto(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, codigo)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
     .schema('cartera')
@@ -272,7 +272,7 @@ export async function updateProyecto(
     return { error: 'Este registro fue modificado por otro usuario. Cierra el formulario, recarga los datos y vuelve a intentarlo.' }
   }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_proyecto', operacion: 'UPDATE', cuenta,
     registroId: { empresa, codigo },
     datoAntes: oldRow as Record<string, unknown> | null,
@@ -291,7 +291,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, codigo)
   if (alcance) return alcance
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Verificar restricciones referenciales antes de eliminar
   const [
@@ -339,7 +339,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
     if (tasaError) return { error: tasaError.message }
     for (const tasa of tasas) {
       const row = tasa as Record<string, unknown>
-      await writeAudit(admin, {
+      await writeAudit({
         tabla: 't_moneda_tasa_cambio', operacion: 'DELETE', cuenta,
         registroId: { empresa, proyecto: codigo, moneda: row.moneda, fecha: row.fecha },
         datoAntes: row, datoDespues: null,
@@ -367,7 +367,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
     if (monedaError) return { error: monedaError.message }
     for (const moneda of monedas) {
       const row = moneda as Record<string, unknown>
-      await writeAudit(admin, {
+      await writeAudit({
         tabla: 't_proyecto_moneda', operacion: 'DELETE', cuenta,
         registroId: { empresa, proyecto: codigo, moneda: row.moneda },
         datoAntes: row, datoDespues: null,
@@ -395,7 +395,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_proyecto', operacion: 'DELETE', cuenta,
     registroId: { empresa, codigo },
     datoAntes: oldRow as Record<string, unknown> | null, datoDespues: null,
@@ -499,7 +499,7 @@ export async function uploadProjectLogo(
 export async function getProyectoMonedas(): Promise<ProyectoMoneda[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
     .from('t_proyecto_moneda')
@@ -525,7 +525,7 @@ export async function addProyectoMoneda(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   // Validar duplicado
   const { data: existing } = await admin
@@ -569,7 +569,7 @@ export async function addProyectoMoneda(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_proyecto_moneda', operacion: 'INSERT', cuenta,
     registroId: { empresa, proyecto, moneda },
     datoAntes: null, datoDespues: payload as Record<string, unknown>,
@@ -592,7 +592,7 @@ export async function toggleProyectoMonedaActivo(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const [auditUser, admin] = [await getAuditUser(), createAdminClient()]
+  const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: row } = await admin
     .schema('cartera')
@@ -619,7 +619,7 @@ export async function toggleProyectoMonedaActivo(
 
   if (error) return { error: error.message }
 
-  await writeAudit(admin, {
+  await writeAudit({
     tabla: 't_proyecto_moneda', operacion: 'UPDATE', cuenta,
     registroId: { empresa, proyecto, moneda },
     datoAntes: row as Record<string, unknown>,
@@ -642,7 +642,7 @@ export async function setProyectoMonedaPredeterminada(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const { data: row } = await admin
     .schema('cartera')

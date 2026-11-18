@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { getCuentaActiva, exigirProyecto } from '@/app/actions/permisos'
 import type { PromesaOtro } from '@/lib/types/promesa-otros'
 
@@ -14,7 +14,7 @@ export async function getPromesaOtros(
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return []
   const cuenta = await getCuentaActiva()
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_promesa_otros')

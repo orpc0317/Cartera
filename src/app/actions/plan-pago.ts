@@ -1,6 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
+import { clienteDatos } from '@/lib/supabase/datos'
 import { getCuentaActiva, exigirProyecto } from '@/app/actions/permisos'
 import type { PlanPagoCuota, PlanOtroCuota, PlanOtroColumna, PlanPagoData } from '@/lib/types/plan-pago'
 
@@ -14,7 +14,7 @@ export async function getPlanPago(
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return { cuotas: [], otrosColumnas: [], otros: [] }
   const cuenta = await getCuentaActiva()
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
 
   const [cuotasRes, promesaOtrosRes] = await Promise.all([
     admin

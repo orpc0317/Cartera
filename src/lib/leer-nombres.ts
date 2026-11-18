@@ -1,7 +1,7 @@
-import type { createAdminClient } from '@/lib/supabase/admin'
+import type { ClienteDatos } from '@/lib/supabase/datos'
 import type { NombresVer } from '@/lib/registro-ver'
 
-type Admin = ReturnType<typeof createAdminClient>
+type Admin = ClienteDatos
 
 export type ConsultaNombres = {
   empresa?: number
