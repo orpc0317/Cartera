@@ -1,0 +1,367 @@
+PANTALLA CRUD DE BASE — CLIENTES
+=================================
+Cartera | Catálogos
+Fecha: Noviembre 2026
+
+No hay una pantalla CRUD genérica. La instrucción le dice a la IA que copie
+la estructura de Clientes y que cambie tabla, campos, ruta, permiso y
+relaciones según el catálogo nuevo.
+
+
+Dónde está escrito
+------------------
+
+- AGENTS.md, sección "Referencia Clientes"
+- .cursor/skills/crud-screen/SKILL.md
+
+Esa skill se usa para un catálogo con lista, modal, alta, cambio y baja.
+No se usa para pagos, depósitos, promesas ni KPIs.
+
+El pedido de cada catálogo vive en su propio spec, prompts/crud-*.md.
+El spec de esta pantalla es prompts/crud-clientes.md. Después de construir
+la pantalla, ese archivo no se edita para igualarlo al código.
+
+Las columnas y los campos no se copian de Clientes. Salen del spec o del
+pedido. Si el catálogo trae un widget que Clientes no tiene (imagen, moneda,
+combobox), el layout sigue siendo el de Clientes y el widget sale de la
+regla del área.
+
+
+Archivos de la pantalla
+-----------------------
+
+Estos cuatro son la referencia. Hay que leerlos antes de escribir otro
+catálogo.
+
+1. src/app/dashboard/promesas/clientes/page.tsx
+   Server Component. Carga los datos y los pasa al cliente.
+
+2. src/app/dashboard/promesas/clientes/_client.tsx
+   Client Component. Lista, modal, alta, cambio y baja.
+
+3. src/app/actions/clientes.ts
+   Lectura y escritura contra cartera.t_cliente.
+
+4. src/lib/types/proyectos.ts
+   Tipos Cliente y ClienteForm. Viven aquí. No se mueven a otro archivo.
+   Un catálogo nuevo sí crea su propio src/lib/types/<entidad>.ts.
+
+Permiso de esta pantalla: PERMISOS.CLI_CAT = 'CLI.CAT' en src/lib/permisos.ts.
+Ruta: /dashboard/promesas/clientes.
+Tabla: cartera.t_cliente.
+Acento: indigo. Icono: Users.
+
+
+Piezas compartidas que esta pantalla usa
+-----------------------------------------
+
+No forman parte del catálogo, pero la lógica de la pantalla pasa por ellas.
+
+- src/lib/list-table.ts
+  Clases de la lista. El alto libre lo ocupa la tabla. El scroll queda
+  dentro de la tabla y los títulos de columna se quedan fijos.
+
+- src/lib/campo-invalido.ts
+  useCampoInvalido. Al fallar un campo, muestra el toast, cambia a la
+  pestaña del campo, marca el control y le da el foco.
+
+- src/lib/use-registro-ver.ts
+  useFilas mantiene la lista en el cliente y la reemplaza cuando el
+  servidor manda datos nuevos. useRegistroVer relee una sola fila al
+  abrir Ver.
+
+- src/lib/registro-ver.ts
+  NombresVer, nombreLeido y reemplazarFila. La fila fresca trae los
+  nombres de las referencias, no solo los códigos.
+
+- src/lib/leer-nombres.ts
+  filaConNombres lee esa fila y resuelve empresa, proyecto y geografía.
+
+- src/lib/acceso-proyecto.ts
+  restringirProyecto deja la consulta dentro de los proyectos que el
+  usuario puede ver.
+
+- src/app/actions/permisos.ts
+  getCuentaActiva, requirePermiso, leerAcceso, exigirProyecto y
+  getPermisosDetalle.
+
+
+Qué se conserva y qué se cambia
+--------------------------------
+
+Se conserva el esqueleto:
+
+- page.tsx sin 'use client', con Promise.all y un .catch() por llamada.
+- _client.tsx con 'use client': lista, modal, crear, editar, eliminar.
+- Actions: get*, obtener*, create*, update*, delete*.
+- Permisos en tres booleanos: puedeAgregar, puedeModificar, puedeEliminar.
+- Tras una edición exitosa el modal sigue abierto en Ver.
+- El alta cierra el modal.
+- router.refresh() recarga la lista.
+- writeAudit después de cada mutación que sí se grabó.
+- modifico_fecha como candado de concurrencia.
+
+Se cambia con el catálogo:
+
+- Tabla, campos, etiquetas, columnas y archivo CSV.
+- Ruta, permiso, icono y color de acento.
+- Relaciones (empresa, proyecto, u otras).
+- Validaciones propias del negocio.
+
+Clientes además trae lógica que no es de todo catálogo: teléfono,
+geografía en cascada, NIT, DPI y aviso de nombres parecidos. Eso se
+copia solo si el spec del catálogo nuevo lo pide.
+
+El modal de Clientes es ancho (sm:max-w-[64rem]) porque su spec dice
+MODAL_LAYOUT = ancho. Un catálogo de una o dos secciones usa el modal
+estándar (sm:max-w-[36rem]).
+
+No existe test/definidas/clientes.spec.ts. La batería de un catálogo
+nuevo se arma con la forma de test/definidas/fases.spec.ts y, según el
+caso, empresas, proyectos, bancos o lotes. La skill lo detalla en el
+paso 10.
+
+
+1. page.tsx
+-----------
+
+Archivo: src/app/dashboard/promesas/clientes/page.tsx
+
+Corre en el servidor. No tiene estado ni eventos.
+
+1. Pide el usuario con supabase.auth.getUser() para pasar userId.
+   Las preferencias de columnas se guardan por usuario.
+2. En paralelo pide clientes, empresas del usuario, proyectos del
+   usuario, países, departamentos, municipios y el detalle del permiso
+   CLI.CAT.
+3. Cada lectura de datos tiene su propio .catch(). Si una falla, esa
+   lista llega vacía y las demás siguen. Un try/catch que envuelva todo
+   el Promise.all dejaría la pantalla en blanco por un solo error.
+4. getPermisosDetalle no lleva .catch(): si el permiso no se puede
+   resolver, la página no debe inventar que el usuario puede escribir.
+5. Entrega todo como props a ClientesClient, incluidos puedeAgregar,
+   puedeModificar y puedeEliminar.
+
+
+2. _client.tsx — lista
+----------------------
+
+Archivo: src/app/dashboard/promesas/clientes/_client.tsx
+
+El componente abre con useFilas(initialData). La tabla pinta `filas`,
+no el prop directo. Cuando page.tsx vuelve a renderizar, useFilas
+sustituye el arreglo. Cuando Ver relee una fila, reemplazarFila cambia
+solo esa entrada.
+
+Búsqueda. afterSearch filtra por nombre, teléfono, correo,
+identificación o código. filtered aplica después los filtros de
+columna. hasActiveFilters enciende el botón "Limpiar filtros".
+
+Columnas. ALL_COLUMNS y DEFAULT_PREFS declaran qué se ve al inicio.
+STORAGE_KEY es clientes_cols_v1_${userId}. Al montar se lee
+localStorage; el primer render usa DEFAULT_PREFS para no desalinear
+el HTML del servidor. ColumnManager muestra, oculta y reordena.
+ColumnFilter filtra por los valores distintos de una columna.
+
+Teclado y páginas. PAGE_SIZE es 50. cursorIdx apunta al índice dentro
+de filtered, no al índice de la página. Flecha arriba y abajo mueven
+el cursor y cambian de página si hace falta. Enter abre Ver. Escape
+suelta el cursor. Un clic marca la fila. Doble clic abre Ver. La
+columna izquierda (código) y la derecha (ojo de Ver) quedan fijas.
+La fila activa usa el índigo del módulo.
+
+CSV. exportCsv baja las filas ya filtradas y las columnas visibles.
+Nunca incluye cuenta, agrego_usuario ni modifico_usuario. El nombre
+del archivo lleva la fecha UTC del día.
+
+El botón "Nuevo Cliente" vive solo en el encabezado. Si no hay
+proyectos, queda deshabilitado y la pantalla avisa que primero hay
+que crear un proyecto.
+
+
+3. _client.tsx — modal
+----------------------
+
+Tres modos, con dos banderas:
+
+- Ver:     dialogOpen, viewTarget con fila, isEditing en falso.
+- Editar:  viewTarget con fila, isEditing en verdadero.
+- Crear:   viewTarget en null, isEditing en verdadero.
+
+openCreate vacía el registro abierto, preselecciona la primera empresa
+y su primer proyecto, y rellena país, departamento y municipio desde
+el proyecto. Si no hay país, consulta ipapi.co y usa el país de esa
+respuesta. El alta no llama a obtenerCliente.
+
+openView carga el formulario desde la fila de la lista y abre en Ver.
+Enseguida useRegistroVer llama a obtenerCliente solo de esa clave
+(empresa-proyecto-codigo). Editar permanece deshabilitado mientras
+lecturaPendiente es verdadero. Al llegar la fila fresca, alLlegar
+reemplaza esa fila en la lista y rearma el formulario. Si el usuario
+ya pasó a Editar, solo actualiza modifico_fecha, para no pisar lo que
+está escribiendo.
+
+startEdit pasa a edición y vuelve a la pestaña General.
+cancelEdit, si había un registro, regresa a Ver con los datos de
+viewTarget. Si era un alta, cierra el modal.
+
+El Dialog usa modal={false}. onOpenChange ignora el cierre mientras
+esté abierto el aviso de nombres parecidos, el de eliminar o el
+historial. Si se cierra después de un choque de modifico_fecha,
+hadConflict dispara router.refresh().
+
+El pie del modal:
+
+- Ver: Historial, Eliminar si puedeEliminar, Editar si puedeModificar.
+  No hay botón Cerrar. La X del encabezado cierra.
+- Editar un registro existente: Cancelar y Guardar.
+- Alta: solo Guardar. La X cierra.
+
+f() es el único camino de los inputs de texto. Quita tildes y pasa a
+mayúsculas. SKIP_KEYS deja fuera correo y los códigos de geografía.
+Cambiar empresa o proyecto recoloca el proyecto hijo y la cascada
+geográfica en el primer valor disponible.
+
+
+4. _client.tsx — guardar y eliminar
+-----------------------------------
+
+handleSave valida en el cliente antes de startTransition. Cada fallo
+llama a rechazar(id, mensaje) y regresa. El id es el del control. El
+toast del campo no sustituye al toast de un error que venga del
+servidor.
+
+Si el formulario es igual al registro abierto, cancelEdit y no hay
+request. Si el nombre se parece (Jaro-Winkler >= 0.85) a otro cliente
+del mismo proyecto, abre el aviso y no graba hasta que la persona
+confirme.
+
+doSave distingue alta y cambio:
+
+- Cambio: updateCliente recibe la clave y modifico_fecha. Si el
+  servidor responde que otro usuario lo modificó, el toast muestra ese
+  texto y hadConflict queda en verdadero. Si vuelve row, el modal
+  sigue en Ver con esa fila y el formulario rearmado.
+- Alta: createCliente. Si sale bien, cierra el modal.
+- En ambos casos de éxito, router.refresh().
+
+handleDelete llama a deleteCliente. El servidor puede negarse si el
+cliente tiene promesas o recibos. El éxito muestra el toast y refresca.
+
+
+5. clientes.ts — lectura
+------------------------
+
+Archivo: src/app/actions/clientes.ts
+Marca 'use server'. Solo exporta funciones async.
+
+getClientes arma la lista. leerAcceso resuelve la cuenta y los
+proyectos del usuario. Sin acceso, devuelve []. Filtra por cuenta,
+ordena por empresa, proyecto y nombre, y restringirProyecto recorta
+a los proyectos permitidos. Un error de la consulta se lanza: el
+.catch() de page.tsx lo convierte en lista vacía.
+
+obtenerCliente relee una fila al abrir Ver. Orden real de esta
+función: requirePermiso(CLI.CAT, 'consultar'), exigirProyecto,
+getCuentaActiva, y filaConNombres sobre t_cliente con la clave
+cuenta + empresa + proyecto + codigo. La fila de vuelta incluye los
+nombres de las referencias.
+
+
+6. clientes.ts — escritura
+--------------------------
+
+createCliente, updateCliente y deleteCliente hacen, en este archivo:
+
+1. getCuentaActiva. Vacía: 'Sesión no válida.'
+2. requirePermiso con agregar, modificar o eliminar.
+3. exigirProyecto, porque el cliente pertenece a un proyecto.
+4. En alta y cambio, el correo es obligatorio y debe cumplir el
+   formato. El nombre no puede repetirse en el mismo proyecto
+   (comparación sin distinguir mayúsculas).
+5. La mutación va con clienteDatos(), que pasa por RLS, y siempre
+   con .eq('cuenta', cuenta) y .schema('cartera').
+6. Alta y cambio guardan agrego_* o modifico_* con el usuario y la
+   hora.
+7. writeAudit inserta en t_audit_log con el cliente admin. El
+   registroId es { empresa, proyecto, codigo }, la misma clave que
+   usa el diálogo de historial.
+8. revalidatePath de la ruta. El cliente además llama a
+   router.refresh().
+
+updateCliente lee la fila anterior para el historial. El update lleva
+.eq('modifico_fecha', lastModified) cuando el cliente envió esa fecha.
+Si ninguna fila cumple, otro usuario ya grabó: responde el texto fijo
+"Este registro fue modificado por otro usuario...". Si sí grabó,
+devuelve { row } con la fila nueva.
+
+deleteCliente lee la fila, cuenta promesas y recibos de caja, y solo
+entonces borra. Esas dos negativas son de Clientes, no de todo
+catálogo.
+
+La regla escrita de pantallas nuevas pide requirePermiso como primera
+instrucción, antes de getCuentaActiva. En este archivo el orden está
+al revés: primero la cuenta, después el permiso. obtenerCliente sí
+empieza por requirePermiso.
+
+
+7. Tipos
+--------
+
+Archivo: src/lib/types/proyectos.ts
+
+Cliente es la fila: cuenta, empresa, proyecto, codigo, datos del
+cliente y las cuatro columnas de auditoría. ClienteForm es Cliente
+sin cuenta ni las columnas de auditoría. El formulario no las edita.
+La action las escribe al grabar.
+
+codigo entra en el formulario porque la pantalla lo muestra. En el
+alta lo asigna la base. En el cambio viaja la clave por los argumentos
+de updateCliente, no como campo editable.
+
+
+8. Reglas que explican el resto de la lógica
+---------------------------------------------
+
+La pantalla no trae estas explicaciones dentro del código. Están en
+las reglas. Cada una cubre un pedazo:
+
+- .cursor/rules/server-actions.mdc
+  Cuenta activa, permiso de escritura, .catch() por llamada, correo,
+  modifico_fecha, writeAudit y qué se puede exportar de un archivo
+  'use server'.
+
+- .cursor/rules/crud-screens.mdc
+  Composición del modal, anchos full / half / third, SegmentCard y
+  el campo que falla al grabar.
+
+- .cursor/rules/components.mdc
+  Snippets de estado del modal, inputs, selects, toolbar, CSV,
+  historial y modal ancho. Se copian cuando Clientes no muestra el
+  caso. No reemplazan el layout de Clientes.
+
+- .cursor/rules/data-tables.mdc
+  Columnas, filtros, teclado, fila activa, paginación y CSV.
+
+- .cursor/rules/ui-conventions.mdc
+  Color e icono por módulo, mayúsculas sin tilde en los textos que
+  escribe la persona, y etiquetas.
+
+- .cursor/rules/base-ui-gotchas.mdc
+  SelectValue recibe el valor como string. SelectTrigger necesita
+  w-full. AlertDialogDescription usa render={<div />}. El diálogo
+  principal no se cierra si hay otro diálogo abierto encima.
+
+- .cursor/rules/spec-field-tokens.mdc
+  Tokens válidos en un spec. Un token desconocido detiene el trabajo.
+
+- .cursor/rules/patterns.mdc
+  El catálogo simple es "Formulario simple". Maestro-detalle,
+  transacción, reporte y drawer son otros patrones. No se arman
+  copiando Clientes.
+
+- .cursor/rules/advanced-components.mdc
+  Moneda, geografía y combobox, solo si el spec los pide.
+
+- .cursor/rules/image-upload.mdc
+  Imagen, solo si el spec la pide.
