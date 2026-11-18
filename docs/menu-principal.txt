@@ -216,9 +216,8 @@ Para que un catálogo nuevo aparezca en el menú:
 6. Si esa cuenta ya tiene filas en t_menu_modulo, el nombre del
    módulo tiene que estar ahí. Si no está, el módulo entero se oculta.
 
-No se agrega la pantalla dentro de app-sidebar.tsx. El paso 9 de
-.cursor/skills/crud-screen/SKILL.md todavía describe un arreglo NAV
-en el sidebar. Ese arreglo ya no existe.
+No se agrega la pantalla dentro de app-sidebar.tsx. El skill de CRUD
+no registra rutas en el sidebar.
 
 Una entrada solo en PROXIMAMENTE se muestra como Pronto y no abre
 ruta. No sustituye la fila de t_menu.
