@@ -17,7 +17,7 @@ async function haySesion(): Promise<boolean> {
 
 export async function getPaises(): Promise<Pais[]> {
   if (!(await haySesion())) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_pais')
@@ -29,7 +29,7 @@ export async function getPaises(): Promise<Pais[]> {
 
 export async function getDepartamentos(): Promise<Departamento[]> {
   if (!(await haySesion())) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_departamento')
@@ -41,7 +41,7 @@ export async function getDepartamentos(): Promise<Departamento[]> {
 
 export async function getMunicipios(): Promise<Municipio[]> {
   if (!(await haySesion())) return []
-  const admin = createAdminClient()
+  const admin = await clienteDatos()
   const { data, error } = await admin
     .schema('cartera')
     .from('t_municipio')
