@@ -163,7 +163,17 @@ BEGIN
   END LOOP;
 END $$;
 
-REVOKE SELECT (token, certificado_contrasena) ON TABLE cartera.t_gface FROM authenticated;
+-- Un GRANT de tabla incluye todas las columnas. Revocar la columna no abre
+-- un hueco en ese privilegio, así que el SELECT de la tabla se quita y se
+-- vuelve a dar solo sobre las columnas que no son secretos. El alta y el
+-- cambio siguen pudiendo escribir token y certificado_contrasena.
+REVOKE SELECT ON TABLE cartera.t_gface FROM authenticated;
+GRANT SELECT (
+  cuenta, empresa, proyecto, codigo, nombre, requestor, entity, user_name,
+  web_service, web_service_documento, certificado_post, certificado_ruta,
+  certificado_nombre, correo_envio, correo_copia, primera_firma,
+  validar_identificacion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha
+) ON TABLE cartera.t_gface TO authenticated;
 
 REVOKE INSERT, UPDATE, DELETE ON TABLE cartera.t_usuario FROM authenticated;
 REVOKE INSERT, UPDATE, DELETE ON TABLE cartera.t_usuario_proyecto FROM authenticated;
