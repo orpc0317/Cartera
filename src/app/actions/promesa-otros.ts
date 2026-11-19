@@ -18,7 +18,7 @@ export async function getPromesaOtros(
   const { data, error } = await admin
     .schema('cartera')
     .from('t_promesa_otros')
-    .select('cuenta, empresa, proyecto, promesa, secuencia, tipo_otros, monto, hasta_monto, mora, partir_de, aplicar_hasta')
+    .select('cuenta, empresa, proyecto, promesa, secuencia, tipo_otros, monto, hasta_monto, mora, partir_de:apartir_de, aplicar_hasta')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
