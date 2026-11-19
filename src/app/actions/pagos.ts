@@ -42,7 +42,7 @@ export async function getRecibosCaja(
   let query = admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*')
+    .select('cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
 
   const acotada = restringirProyecto(query, acceso, {
@@ -134,7 +134,7 @@ export async function obtenerReciboCaja(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<ReciboCaja>(
     await clienteDatos(), cuenta, 't_recibo_caja',
-    { cuenta, empresa, proyecto, serie, numero }, '*',
+    { cuenta, empresa, proyecto, serie, numero }, 'cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     (row) => ({
       empresa: row.empresa,
       proyecto: row.proyecto,
@@ -182,7 +182,7 @@ export async function getReciboCajaExtra(
   const { data: detalle, error: detalleError } = await admin
     .schema('cartera')
     .from('t_detalle_recibo_caja')
-    .select('*')
+    .select('cuenta, empresa, proyecto, serie_recibo, recibo, fecha_cuota, tipo_cuota, cuota, capital, intereses, mora, otros')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

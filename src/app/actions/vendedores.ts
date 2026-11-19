@@ -87,7 +87,7 @@ export async function obtenerVendedor(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Vendedor>(
     await clienteDatos(), cuenta, 't_vendedor',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     (row) => ({ empresa: row.empresa, proyecto: row.proyecto, coordinador: row.coordinador ?? 0 }),
   )
 }
@@ -183,7 +183,7 @@ export async function updateVendedor(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_vendedor')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -255,7 +255,7 @@ export async function deleteVendedor(
   const { count: promesaCount } = await admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -268,7 +268,7 @@ export async function deleteVendedor(
   const { count: reservaCount } = await admin
     .schema('cartera')
     .from('t_reserva')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -280,7 +280,7 @@ export async function deleteVendedor(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_vendedor')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

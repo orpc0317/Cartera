@@ -65,7 +65,7 @@ export async function getTiposIngresos(): Promise<TipoIngreso[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_tipo_ingreso')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, etiqueta, forma_pago, monto, moneda, hasta_monto, facturacion_item, facturacion_descripcion, mora, impuesto, editable, fijo, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
@@ -90,7 +90,7 @@ export async function obtenerTipoIngreso(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<TipoIngreso>(
     await clienteDatos(), cuenta, 't_tipo_ingreso',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, nombre, etiqueta, forma_pago, monto, moneda, hasta_monto, facturacion_item, facturacion_descripcion, mora, impuesto, editable, fijo, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto },
   )
 }
@@ -260,7 +260,7 @@ export async function deleteTipoIngreso(
   const { count: countRecibos } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -273,7 +273,7 @@ export async function deleteTipoIngreso(
   const { count: countPromesas } = await admin
     .schema('cartera')
     .from('t_promesa_otros')
-    .select('*', { count: 'exact', head: true })
+    .select('secuencia', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

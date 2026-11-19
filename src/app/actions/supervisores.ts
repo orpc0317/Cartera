@@ -63,7 +63,7 @@ export async function getSupervisores(empresa?: number, proyecto?: number): Prom
   let query = admin
     .schema('cartera')
     .from('t_supervisor')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -87,7 +87,7 @@ export async function obtenerSupervisor(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Supervisor>(
     await clienteDatos(), cuenta, 't_supervisor',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto },
   )
 }
@@ -178,7 +178,7 @@ export async function updateSupervisor(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_supervisor')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -249,7 +249,7 @@ export async function deleteSupervisor(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_supervisor')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -260,7 +260,7 @@ export async function deleteSupervisor(
   const { count: vendedoresCount } = await admin
     .schema('cartera')
     .from('t_vendedor')
-    .select('*', { count: 'exact', head: true })
+    .select('codigo', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

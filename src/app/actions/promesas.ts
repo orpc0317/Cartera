@@ -66,7 +66,7 @@ export async function getPromesas(empresa?: number, proyecto?: number): Promise<
   let query = admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*')
+    .select('cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
@@ -92,7 +92,7 @@ export async function obtenerPromesa(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Promesa>(
     await clienteDatos(), cuenta, 't_promesa',
-    { cuenta, empresa, proyecto, numero }, '*',
+    { cuenta, empresa, proyecto, numero }, 'cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     (row) => ({
       empresa: row.empresa,
       proyecto: row.proyecto,
@@ -221,7 +221,7 @@ export async function updatePromesa(
   const { data: original } = await admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*')
+    .select('cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -315,7 +315,7 @@ export async function anularPromesa(
   const { data: original } = await admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*')
+    .select('cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -386,7 +386,7 @@ export async function deletePromesa(
   const { count } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -399,7 +399,7 @@ export async function deletePromesa(
   const { data: original } = await admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*')
+    .select('cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

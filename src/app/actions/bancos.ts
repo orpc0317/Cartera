@@ -64,7 +64,7 @@ export async function getBancos(empresa?: number, proyecto?: number): Promise<Ba
   let query = admin
     .schema('cartera')
     .from('t_banco')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -86,7 +86,7 @@ export async function obtenerBanco(
   if (alcance) return alcance
   const cuenta = await getCuentaActiva()
   if (!cuenta) return { error: 'Sesión no válida.' }
-  return filaConNombres<Banco>(await clienteDatos(), cuenta, 't_banco', { cuenta, empresa, proyecto, codigo }, '*', { empresa, proyecto })
+  return filaConNombres<Banco>(await clienteDatos(), cuenta, 't_banco', { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, nombre, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha', { empresa, proyecto })
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ export async function updateBanco(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_banco')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -244,7 +244,7 @@ export async function deleteBanco(empresa: number, proyecto: number, codigo: num
   const { count: countCuentas } = await admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
-    .select('*', { count: 'exact', head: true })
+    .select('codigo', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -258,7 +258,7 @@ export async function deleteBanco(empresa: number, proyecto: number, codigo: num
   const { count: countRecibos } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -271,7 +271,7 @@ export async function deleteBanco(empresa: number, proyecto: number, codigo: num
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_banco')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

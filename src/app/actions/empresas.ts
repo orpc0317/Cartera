@@ -68,7 +68,7 @@ export async function getEmpresas(): Promise<Empresa[]> {
   let query = admin
     .schema('cartera')
     .from('t_empresa')
-    .select('*')
+    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
   const ids = empresasVisibles(acceso)
   if (ids) {
@@ -92,7 +92,7 @@ export async function getEmpresa(codigo: number): Promise<Empresa> {
   const { data, error } = await admin
     .schema('cartera')
     .from('t_empresa')
-    .select('*')
+    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('codigo', codigo)
     .single()
@@ -111,7 +111,7 @@ export async function obtenerEmpresa(codigo: number): Promise<{ row?: Empresa & 
   const { data, error } = await admin
     .schema('cartera')
     .from('t_empresa')
-    .select('*')
+    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('codigo', codigo)
     .maybeSingle()
@@ -199,7 +199,7 @@ export async function updateEmpresa(codigo: number, form: Partial<EmpresaForm>, 
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_empresa')
-    .select('*')
+    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('codigo', codigo)
     .single()
@@ -266,7 +266,7 @@ export async function deleteEmpresa(codigo: number): Promise<{ error?: string }>
   const { count } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('*', { count: 'exact', head: true })
+    .select('codigo', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', codigo)
   if (count && count > 0)
@@ -276,7 +276,7 @@ export async function deleteEmpresa(codigo: number): Promise<{ error?: string }>
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_empresa')
-    .select('*')
+    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('codigo', codigo)
     .single()

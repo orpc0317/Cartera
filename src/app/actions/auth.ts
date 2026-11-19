@@ -101,7 +101,7 @@ async function contarFallos(
   const { count } = await admin
     .schema('cartera')
     .from('t_login_attempt')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq(columna, valor)
     .eq('exitoso', false)
     .gte('fecha', desde)

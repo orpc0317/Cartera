@@ -63,7 +63,7 @@ export async function getCobradores(empresa?: number, proyecto?: number): Promis
   let query = admin
     .schema('cartera')
     .from('t_cobrador')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -87,7 +87,7 @@ export async function obtenerCobrador(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Cobrador>(
     await clienteDatos(), cuenta, 't_cobrador',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto },
   )
 }
@@ -178,7 +178,7 @@ export async function updateCobrador(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_cobrador')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -249,7 +249,7 @@ export async function deleteCobrador(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_cobrador')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -260,7 +260,7 @@ export async function deleteCobrador(
   const { count: recibosCount } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

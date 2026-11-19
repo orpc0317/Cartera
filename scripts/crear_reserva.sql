@@ -45,7 +45,8 @@ DECLARE
 BEGIN
 
   -- ── 1. Bloquear fila del lote y verificar disponibilidad ─────────────────
-  SELECT * INTO v_lote_row
+  SELECT recibo_numero, promesa, modifico_fecha
+  INTO v_lote_row.recibo_numero, v_lote_row.promesa, v_lote_row.modifico_fecha
   FROM cartera.t_lote
   WHERE cuenta = p_cuenta AND empresa  = p_empresa AND proyecto = p_proyecto AND fase = p_fase AND manzana = p_manzana AND codigo = p_lote
   FOR UPDATE;

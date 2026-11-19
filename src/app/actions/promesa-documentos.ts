@@ -76,7 +76,7 @@ export async function getPromesaDocumentos(empresa: number, proyecto: number, pr
   const { data, error } = await admin
     .schema('cartera')
     .from('t_promesa_documentos')
-    .select('*')
+    .select('cuenta, empresa, proyecto, promesa, secuencia, tipo_documento, archivo_path, nombre_archivo, tamano, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -227,7 +227,7 @@ export async function deletePromesaDocumento(
   const { data: existing } = await admin
     .schema('cartera')
     .from('t_promesa_documentos')
-    .select('*')
+    .select('cuenta, empresa, proyecto, promesa, secuencia, tipo_documento, archivo_path, nombre_archivo, tamano, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

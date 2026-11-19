@@ -61,7 +61,7 @@ export async function getManzanas(empresa?: number, proyecto?: number, fase?: nu
   let query = admin
     .schema('cartera')
     .from('t_manzana')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, codigo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('codigo')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -87,7 +87,7 @@ export async function obtenerManzana(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Manzana>(
     await clienteDatos(), cuenta, 't_manzana',
-    { cuenta, empresa, proyecto, fase, codigo }, '*',
+    { cuenta, empresa, proyecto, fase, codigo }, 'cuenta, empresa, proyecto, fase, codigo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto, fase },
   )
 }
@@ -105,7 +105,7 @@ export async function createManzana(form: ManzanaForm): Promise<{ error?: string
   const { count } = await admin
     .schema('cartera')
     .from('t_manzana')
-    .select('*', { count: 'exact', head: true })
+    .select('codigo', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', form.empresa)
     .eq('proyecto', form.proyecto)
@@ -157,7 +157,7 @@ export async function updateManzana(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_manzana')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, codigo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -208,7 +208,7 @@ export async function deleteManzana(empresa: number, proyecto: number, fase: num
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_manzana')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, codigo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

@@ -69,7 +69,7 @@ export async function getCuentasBancarias(
   let query = admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, numero, nombre, banco, moneda, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -93,7 +93,7 @@ export async function obtenerCuentaBancaria(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<CuentaBancaria>(
     await clienteDatos(), cuenta, 't_cuenta_bancaria',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, numero, nombre, banco, moneda, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     (row) => ({ empresa: row.empresa, proyecto: row.proyecto, banco: row.banco }),
   )
 }
@@ -190,7 +190,7 @@ export async function updateCuentaBancaria(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, numero, nombre, banco, moneda, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -270,7 +270,7 @@ export async function deleteCuentaBancaria(
   const { count } = await admin
     .schema('cartera')
     .from('t_transaccion_bancaria')
-    .select('*', { count: 'exact', head: true })
+    .select('numero_transaccion', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -283,7 +283,7 @@ export async function deleteCuentaBancaria(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_cuenta_bancaria')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, numero, nombre, banco, moneda, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

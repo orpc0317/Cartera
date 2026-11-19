@@ -63,7 +63,7 @@ export async function getCoordinadores(empresa?: number, proyecto?: number): Pro
   let query = admin
     .schema('cartera')
     .from('t_coordinador')
-    .select('*')
+    .select('cuenta, empresa, proyecto, supervisor, codigo, nombre, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -87,7 +87,7 @@ export async function obtenerCoordinador(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Coordinador>(
     await clienteDatos(), cuenta, 't_coordinador',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, supervisor, codigo, nombre, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     (row) => ({ empresa: row.empresa, proyecto: row.proyecto, supervisor: row.supervisor }),
   )
 }
@@ -177,7 +177,7 @@ export async function updateCoordinador(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_coordinador')
-    .select('*')
+    .select('cuenta, empresa, proyecto, supervisor, codigo, nombre, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -249,7 +249,7 @@ export async function deleteCoordinador(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_coordinador')
-    .select('*')
+    .select('cuenta, empresa, proyecto, supervisor, codigo, nombre, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -259,7 +259,7 @@ export async function deleteCoordinador(
   const { count: vendedoresCount } = await admin
     .schema('cartera')
     .from('t_vendedor')
-    .select('*', { count: 'exact', head: true })
+    .select('codigo', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
