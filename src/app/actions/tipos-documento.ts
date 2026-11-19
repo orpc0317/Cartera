@@ -176,7 +176,7 @@ export async function updateTipoDocumento(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_tipo_documento')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -244,7 +244,7 @@ export async function deleteTipoDocumento(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_tipo_documento')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

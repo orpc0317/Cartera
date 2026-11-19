@@ -82,7 +82,7 @@ export async function getAuditLog(
   const { data, error } = await admin
     .schema('cartera')
     .from('t_audit_log')
-    .select('*')
+    .select('id, tabla, operacion, cuenta, registro_id, datos_antes, datos_despues, usuario_id, usuario_email, usuario_nombre, fecha')
     .eq('tabla', tabla)
     .eq('cuenta', acceso.cuenta)
     .filter('registro_id', 'cs', JSON.stringify(registroId))

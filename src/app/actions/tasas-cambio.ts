@@ -61,7 +61,7 @@ export async function getTasasCambio(): Promise<TasaCambio[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, fecha, tasa_cambio, agrego_usuario, agrego_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa', { ascending: true })
     .order('proyecto', { ascending: true })
@@ -91,7 +91,7 @@ export async function obtenerGrupoTasas(
   const { data, error } = await admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, fecha, tasa_cambio, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -209,7 +209,7 @@ export async function deleteTasaCambio(
   const { data: before } = await admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, fecha, tasa_cambio, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

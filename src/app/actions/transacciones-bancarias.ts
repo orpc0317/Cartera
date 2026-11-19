@@ -54,7 +54,7 @@ export async function getTransaccionesBancarias(): Promise<TransaccionBancaria[]
   const consulta = admin
     .schema('cartera')
     .from('t_transaccion_bancaria')
-    .select('*')
+    .select('empresa, proyecto, cuenta_bancaria, numero_transaccion, tipo_transaccion, fecha, numero_documento, valor, estado, origen, a_nombre_de, comentario, partida, tipo_saldo, en_circulacion, fecha_conciliacion, tasa_cambio, cuenta_transferencia, transaccion_transferencia, usuario_agrego, fecha_agrego, usuario_modifico, fecha_modifico')
     .eq('cuenta', acceso.cuenta)
     .order('fecha', { ascending: false })
     .order('numero_transaccion', { ascending: false })
@@ -79,7 +79,7 @@ export async function obtenerTransaccionBancaria(
   let consulta = admin
     .schema('cartera')
     .from('t_transaccion_bancaria')
-    .select('*')
+    .select('empresa, proyecto, cuenta_bancaria, numero_transaccion, tipo_transaccion, fecha, numero_documento, valor, estado, origen, a_nombre_de, comentario, partida, tipo_saldo, en_circulacion, fecha_conciliacion, tasa_cambio, cuenta_transferencia, transaccion_transferencia, usuario_agrego, fecha_agrego, usuario_modifico, fecha_modifico')
     .eq('cuenta', alcance.cuenta)
     .eq('empresa', empresa)
     .eq('cuenta_bancaria', cuentaBancaria)

@@ -195,7 +195,7 @@ export async function updateFase(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_fase')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, medida, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -263,7 +263,7 @@ export async function deleteFase(
   const { count } = await admin
     .schema('cartera')
     .from('t_manzana')
-    .select('*', { count: 'exact', head: true })
+    .select('codigo', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -275,7 +275,7 @@ export async function deleteFase(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_fase')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, medida, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

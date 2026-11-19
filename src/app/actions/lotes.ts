@@ -61,7 +61,7 @@ export async function getLotes(empresa?: number, proyecto?: number, fase?: numbe
   let query = admin
     .schema('cartera')
     .from('t_lote')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('fase').order('manzana').order('codigo')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -89,7 +89,7 @@ export async function obtenerLote(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Lote>(
     await clienteDatos(), cuenta, 't_lote',
-    { cuenta, empresa, proyecto, fase, manzana, codigo }, '*',
+    { cuenta, empresa, proyecto, fase, manzana, codigo }, 'cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto, fase },
   )
 }
@@ -101,7 +101,7 @@ export async function getSeriesRecibo(): Promise<SerieRecibo[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_serie_recibo')
-    .select('*')
+    .select('cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('serie')
   const acotada = restringirProyecto(consulta, acceso)
@@ -118,7 +118,7 @@ export async function getLotesDisponibles(empresa?: number, proyecto?: number): 
   let query = admin
     .schema('cartera')
     .from('t_lote')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .eq('promesa', 0)
     .eq('recibo_numero', 0)
@@ -189,7 +189,7 @@ export async function updateLote(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_lote')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -243,7 +243,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   const { count: cPromesa } = await admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -255,7 +255,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   const { count: cReserva } = await admin
     .schema('cartera')
     .from('t_reserva')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -267,7 +267,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   const { count: cRecibo } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -279,7 +279,7 @@ export async function deleteLote(empresa: number, proyecto: number, fase: number
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_lote')
-    .select('*')
+    .select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -593,9 +593,9 @@ export async function createReserva(
   // que ya llama writeAudit automaticamente).
   const admin = await clienteDatos()
   const [{ data: nuevaReserva }, { data: nuevoRecibo }] = await Promise.all([
-    admin.schema('cartera').from('t_reserva').select('*')
+    admin.schema('cartera').from('t_reserva').select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
       .eq('cuenta', cuenta).eq('numero', result.numero!).maybeSingle(),
-    admin.schema('cartera').from('t_recibo_caja').select('*')
+    admin.schema('cartera').from('t_recibo_caja').select('cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
       .eq('cuenta', cuenta).eq('empresa', form.empresa).eq('proyecto', form.proyecto)
       .eq('serie', form.serie_recibo).eq('numero', result.recibo!).maybeSingle(),
   ])
@@ -704,10 +704,10 @@ export async function desistirReserva(
   const now = new Date().toISOString()
 
   const [{ data: oldLote }, { data: oldReserva }] = await Promise.all([
-    admin.schema('cartera').from('t_lote').select('*')
+    admin.schema('cartera').from('t_lote').select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
       .eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', proyecto)
       .eq('fase', fase).eq('manzana', manzana).eq('codigo', codigo).single(),
-    admin.schema('cartera').from('t_reserva').select('*')
+    admin.schema('cartera').from('t_reserva').select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
       .eq('cuenta', cuenta).eq('numero', reservaNumero).maybeSingle(),
   ])
 

@@ -246,7 +246,7 @@ export async function registrarPagoCuotas(
   // el resto de entidades del sistema (mismo hueco cerrado en createReserva).
   if (result?.numero_recibo) {
     const auditUser = await getAuditUser()
-    const { data: nuevoRecibo } = await admin.schema('cartera').from('t_recibo_caja').select('*')
+    const { data: nuevoRecibo } = await admin.schema('cartera').from('t_recibo_caja').select('cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
       .eq('cuenta', cuenta).eq('empresa', payload.empresa).eq('proyecto', payload.proyecto)
       .eq('serie', payload.serie).eq('numero', result.numero_recibo).maybeSingle()
 

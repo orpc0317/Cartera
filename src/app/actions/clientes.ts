@@ -70,7 +70,7 @@ export async function getClientes(empresa?: number, proyecto?: number): Promise<
   let query = admin
     .schema('cartera')
     .from('t_cliente')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, direccion, direccion_pais, direccion_departamento, direccion_municipio, codigo_postal, telefono1, telefono2, correo, nombre_factura, identificacion_tributaria, tipo_identificacion, regimen_iva, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -94,7 +94,7 @@ export async function obtenerCliente(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<Cliente>(
     await clienteDatos(), cuenta, 't_cliente',
-    { cuenta, empresa, proyecto, codigo }, '*',
+    { cuenta, empresa, proyecto, codigo }, 'cuenta, empresa, proyecto, codigo, nombre, direccion, direccion_pais, direccion_departamento, direccion_municipio, codigo_postal, telefono1, telefono2, correo, nombre_factura, identificacion_tributaria, tipo_identificacion, regimen_iva, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     (row) => ({
       empresa: row.empresa,
       proyecto: row.proyecto,
@@ -180,7 +180,7 @@ export async function updateCliente(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_cliente')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, direccion, direccion_pais, direccion_departamento, direccion_municipio, codigo_postal, telefono1, telefono2, correo, nombre_factura, identificacion_tributaria, tipo_identificacion, regimen_iva, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -251,7 +251,7 @@ export async function deleteCliente(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_cliente')
-    .select('*')
+    .select('cuenta, empresa, proyecto, codigo, nombre, direccion, direccion_pais, direccion_departamento, direccion_municipio, codigo_postal, telefono1, telefono2, correo, nombre_factura, identificacion_tributaria, tipo_identificacion, regimen_iva, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -261,7 +261,7 @@ export async function deleteCliente(
   const { count: promesasCount } = await admin
     .schema('cartera')
     .from('t_promesa')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -273,7 +273,7 @@ export async function deleteCliente(
   const { count: recibosCount } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('*', { count: 'exact', head: true })
+    .select('numero', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

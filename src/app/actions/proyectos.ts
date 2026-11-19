@@ -62,7 +62,7 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('*')
+    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('nombre')
   const acotada = restringirProyecto(
@@ -90,7 +90,7 @@ export async function obtenerProyecto(empresa: number, codigo: number): Promise<
   const { data, error } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('*')
+    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
@@ -99,7 +99,7 @@ export async function obtenerProyecto(empresa: number, codigo: number): Promise<
   if (!data) return { error: 'Registro no encontrado.' }
   const row = data as Proyecto
   const [monedasResult, nombres] = await Promise.all([
-    admin.schema('cartera').from('t_proyecto_moneda').select('*')
+    admin.schema('cartera').from('t_proyecto_moneda').select('cuenta, empresa, proyecto, moneda, predeterminado, activo, agrego_usuario, agrego_fecha')
       .eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo)
       .order('predeterminado', { ascending: false }).order('moneda'),
     leerNombres(admin, cuenta, {
@@ -224,7 +224,7 @@ export async function updateProyecto(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('*')
+    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
@@ -303,13 +303,13 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
     { count: cCliente },
     { count: cPromesa },
   ] = await Promise.all([
-    admin.schema('cartera').from('t_fase').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
-    admin.schema('cartera').from('t_serie_recibo').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
-    admin.schema('cartera').from('t_cuenta_bancaria').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
-    admin.schema('cartera').from('t_supervisor').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
-    admin.schema('cartera').from('t_cobrador').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
-    admin.schema('cartera').from('t_cliente').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
-    admin.schema('cartera').from('t_promesa').select('*', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_fase').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_serie_recibo').select('serie', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_cuenta_bancaria').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_supervisor').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_cobrador').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_cliente').select('codigo', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
+    admin.schema('cartera').from('t_promesa').select('numero', { count: 'exact', head: true }).eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo),
   ])
   if ((cFase ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene fases registradas.' }
   if ((cSerie ?? 0) > 0) return { error: 'No se puede eliminar: el proyecto tiene series de recibos registradas.' }
@@ -323,7 +323,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   const { data: tasas, error: tasasReadError } = await admin
     .schema('cartera')
     .from('t_moneda_tasa_cambio')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, fecha, tasa_cambio, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', codigo)
@@ -351,7 +351,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   const { data: monedas, error: monedasReadError } = await admin
     .schema('cartera')
     .from('t_proyecto_moneda')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, predeterminado, activo, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', codigo)
@@ -379,7 +379,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('*')
+    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
@@ -503,7 +503,7 @@ export async function getProyectoMonedas(): Promise<ProyectoMoneda[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_proyecto_moneda')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, predeterminado, activo, agrego_usuario, agrego_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('predeterminado', { ascending: false })
     .order('moneda')
@@ -543,7 +543,7 @@ export async function addProyectoMoneda(
   const { count } = await admin
     .schema('cartera')
     .from('t_proyecto_moneda')
-    .select('*', { count: 'exact', head: true })
+    .select('moneda', { count: 'exact', head: true })
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -597,7 +597,7 @@ export async function toggleProyectoMonedaActivo(
   const { data: row } = await admin
     .schema('cartera')
     .from('t_proyecto_moneda')
-    .select('*')
+    .select('cuenta, empresa, proyecto, moneda, predeterminado, activo, agrego_usuario, agrego_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)

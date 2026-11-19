@@ -83,7 +83,7 @@ export async function getSeriesRecibos(empresa?: number, proyecto?: number): Pro
   let query = admin
     .schema('cartera')
     .from('t_serie_recibo')
-    .select('*')
+    .select('cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
@@ -109,7 +109,7 @@ export async function obtenerSerieRecibo(
   if (!cuenta) return { error: 'Sesión no válida.' }
   return filaConNombres<SerieRecibo>(
     await clienteDatos(), cuenta, 't_serie_recibo',
-    { cuenta, empresa, proyecto, serie }, '*',
+    { cuenta, empresa, proyecto, serie }, 'cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha',
     { empresa, proyecto },
   )
 }
@@ -205,7 +205,7 @@ export async function updateSerieRecibo(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_serie_recibo')
-    .select('*')
+    .select('cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -294,7 +294,7 @@ export async function deleteSerieRecibo(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_serie_recibo')
-    .select('*')
+    .select('cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
