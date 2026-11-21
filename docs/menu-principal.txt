@@ -1,0 +1,223 @@
+MENU PRINCIPAL
+==============
+Cartera | Framework
+Fecha: Noviembre 2026
+
+El menú no es una lista fija dentro del sidebar. La base de datos dice
+qué pantallas existen y cuáles puede ver el usuario. El código dice
+cómo se ven: ruta, texto, grupo, icono y color.
+
+Hay dos superficies y las dos leen el mismo menú:
+
+- El sidebar izquierdo lista Inicio y un enlace por módulo.
+- El home muestra los módulos en pestañas y las pantallas en tarjetas.
+
+
+Archivos
+--------
+
+1. src/app/actions/menu.ts
+   getMenuPrincipal. Lee las tablas y devuelve los módulos visibles.
+
+2. src/lib/navigation.ts
+   Tipos, orden, iconos y construirMenu. Aquí se registra la
+   presentación de cada pantalla.
+
+3. src/lib/permisos.ts
+   PERMISOS. El valor (por ejemplo 'CLI.CAT') es el indice de t_menu.
+   Máximo 8 caracteres.
+
+4. src/app/dashboard/layout.tsx
+   Pide el menú y se lo pasa al sidebar. Sin usuario, redirige a /login.
+
+5. src/components/layout/app-sidebar.tsx
+   Sidebar. No declara las pantallas.
+
+6. src/app/dashboard/home/page.tsx
+   Vuelve a pedir el menú para el home.
+
+7. src/app/dashboard/home/_client.tsx
+   Pestañas, búsqueda y tarjetas.
+
+8. src/app/dashboard/page.tsx
+   /dashboard redirige a /dashboard/home.
+
+9. src/components/layout/cuenta-change-listener.tsx
+   Si otra pestaña cambia de cuenta, esta vuelve al home.
+
+Tablas, en prompts/schema_cartera.sql:
+
+- cartera.t_menu
+  Catálogo global. No tiene cuenta. indice es la llave (varchar 8).
+  menu_array es el nombre del módulo. nombre es el texto de la
+  pantalla. mantenimiento 1 marca un catálogo.
+
+- cartera.t_menu_modulo
+  Módulos habilitados por cuenta. Si la cuenta no tiene filas, entran
+  todos los módulos.
+
+- cartera.t_menu_usuario
+  Permiso por cuenta, usuario e indice: consultar, agregar, modificar,
+  eliminar. El menú solo mira consultar.
+
+
+1. Quién entra al menú
+----------------------
+
+getMenuPrincipal llama a leerAcceso. Sin sesión, sin cuenta o sin fila
+en t_usuario, devuelve [].
+
+Luego lee, en paralelo:
+
+- Todas las filas de t_menu (indice, menu_array, nombre, mantenimiento).
+- Los nombres de t_menu_modulo de la cuenta activa.
+
+Si t_menu falla, el menú queda vacío. Si t_menu_modulo falla, se trata
+como si la cuenta no tuviera filas: no recorta módulos.
+
+El administrador (t_usuario.es_admin = 1) ve el catálogo completo.
+Cualquier otro usuario solo ve los indice de t_menu_usuario con
+consultar = 1. Si esa consulta falla, el menú queda vacío. Cero filas
+no significan acceso total.
+
+La lectura usa clienteDatos(), el cliente de la sesión.
+
+
+2. Cómo se arma cada módulo
+---------------------------
+
+construirMenu, en src/lib/navigation.ts, recorre t_menu y descarta la
+fila cuando:
+
+- indice o menu_array vienen vacíos.
+- indice es DASH.HOM. Inicio está fijo en el sidebar y no es una
+  tarjeta.
+- el usuario no tiene consultar para ese indice.
+- la cuenta tiene filas en t_menu_modulo y el nombre del módulo no
+  está entre ellas. La comparación quita tildes y no distingue
+  mayúsculas.
+
+Cada fila que pasa se junta con PRESENTACION, un mapa cuya clave es
+el indice:
+
+- href: ruta de la pantalla. Sin entrada, la tarjeta no navega.
+- descripcion: texto bajo el nombre.
+- grupo: Catalogos, Catalogo, Operaciones, Consultas o General.
+  Si el indice no está en el mapa, mantenimiento 1 cae en Catalogos
+  y el resto en Operaciones.
+- orden: posición dentro del grupo. Sin entrada, queda al final.
+- icon y accent: icono y color de la tarjeta.
+
+El nombre visible sale de t_menu.nombre, no del mapa.
+
+Después se agregan las entradas de PROXIMAMENTE. Hoy son Balance,
+Consultas y Mapa. No salen de t_menu ni de t_menu_usuario. Solo
+respetan el recorte de t_menu_modulo. Llevan href vacío y
+comingSoon en verdadero.
+
+Dentro de un módulo el orden es: grupo, luego orden, luego nombre.
+El orden de grupos es Catalogo, Catalogos, Operaciones, Consultas,
+General.
+
+El orden de módulos es Proyectos, Bancos, Promesas, Cuentas Cobrar,
+Facturacion, Generales, Dashboard, Mapa. Un módulo que no esté en
+esa lista queda al final, por nombre.
+
+El id del módulo es el nombre en minúsculas, sin tildes, con guiones.
+Ese id es el hash de la URL: /dashboard/home#proyectos.
+
+
+3. Sidebar
+----------
+
+Archivo: src/components/layout/app-sidebar.tsx
+
+El layout se lo entrega ya filtrado. El componente no vuelve a
+consultar permisos.
+
+De arriba a abajo:
+
+- Marca Cartera.
+- La cuenta activa. Con una sola cuenta es un rótulo. Con varias, un
+  menú llama a switchCuenta, avisa a las otras pestañas por el canal
+  cartera-cuenta y navega a /dashboard/home.
+- Inicio, siempre, hacia /dashboard/home.
+- Un enlace por módulo, hacia /dashboard/home#<id>. El icono sale de
+  ICONOS_MODULO. Si el nombre no está, usa LayoutGrid.
+- El correo y Cerrar sesión, que llama a logout.
+
+Inicio se marca activo en /dashboard o /dashboard/home cuando no hay
+hash. Un módulo se marca activo si el hash coincide, o si la ruta
+actual es el href de una de sus pantallas (o una ruta hija).
+
+En pantalla angosta el sidebar mide el ancho de los iconos. Desde
+md muestra los nombres.
+
+
+4. Home
+-------
+
+page.tsx vuelve a llamar a getMenuPrincipal, getCuentaActiva y
+getCuentasDelUsuario. Cada llamada tiene su .catch(). El nombre de
+la cuenta sale de la lista de cuentas del usuario.
+
+_client.tsx saluda según la hora del navegador. Antes de conocerla
+muestra "Hola", para no desalinear el HTML del servidor.
+
+La búsqueda compara, sin tildes y sin distinguir mayúsculas, contra
+el nombre del módulo y contra nombre, descripción y grupo de cada
+pantalla. Si el texto coincide con el módulo, se quedan todas sus
+pantallas.
+
+Las pestañas son los módulos que todavía tienen pantallas. La pestaña
+abierta es el hash. Si el hash no corresponde a un módulo visible, se
+abre el primero y el hash se corrige.
+
+El título del grupo se muestra cuando el módulo tiene más de un
+grupo, y también en Facturacion.
+
+Cada pantalla es una tarjeta. Con href y sin comingSoon, el clic
+navega. Sin ruta, o marcada Pronto, la tarjeta se atenúa y no es un
+enlace. El icono y el color salen de estiloItem(indice).
+
+Si el menú llega vacío: "No tienes funcionalidades asignadas."
+Si la búsqueda no deja nada: "Ninguna funcionalidad coincide con
+la búsqueda."
+
+
+5. Qué se toca al agregar una pantalla
+--------------------------------------
+
+Para que un catálogo nuevo aparezca en el menú:
+
+1. Fila en cartera.t_menu.
+   indice de hasta 8 caracteres, el mismo valor que PERMISOS.
+   menu_array con el nombre exacto del módulo (Proyectos, Bancos,
+   Promesas, Cuentas Cobrar, Generales).
+   nombre con el texto de la tarjeta.
+   mantenimiento en 1 si es catálogo.
+
+2. La constante en src/lib/permisos.ts.
+   La clave es la del código. El valor es el indice.
+
+3. Una entrada en PRESENTACION, en src/lib/navigation.ts.
+   href, descripcion, grupo, orden, icon y accent.
+   El accent es el par de la tabla de colores de
+   .cursor/rules/ui-conventions.mdc.
+
+4. Si el módulo es nuevo, una línea en MODULO_ORDEN y otra en
+   ICONOS_MODULO. Si no, el módulo queda al final y el icono es
+   LayoutGrid.
+
+5. Para quien no es administrador, una fila en t_menu_usuario con
+   consultar = 1. Sin esa fila la pantalla no entra al menú ni
+   getPermisosDetalle concede botones.
+
+6. Si esa cuenta ya tiene filas en t_menu_modulo, el nombre del
+   módulo tiene que estar ahí. Si no está, el módulo entero se oculta.
+
+No se agrega la pantalla dentro de app-sidebar.tsx. El skill de CRUD
+no registra rutas en el sidebar.
+
+Una entrada solo en PROXIMAMENTE se muestra como Pronto y no abre
+ruta. No sustituye la fila de t_menu.

@@ -258,32 +258,7 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 - `puedeModificar` → Editar button in modal footer
 - `puedeEliminar` → Eliminar button in modal footer (not a row dropdown)
 
-### Step 9 — Register in sidebar
-
-In `src/components/layout/app-sidebar.tsx`:
-
-1. Add the Lucide icon to the import block at the top (if not already present).
-2. Find the `NavItem` group matching `MODULO` in the `NAV` array.
-3. Add a `NavChild` inside `children`:
-
-```ts
-{ label: '<NOMBRE>', href: '<RUTA>', icon: <LucideIcon> }
-```
-
-4. If no matching group exists, add a new `NavItem`:
-
-```ts
-{
-  label: '<MODULO>',
-  icon: <GroupIcon>,
-  permiso: PERMISOS.<PERMISO>,
-  children: [
-    { label: '<NOMBRE>', href: '<RUTA>', icon: <LucideIcon> },
-  ],
-},
-```
-
-### Step 10 — Playwright for the new catalog
+### Step 9 — Playwright for the new catalog
 
 A new catalog CRUD includes `test/definidas/<entidad>.spec.ts`. `<entidad>` is the kebab-case name used for the action file (`fases`, `bancos`, `cuentas-bancarias`).
 
@@ -322,7 +297,7 @@ npx playwright test --project=definidas test/definidas/<entidad>.spec.ts
 
 The dev server and `TEST_LOGIN_USERNAME` / `TEST_LOGIN_PASSWORD` come from the Playwright config and the setup project. Do not print those secrets. Do not leave `E2E` rows behind.
 
-### Step 11 — Definition of done
+### Step 10 — Definition of done
 
 Run these before reporting the screen finished. Do not use `get_errors` or PowerShell.
 
@@ -335,7 +310,6 @@ Run these before reporting the screen finished. Do not use `get_errors` or Power
 - [ ] `src/app/dashboard/<ruta>/page.tsx` created as Server Component
 - [ ] `src/app/dashboard/<ruta>/_client.tsx` created with `'use client'`, structured like Clientes, and Ver re-reads the record (`useRegistroVer` + `obtenerEntity`, Editar disabled until that read, names from `nombreLeido`)
 - [ ] `src/lib/permisos.ts` contains `PERMISOS.<PERMISO>`
-- [ ] `src/components/layout/app-sidebar.tsx` has the new route registered
 - [ ] Accent color table in `.cursor/rules/ui-conventions.mdc` updated (add row if new module)
 - [ ] Icon table in `.cursor/rules/ui-conventions.mdc` updated (add row if new icon)
 - [ ] The spec file was not edited
