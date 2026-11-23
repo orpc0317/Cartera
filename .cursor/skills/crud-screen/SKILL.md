@@ -63,8 +63,8 @@ When a `prompts/crud-*.md` file is the request, read it and extract:
 
 | Field | Purpose |
 |-------|---------|
-| `NOMBRE` | Display name for labels and sidebar |
-| `MODULO` | Nav group in sidebar |
+| `NOMBRE` | Display name for labels. The menu label comes from `t_menu.nombre` |
+| `MODULO` | Module name in `t_menu.menu_array` (Proyectos, Bancos). Not a group inside the sidebar |
 | `TABLA_BD` | `cartera.<table>` — used in all queries |
 | `RUTA` | Next.js route (e.g. `/dashboard/bancos/bancos`) |
 | `PERMISO` | Constant key (e.g. `BAN_CAT`) |
@@ -258,30 +258,30 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 - `puedeModificar` → Editar button in modal footer
 - `puedeEliminar` → Eliminar button in modal footer (not a row dropdown)
 
-### Step 9 — Register in sidebar
+### Step 9 — Register the route in the menu
 
-In `src/components/layout/app-sidebar.tsx`:
+`AppSidebar` renders the `menu` from `getMenuPrincipal()`. There is no `NAV` array. Do not edit `src/components/layout/app-sidebar.tsx` to add the screen.
 
-1. Add the Lucide icon to the import block at the top (if not already present).
-2. Find the `NavItem` group matching `MODULO` in the `NAV` array.
-3. Add a `NavChild` inside `children`:
+`t_menu` decides which screens exist (`indice`, `menu_array`, `nombre`). `PRESENTACION` in `src/lib/navigation.ts` supplies the route, group, order, icon, and accent for that `indice`. Without a `PRESENTACION` entry the item has `href: null` and does not navigate. Do not insert rows into `t_menu`, `t_menu_usuario`, or `t_menu_modulo`. If the permission code is not already a `t_menu.indice`, say so: the link waits on that row.
 
-```ts
-{ label: '<NOMBRE>', href: '<RUTA>', icon: <LucideIcon> }
-```
-
-4. If no matching group exists, add a new `NavItem`:
+Add one key to `PRESENTACION`, equal to the value of `PERMISOS.<PERMISO>` (for example `'BAN.CAT'`). Import the Lucide icon in that file.
 
 ```ts
-{
-  label: '<MODULO>',
-  icon: <GroupIcon>,
-  permiso: PERMISOS.<PERMISO>,
-  children: [
-    { label: '<NOMBRE>', href: '<RUTA>', icon: <LucideIcon> },
-  ],
+'BAN.CAT': {
+  href: '/dashboard/bancos/bancos',
+  descripcion: 'Catálogo de bancos de la cuenta',
+  grupo: 'Catalogos',
+  orden: 10,
+  icon: Landmark,
+  accent: 'bg-teal-100 text-teal-600',
 },
 ```
+
+- `href` is `RUTA`.
+- `grupo` is the same string already used by the other screens of that module (`Catalogos`, `Catalogo`, `Operaciones`, `Consultas`, or `General`). Do not invent another spelling.
+- `orden` is the last `orden` of that module and group, plus 10. Use 10 when the group is empty.
+- `icon` and `accent` are the ones chosen for the screen. `accent` is `bg-<token>-100 text-<token>-600`.
+- A module name missing from `MODULO_ORDEN` and `ICONOS_MODULO` gets one entry in each. Do not add a `PROXIMAMENTE` item.
 
 ### Step 10 — Playwright for the new catalog
 
@@ -335,7 +335,7 @@ Run these before reporting the screen finished. Do not use `get_errors` or Power
 - [ ] `src/app/dashboard/<ruta>/page.tsx` created as Server Component
 - [ ] `src/app/dashboard/<ruta>/_client.tsx` created with `'use client'`, structured like Clientes, and Ver re-reads the record (`useRegistroVer` + `obtenerEntity`, Editar disabled until that read, names from `nombreLeido`)
 - [ ] `src/lib/permisos.ts` contains `PERMISOS.<PERMISO>`
-- [ ] `src/components/layout/app-sidebar.tsx` has the new route registered
+- [ ] `PRESENTACION` in `src/lib/navigation.ts` has that permission code, with `href`, `grupo`, `orden`, `icon`, and `accent`. `app-sidebar.tsx` was not edited. No rows were inserted into `t_menu` or `t_menu_usuario`
 - [ ] Accent color table in `.cursor/rules/ui-conventions.mdc` updated (add row if new module)
 - [ ] Icon table in `.cursor/rules/ui-conventions.mdc` updated (add row if new icon)
 - [ ] The spec file was not edited
