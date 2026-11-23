@@ -360,9 +360,12 @@ export function PagoCuotasClient({
       return
     }
     if (activeTab === 'promesa') {
-      if (!candidata) return
-      if (mismaPromesa(candidata, promesa)) setActiveTab(id)
-      else handleSeleccionarPromesa(candidata)
+      if (candidata && !mismaPromesa(candidata, promesa)) {
+        handleSeleccionarPromesa(candidata)
+        return
+      }
+      if (!candidata && !promesa) return
+      setActiveTab(id)
       return
     }
     setActiveTab(id)
@@ -549,7 +552,7 @@ export function PagoCuotasClient({
         steps={PASOS_PAGO}
         value={activeTab}
         onValueChange={irAPaso}
-        maxIndice={activeTab === 'promesa' && !candidata ? 0 : wizard.maxIndice}
+        maxIndice={activeTab === 'promesa' && !candidata && !promesa ? 0 : wizard.maxIndice}
         className="min-h-0 flex-1"
       >
       {activeTab === 'promesa' && (
@@ -984,7 +987,7 @@ export function PagoCuotasClient({
           {!wizard.esUltimo ? (
             <Button
               onClick={irSiguiente}
-              disabled={isPendingSave || (activeTab === 'promesa' && !candidata)}
+              disabled={isPendingSave || (activeTab === 'promesa' && !candidata && !promesa)}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Siguiente
