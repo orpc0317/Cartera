@@ -348,18 +348,29 @@ export function PagoCuotasClient({
     wizard.reiniciar()
   }
 
+  function mismaPromesa(a: PromesaBusqueda | null, b: PromesaBusqueda | null) {
+    return !!a && !!b && a.empresa === b.empresa && a.proyecto === b.proyecto && a.numero === b.numero
+  }
+
+  function irAPaso(id: string) {
+    if (id === activeTab) return
+    if (id === 'promesa') {
+      if (promesa) setCandidata(promesa)
+      setActiveTab('promesa')
+      return
+    }
+    if (activeTab === 'promesa') {
+      if (!candidata) return
+      if (mismaPromesa(candidata, promesa)) setActiveTab(id)
+      else handleSeleccionarPromesa(candidata)
+      return
+    }
+    setActiveTab(id)
+  }
+
   function irSiguiente() {
     if (activeTab === 'promesa') {
-      if (candidata) {
-        const misma = promesa
-          && candidata.empresa === promesa.empresa
-          && candidata.proyecto === promesa.proyecto
-          && candidata.numero === promesa.numero
-        if (misma) setActiveTab('encabezado')
-        else handleSeleccionarPromesa(candidata)
-        return
-      }
-      if (promesa) setActiveTab('encabezado')
+      irAPaso('encabezado')
       return
     }
     wizard.siguiente()
@@ -537,8 +548,8 @@ export function PagoCuotasClient({
       <FormWizard
         steps={PASOS_PAGO}
         value={activeTab}
-        onValueChange={setActiveTab}
-        maxIndice={wizard.maxIndice}
+        onValueChange={irAPaso}
+        maxIndice={activeTab === 'promesa' && !candidata ? 0 : wizard.maxIndice}
         className="min-h-0 flex-1"
       >
       {activeTab === 'promesa' && (
@@ -973,7 +984,7 @@ export function PagoCuotasClient({
           {!wizard.esUltimo ? (
             <Button
               onClick={irSiguiente}
-              disabled={isPendingSave || (activeTab === 'promesa' && !candidata && !promesa)}
+              disabled={isPendingSave || (activeTab === 'promesa' && !candidata)}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Siguiente
