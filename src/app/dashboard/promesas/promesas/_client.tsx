@@ -43,6 +43,7 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FormWizard, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
@@ -406,6 +407,11 @@ function ClienteCombobox({
 
 // â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+const PASOS_ALTA = [
+  { id: 'general', label: 'General', icon: FileSignature },
+  { id: 'otros', label: 'Otros', icon: Wallet },
+]
+
 export function PromesasClient({
   initialData,
   empresas,
@@ -448,6 +454,8 @@ export function PromesasClient({
   const [isEditing, setIsEditing]     = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [viewTarget, setViewTarget]   = useState<(Promesa & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_ALTA, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<Promesa | null>(null)
   const [auditTarget, setAuditTarget]   = useState<Promesa | null>(null)
   const [planPagoTarget, setPlanPagoTarget] = useState<Promesa | null>(null)
@@ -1126,236 +1134,9 @@ export function PromesasClient({
 
   // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  return (
-    <div className={LIST_SHELL}>
-
-      {/* Header */}
-      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-zinc-100 p-2.5">
-            <FileSignature className="h-5 w-5 text-zinc-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Promesas</h1>
-            <p className="text-sm text-muted-foreground">Promesas de Compra-Venta</p>
-          </div>
-        </div>
-        {puedeAgregar && (
-          <Button onClick={openCreate} className="gap-2 bg-zinc-600 hover:bg-zinc-700 text-white">
-            <Plus className="h-4 w-4" />
-            Nueva Promesa
-          </Button>
-        )}
-      </div>
-
-      {/* Toolbar */}
-      <div className={`${LIST_BLOCK} flex items-center justify-between gap-3 flex-wrap`}>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input variant="l-border"
-              placeholder="Buscar promesas..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
-              <X className="h-3.5 w-3.5" /> Limpiar filtros
-            </Button>
-          )}
-        </div>
-        <div className={`${LIST_BLOCK} flex items-center gap-2`}>
-          <Button variant="outline" size="sm" onClick={exportCsv} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" /> Exportar CSV
-          </Button>
-          <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={resetCols} />
-        </div>
-      </div>
-
-      {/* Tabla */}
-      <div
-        ref={tableRef}
-        className={LIST_SCROLLPORT}
-        tabIndex={0}
-        onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
-      >
-        <Table scrollable={false}>
-          <TableHeader className={LIST_THEAD}>
-            <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
-                <span className="text-xs font-medium text-muted-foreground">Numero</span>
-              </TableHead>
-              {colPrefs.filter((p) => p.visible).map((pref) => {
-                const col = ALL_COLUMNS.find((c) => c.key === pref.key)!
-                const filterValues =
-                  pref.key === 'empresa'  ? uniqueEmpresaNames  :
-                  pref.key === 'proyecto' ? uniqueProyectoNames :
-                  pref.key === 'fecha'    ? uniqueFechaVals     :
-                  pref.key === 'fase'     ? uniqueFaseNames     :
-                  pref.key === 'manzana'  ? uniqueManzanaVals   :
-                  pref.key === 'lote'     ? uniqueLoteVals      :
-                  pref.key === 'cliente'  ? uniqueClienteNames  :
-                  pref.key === 'vendedor' ? uniqueVendedorNames : null
-                return (
-                  <TableHead key={pref.key} className={`${LIST_HEAD} whitespace-nowrap`}>
-                    {filterValues ? (
-                      <ColumnFilter
-                        label={col.label}
-                        values={filterValues}
-                        active={colFilters[pref.key] ?? new Set()}
-                        onChange={(next) => setColFilter(pref.key, next)}
-                      />
-                    ) : <span className="text-xs font-medium text-muted-foreground">{col.label}</span>}
-                  </TableHead>
-                )
-              })}
-              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pagedRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={colPrefs.filter((p) => p.visible).length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters
-                    ? 'No se encontraron promesas con ese criterio.'
-                    : 'Todavia no hay promesas. Haz clic en "Nueva Promesa" para comenzar.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              pagedRows.map((row, rowIdx) => {
-                const globalIdx = page * PAGE_SIZE + rowIdx
-                const isActive = cursorIdx === globalIdx
-                return (
-                  <TableRow
-                    key={`${row.empresa}-${row.proyecto}-${row.numero}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-zinc-50 dark:bg-zinc-950/30' : 'hover:bg-muted/40'}`}
-                    onClick={() => setCursorIdx(globalIdx)}
-                    onDoubleClick={() => openView(row)}
-                  >
-                    <TableCell className={`sticky left-0 z-10 font-mono text-xs whitespace-nowrap transition-colors ${
-                      isActive
-                        ? 'bg-zinc-50 dark:bg-zinc-950/30 border-l-[3px] border-l-zinc-600 text-zinc-700 dark:text-zinc-400 font-semibold'
-                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
-                    }`}>
-                      {row.numero}
-                    </TableCell>
-                    {colPrefs.filter((p) => p.visible).map((pref) => {
-                      switch (pref.key) {
-                        case 'empresa':
-                          return <TableCell key="empresa"  className="whitespace-nowrap">{empresaMap.get(row.empresa)   ?? row.empresa}</TableCell>
-                        case 'proyecto':
-                          return <TableCell key="proyecto" className="whitespace-nowrap">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
-                        case 'fecha':
-                          return <TableCell key="fecha"    className="whitespace-nowrap tabular-nums">{fmtDate(row.fecha)}</TableCell>
-                        case 'fase':
-                          return <TableCell key="fase"     className="whitespace-nowrap">{faseMap.get(`${row.empresa}-${row.proyecto}-${row.fase}`) ?? row.fase}</TableCell>
-                        case 'manzana':
-                          return <TableCell key="manzana">{row.manzana}</TableCell>
-                        case 'lote':
-                          return <TableCell key="lote" className="font-mono text-xs">{row.lote}</TableCell>
-                        case 'cliente':
-                          return <TableCell key="cliente"  className="whitespace-nowrap">{clienteMap.get(`${row.empresa}-${row.proyecto}-${row.cliente}`) ?? row.cliente}</TableCell>
-                        case 'vendedor':
-                          return <TableCell key="vendedor" className="whitespace-nowrap">{vendedorMap.get(`${row.empresa}-${row.proyecto}-${row.vendedor}`) ?? row.vendedor}</TableCell>
-                        default: {
-                          const cellVal = (row as Record<string, unknown>)[pref.key]
-                          return <TableCell key={pref.key}>{cellVal != null ? String(cellVal) : '\u2014'}</TableCell>
-                        }
-                      }
-                    })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-zinc-50 dark:bg-zinc-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <button
-                        type="button"
-                        onClick={() => openView(row)}
-                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      <div className={`${LIST_BLOCK} flex items-center justify-between`}>
-        <p className="text-xs text-muted-foreground">
-          {filtered.length > 0
-            ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} promesa${filtered.length !== 1 ? 's' : ''}`
-            : '0 promesas'}
-        </p>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1">
-            <button type="button" aria-label="PÃ¡gina anterior" disabled={page === 0}
-              onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
-            <button type="button" aria-label="PÃ¡gina siguiente" disabled={page >= totalPages - 1}
-              onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Dialog crear / ver / editar */}
-      <Dialog
-        modal={false}
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!open && (deleteTarget !== null || docDeleteTarget !== null || auditTarget !== null || planPagoTarget !== null || anularTarget !== null)) return  // guard: no cerrar el modal Ver por un dialog anidado (Historial / Plan Pagos / Eliminar / Anular)
-          setDialogOpen(open)
-          if (!open) {
-            setIsEditing(false)
-            setDocTipo(0)
-            if (hadConflict) { setHadConflict(false); router.refresh() }
-          }
-        }}
-      >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-zinc-50/70 to-transparent border-b border-border/50 shrink-0">
-            <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Promesa' : isEditing ? 'Editar Promesa' : `Promesa ${viewTarget?.numero}`}
-                </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {[nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' Â· ')}
-                  </p>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <FileSignature className="h-3.5 w-3.5" /> General
-              </TabsTrigger>
-              <TabsTrigger value="otros" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <Wallet className="h-3.5 w-3.5" /> Otros
-              </TabsTrigger>
-              {viewTarget && (
-                <TabsTrigger value="documentos" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                  <Paperclip className="h-3.5 w-3.5" /> Documentos
-                </TabsTrigger>
-              )}
-            </TabsList></div>
-
-            {/* Tab General */}
-            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+  function pasoGeneral() {
+    return (
+    <>
 
               {/* View mode */}
               {!isEditing && viewTarget ? (
@@ -1938,10 +1719,14 @@ export function PromesasClient({
                   </div>
                 </div>
               )}
-            </TabsContent>
+            
+    </>
+    )
+  }
 
-            {/* Tab Otros */}
-            <TabsContent value="otros" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+  function pasoOtros() {
+    return (
+    <>
               <div className="flex flex-col gap-3">
                 {isEditing && (
                   <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
@@ -2059,7 +1844,253 @@ export function PromesasClient({
                   </>
                 )}
               </div>
-            </TabsContent>
+            
+    </>
+    )
+  }
+
+  return (
+    <div className={LIST_SHELL}>
+
+      {/* Header */}
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-zinc-100 p-2.5">
+            <FileSignature className="h-5 w-5 text-zinc-600" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Promesas</h1>
+            <p className="text-sm text-muted-foreground">Promesas de Compra-Venta</p>
+          </div>
+        </div>
+        {puedeAgregar && (
+          <Button onClick={openCreate} className="gap-2 bg-zinc-600 hover:bg-zinc-700 text-white">
+            <Plus className="h-4 w-4" />
+            Nueva Promesa
+          </Button>
+        )}
+      </div>
+
+      {/* Toolbar */}
+      <div className={`${LIST_BLOCK} flex items-center justify-between gap-3 flex-wrap`}>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input variant="l-border"
+              placeholder="Buscar promesas..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
+              <X className="h-3.5 w-3.5" /> Limpiar filtros
+            </Button>
+          )}
+        </div>
+        <div className={`${LIST_BLOCK} flex items-center gap-2`}>
+          <Button variant="outline" size="sm" onClick={exportCsv} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
+          <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={resetCols} />
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div
+        ref={tableRef}
+        className={LIST_SCROLLPORT}
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
+      >
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
+                <span className="text-xs font-medium text-muted-foreground">Numero</span>
+              </TableHead>
+              {colPrefs.filter((p) => p.visible).map((pref) => {
+                const col = ALL_COLUMNS.find((c) => c.key === pref.key)!
+                const filterValues =
+                  pref.key === 'empresa'  ? uniqueEmpresaNames  :
+                  pref.key === 'proyecto' ? uniqueProyectoNames :
+                  pref.key === 'fecha'    ? uniqueFechaVals     :
+                  pref.key === 'fase'     ? uniqueFaseNames     :
+                  pref.key === 'manzana'  ? uniqueManzanaVals   :
+                  pref.key === 'lote'     ? uniqueLoteVals      :
+                  pref.key === 'cliente'  ? uniqueClienteNames  :
+                  pref.key === 'vendedor' ? uniqueVendedorNames : null
+                return (
+                  <TableHead key={pref.key} className={`${LIST_HEAD} whitespace-nowrap`}>
+                    {filterValues ? (
+                      <ColumnFilter
+                        label={col.label}
+                        values={filterValues}
+                        active={colFilters[pref.key] ?? new Set()}
+                        onChange={(next) => setColFilter(pref.key, next)}
+                      />
+                    ) : <span className="text-xs font-medium text-muted-foreground">{col.label}</span>}
+                  </TableHead>
+                )
+              })}
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pagedRows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={colPrefs.filter((p) => p.visible).length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters
+                    ? 'No se encontraron promesas con ese criterio.'
+                    : 'Todavia no hay promesas. Haz clic en "Nueva Promesa" para comenzar.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              pagedRows.map((row, rowIdx) => {
+                const globalIdx = page * PAGE_SIZE + rowIdx
+                const isActive = cursorIdx === globalIdx
+                return (
+                  <TableRow
+                    key={`${row.empresa}-${row.proyecto}-${row.numero}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-zinc-50 dark:bg-zinc-950/30' : 'hover:bg-muted/40'}`}
+                    onClick={() => setCursorIdx(globalIdx)}
+                    onDoubleClick={() => openView(row)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-mono text-xs whitespace-nowrap transition-colors ${
+                      isActive
+                        ? 'bg-zinc-50 dark:bg-zinc-950/30 border-l-[3px] border-l-zinc-600 text-zinc-700 dark:text-zinc-400 font-semibold'
+                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
+                    }`}>
+                      {row.numero}
+                    </TableCell>
+                    {colPrefs.filter((p) => p.visible).map((pref) => {
+                      switch (pref.key) {
+                        case 'empresa':
+                          return <TableCell key="empresa"  className="whitespace-nowrap">{empresaMap.get(row.empresa)   ?? row.empresa}</TableCell>
+                        case 'proyecto':
+                          return <TableCell key="proyecto" className="whitespace-nowrap">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
+                        case 'fecha':
+                          return <TableCell key="fecha"    className="whitespace-nowrap tabular-nums">{fmtDate(row.fecha)}</TableCell>
+                        case 'fase':
+                          return <TableCell key="fase"     className="whitespace-nowrap">{faseMap.get(`${row.empresa}-${row.proyecto}-${row.fase}`) ?? row.fase}</TableCell>
+                        case 'manzana':
+                          return <TableCell key="manzana">{row.manzana}</TableCell>
+                        case 'lote':
+                          return <TableCell key="lote" className="font-mono text-xs">{row.lote}</TableCell>
+                        case 'cliente':
+                          return <TableCell key="cliente"  className="whitespace-nowrap">{clienteMap.get(`${row.empresa}-${row.proyecto}-${row.cliente}`) ?? row.cliente}</TableCell>
+                        case 'vendedor':
+                          return <TableCell key="vendedor" className="whitespace-nowrap">{vendedorMap.get(`${row.empresa}-${row.proyecto}-${row.vendedor}`) ?? row.vendedor}</TableCell>
+                        default: {
+                          const cellVal = (row as Record<string, unknown>)[pref.key]
+                          return <TableCell key={pref.key}>{cellVal != null ? String(cellVal) : '\u2014'}</TableCell>
+                        }
+                      }
+                    })}
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-zinc-50 dark:bg-zinc-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                      <button
+                        type="button"
+                        onClick={() => openView(row)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className={`${LIST_BLOCK} flex items-center justify-between`}>
+        <p className="text-xs text-muted-foreground">
+          {filtered.length > 0
+            ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} promesa${filtered.length !== 1 ? 's' : ''}`
+            : '0 promesas'}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button type="button" aria-label="PÃ¡gina anterior" disabled={page === 0}
+              onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
+            <button type="button" aria-label="PÃ¡gina siguiente" disabled={page >= totalPages - 1}
+              onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Dialog crear / ver / editar */}
+      <Dialog
+        modal={false}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open && (deleteTarget !== null || docDeleteTarget !== null || auditTarget !== null || planPagoTarget !== null || anularTarget !== null)) return  // guard: no cerrar el modal Ver por un dialog anidado (Historial / Plan Pagos / Eliminar / Anular)
+          setDialogOpen(open)
+          if (!open) {
+            setIsEditing(false)
+            setDocTipo(0)
+            if (hadConflict) { setHadConflict(false); router.refresh() }
+          }
+        }}
+      >
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-zinc-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nueva Promesa' : isEditing ? 'Editar Promesa' : `Promesa ${viewTarget?.numero}`}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {[nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' Â· ')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {esAlta ? (
+            <FormWizard steps={PASOS_ALTA} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {activeTab === 'general' ? pasoGeneral() : pasoOtros()}
+            </FormWizard>
+          ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <FileSignature className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+              <TabsTrigger value="otros" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <Wallet className="h-3.5 w-3.5" /> Otros
+              </TabsTrigger>
+              {viewTarget && (
+                <TabsTrigger value="documentos" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                  <Paperclip className="h-3.5 w-3.5" /> Documentos
+                </TabsTrigger>
+              )}
+            </TabsList></div>
+
+            {/* Tab General */}
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+{pasoGeneral()}
+</TabsContent>
+
+            {/* Tab Otros */}
+            <TabsContent value="otros" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+{pasoOtros()}
+</TabsContent>
 
             {/* Tab Documentos */}
             {viewTarget && (
@@ -2178,6 +2209,7 @@ export function PromesasClient({
               </TabsContent>
             )}
           </Tabs>
+          )}
 
           <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
             {!isEditing ? (
@@ -2214,11 +2246,13 @@ export function PromesasClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando..."
+                className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

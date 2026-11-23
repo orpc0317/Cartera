@@ -41,6 +41,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import {
   createVendedor, updateVendedor, deleteVendedor,
@@ -240,6 +241,8 @@ export function VendedoresClient({
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [viewTarget, setViewTarget]     = useState<(Vendedor & NombresVer) | null>(null)
   const [isEditing, setIsEditing]       = useState(false)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [hadConflict, setHadConflict]   = useState(false)
   const [form, setForm]                 = useState<VendedorForm>(EMPTY_FORM)
   const [similarWarning, setSimilarWarning] = useState<Vendedor[] | null>(null)
@@ -509,6 +512,110 @@ export function VendedoresClient({
   }
 
   // ── Render ────────────────────────────────────────────────────────────
+  function pasoGeneral() {
+    return (
+    <>
+
+              {/* ── Vista ── */}
+              {!isEditing && viewTarget ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="col-span-2">
+                    <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
+                  </div>
+                  <div className="col-span-2">
+                    <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
+                  </div>
+                  <div className="col-span-2">
+                    <ViewField label="Nombre Vendedor" value={viewTarget.nombre} />
+                  </div>
+                  <div className="col-span-2">
+                    <ViewField
+                      label="Coordinador"
+                      value={viewTarget.coordinador ? (nombreLeido(viewTarget.coordinador_nombre, coordinadorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.coordinador}`) ?? `#${viewTarget.coordinador}`)) : '—'}
+                    />
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2 py-1">
+                    <Checkbox checked={viewTarget.activo === 1} disabled />
+                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
+                  </div>
+                </div>
+
+              ) : (
+              /* ── Edicion / Creacion ── */
+              <div className="grid grid-cols-2 gap-2">
+
+                <div className="col-span-2 grid gap-1">
+                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                  <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
+                      <SelectValue placeholder="Selecciona empresa">
+                        {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2 grid gap-1">
+                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                  <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
+                      <SelectValue placeholder="Selecciona proyecto">
+                        {proyectoMap.get(`${form.empresa}-${form.proyecto}`) ?? 'Selecciona proyecto'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Vendedor *</Label>
+                  <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
+                </div>
+
+                <div className="col-span-2 grid gap-1">
+                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Coordinador</Label>
+                  <Select
+                    value={form.coordinador ? String(form.coordinador) : '__none__'}
+                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? 0 : Number(v) }))}
+                    disabled={!form.proyecto}
+                  >
+                    <SelectTrigger variant="l-border" className="w-full">
+                      <SelectValue>
+                        {form.coordinador
+                          ? (coordinadorMap.get(`${form.empresa}-${form.proyecto}-${form.coordinador}`) ?? `#${form.coordinador}`)
+                          : <span className="text-muted-foreground">Sin coordinador</span>}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sin coordinador</SelectItem>
+                      {coordinadoresFiltrados.map((c) => (
+                        <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2 flex items-center gap-2 pb-1">
+                  <Checkbox
+                    id="activo"
+                    checked={form.activo === 1}
+                    onCheckedChange={(checked) => setForm((prev) => ({ ...prev, activo: checked ? 1 : 0 }))}
+                  />
+                  <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
+                </div>
+
+              </div>
+            )}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -794,6 +901,11 @@ export function VendedoresClient({
           </DialogHeader>
 
           {/* Tabs */}
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -802,104 +914,10 @@ export function VendedoresClient({
             </TabsList></div>
 
             <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-
-              {/* ── Vista ── */}
-              {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2">
-                    <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField label="Nombre Vendedor" value={viewTarget.nombre} />
-                  </div>
-                  <div className="col-span-2">
-                    <ViewField
-                      label="Coordinador"
-                      value={viewTarget.coordinador ? (nombreLeido(viewTarget.coordinador_nombre, coordinadorMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.coordinador}`) ?? `#${viewTarget.coordinador}`)) : '—'}
-                    />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-2 py-1">
-                    <Checkbox checked={viewTarget.activo === 1} disabled />
-                    <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
-                  </div>
-                </div>
-
-              ) : (
-              /* ── Edicion / Creacion ── */
-              <div className="grid grid-cols-2 gap-2">
-
-                <div className="col-span-2 grid gap-1">
-                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                  <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
-                      <SelectValue placeholder="Selecciona empresa">
-                        {empresaMap.get(form.empresa) ?? 'Selecciona empresa'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                  <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
-                      <SelectValue placeholder="Selecciona proyecto">
-                        {proyectoMap.get(`${form.empresa}-${form.proyecto}`) ?? 'Selecciona proyecto'}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Vendedor *</Label>
-                  <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del vendedor" />
-                </div>
-
-                <div className="col-span-2 grid gap-1">
-                  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Coordinador</Label>
-                  <Select
-                    value={form.coordinador ? String(form.coordinador) : '__none__'}
-                    onValueChange={(v) => setForm((prev) => ({ ...prev, coordinador: v === '__none__' ? 0 : Number(v) }))}
-                    disabled={!form.proyecto}
-                  >
-                    <SelectTrigger variant="l-border" className="w-full">
-                      <SelectValue>
-                        {form.coordinador
-                          ? (coordinadorMap.get(`${form.empresa}-${form.proyecto}-${form.coordinador}`) ?? `#${form.coordinador}`)
-                          : <span className="text-muted-foreground">Sin coordinador</span>}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sin coordinador</SelectItem>
-                      {coordinadoresFiltrados.map((c) => (
-                        <SelectItem key={c.codigo} value={String(c.codigo)}>{c.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="col-span-2 flex items-center gap-2 pb-1">
-                  <Checkbox
-                    id="activo"
-                    checked={form.activo === 1}
-                    onCheckedChange={(checked) => setForm((prev) => ({ ...prev, activo: checked ? 1 : 0 }))}
-                  />
-                  <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
-                </div>
-
-              </div>
-            )}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           {/* Footer */}
           <DialogFooter className="mt-4 shrink-0">
@@ -929,11 +947,13 @@ export function VendedoresClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-lime-50 dark:hover:bg-lime-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-lime-50 dark:hover:bg-lime-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

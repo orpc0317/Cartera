@@ -43,6 +43,7 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
@@ -322,6 +323,8 @@ export function GfaceClient({
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [viewTarget, setViewTarget] = useState<(Gface & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<Gface | null>(null)
   const [auditTarget, setAuditTarget] = useState<Gface | null>(null)
   const [form, setForm] = useState<GfaceForm>(EMPTY_FORM)
@@ -613,6 +616,191 @@ export function GfaceClient({
     return uniqueText[key] ?? []
   }
 
+  function pasoGeneral() {
+    return (
+    <>
+              {!isEditing && viewTarget ? (
+                <div className="flex gap-6 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2">
+                        <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
+                      </div>
+                      <div className="col-span-2">
+                        <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
+                      </div>
+                      <div className="col-span-2">
+                        <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
+                      <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
+                      <ViewField label="Requestor" value={viewTarget.requestor} />
+                      <ViewField label="Entidad" value={viewTarget.entity} />
+                      <ViewField label="Usuario" value={viewTarget.user_name} />
+                      <ViewField label="Token" value={secretMask(viewTarget.token_configurado ? 'configurado' : null)} />
+                    </SegmentCard>
+                  </div>
+
+                  <div className="w-px self-stretch bg-primary/30" />
+
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="SERVICIO">
+                      <div className="col-span-2"><ViewField label="Servicio Web" value={viewTarget.web_service} /></div>
+                      <div className="col-span-2"><ViewField label="Servicio Web de Documento" value={viewTarget.web_service_documento} /></div>
+                    </SegmentCard>
+                    <SegmentCard label="CERTIFICADO">
+                      <div className="col-span-2"><ViewField label="Certificado Post" value={viewTarget.certificado_post} /></div>
+                      <div className="col-span-2"><ViewField label="Ruta del Certificado" value={viewTarget.certificado_ruta} /></div>
+                      <ViewField label="Nombre del Certificado" value={viewTarget.certificado_nombre} />
+                      <ViewField label="Contrasena del Certificado" value={secretMask(viewTarget.certificado_configurado ? 'configurado' : null)} />
+                    </SegmentCard>
+                    <SegmentCard label="CORREO">
+                      <ViewField label="Correo de Envio" value={viewTarget.correo_envio} />
+                      <ViewField label="Correo Copia" value={viewTarget.correo_copia} />
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox checked={viewTarget.primera_firma === 1} disabled />
+                        <span className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Primera Firma</span>
+                      </div>
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox checked={viewTarget.validar_identificacion === 1} disabled />
+                        <span className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Validar Identificacion</span>
+                      </div>
+                    </SegmentCard>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-6 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="empresa" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                        <Select
+                          value={form.empresa ? String(form.empresa) : ''}
+                          onValueChange={(v) => f('empresa', Number(v))}
+                          disabled={!!viewTarget}
+                        >
+                          <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
+                            <SelectValue placeholder="Selecciona empresa">
+                              {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {empresas.map((e) => (
+                              <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="proyecto" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                        <Select
+                          value={form.proyecto ? String(form.proyecto) : ''}
+                          onValueChange={(v) => f('proyecto', Number(v))}
+                          disabled={!!viewTarget || !form.empresa}
+                        >
+                          <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
+                            <SelectValue placeholder="Selecciona proyecto">
+                              {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {proyectosPorEmpresa.map((p) => (
+                              <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                        <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} maxLength={100} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del certificador" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="requestor" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Requestor</Label>
+                        <Input variant="l-border" id="requestor" value={textOrEmpty(form.requestor)} maxLength={50} onChange={(e) => f('requestor', e.target.value)} placeholder="Requestor" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="entity" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Entidad</Label>
+                        <Input variant="l-border" id="entity" value={textOrEmpty(form.entity)} maxLength={25} onChange={(e) => f('entity', e.target.value)} placeholder="Entidad" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="user_name" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Usuario</Label>
+                        <Input variant="l-border" id="user_name" value={textOrEmpty(form.user_name)} maxLength={25} onChange={(e) => f('user_name', e.target.value)} placeholder="Usuario" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="token" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Token</Label>
+                        <Input variant="l-border" id="token" type="password" autoComplete="new-password" value={textOrEmpty(form.token)} maxLength={50} onChange={(e) => f('token', e.target.value)} placeholder="Token" />
+                      </div>
+                    </SegmentCard>
+                  </div>
+
+                  <div className="w-px self-stretch bg-primary/30" />
+
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="SERVICIO">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="web_service" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Servicio Web</Label>
+                        <Input variant="l-border" id="web_service" value={textOrEmpty(form.web_service)} maxLength={100} onChange={(e) => f('web_service', e.target.value)} placeholder="Url del servicio web" />
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="web_service_documento" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Servicio Web de Documento</Label>
+                        <Input variant="l-border" id="web_service_documento" value={textOrEmpty(form.web_service_documento)} maxLength={100} onChange={(e) => f('web_service_documento', e.target.value)} placeholder="Url del servicio de documento" />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="CERTIFICADO">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="certificado_post" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Certificado Post</Label>
+                        <Input variant="l-border" id="certificado_post" value={textOrEmpty(form.certificado_post)} maxLength={100} onChange={(e) => f('certificado_post', e.target.value)} placeholder="Url de publicacion del certificado" />
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="certificado_ruta" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Ruta del Certificado</Label>
+                        <Input variant="l-border" id="certificado_ruta" value={textOrEmpty(form.certificado_ruta)} maxLength={100} onChange={(e) => f('certificado_ruta', e.target.value)} placeholder="Ruta del certificado" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="certificado_nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre del Certificado</Label>
+                        <Input variant="l-border" id="certificado_nombre" value={textOrEmpty(form.certificado_nombre)} maxLength={50} onChange={(e) => f('certificado_nombre', e.target.value)} placeholder="Nombre del archivo" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="certificado_contrasena" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Contrasena del Certificado</Label>
+                        <Input variant="l-border" id="certificado_contrasena" type="password" autoComplete="new-password" value={textOrEmpty(form.certificado_contrasena)} maxLength={25} onChange={(e) => f('certificado_contrasena', e.target.value)} placeholder="Contrasena" />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="CORREO">
+                      <div className="grid gap-1">
+                        <Label htmlFor="correo_envio" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo de Envio</Label>
+                        <Input variant="l-border" id="correo_envio" aria-invalid={campoInvalido?.id === 'correo_envio' || undefined} type="email" value={textOrEmpty(form.correo_envio)} maxLength={50} onChange={(e) => f('correo_envio', e.target.value)} placeholder="Correo@ejemplo.com" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="correo_copia" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo Copia</Label>
+                        <Input variant="l-border" id="correo_copia" aria-invalid={campoInvalido?.id === 'correo_copia' || undefined} type="email" value={textOrEmpty(form.correo_copia)} maxLength={50} onChange={(e) => f('correo_copia', e.target.value)} placeholder="Correo@ejemplo.com" />
+                      </div>
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox
+                          id="primera_firma"
+                          checked={form.primera_firma === 1}
+                          onCheckedChange={(checked) => f('primera_firma', checked ? 1 : 0)}
+                        />
+                        <Label htmlFor="primera_firma" className={`${LABEL_CLASS} cursor-pointer`} style={{ fontSize: 'var(--ui-form-label)' }}>Primera Firma</Label>
+                      </div>
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox
+                          id="validar_identificacion"
+                          checked={form.validar_identificacion === 1}
+                          onCheckedChange={(checked) => f('validar_identificacion', checked ? 1 : 0)}
+                        />
+                        <Label htmlFor="validar_identificacion" className={`${LABEL_CLASS} cursor-pointer`} style={{ fontSize: 'var(--ui-form-label)' }}>Validar Identificacion</Label>
+                      </div>
+                    </SegmentCard>
+                  </div>
+                </div>
+              )}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -801,6 +989,11 @@ export function GfaceClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -809,185 +1002,10 @@ export function GfaceClient({
             </TabsList></div>
 
             <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
-              {!isEditing && viewTarget ? (
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2">
-                        <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
-                      </div>
-                      <div className="col-span-2">
-                        <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
-                      </div>
-                      <div className="col-span-2">
-                        <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
-                      </div>
-                    </SegmentCard>
-                    <SegmentCard label="GENERAL">
-                      <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
-                      <ViewField label="Requestor" value={viewTarget.requestor} />
-                      <ViewField label="Entidad" value={viewTarget.entity} />
-                      <ViewField label="Usuario" value={viewTarget.user_name} />
-                      <ViewField label="Token" value={secretMask(viewTarget.token_configurado ? 'configurado' : null)} />
-                    </SegmentCard>
-                  </div>
-
-                  <div className="w-px self-stretch bg-primary/30" />
-
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="SERVICIO">
-                      <div className="col-span-2"><ViewField label="Servicio Web" value={viewTarget.web_service} /></div>
-                      <div className="col-span-2"><ViewField label="Servicio Web de Documento" value={viewTarget.web_service_documento} /></div>
-                    </SegmentCard>
-                    <SegmentCard label="CERTIFICADO">
-                      <div className="col-span-2"><ViewField label="Certificado Post" value={viewTarget.certificado_post} /></div>
-                      <div className="col-span-2"><ViewField label="Ruta del Certificado" value={viewTarget.certificado_ruta} /></div>
-                      <ViewField label="Nombre del Certificado" value={viewTarget.certificado_nombre} />
-                      <ViewField label="Contrasena del Certificado" value={secretMask(viewTarget.certificado_configurado ? 'configurado' : null)} />
-                    </SegmentCard>
-                    <SegmentCard label="CORREO">
-                      <ViewField label="Correo de Envio" value={viewTarget.correo_envio} />
-                      <ViewField label="Correo Copia" value={viewTarget.correo_copia} />
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox checked={viewTarget.primera_firma === 1} disabled />
-                        <span className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Primera Firma</span>
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox checked={viewTarget.validar_identificacion === 1} disabled />
-                        <span className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Validar Identificacion</span>
-                      </div>
-                    </SegmentCard>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="empresa" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                        <Select
-                          value={form.empresa ? String(form.empresa) : ''}
-                          onValueChange={(v) => f('empresa', Number(v))}
-                          disabled={!!viewTarget}
-                        >
-                          <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
-                            <SelectValue placeholder="Selecciona empresa">
-                              {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {empresas.map((e) => (
-                              <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="proyecto" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                        <Select
-                          value={form.proyecto ? String(form.proyecto) : ''}
-                          onValueChange={(v) => f('proyecto', Number(v))}
-                          disabled={!!viewTarget || !form.empresa}
-                        >
-                          <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
-                            <SelectValue placeholder="Selecciona proyecto">
-                              {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {proyectosPorEmpresa.map((p) => (
-                              <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </SegmentCard>
-                    <SegmentCard label="GENERAL">
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                        <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} maxLength={100} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del certificador" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="requestor" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Requestor</Label>
-                        <Input variant="l-border" id="requestor" value={textOrEmpty(form.requestor)} maxLength={50} onChange={(e) => f('requestor', e.target.value)} placeholder="Requestor" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="entity" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Entidad</Label>
-                        <Input variant="l-border" id="entity" value={textOrEmpty(form.entity)} maxLength={25} onChange={(e) => f('entity', e.target.value)} placeholder="Entidad" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="user_name" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Usuario</Label>
-                        <Input variant="l-border" id="user_name" value={textOrEmpty(form.user_name)} maxLength={25} onChange={(e) => f('user_name', e.target.value)} placeholder="Usuario" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="token" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Token</Label>
-                        <Input variant="l-border" id="token" type="password" autoComplete="new-password" value={textOrEmpty(form.token)} maxLength={50} onChange={(e) => f('token', e.target.value)} placeholder="Token" />
-                      </div>
-                    </SegmentCard>
-                  </div>
-
-                  <div className="w-px self-stretch bg-primary/30" />
-
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="SERVICIO">
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="web_service" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Servicio Web</Label>
-                        <Input variant="l-border" id="web_service" value={textOrEmpty(form.web_service)} maxLength={100} onChange={(e) => f('web_service', e.target.value)} placeholder="Url del servicio web" />
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="web_service_documento" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Servicio Web de Documento</Label>
-                        <Input variant="l-border" id="web_service_documento" value={textOrEmpty(form.web_service_documento)} maxLength={100} onChange={(e) => f('web_service_documento', e.target.value)} placeholder="Url del servicio de documento" />
-                      </div>
-                    </SegmentCard>
-                    <SegmentCard label="CERTIFICADO">
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="certificado_post" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Certificado Post</Label>
-                        <Input variant="l-border" id="certificado_post" value={textOrEmpty(form.certificado_post)} maxLength={100} onChange={(e) => f('certificado_post', e.target.value)} placeholder="Url de publicacion del certificado" />
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="certificado_ruta" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Ruta del Certificado</Label>
-                        <Input variant="l-border" id="certificado_ruta" value={textOrEmpty(form.certificado_ruta)} maxLength={100} onChange={(e) => f('certificado_ruta', e.target.value)} placeholder="Ruta del certificado" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="certificado_nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre del Certificado</Label>
-                        <Input variant="l-border" id="certificado_nombre" value={textOrEmpty(form.certificado_nombre)} maxLength={50} onChange={(e) => f('certificado_nombre', e.target.value)} placeholder="Nombre del archivo" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="certificado_contrasena" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Contrasena del Certificado</Label>
-                        <Input variant="l-border" id="certificado_contrasena" type="password" autoComplete="new-password" value={textOrEmpty(form.certificado_contrasena)} maxLength={25} onChange={(e) => f('certificado_contrasena', e.target.value)} placeholder="Contrasena" />
-                      </div>
-                    </SegmentCard>
-                    <SegmentCard label="CORREO">
-                      <div className="grid gap-1">
-                        <Label htmlFor="correo_envio" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo de Envio</Label>
-                        <Input variant="l-border" id="correo_envio" aria-invalid={campoInvalido?.id === 'correo_envio' || undefined} type="email" value={textOrEmpty(form.correo_envio)} maxLength={50} onChange={(e) => f('correo_envio', e.target.value)} placeholder="Correo@ejemplo.com" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="correo_copia" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo Copia</Label>
-                        <Input variant="l-border" id="correo_copia" aria-invalid={campoInvalido?.id === 'correo_copia' || undefined} type="email" value={textOrEmpty(form.correo_copia)} maxLength={50} onChange={(e) => f('correo_copia', e.target.value)} placeholder="Correo@ejemplo.com" />
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox
-                          id="primera_firma"
-                          checked={form.primera_firma === 1}
-                          onCheckedChange={(checked) => f('primera_firma', checked ? 1 : 0)}
-                        />
-                        <Label htmlFor="primera_firma" className={`${LABEL_CLASS} cursor-pointer`} style={{ fontSize: 'var(--ui-form-label)' }}>Primera Firma</Label>
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox
-                          id="validar_identificacion"
-                          checked={form.validar_identificacion === 1}
-                          onCheckedChange={(checked) => f('validar_identificacion', checked ? 1 : 0)}
-                        />
-                        <Label htmlFor="validar_identificacion" className={`${LABEL_CLASS} cursor-pointer`} style={{ fontSize: 'var(--ui-form-label)' }}>Validar Identificacion</Label>
-                      </div>
-                    </SegmentCard>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -1016,11 +1034,13 @@ export function GfaceClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-gray-50 dark:hover:bg-gray-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-gray-50 dark:hover:bg-gray-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

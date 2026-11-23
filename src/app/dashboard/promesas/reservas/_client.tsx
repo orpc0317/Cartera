@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ClipboardList, MapPin, Download,
-  Plus, Search, X, Check, Settings2,
+  Plus, Search, X, Settings2,
   ChevronDown, ChevronUp, Eye, History,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
@@ -38,6 +38,7 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -512,6 +513,8 @@ export function ReservasClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [viewTarget, setViewTarget] = useState<(Reserva & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [auditTarget, setAuditTarget] = useState<Reserva | null>(null)
 
   // ── Formulario ────────────────────────────────────────────────────────
@@ -994,448 +997,9 @@ export function ReservasClient({
   const iconBadgeBg = 'bg-teal-100'
   const iconColor   = 'text-teal-600'
 
-  return (
-    <div className={LIST_SHELL}>
-
-      {/* ── Header ── */}
-      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-teal-100 p-2.5">
-            <ClipboardList className="h-5 w-5 text-teal-700" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Reservas</h1>
-            <p className="text-sm text-muted-foreground">Registro de reservas de lotes por proyecto</p>
-          </div>
-        </div>
-        {puedeAgregar && (
-          <div className="flex flex-col items-end gap-1">
-            <Button
-              onClick={openCreate}
-              disabled={lotesDisponibles.length === 0}
-              title={lotesDisponibles.length === 0 ? 'No hay lotes disponibles en este momento' : undefined}
-              className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
-            >
-              <Plus className="h-4 w-4" />
-              Nueva Reserva
-            </Button>
-            {lotesDisponibles.length === 0 && (
-              <p className="text-xs text-muted-foreground">No hay lotes disponibles.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Busqueda + Export + ColumnManager ── */}
-      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="l-border"
-            placeholder="Buscar reservas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta('') }} className="gap-1.5 text-muted-foreground">
-            <X className="h-3.5 w-3.5" /> Limpiar filtros
-          </Button>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" /> Exportar CSV
-          </Button>
-          <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
-        </div>
-      </div>
-
-      {/* ── Filtros rapidos: fecha + vendedor ── */}
-      <div className={`${LIST_BLOCK} flex flex-wrap items-center gap-2`}>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground shrink-0">Desde</span>
-          <Input variant="l-border"
-            type="date"
-            value={fechaDesde}
-            onChange={(e) => setFechaDesde(e.target.value)}
-            className="h-8 w-36 text-xs"
-          />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground shrink-0">Hasta</span>
-          <Input variant="l-border"
-            type="date"
-            value={fechaHasta}
-            onChange={(e) => setFechaHasta(e.target.value)}
-            className="h-8 w-36 text-xs"
-          />
-        </div>
-      </div>
-
-      {/* ── Tabla ── */}
-      <div
-        ref={tableRef}
-        className={LIST_SCROLLPORT}
-        tabIndex={0}
-        onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
-      >
-        <Table scrollable={false}>
-          <TableHeader className={LIST_THEAD}>
-            <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Numero</span></TableHead>
-              {visibleCols.map((col) => {
-                const def = ALL_COLUMNS.find((c) => c.key === col.key)!
-                if (col.key === '__empresa') {
-                  return (
-                    <TableHead key="__empresa" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Empresa"
-                        values={[...new Set(reservas.map((r) => empresaMap.get(r.empresa) ?? `#${r.empresa}`))].sort()}
-                        active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
-                          setColFilter('__empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__proyecto') {
-                  return (
-                    <TableHead key="__proyecto" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Proyecto"
-                        values={[...new Set(reservas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`))].sort()}
-                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
-                          setColFilter('__proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__cliente') {
-                  return (
-                    <TableHead key="__cliente" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Cliente"
-                        values={[...new Set(reservas.map((r) => clienteMap.get(r.cliente) ?? `#${r.cliente}`))].sort()}
-                        active={new Set([...(colFilters['__cliente'] ?? new Set())].map((k) => clienteMap.get(Number(k)) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(clientes.map((c) => [c.nombre, String(c.codigo)]))
-                          setColFilter('__cliente', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__fase') {
-                  return (
-                    <TableHead key="__fase" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Fase"
-                        values={[...new Set(reservas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`))].sort()}
-                        active={new Set([...(colFilters['__fase'] ?? new Set())].map((k) => faseMap.get(k) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(fases.map((f) => [f.nombre, `${f.empresa}-${f.proyecto}-${f.codigo}`]))
-                          setColFilter('__fase', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__manzana') {
-                  return (
-                    <TableHead key="__manzana" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Manzana"
-                        values={[...new Set(reservas.map((r) => r.manzana).filter(Boolean))].sort()}
-                        active={colFilters['__manzana'] ?? new Set()}
-                        onChange={(v) => setColFilter('__manzana', v)}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__vendedor') {
-                  return (
-                    <TableHead key="__vendedor" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Vendedor"
-                        values={[...new Set(reservas.map((r) => vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`))].sort()}
-                        active={new Set([...(colFilters['__vendedor'] ?? new Set())].map((k) => vendedorMap.get(k) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(vendedores.map((v) => [v.nombre, `${v.empresa}-${v.proyecto}-${v.codigo}`]))
-                          setColFilter('__vendedor', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__moneda') {
-                  return (
-                    <TableHead key="__moneda" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Moneda"
-                        values={[...new Set(reservas.map((r) => r.moneda).filter(Boolean))].sort()}
-                        active={colFilters['__moneda'] ?? new Set()}
-                        onChange={(v) => setColFilter('__moneda', v)}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__forma_pago') {
-                  return (
-                    <TableHead key="__forma_pago" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Forma Pago"
-                        values={Object.entries(FORMAS_PAGO).map(([, v]) => v)}
-                        active={new Set([...(colFilters['__forma_pago'] ?? new Set())].map((k) => FORMAS_PAGO[Number(k)] ?? k))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(Object.entries(FORMAS_PAGO).map(([k, v]) => [v, k]))
-                          setColFilter('__forma_pago', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__banco') {
-                  return (
-                    <TableHead key="__banco" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Banco"
-                        values={[...new Set(reservas.map((r) => bancoMap.get(r.banco) ?? `#${r.banco}`))].sort()}
-                        active={new Set([...(colFilters['__banco'] ?? new Set())].map((k) => bancoMap.get(Number(k)) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(bancos.map((b) => [b.nombre, String(b.codigo)]))
-                          setColFilter('__banco', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__cuenta_bancaria') {
-                  return (
-                    <TableHead key="__cuenta_bancaria" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Cuenta Bancaria"
-                        values={[...new Set(reservas.map((r) => cuentaBancariaMap.get(r.cuenta_bancaria) ?? `#${r.cuenta_bancaria}`))].sort()}
-                        active={new Set([...(colFilters['__cuenta_bancaria'] ?? new Set())].map((k) => cuentaBancariaMap.get(Number(k)) ?? `#${k}`))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(cuentasBancarias.map((cb) => [cuentaBancariaMap.get(cb.codigo) ?? String(cb.codigo), String(cb.codigo)]))
-                          setColFilter('__cuenta_bancaria', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                if (col.key === 'monto') {
-                  return (
-                    <TableHead key="monto" className={`${LIST_HEAD} w-36 text-right`}>
-                      <span className="text-xs font-medium text-muted-foreground">Monto</span>
-                    </TableHead>
-                  )
-                }
-                if (col.key === '__estado') {
-                  return (
-                    <TableHead key="__estado" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Estado"
-                        values={Object.entries(RESERVA_ESTADOS).map(([, v]) => v.label)}
-                        active={new Set([...(colFilters['__estado'] ?? new Set())].map((k) => RESERVA_ESTADOS[Number(k)]?.label ?? k))}
-                        onChange={(labels) => {
-                          const byLabel = new Map(Object.entries(RESERVA_ESTADOS).map(([k, v]) => [v.label, k]))
-                          setColFilter('__estado', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                return (
-                  <TableHead key={col.key} className={LIST_HEAD}>
-                    <ColumnFilter
-                      label={def.label}
-                      values={[...new Set(reservas.map((r) => String(r[col.key as keyof Reserva] ?? '')))].sort()}
-                      active={colFilters[col.key] ?? new Set()}
-                      onChange={(v) => setColFilter(col.key, v)}
-                    />
-                  </TableHead>
-                )
-              })}
-              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pagedRows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters
-                    ? 'No se encontraron reservas con ese criterio.'
-                    : 'Todavia no hay reservas. Haz clic en "Nueva Reserva" para comenzar.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              pagedRows.map((r, rowIdx) => {
-                const globalIdx = page * PAGE_SIZE + rowIdx
-                const isActive = cursorIdx === globalIdx
-                return (
-                  <TableRow
-                    key={r.id}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'hover:bg-muted/40'}`}
-                    onClick={() => setCursorIdx(globalIdx)}
-                    onDoubleClick={() => openView(r)}
-                  >
-                    <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
-                      isActive
-                        ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold'
-                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
-                    }`}>
-                      {r.numero}
-                    </TableCell>
-
-                    {visibleCols.map((col) => {
-                      switch (col.key) {
-                        case '__empresa':
-                          return <TableCell key="__empresa" className="text-muted-foreground">{empresaMap.get(r.empresa) ?? `#${r.empresa}`}</TableCell>
-                        case '__proyecto':
-                          return <TableCell key="__proyecto" className="font-medium">{proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`}</TableCell>
-                        case '__fase':
-                          return <TableCell key="__fase" className="text-muted-foreground">{faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`}</TableCell>
-                        case '__manzana':
-                          return <TableCell key="__manzana" className="text-muted-foreground">{r.manzana}</TableCell>
-                        case 'lote':
-                          return <TableCell key="lote" className="font-mono text-xs text-muted-foreground">{r.lote}</TableCell>
-                        case '__cliente':
-                          return <TableCell key="__cliente" className="text-muted-foreground">{clienteMap.get(r.cliente) ?? `#${r.cliente}`}</TableCell>
-                        case '__vendedor':
-                          return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`}</TableCell>
-                        case 'fecha':
-                          return <TableCell key="fecha" className="text-muted-foreground">{r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</TableCell>
-                        case '__moneda': {
-                          const flag = CURRENCY_FLAG_MAP.get(r.moneda)
-                          return (
-                            <TableCell key="__moneda" className="text-muted-foreground">
-                              <span className="inline-flex items-center gap-1.5">
-                                {flag && (
-                                  <img
-                                    src={`https://flagcdn.com/w20/${flag}.png`}
-                                    width={20} height={14}
-                                    alt={r.moneda}
-                                    className="rounded-[2px] shrink-0"
-                                  />
-                                )}
-                                {r.moneda}
-                              </span>
-                            </TableCell>
-                          )
-                        }
-                        case 'monto': {
-                          return (
-                            <TableCell key="monto" className="w-36 text-right text-sm">
-                              {fmt(r.monto)}
-                            </TableCell>
-                          )
-                        }
-                        case '__forma_pago':
-                          return <TableCell key="__forma_pago" className="text-muted-foreground">{FORMAS_PAGO[r.forma_pago] ?? `#${r.forma_pago}`}</TableCell>
-                        case '__banco':
-                          return <TableCell key="__banco" className="text-muted-foreground">{bancoMap.get(r.banco) ?? (r.banco ? `#${r.banco}` : '—')}</TableCell>
-                        case 'num_cuenta':
-                          return <TableCell key="num_cuenta" className="font-mono text-xs text-muted-foreground">{r.num_cuenta || '—'}</TableCell>
-                        case '__cuenta_bancaria':
-                          return <TableCell key="__cuenta_bancaria" className="text-muted-foreground">{cuentaBancariaMap.get(r.cuenta_bancaria) ?? (r.cuenta_bancaria ? `#${r.cuenta_bancaria}` : '—')}</TableCell>
-                        case 'num_documento':
-                          return <TableCell key="num_documento" className="font-mono text-xs text-muted-foreground">{r.num_documento || '—'}</TableCell>
-                        case '__estado': {
-                          const est = RESERVA_ESTADOS[r.estado]
-                          return (
-                            <TableCell key="__estado">
-                              {est
-                                ? <Badge variant="outline" className={`font-normal ${est.cls}`}>{est.label}</Badge>
-                                : <Badge variant="outline" className="font-normal">{r.estado}</Badge>}
-                            </TableCell>
-                          )
-                        }
-                        default:
-                          return <TableCell key={col.key} className="text-muted-foreground">{String(r[col.key as keyof Reserva] ?? '—')}</TableCell>
-                      }
-                    })}
-
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <button
-                        type="button"
-                        onClick={() => openView(r)}
-                        title="Ver"
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className={`${LIST_BLOCK} flex items-center justify-between`}>
-        <p className="text-xs text-muted-foreground">
-          {filtered.length > 0
-            ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} reserva${filtered.length !== 1 ? 's' : ''}`
-            : '0 reservas'}
-        </p>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1">
-            <button type="button" aria-label="Página anterior" disabled={page === 0} onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-            <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
-            <button type="button" aria-label="Página siguiente" disabled={page >= totalPages - 1} onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Dialogo Nueva / Ver Reserva ── */}
-      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
-        if (!open && auditTarget !== null) return
-        setDialogOpen(open)
-        if (!open) { setIsEditing(false) }
-      }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
-            <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>
-                <ClipboardList className={`h-5 w-5 ${iconColor}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing ? 'Nueva Reserva' : 'Detalle de Reserva'}
-                </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))} — Lote {viewTarget.lote}
-                  </p>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <MapPin className="h-3.5 w-3.5" /> General
-              </TabsTrigger>
-            </TabsList></div>
-
-            {/* ── Tab General ── */}
-            <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+  function pasoGeneral() {
+    return (
+    <>
 
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
@@ -2003,8 +1567,462 @@ export function ReservasClient({
                 </div>
               )}
 
-            </TabsContent>
+            
+    </>
+    )
+  }
+
+  return (
+    <div className={LIST_SHELL}>
+
+      {/* ── Header ── */}
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-teal-100 p-2.5">
+            <ClipboardList className="h-5 w-5 text-teal-700" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Reservas</h1>
+            <p className="text-sm text-muted-foreground">Registro de reservas de lotes por proyecto</p>
+          </div>
+        </div>
+        {puedeAgregar && (
+          <div className="flex flex-col items-end gap-1">
+            <Button
+              onClick={openCreate}
+              disabled={lotesDisponibles.length === 0}
+              title={lotesDisponibles.length === 0 ? 'No hay lotes disponibles en este momento' : undefined}
+              className="gap-2 bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva Reserva
+            </Button>
+            {lotesDisponibles.length === 0 && (
+              <p className="text-xs text-muted-foreground">No hay lotes disponibles.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Busqueda + Export + ColumnManager ── */}
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input variant="l-border"
+            placeholder="Buscar reservas..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta('') }} className="gap-1.5 text-muted-foreground">
+            <X className="h-3.5 w-3.5" /> Limpiar filtros
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => exportCsv(filtered, colPrefs)} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
+          <ColumnManager prefs={colPrefs} onToggle={toggleCol} onMove={moveCol} onReset={() => saveColPrefs(DEFAULT_PREFS)} />
+        </div>
+      </div>
+
+      {/* ── Filtros rapidos: fecha + vendedor ── */}
+      <div className={`${LIST_BLOCK} flex flex-wrap items-center gap-2`}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Desde</span>
+          <Input variant="l-border"
+            type="date"
+            value={fechaDesde}
+            onChange={(e) => setFechaDesde(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground shrink-0">Hasta</span>
+          <Input variant="l-border"
+            type="date"
+            value={fechaHasta}
+            onChange={(e) => setFechaHasta(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+        </div>
+      </div>
+
+      {/* ── Tabla ── */}
+      <div
+        ref={tableRef}
+        className={LIST_SCROLLPORT}
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(page * PAGE_SIZE) }}
+      >
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Numero</span></TableHead>
+              {visibleCols.map((col) => {
+                const def = ALL_COLUMNS.find((c) => c.key === col.key)!
+                if (col.key === '__empresa') {
+                  return (
+                    <TableHead key="__empresa" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Empresa"
+                        values={[...new Set(reservas.map((r) => empresaMap.get(r.empresa) ?? `#${r.empresa}`))].sort()}
+                        active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
+                          setColFilter('__empresa', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__proyecto') {
+                  return (
+                    <TableHead key="__proyecto" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Proyecto"
+                        values={[...new Set(reservas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`))].sort()}
+                        active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
+                          setColFilter('__proyecto', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__cliente') {
+                  return (
+                    <TableHead key="__cliente" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Cliente"
+                        values={[...new Set(reservas.map((r) => clienteMap.get(r.cliente) ?? `#${r.cliente}`))].sort()}
+                        active={new Set([...(colFilters['__cliente'] ?? new Set())].map((k) => clienteMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(clientes.map((c) => [c.nombre, String(c.codigo)]))
+                          setColFilter('__cliente', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__fase') {
+                  return (
+                    <TableHead key="__fase" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Fase"
+                        values={[...new Set(reservas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`))].sort()}
+                        active={new Set([...(colFilters['__fase'] ?? new Set())].map((k) => faseMap.get(k) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(fases.map((f) => [f.nombre, `${f.empresa}-${f.proyecto}-${f.codigo}`]))
+                          setColFilter('__fase', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__manzana') {
+                  return (
+                    <TableHead key="__manzana" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Manzana"
+                        values={[...new Set(reservas.map((r) => r.manzana).filter(Boolean))].sort()}
+                        active={colFilters['__manzana'] ?? new Set()}
+                        onChange={(v) => setColFilter('__manzana', v)}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__vendedor') {
+                  return (
+                    <TableHead key="__vendedor" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Vendedor"
+                        values={[...new Set(reservas.map((r) => vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`))].sort()}
+                        active={new Set([...(colFilters['__vendedor'] ?? new Set())].map((k) => vendedorMap.get(k) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(vendedores.map((v) => [v.nombre, `${v.empresa}-${v.proyecto}-${v.codigo}`]))
+                          setColFilter('__vendedor', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__moneda') {
+                  return (
+                    <TableHead key="__moneda" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Moneda"
+                        values={[...new Set(reservas.map((r) => r.moneda).filter(Boolean))].sort()}
+                        active={colFilters['__moneda'] ?? new Set()}
+                        onChange={(v) => setColFilter('__moneda', v)}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__forma_pago') {
+                  return (
+                    <TableHead key="__forma_pago" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Forma Pago"
+                        values={Object.entries(FORMAS_PAGO).map(([, v]) => v)}
+                        active={new Set([...(colFilters['__forma_pago'] ?? new Set())].map((k) => FORMAS_PAGO[Number(k)] ?? k))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(Object.entries(FORMAS_PAGO).map(([k, v]) => [v, k]))
+                          setColFilter('__forma_pago', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__banco') {
+                  return (
+                    <TableHead key="__banco" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Banco"
+                        values={[...new Set(reservas.map((r) => bancoMap.get(r.banco) ?? `#${r.banco}`))].sort()}
+                        active={new Set([...(colFilters['__banco'] ?? new Set())].map((k) => bancoMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(bancos.map((b) => [b.nombre, String(b.codigo)]))
+                          setColFilter('__banco', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__cuenta_bancaria') {
+                  return (
+                    <TableHead key="__cuenta_bancaria" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Cuenta Bancaria"
+                        values={[...new Set(reservas.map((r) => cuentaBancariaMap.get(r.cuenta_bancaria) ?? `#${r.cuenta_bancaria}`))].sort()}
+                        active={new Set([...(colFilters['__cuenta_bancaria'] ?? new Set())].map((k) => cuentaBancariaMap.get(Number(k)) ?? `#${k}`))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(cuentasBancarias.map((cb) => [cuentaBancariaMap.get(cb.codigo) ?? String(cb.codigo), String(cb.codigo)]))
+                          setColFilter('__cuenta_bancaria', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                if (col.key === 'monto') {
+                  return (
+                    <TableHead key="monto" className={`${LIST_HEAD} w-36 text-right`}>
+                      <span className="text-xs font-medium text-muted-foreground">Monto</span>
+                    </TableHead>
+                  )
+                }
+                if (col.key === '__estado') {
+                  return (
+                    <TableHead key="__estado" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Estado"
+                        values={Object.entries(RESERVA_ESTADOS).map(([, v]) => v.label)}
+                        active={new Set([...(colFilters['__estado'] ?? new Set())].map((k) => RESERVA_ESTADOS[Number(k)]?.label ?? k))}
+                        onChange={(labels) => {
+                          const byLabel = new Map(Object.entries(RESERVA_ESTADOS).map(([k, v]) => [v.label, k]))
+                          setColFilter('__estado', new Set([...labels].map((l) => byLabel.get(l) ?? l)))
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                return (
+                  <TableHead key={col.key} className={LIST_HEAD}>
+                    <ColumnFilter
+                      label={def.label}
+                      values={[...new Set(reservas.map((r) => String(r[col.key as keyof Reserva] ?? '')))].sort()}
+                      active={colFilters[col.key] ?? new Set()}
+                      onChange={(v) => setColFilter(col.key, v)}
+                    />
+                  </TableHead>
+                )
+              })}
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pagedRows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters
+                    ? 'No se encontraron reservas con ese criterio.'
+                    : 'Todavia no hay reservas. Haz clic en "Nueva Reserva" para comenzar.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              pagedRows.map((r, rowIdx) => {
+                const globalIdx = page * PAGE_SIZE + rowIdx
+                const isActive = cursorIdx === globalIdx
+                return (
+                  <TableRow
+                    key={r.id}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'hover:bg-muted/40'}`}
+                    onClick={() => setCursorIdx(globalIdx)}
+                    onDoubleClick={() => openView(r)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
+                      isActive
+                        ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold'
+                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
+                    }`}>
+                      {r.numero}
+                    </TableCell>
+
+                    {visibleCols.map((col) => {
+                      switch (col.key) {
+                        case '__empresa':
+                          return <TableCell key="__empresa" className="text-muted-foreground">{empresaMap.get(r.empresa) ?? `#${r.empresa}`}</TableCell>
+                        case '__proyecto':
+                          return <TableCell key="__proyecto" className="font-medium">{proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`}</TableCell>
+                        case '__fase':
+                          return <TableCell key="__fase" className="text-muted-foreground">{faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`}</TableCell>
+                        case '__manzana':
+                          return <TableCell key="__manzana" className="text-muted-foreground">{r.manzana}</TableCell>
+                        case 'lote':
+                          return <TableCell key="lote" className="font-mono text-xs text-muted-foreground">{r.lote}</TableCell>
+                        case '__cliente':
+                          return <TableCell key="__cliente" className="text-muted-foreground">{clienteMap.get(r.cliente) ?? `#${r.cliente}`}</TableCell>
+                        case '__vendedor':
+                          return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`}</TableCell>
+                        case 'fecha':
+                          return <TableCell key="fecha" className="text-muted-foreground">{r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</TableCell>
+                        case '__moneda': {
+                          const flag = CURRENCY_FLAG_MAP.get(r.moneda)
+                          return (
+                            <TableCell key="__moneda" className="text-muted-foreground">
+                              <span className="inline-flex items-center gap-1.5">
+                                {flag && (
+                                  <img
+                                    src={`https://flagcdn.com/w20/${flag}.png`}
+                                    width={20} height={14}
+                                    alt={r.moneda}
+                                    className="rounded-[2px] shrink-0"
+                                  />
+                                )}
+                                {r.moneda}
+                              </span>
+                            </TableCell>
+                          )
+                        }
+                        case 'monto': {
+                          return (
+                            <TableCell key="monto" className="w-36 text-right text-sm">
+                              {fmt(r.monto)}
+                            </TableCell>
+                          )
+                        }
+                        case '__forma_pago':
+                          return <TableCell key="__forma_pago" className="text-muted-foreground">{FORMAS_PAGO[r.forma_pago] ?? `#${r.forma_pago}`}</TableCell>
+                        case '__banco':
+                          return <TableCell key="__banco" className="text-muted-foreground">{bancoMap.get(r.banco) ?? (r.banco ? `#${r.banco}` : '—')}</TableCell>
+                        case 'num_cuenta':
+                          return <TableCell key="num_cuenta" className="font-mono text-xs text-muted-foreground">{r.num_cuenta || '—'}</TableCell>
+                        case '__cuenta_bancaria':
+                          return <TableCell key="__cuenta_bancaria" className="text-muted-foreground">{cuentaBancariaMap.get(r.cuenta_bancaria) ?? (r.cuenta_bancaria ? `#${r.cuenta_bancaria}` : '—')}</TableCell>
+                        case 'num_documento':
+                          return <TableCell key="num_documento" className="font-mono text-xs text-muted-foreground">{r.num_documento || '—'}</TableCell>
+                        case '__estado': {
+                          const est = RESERVA_ESTADOS[r.estado]
+                          return (
+                            <TableCell key="__estado">
+                              {est
+                                ? <Badge variant="outline" className={`font-normal ${est.cls}`}>{est.label}</Badge>
+                                : <Badge variant="outline" className="font-normal">{r.estado}</Badge>}
+                            </TableCell>
+                          )
+                        }
+                        default:
+                          return <TableCell key={col.key} className="text-muted-foreground">{String(r[col.key as keyof Reserva] ?? '—')}</TableCell>
+                      }
+                    })}
+
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${isActive ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                      <button
+                        type="button"
+                        onClick={() => openView(r)}
+                        title="Ver"
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className={`${LIST_BLOCK} flex items-center justify-between`}>
+        <p className="text-xs text-muted-foreground">
+          {filtered.length > 0
+            ? `${page * PAGE_SIZE + 1}\u2013${Math.min((page + 1) * PAGE_SIZE, filtered.length)} de ${filtered.length} reserva${filtered.length !== 1 ? 's' : ''}`
+            : '0 reservas'}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button type="button" aria-label="Página anterior" disabled={page === 0} onClick={() => { setPage((p) => p - 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-xs text-muted-foreground tabular-nums px-1">{page + 1} / {totalPages}</span>
+            <button type="button" aria-label="Página siguiente" disabled={page >= totalPages - 1} onClick={() => { setPage((p) => p + 1); setCursorIdx(null) }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Dialogo Nueva / Ver Reserva ── */}
+      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
+        if (!open && auditTarget !== null) return
+        setDialogOpen(open)
+        if (!open) { setIsEditing(false) }
+      }}>
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>
+                <ClipboardList className={`h-5 w-5 ${iconColor}`} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing ? 'Nueva Reserva' : 'Detalle de Reserva'}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))} — Lote {viewTarget.lote}
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <MapPin className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+            </TabsList></div>
+
+            {/* ── Tab General ── */}
+            <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing ? (
@@ -2016,14 +2034,18 @@ export function ReservasClient({
                 )}
               </div>
             ) : (
-              <>
-                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelEdit} disabled={isSaving}>
-                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
-                </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={() => void handleSave()} disabled={isSaving}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isSaving ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={() => void handleSave()}
+                pending={isSaving}
+                pendingLabel="Guardando…"
+                className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                leading={(
+                  <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelEdit} disabled={isSaving}>
+                    <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
+                  </Button>
+                )}
+              />
             )}
           </DialogFooter>
 

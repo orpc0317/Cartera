@@ -207,7 +207,7 @@ test('nuevo proyecto marca el nombre vacío en la pestaña General', async ({ pa
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('El nombre del proyecto es requerido.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const campo = dialog.getByLabel('Nombre Proyecto *')
   await expect(campo).toBeVisible()
   await expect(campo).toHaveAttribute('aria-invalid', 'true')

@@ -159,7 +159,7 @@ test('nuevo lote exige codigo y se cierra sin guardar', async ({ page }) => {
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('El codigo es requerido.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   await expect(codigo).toHaveAttribute('aria-invalid', 'true')
   await expect(codigo).toBeFocused()
   await expect(page.getByText('Lote creado.')).toHaveCount(0)
@@ -191,7 +191,7 @@ test('un codigo repetido en la misma manzana marca el campo', async ({ page }) =
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Ya existe un lote con ese codigo.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   await expect(campo).toHaveAttribute('aria-invalid', 'true')
   await expect(campo).toBeFocused()
   await expect(dialog.getByRole('heading', { name: 'Nuevo Lote' })).toBeVisible()

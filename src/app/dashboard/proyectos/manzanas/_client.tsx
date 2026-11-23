@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Trash2, Plus, Grid3x3, Search,
-  History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin, Download, Check,
+  History, Eye, Settings2, ChevronDown, ChevronUp, X, MapPin, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +44,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { createManzana, deleteManzana,
   obtenerManzana,
 } from '@/app/actions/manzanas'
@@ -207,6 +208,8 @@ export function ManzanasClient({
   const [dialogOpen,   setDialogOpen]   = useState(false)
   const [isCreating,   setIsCreating]   = useState(false)
   const [viewTarget,   setViewTarget]   = useState<(Manzana & NombresVer) | null>(null)
+  const esAlta = isCreating
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<Manzana | null>(null)
   const [auditTarget,  setAuditTarget]  = useState<Manzana | null>(null)
   const [form,         setForm]         = useState<ManzanaForm>(EMPTY_FORM)
@@ -446,6 +449,78 @@ export function ManzanasClient({
 
   // --- Render ---------------------------------------------------------------
 
+  function pasoGeneral() {
+    return (
+    <>
+              {isCreating ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="IDENTIFICACION">
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
+                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
+                        <SelectValue placeholder="Selecciona empresa">
+                          {(v: string) => v && Number(v) ? (empresaMap.get(Number(v)) ?? v) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                    <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
+                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
+                        <SelectValue placeholder="Selecciona proyecto">
+                          {(v: string) => v && Number(v) ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase *</Label>
+                    <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
+                      <SelectTrigger variant="l-border" id="fase" aria-invalid={campoInvalido?.id === 'fase' || undefined} className="w-full">
+                        <SelectValue placeholder="Selecciona fase">
+                          {(v: string) => v && Number(v) ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
+                    <Input variant="l-border"
+                      id="codigo"
+                      aria-invalid={campoInvalido?.id === 'codigo' || undefined}
+                      value={form.codigo}
+                      onChange={(e) => f('codigo', e.target.value)}
+                      placeholder="Ej: A, B, 1, 2..."
+                    />
+                  </div>
+                  </SegmentCard>
+                </div>
+              ) : viewTarget ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="IDENTIFICACION">
+                  <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa))} /></div>
+                  <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} /></div>
+                  <ViewField locked label="Fase"   value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase))} />
+                  <ViewField locked label="Codigo" value={viewTarget.codigo} />
+                  </SegmentCard>
+                </div>
+              ) : null}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -611,6 +686,11 @@ export function ManzanasClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -619,80 +699,20 @@ export function ManzanasClient({
             </TabsList></div>
 
             <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-              {isCreating ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="IDENTIFICACION">
-                  <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                    <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
-                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
-                        <SelectValue placeholder="Selecciona empresa">
-                          {(v: string) => v && Number(v) ? (empresaMap.get(Number(v)) ?? v) : null}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                    <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
-                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
-                        <SelectValue placeholder="Selecciona proyecto">
-                          {(v: string) => v && Number(v) ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase *</Label>
-                    <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
-                      <SelectTrigger variant="l-border" id="fase" aria-invalid={campoInvalido?.id === 'fase' || undefined} className="w-full">
-                        <SelectValue placeholder="Selecciona fase">
-                          {(v: string) => v && Number(v) ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
-                    <Input variant="l-border"
-                      id="codigo"
-                      aria-invalid={campoInvalido?.id === 'codigo' || undefined}
-                      value={form.codigo}
-                      onChange={(e) => f('codigo', e.target.value)}
-                      placeholder="Ej: A, B, 1, 2..."
-                    />
-                  </div>
-                  </SegmentCard>
-                </div>
-              ) : viewTarget ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="IDENTIFICACION">
-                  <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? String(viewTarget.empresa))} /></div>
-                  <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} /></div>
-                  <ViewField locked label="Fase"   value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? String(viewTarget.fase))} />
-                  <ViewField locked label="Codigo" value={viewTarget.codigo} />
-                  </SegmentCard>
-                </div>
-              ) : null}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {isCreating ? (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-amber-50 dark:hover:bg-amber-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              />
             ) : viewTarget ? (
               <div className="flex w-full items-center gap-1">
                 <Button variant="ghost" size="sm" className="hover:bg-amber-50 dark:hover:bg-amber-950/30" onClick={() => setAuditTarget(viewTarget)}>

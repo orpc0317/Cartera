@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2,
+  CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2, Landmark, FileText, List,
 } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
@@ -22,6 +22,13 @@ import { getReciboParaDeposito, depositarPagos } from '@/app/actions/depositar-p
 import type { Empresa, Proyecto, Banco, CuentaBancaria, SerieRecibo } from '@/lib/types/proyectos'
 import type { ReciboDetalleItem } from '@/lib/types/depositar-pagos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
+
+const PASOS_DEPOSITO: readonly WizardStep[] = [
+  { id: 'identificacion', label: 'Identificacion', icon: Landmark },
+  { id: 'general', label: 'General', icon: FileText },
+  { id: 'detalle', label: 'Detalle', icon: List },
+]
 
 // ─── Constantes ───────────────────────────────────────────────────────────
 
@@ -103,7 +110,8 @@ export function DepositarPagosClient({
 
   // ── Transiciones ──
   const [isPendingBuscar, startTransitionBuscar] = useTransition()
-  const { campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('identificacion')
+  const wizard = useWizardNav(PASOS_DEPOSITO, activeTab, setActiveTab, true)
   const [isPendingSave,   startTransitionSave]   = useTransition()
 
   // ── Inicialización en mount ──
@@ -215,24 +223,25 @@ export function DepositarPagosClient({
     setBuscarNumero('')
     setReciboPreview(null)
     setBuscarError('')
+    wizard.reiniciar()
   }
 
   function handleGuardar() {
     if (!puedeAgregar) return
     if (recibos.length === 0) {
-      rechazar('buscar_numero', 'Debe agregar al menos un recibo al deposito.')
+      rechazar('buscar_numero', 'Debe agregar al menos un recibo al deposito.', 'detalle')
       return
     }
     if (!fecha) {
-      rechazar('fecha', 'La fecha del deposito es requerida.')
+      rechazar('fecha', 'La fecha del deposito es requerida.', 'general')
       return
     }
     if (!numeroDocumento.trim()) {
-      rechazar('numero_documento', 'El numero de documento es requerido.')
+      rechazar('numero_documento', 'El numero de documento es requerido.', 'general')
       return
     }
     if (!cuentaBancaria) {
-      rechazar('cuenta_bancaria', 'Debe seleccionar una cuenta bancaria.')
+      rechazar('cuenta_bancaria', 'Debe seleccionar una cuenta bancaria.', 'identificacion')
       return
     }
     startTransitionSave(async () => {
@@ -282,14 +291,16 @@ export function DepositarPagosClient({
         </div>
       </div>
 
-      {/* ── Dos paneles ── */}
-      <div className="flex min-h-0 flex-1 gap-6">
-
-        {/* ── Panel izquierdo — Encabezado ── */}
-        <div className="w-80 shrink-0 min-h-0 overflow-y-auto rounded-xl border border-border/60 bg-card p-4">
+      <FormWizard
+        steps={PASOS_DEPOSITO}
+        value={activeTab}
+        onValueChange={setActiveTab}
+        maxIndice={wizard.maxIndice}
+        className="min-h-0 flex-1"
+      >
+        {activeTab === 'identificacion' && (
+        <div className="mx-auto w-full max-w-xl rounded-xl border border-border/60 bg-card p-4">
           <div className="grid grid-cols-2 gap-2">
-
-            <SectionDivider label="Identificacion" />
 
             {/* Empresa */}
             <div className="col-span-2 grid gap-1">
@@ -347,7 +358,13 @@ export function DepositarPagosClient({
               )}
             </div>
 
-            <SectionDivider label="General" />
+          </div>
+        </div>
+        )}
+
+        {activeTab === 'general' && (
+        <div className="mx-auto w-full max-w-xl rounded-xl border border-border/60 bg-card p-4">
+          <div className="grid grid-cols-2 gap-2">
 
             {/* Fecha */}
             <div className="col-span-2 grid gap-1">
@@ -378,11 +395,9 @@ export function DepositarPagosClient({
 
           </div>
         </div>
+        )}
 
-        {/* ── Separador vertical ── */}
-        <div className="w-px self-stretch bg-border/60" />
-
-        {/* ── Panel derecho — Detalle ── */}
+        {activeTab === 'detalle' && (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
 
           {/* Buscador */}
@@ -555,9 +570,9 @@ export function DepositarPagosClient({
           </div>
 
         </div>
-      </div>
+        )}
+      </FormWizard>
 
-      {/* ── Footer sticky ── */}
       <div className={`${LIST_BLOCK} bg-card border-t border-border/60 px-6 py-3 flex items-center justify-end`}>
         <div className="flex gap-2">
           <Button
@@ -567,7 +582,16 @@ export function DepositarPagosClient({
           >
             Limpiar
           </Button>
-          {puedeAgregar && (
+          {!wizard.esPrimero && (
+            <Button variant="outline" onClick={wizard.anterior} disabled={isPendingSave}>
+              Anterior
+            </Button>
+          )}
+          {!wizard.esUltimo ? (
+            <Button onClick={wizard.siguiente} disabled={isPendingSave} className="bg-pink-600 hover:bg-pink-700 text-white">
+              Siguiente
+            </Button>
+          ) : puedeAgregar && (
             <Button
               onClick={handleGuardar}
               disabled={isPendingSave || recibos.length === 0}

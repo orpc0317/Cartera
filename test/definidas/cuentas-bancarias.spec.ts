@@ -177,7 +177,7 @@ test('nueva cuenta exige banco y se cierra sin guardar', async ({ page }) => {
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Selecciona el banco.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   await expect(banco).toHaveAttribute('aria-invalid', 'true')
   await expect(banco).toBeFocused()
   await expect(page.getByText('Cuenta bancaria creada.')).toHaveCount(0)
@@ -201,7 +201,7 @@ test('nueva cuenta exige numero cuando el banco ya esta elegido', async ({ page 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
 
   await expect(page.getByText('El numero de cuenta es requerido.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const numero = dialog.getByLabel('Numero Cuenta *')
   await expect(numero).toHaveAttribute('aria-invalid', 'true')
   await expect(numero).toBeFocused()
@@ -227,7 +227,7 @@ test('nueva cuenta exige nombre cuando el numero ya esta lleno', async ({ page }
   await dialog.getByRole('button', { name: 'Guardar' }).click()
 
   await expect(page.getByText('El nombre de cuenta es requerido.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const nombre = dialog.getByLabel('Nombre Cuenta *')
   await expect(nombre).toHaveAttribute('aria-invalid', 'true')
   await expect(nombre).toBeFocused()

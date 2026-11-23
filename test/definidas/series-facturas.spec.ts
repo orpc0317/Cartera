@@ -173,7 +173,7 @@ test('nueva serie exige el codigo y se cierra sin guardar', async ({ page }) => 
   await expect(dialog.getByLabel('Serie *')).toHaveValue('')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('La serie es requerida.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const serie = dialog.getByLabel('Serie *')
   await expect(serie).toHaveAttribute('aria-invalid', 'true')
   await expect(serie).toBeFocused()

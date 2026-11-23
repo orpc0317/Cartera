@@ -38,6 +38,7 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -511,6 +512,8 @@ export function ProyectosClient({
 
   // Estado para la pestaña activa del modal y advertencia de monedas
   const [activeTab, setActiveTab] = useState('general')
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
   const [warnNoMonedas, setWarnNoMonedas] = useState(false)
 
@@ -1007,229 +1010,9 @@ export function ProyectosClient({
     URL.revokeObjectURL(url)
   }
 
-  return (
-    <div className={LIST_SHELL}>
-      {/* Header */}
-      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-sky-100 p-2.5">
-            <FolderKanban className="h-5 w-5 text-sky-700" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Proyectos</h1>
-            <p className="text-sm text-muted-foreground">
-              Administra los proyectos de lotificacion
-            </p>
-          </div>
-        </div>
-        <Button onClick={openCreate} className="gap-2" disabled={empresas.length === 0 || !puedeAgregar}>
-          <Plus className="h-4 w-4" />
-          Nuevo Proyecto
-        </Button>
-      </div>
-
-      {empresas.length === 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Primero debes crear al menos una empresa antes de agregar proyectos.
-        </div>
-      )}
-
-      {/* Search + Filters */}
-      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="l-border"
-            placeholder="Buscar proyectos..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
-            <X className="h-3.5 w-3.5" />
-            Limpiar filtros
-          </Button>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportCsv} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            Exportar CSV
-          </Button>
-          <ColumnManager
-            prefs={colPrefs}
-            onToggle={toggleCol}
-            onMove={moveCol}
-            onReset={() => saveColPrefs(DEFAULT_PREFS)}
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      <div
-        ref={tableRef}
-        className={LIST_SCROLLPORT}
-        tabIndex={0}
-        onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
-      >
-        <Table scrollable={false}>
-          <TableHeader className={LIST_THEAD}>
-            <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
-              {visibleCols.map((col) => (
-                <TableHead key={col.key} className={LIST_HEAD}>
-                  <ColumnFilter
-                    label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
-                    values={col.key === 'empresa' ? uniqueEmpresaNames : uniqueVals(col.key as keyof Proyecto)}
-                    active={colFilters[col.key] ?? new Set()}
-                    onChange={(v) => setColFilter(col.key, v)}
-                  />
-                </TableHead>
-              ))}
-              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters
-                    ? 'No se encontraron proyectos con ese criterio.'
-                    : 'Todavia no hay proyectos. Haz clic en "Nuevo Proyecto" para comenzar.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((proyecto, rowIdx) => {
-                const isActive = cursorIdx === rowIdx
-                return (
-                  <TableRow
-                    key={`${proyecto.empresa}-${proyecto.codigo}`}
-                    className={`group cursor-pointer transition-colors ${
-                      isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'hover:bg-muted/40'
-                    }`}
-                    onClick={() => setCursorIdx(rowIdx)}
-                    onDoubleClick={() => openView(proyecto)}
-                  >
-                    <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
-                      isActive
-                        ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold'
-                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
-                    }`}>
-                      {proyecto.codigo}
-                    </TableCell>
-                    {visibleCols.map((col) => {
-                      switch (col.key) {
-                        case 'nombre':
-                          return <TableCell key="nombre" className="font-medium">{proyecto.nombre}</TableCell>
-                        case 'empresa':
-                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(proyecto.empresa) ?? `#${proyecto.empresa}`}</TableCell>
-                        case 'direccion_pais': {
-                          const p = paises.find((x) => x.codigo === proyecto.direccion_pais)
-                          return (
-                            <TableCell key="direccion_pais" className="text-muted-foreground">
-                              {p ? (
-                                <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {p.nombre}
-                                </span>
-                              ) : (proyecto.direccion_pais ?? '—')}
-                            </TableCell>
-                          )
-                        }
-                        case 'direccion_departamento':
-                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{departamentos.find((d) => d.codigo === proyecto.direccion_departamento)?.nombre ?? proyecto.direccion_departamento ?? '—'}</TableCell>
-                        case 'direccion_municipio':
-                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{municipios.find((m) => m.codigo === proyecto.direccion_municipio)?.nombre ?? proyecto.direccion_municipio ?? '—'}</TableCell>
-                        default:
-                          return <TableCell key={col.key} className="text-muted-foreground">{(proyecto[col.key as keyof Proyecto] as string) || '—'}</TableCell>
-                      }
-                    })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${
-                      isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'
-                    }`}>
-                      <button
-                        type="button"
-                        onClick={() => openView(proyecto)}
-                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
-                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} proyecto{filtered.length !== 1 ? 's' : ''}</p>
-
-      {/* Ver / Crear / Editar Dialog */}
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return   // no cerrar mientras un dialog anidado este activo
-          if (!open && isEditing && viewTarget && proyectoMonedasActuales.length === 0) {
-            setWarnNoMonedas(true)
-            return
-          }
-          setDialogOpen(open)
-          if (!open) {
-            setIsEditing(false)
-            setCampoInvalido(null)
-            setActiveTab('general')
-            if (hadConflict) { setHadConflict(false); router.refresh() }
-          }
-        }}
-        modal={false}
-      >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
-            <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${
-                isEditing && !viewTarget ? 'bg-sky-100' : isEditing ? 'bg-amber-100' : 'bg-sky-100'
-              }`}>
-                {isEditing && !viewTarget
-                  ? <Plus className="h-5 w-5 text-sky-600" />
-                  : isEditing
-                  ? <Pencil className="h-5 w-5 text-amber-600" />
-                  : <FolderKanban className="h-5 w-5 text-sky-600" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Proyecto' : isEditing ? 'Editar Proyecto' : viewTarget?.nombre}
-                </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <MapPin className="h-3.5 w-3.5" />
-                General
-              </TabsTrigger>
-              {viewTarget && (
-              <TabsTrigger value="monedas" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <Coins className="h-3.5 w-3.5" />
-                Monedas
-              </TabsTrigger>
-              )}
-            </TabsList></div>
-
-            {/* ── Tab General ── */}
-            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-auto pr-1">
+  function pasoGeneral() {
+    return (
+    <>
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
                   {/* Left column — IDENTIFICACION + GENERAL */}
@@ -1602,7 +1385,241 @@ export function ProyectosClient({
                   </div>
                 </div>
               )}
-            </TabsContent>
+            
+    </>
+    )
+  }
+
+  return (
+    <div className={LIST_SHELL}>
+      {/* Header */}
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-sky-100 p-2.5">
+            <FolderKanban className="h-5 w-5 text-sky-700" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Proyectos</h1>
+            <p className="text-sm text-muted-foreground">
+              Administra los proyectos de lotificacion
+            </p>
+          </div>
+        </div>
+        <Button onClick={openCreate} className="gap-2" disabled={empresas.length === 0 || !puedeAgregar}>
+          <Plus className="h-4 w-4" />
+          Nuevo Proyecto
+        </Button>
+      </div>
+
+      {empresas.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Primero debes crear al menos una empresa antes de agregar proyectos.
+        </div>
+      )}
+
+      {/* Search + Filters */}
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input variant="l-border"
+            placeholder="Buscar proyectos..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
+            <X className="h-3.5 w-3.5" />
+            Limpiar filtros
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCsv} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            Exportar CSV
+          </Button>
+          <ColumnManager
+            prefs={colPrefs}
+            onToggle={toggleCol}
+            onMove={moveCol}
+            onReset={() => saveColPrefs(DEFAULT_PREFS)}
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div
+        ref={tableRef}
+        className={LIST_SCROLLPORT}
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+      >
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
+              {visibleCols.map((col) => (
+                <TableHead key={col.key} className={LIST_HEAD}>
+                  <ColumnFilter
+                    label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
+                    values={col.key === 'empresa' ? uniqueEmpresaNames : uniqueVals(col.key as keyof Proyecto)}
+                    active={colFilters[col.key] ?? new Set()}
+                    onChange={(v) => setColFilter(col.key, v)}
+                  />
+                </TableHead>
+              ))}
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters
+                    ? 'No se encontraron proyectos con ese criterio.'
+                    : 'Todavia no hay proyectos. Haz clic en "Nuevo Proyecto" para comenzar.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((proyecto, rowIdx) => {
+                const isActive = cursorIdx === rowIdx
+                return (
+                  <TableRow
+                    key={`${proyecto.empresa}-${proyecto.codigo}`}
+                    className={`group cursor-pointer transition-colors ${
+                      isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'hover:bg-muted/40'
+                    }`}
+                    onClick={() => setCursorIdx(rowIdx)}
+                    onDoubleClick={() => openView(proyecto)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
+                      isActive
+                        ? 'bg-sky-50 dark:bg-sky-950/30 border-l-[3px] border-l-sky-600 text-sky-700 dark:text-sky-400 font-semibold'
+                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
+                    }`}>
+                      {proyecto.codigo}
+                    </TableCell>
+                    {visibleCols.map((col) => {
+                      switch (col.key) {
+                        case 'nombre':
+                          return <TableCell key="nombre" className="font-medium">{proyecto.nombre}</TableCell>
+                        case 'empresa':
+                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(proyecto.empresa) ?? `#${proyecto.empresa}`}</TableCell>
+                        case 'direccion_pais': {
+                          const p = paises.find((x) => x.codigo === proyecto.direccion_pais)
+                          return (
+                            <TableCell key="direccion_pais" className="text-muted-foreground">
+                              {p ? (
+                                <span className="flex items-center gap-1.5">
+                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  {p.nombre}
+                                </span>
+                              ) : (proyecto.direccion_pais ?? '—')}
+                            </TableCell>
+                          )
+                        }
+                        case 'direccion_departamento':
+                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{departamentos.find((d) => d.codigo === proyecto.direccion_departamento)?.nombre ?? proyecto.direccion_departamento ?? '—'}</TableCell>
+                        case 'direccion_municipio':
+                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{municipios.find((m) => m.codigo === proyecto.direccion_municipio)?.nombre ?? proyecto.direccion_municipio ?? '—'}</TableCell>
+                        default:
+                          return <TableCell key={col.key} className="text-muted-foreground">{(proyecto[col.key as keyof Proyecto] as string) || '—'}</TableCell>
+                      }
+                    })}
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${
+                      isActive ? 'bg-sky-50 dark:bg-sky-950/30' : 'bg-card group-hover:bg-muted/40'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => openView(proyecto)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
+                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} proyecto{filtered.length !== 1 ? 's' : ''}</p>
+
+      {/* Ver / Crear / Editar Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return   // no cerrar mientras un dialog anidado este activo
+          if (!open && isEditing && viewTarget && proyectoMonedasActuales.length === 0) {
+            setWarnNoMonedas(true)
+            return
+          }
+          setDialogOpen(open)
+          if (!open) {
+            setIsEditing(false)
+            setCampoInvalido(null)
+            setActiveTab('general')
+            if (hadConflict) { setHadConflict(false); router.refresh() }
+          }
+        }}
+        modal={false}
+      >
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${
+                isEditing && !viewTarget ? 'bg-sky-100' : isEditing ? 'bg-amber-100' : 'bg-sky-100'
+              }`}>
+                {isEditing && !viewTarget
+                  ? <Plus className="h-5 w-5 text-sky-600" />
+                  : isEditing
+                  ? <Pencil className="h-5 w-5 text-amber-600" />
+                  : <FolderKanban className="h-5 w-5 text-sky-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nuevo Proyecto' : isEditing ? 'Editar Proyecto' : viewTarget?.nombre}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-auto pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <MapPin className="h-3.5 w-3.5" />
+                General
+              </TabsTrigger>
+              {viewTarget && (
+              <TabsTrigger value="monedas" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <Coins className="h-3.5 w-3.5" />
+                Monedas
+              </TabsTrigger>
+              )}
+            </TabsList></div>
+
+            {/* ── Tab General ── */}
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-auto pr-1">
+{pasoGeneral()}
+</TabsContent>
             {/* ── Tab Monedas ── */}
             <TabsContent value="monedas" className="mt-0 flex-1 overflow-y-auto overflow-x-auto pr-1">
               <div className="flex gap-6 items-start">
@@ -1757,6 +1774,7 @@ export function ProyectosClient({
               </div>
             </TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -1785,11 +1803,13 @@ export function ProyectosClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-sky-50 dark:hover:bg-sky-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

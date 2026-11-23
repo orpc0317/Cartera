@@ -51,6 +51,7 @@ import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
 import { CountrySelect } from '@/components/ui/country-select'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
@@ -274,6 +275,8 @@ export function EmpresasClient({
   const [similarWarning, setSimilarWarning] = useState<Empresa[] | null>(null)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
   const [activeTab, setActiveTab]     = useState('general')
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
 
   useEffect(() => {
@@ -608,253 +611,9 @@ export function EmpresasClient({
 
   // - Render ----------------------------------------------------------------
 
-  return (
-    <div className={LIST_SHELL}>
-
-      {/* - Header ------------------------------------------------------------ */}
-      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-emerald-100 p-2.5">
-            <Building2 className="h-5 w-5 text-emerald-700" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Empresas</h1>
-            <p className="text-sm text-muted-foreground">Administra las empresas lotificadoras</p>
-          </div>
-        </div>
-        {puedeAgregar && (
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="h-4 w-4" /> Nueva Empresa
-          </Button>
-        )}
-      </div>
-
-      {/* - Search + toolbar ----------------------------------------------- */}
-      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input variant="l-border"
-            placeholder="Buscar empresas..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
-            <X className="h-3.5 w-3.5" /> Limpiar filtros
-          </Button>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" /> Exportar CSV
-          </Button>
-          <ColumnManager
-            prefs={colPrefs}
-            onToggle={toggleCol}
-            onMove={moveCol}
-            onReset={() => saveColPrefs(DEFAULT_PREFS)}
-          />
-        </div>
-      </div>
-
-      {/* - Tabla ---------------------------------------------------------- */}
-      <div
-        ref={tableRef}
-        className={LIST_SCROLLPORT}
-        tabIndex={0}
-        onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
-      >
-        <Table scrollable={false}>
-          <TableHeader className={LIST_THEAD}>
-            <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
-              {visibleCols.map((col) => {
-                if (col.key === '__regimen') {
-                  return (
-                    <TableHead key="__regimen" className={LIST_HEAD}>
-                      <ColumnFilter
-                        label="Regimen ISR"
-                        values={[...new Set(filas.map((e) => REGIMENES_ISR[e.regimen_isr] ?? String(e.regimen_isr)))].sort()}
-                        active={new Set([...(colFilters['__regimen'] ?? new Set())].map((k) => REGIMENES_ISR[Number(k)] ?? k))}
-                        onChange={(labels) => {
-                          const byLabel = Object.fromEntries(
-                            Object.entries(REGIMENES_ISR).map(([k, v]) => [v, k]),
-                          )
-                          const ids = new Set([...labels].map((l) => byLabel[l] ?? l))
-                          setColFilter('__regimen', ids)
-                        }}
-                      />
-                    </TableHead>
-                  )
-                }
-                return (
-                  <TableHead key={col.key} className={LIST_HEAD}>
-                    <ColumnFilter
-                      label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
-                      values={
-                        col.key === 'direccion_pais'
-                          ? [...new Set(filas.map((e) => paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais ?? ''))].sort()
-                          : col.key === 'direccion_departamento'
-                          ? [...new Set(filas.map((e) => departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento ?? ''))].sort()
-                          : col.key === 'direccion_municipio'
-                          ? [...new Set(filas.map((e) => municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio ?? ''))].sort()
-                          : uniqueVals(col.key as keyof Empresa)
-                      }
-                      active={colFilters[col.key] ?? new Set()}
-                      onChange={(v) => setColFilter(col.key, v)}
-                    />
-                  </TableHead>
-                )
-              })}
-              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters
-                    ? 'No se encontraron empresas con ese criterio.'
-                    : 'Todavia no hay empresas. Haz clic en "Nueva Empresa" para comenzar.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((empresa, rowIdx) => {
-                const isActive = cursorIdx === rowIdx
-                return (
-                  <TableRow
-                    key={empresa.codigo}
-                    className={`group cursor-pointer transition-colors ${
-                      isActive ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-muted/40'
-                    }`}
-                    onClick={() => setCursorIdx(rowIdx)}
-                    onDoubleClick={() => openView(empresa)}
-                  >
-                    <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
-                      isActive
-                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-[3px] border-l-emerald-600 text-emerald-700 dark:text-emerald-400 font-semibold'
-                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
-                    }`}>
-                      {empresa.codigo}
-                    </TableCell>
-                    {visibleCols.map((col) => {
-                      switch (col.key) {
-                        case 'nombre':
-                          return <TableCell key="nombre" className="font-medium">{empresa.nombre}</TableCell>
-                        case 'razon_social':
-                          return <TableCell key="razon_social" className="text-muted-foreground">{empresa.razon_social || '—'}</TableCell>
-                        case 'identificacion_tributaria':
-                          return <TableCell key="identificacion_tributaria" className="font-mono text-xs text-muted-foreground">{empresa.identificacion_tributaria || '—'}</TableCell>
-                        case 'direccion':
-                          return <TableCell key="direccion" className="text-muted-foreground">{empresa.direccion || '—'}</TableCell>
-                        case 'direccion_pais': {
-                          const p = paises.find((x) => x.codigo === empresa.direccion_pais)
-                          return (
-                            <TableCell key="direccion_pais" className="text-muted-foreground">
-                              {empresa.direccion_pais ? (
-                                <span className="flex items-center gap-1.5">
-                                  <img
-                                    src={`https://flagcdn.com/w20/${empresa.direccion_pais.toLowerCase()}.png`}
-                                    alt={empresa.direccion_pais}
-                                    width={20}
-                                    height={14}
-                                    className="object-cover rounded-sm shrink-0"
-                                  />
-                                  {p?.nombre ?? empresa.direccion_pais}
-                                </span>
-                              ) : '—'}
-                            </TableCell>
-                          )
-                        }
-                        case 'direccion_departamento': {
-                          const d = departamentos.find((x) => x.pais === empresa.direccion_pais && x.codigo === empresa.direccion_departamento)
-                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{(d?.nombre ?? empresa.direccion_departamento) || '—'}</TableCell>
-                        }
-                        case 'direccion_municipio': {
-                          const m = municipios.find((x) => x.pais === empresa.direccion_pais && x.departamento === empresa.direccion_departamento && x.codigo === empresa.direccion_municipio)
-                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{(m?.nombre ?? empresa.direccion_municipio) || '—'}</TableCell>
-                        }
-                        case 'codigo_postal':
-                          return <TableCell key="codigo_postal" className="text-muted-foreground">{empresa.codigo_postal || '—'}</TableCell>
-                        case '__regimen':
-                          return (
-                            <TableCell key="__regimen">
-                              <Badge variant="secondary" className="font-normal">
-                                {REGIMENES_ISR[empresa.regimen_isr] ?? String(empresa.regimen_isr)}
-                              </Badge>
-                            </TableCell>
-                          )
-                        default:
-                          return <TableCell key={col.key} className="text-muted-foreground">{(empresa[col.key as keyof Empresa] as string) || '—'}</TableCell>
-                      }
-                    })}
-                    <TableCell className={`sticky right-0 z-10 transition-colors ${
-                      isActive ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-card group-hover:bg-muted/40'
-                    }`}>
-                      <button
-                        type="button"
-                        onClick={() => openView(empresa)}
-                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
-                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} empresa{filtered.length !== 1 ? 's' : ''}</p>
-
-      {/* - Ver / Crear / Editar Dialog ------------------------------------ */}
-      <Dialog
-        modal={false}
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return   // no cerrar mientras un dialog anidado este activo
-          setDialogOpen(open)
-          if (!open) {
-            setIsEditing(false)
-            setCampoInvalido(null)
-            setActiveTab('general')
-            if (hadConflict) { setHadConflict(false); router.refresh() }
-          }
-        }}
-      >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
-            <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Empresa' : isEditing ? 'Editar Empresa' : viewTarget?.nombre}
-                </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {viewTarget.razon_social || ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <MapPin className="h-3.5 w-3.5" /> General
-              </TabsTrigger>
-            </TabsList></div>
-
-            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+  function pasoGeneral() {
+    return (
+    <>
 
               {/* -- Modo Vista -- */}
               {!isEditing && viewTarget ? (
@@ -1098,8 +857,267 @@ export function EmpresasClient({
                 </div>
               </div>
               )}
-            </TabsContent>
+            
+    </>
+    )
+  }
+
+  return (
+    <div className={LIST_SHELL}>
+
+      {/* - Header ------------------------------------------------------------ */}
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-100 p-2.5">
+            <Building2 className="h-5 w-5 text-emerald-700" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Empresas</h1>
+            <p className="text-sm text-muted-foreground">Administra las empresas lotificadoras</p>
+          </div>
+        </div>
+        {puedeAgregar && (
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" /> Nueva Empresa
+          </Button>
+        )}
+      </div>
+
+      {/* - Search + toolbar ----------------------------------------------- */}
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input variant="l-border"
+            placeholder="Buscar empresas..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
+            <X className="h-3.5 w-3.5" /> Limpiar filtros
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
+          <ColumnManager
+            prefs={colPrefs}
+            onToggle={toggleCol}
+            onMove={moveCol}
+            onReset={() => saveColPrefs(DEFAULT_PREFS)}
+          />
+        </div>
+      </div>
+
+      {/* - Tabla ---------------------------------------------------------- */}
+      <div
+        ref={tableRef}
+        className={LIST_SCROLLPORT}
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+      >
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}><span className="text-xs font-medium text-muted-foreground">Codigo</span></TableHead>
+              {visibleCols.map((col) => {
+                if (col.key === '__regimen') {
+                  return (
+                    <TableHead key="__regimen" className={LIST_HEAD}>
+                      <ColumnFilter
+                        label="Regimen ISR"
+                        values={[...new Set(filas.map((e) => REGIMENES_ISR[e.regimen_isr] ?? String(e.regimen_isr)))].sort()}
+                        active={new Set([...(colFilters['__regimen'] ?? new Set())].map((k) => REGIMENES_ISR[Number(k)] ?? k))}
+                        onChange={(labels) => {
+                          const byLabel = Object.fromEntries(
+                            Object.entries(REGIMENES_ISR).map(([k, v]) => [v, k]),
+                          )
+                          const ids = new Set([...labels].map((l) => byLabel[l] ?? l))
+                          setColFilter('__regimen', ids)
+                        }}
+                      />
+                    </TableHead>
+                  )
+                }
+                return (
+                  <TableHead key={col.key} className={LIST_HEAD}>
+                    <ColumnFilter
+                      label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
+                      values={
+                        col.key === 'direccion_pais'
+                          ? [...new Set(filas.map((e) => paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais ?? ''))].sort()
+                          : col.key === 'direccion_departamento'
+                          ? [...new Set(filas.map((e) => departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento ?? ''))].sort()
+                          : col.key === 'direccion_municipio'
+                          ? [...new Set(filas.map((e) => municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio ?? ''))].sort()
+                          : uniqueVals(col.key as keyof Empresa)
+                      }
+                      active={colFilters[col.key] ?? new Set()}
+                      onChange={(v) => setColFilter(col.key, v)}
+                    />
+                  </TableHead>
+                )
+              })}
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters
+                    ? 'No se encontraron empresas con ese criterio.'
+                    : 'Todavia no hay empresas. Haz clic en "Nueva Empresa" para comenzar.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((empresa, rowIdx) => {
+                const isActive = cursorIdx === rowIdx
+                return (
+                  <TableRow
+                    key={empresa.codigo}
+                    className={`group cursor-pointer transition-colors ${
+                      isActive ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-muted/40'
+                    }`}
+                    onClick={() => setCursorIdx(rowIdx)}
+                    onDoubleClick={() => openView(empresa)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-mono text-xs transition-colors ${
+                      isActive
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 border-l-[3px] border-l-emerald-600 text-emerald-700 dark:text-emerald-400 font-semibold'
+                        : 'bg-card text-muted-foreground group-hover:bg-muted/40'
+                    }`}>
+                      {empresa.codigo}
+                    </TableCell>
+                    {visibleCols.map((col) => {
+                      switch (col.key) {
+                        case 'nombre':
+                          return <TableCell key="nombre" className="font-medium">{empresa.nombre}</TableCell>
+                        case 'razon_social':
+                          return <TableCell key="razon_social" className="text-muted-foreground">{empresa.razon_social || '—'}</TableCell>
+                        case 'identificacion_tributaria':
+                          return <TableCell key="identificacion_tributaria" className="font-mono text-xs text-muted-foreground">{empresa.identificacion_tributaria || '—'}</TableCell>
+                        case 'direccion':
+                          return <TableCell key="direccion" className="text-muted-foreground">{empresa.direccion || '—'}</TableCell>
+                        case 'direccion_pais': {
+                          const p = paises.find((x) => x.codigo === empresa.direccion_pais)
+                          return (
+                            <TableCell key="direccion_pais" className="text-muted-foreground">
+                              {empresa.direccion_pais ? (
+                                <span className="flex items-center gap-1.5">
+                                  <img
+                                    src={`https://flagcdn.com/w20/${empresa.direccion_pais.toLowerCase()}.png`}
+                                    alt={empresa.direccion_pais}
+                                    width={20}
+                                    height={14}
+                                    className="object-cover rounded-sm shrink-0"
+                                  />
+                                  {p?.nombre ?? empresa.direccion_pais}
+                                </span>
+                              ) : '—'}
+                            </TableCell>
+                          )
+                        }
+                        case 'direccion_departamento': {
+                          const d = departamentos.find((x) => x.pais === empresa.direccion_pais && x.codigo === empresa.direccion_departamento)
+                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{(d?.nombre ?? empresa.direccion_departamento) || '—'}</TableCell>
+                        }
+                        case 'direccion_municipio': {
+                          const m = municipios.find((x) => x.pais === empresa.direccion_pais && x.departamento === empresa.direccion_departamento && x.codigo === empresa.direccion_municipio)
+                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{(m?.nombre ?? empresa.direccion_municipio) || '—'}</TableCell>
+                        }
+                        case 'codigo_postal':
+                          return <TableCell key="codigo_postal" className="text-muted-foreground">{empresa.codigo_postal || '—'}</TableCell>
+                        case '__regimen':
+                          return (
+                            <TableCell key="__regimen">
+                              <Badge variant="secondary" className="font-normal">
+                                {REGIMENES_ISR[empresa.regimen_isr] ?? String(empresa.regimen_isr)}
+                              </Badge>
+                            </TableCell>
+                          )
+                        default:
+                          return <TableCell key={col.key} className="text-muted-foreground">{(empresa[col.key as keyof Empresa] as string) || '—'}</TableCell>
+                      }
+                    })}
+                    <TableCell className={`sticky right-0 z-10 transition-colors ${
+                      isActive ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-card group-hover:bg-muted/40'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => openView(empresa)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${
+                          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} empresa{filtered.length !== 1 ? 's' : ''}</p>
+
+      {/* - Ver / Crear / Editar Dialog ------------------------------------ */}
+      <Dialog
+        modal={false}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open && (similarWarning !== null || deleteTarget !== null || auditTarget !== null)) return   // no cerrar mientras un dialog anidado este activo
+          setDialogOpen(open)
+          if (!open) {
+            setIsEditing(false)
+            setCampoInvalido(null)
+            setActiveTab('general')
+            if (hadConflict) { setHadConflict(false); router.refresh() }
+          }
+        }}
+      >
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nueva Empresa' : isEditing ? 'Editar Empresa' : viewTarget?.nombre}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {viewTarget.razon_social || ''}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <MapPin className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+            </TabsList></div>
+
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -1128,11 +1146,13 @@ export function EmpresasClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

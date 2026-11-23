@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   ArrowLeftRight, Plus, Search, X, Check, ChevronDown, ChevronUp,
-  Settings2, Download, Trash2, Eye, MapPin,
+  Settings2, Download, Trash2, Eye,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import {
   AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription,
   AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
@@ -283,6 +283,8 @@ export default function TasasCambioClient({
   const [form, setForm]               = useState<TasaCambioForm>(EMPTY_FORM)
   const [isPending, startTransition]  = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
+  const esAlta = isEditing
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<TasaCambio | null>(null)
 
   // ── Lookups ──────────────────────────────────────────────────────────────
@@ -476,6 +478,129 @@ export default function TasasCambioClient({
   useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 
   // ── Render ────────────────────────────────────────────────────────────────
+  function pasoGeneral() {
+    return (
+    <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <SectionDivider label="IDENTIFICACION" />
+
+                    {/* Empresa */}
+                    <div className="col-span-3 grid gap-1">
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                  <Select
+                    value={String(form.empresa)}
+                    onValueChange={(v) => {
+                      const emp = Number(v)
+                      const firstProyecto = proyectos.filter((p) => p.empresa === emp)[0]?.codigo ?? 0
+                      const firstMoneda   = proyectoMonedas.find((pm) => pm.empresa === emp && pm.proyecto === firstProyecto && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === emp && pm.proyecto === firstProyecto && pm.activo === 1)?.moneda ?? ''
+                      setForm((p) => ({ ...p, empresa: emp, proyecto: firstProyecto, moneda: firstMoneda }))
+                    }}
+                  >
+                    <SelectTrigger variant="l-border" className="w-full">
+                      <SelectValue placeholder="Selecciona empresa">
+                        {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {empresas.map((e) => (
+                        <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Proyecto */}
+                <div className="col-span-3 grid gap-1">
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                  <Select
+                    value={String(form.proyecto)}
+                    onValueChange={(v) => {
+                      const proy = Number(v)
+                      const firstMoneda = proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.activo === 1)?.moneda ?? ''
+                      setForm((p) => ({ ...p, proyecto: proy, moneda: firstMoneda }))
+                    }}
+                  >
+                    <SelectTrigger variant="l-border" className="w-full">
+                      <SelectValue placeholder="Selecciona proyecto">
+                        {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proyectosFiltrados.map((p) => (
+                        <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Moneda */}
+                <div className="col-span-1 grid gap-1">
+                  <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
+                  <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
+                    <SelectTrigger variant="l-border" className="w-full">
+                      <SelectValue placeholder="Selecciona moneda">
+                        {(v: string) => {
+                          const flag = CURRENCY_FLAG_MAP.get(v)
+                          return flag ? (
+                            <span className="flex items-center gap-1.5">
+                              <img src={`https://flagcdn.com/w20/${flag}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                              {v}
+                            </span>
+                          ) : v || null
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monedasDisponibles.map((m) => {
+                        const flag = CURRENCY_FLAG_MAP.get(m.moneda)
+                        return (
+                          <SelectItem key={m.moneda} value={m.moneda}>
+                            <span className="flex items-center gap-2">
+                              {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={m.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {m.moneda}
+                            </span>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                    <SectionDivider label="GENERAL" />
+
+                    {/* Fecha */}
+                    <div className="col-span-1 grid gap-1">
+                      <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha *</Label>
+                      <Input variant="l-border"
+                        id="fecha"
+                        aria-invalid={campoInvalido?.id === 'fecha' || undefined}
+                        type="date"
+                        value={form.fecha}
+                        onChange={(e) => f('fecha', e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-1 grid gap-1">
+                      <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio *</Label>
+                      <Input variant="l-border"
+                        id="tasa_cambio"
+                        aria-invalid={campoInvalido?.id === 'tasa_cambio' || undefined}
+                        type="number"
+                        value={form.tasa_cambio}
+                        onChange={(e) => {
+                          limpiarCampoInvalido()
+                          setForm((p) => ({ ...p, tasa_cambio: e.target.value === '' ? '' : Number(e.target.value) }))
+                        }}
+                        placeholder="0.00000000"
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                  </div>
+                
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -707,133 +832,9 @@ export default function TasasCambioClient({
 
             {/* ── Nuevo mode — form ── */}
             {isEditing && (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
-                <div className="shrink-0 w-full">
-                  <TabsList variant="line" className="">
-                    <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                      <MapPin className="h-3.5 w-3.5" />
-                      General
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-                <TabsContent value="general" className="mt-2">
-                  <div className="grid grid-cols-3 gap-2">
-                    <SectionDivider label="IDENTIFICACION" />
-
-                    {/* Empresa */}
-                    <div className="col-span-3 grid gap-1">
-                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                  <Select
-                    value={String(form.empresa)}
-                    onValueChange={(v) => {
-                      const emp = Number(v)
-                      const firstProyecto = proyectos.filter((p) => p.empresa === emp)[0]?.codigo ?? 0
-                      const firstMoneda   = proyectoMonedas.find((pm) => pm.empresa === emp && pm.proyecto === firstProyecto && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === emp && pm.proyecto === firstProyecto && pm.activo === 1)?.moneda ?? ''
-                      setForm((p) => ({ ...p, empresa: emp, proyecto: firstProyecto, moneda: firstMoneda }))
-                    }}
-                  >
-                    <SelectTrigger variant="l-border" className="w-full">
-                      <SelectValue placeholder="Selecciona empresa">
-                        {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {empresas.map((e) => (
-                        <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Proyecto */}
-                <div className="col-span-3 grid gap-1">
-                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                  <Select
-                    value={String(form.proyecto)}
-                    onValueChange={(v) => {
-                      const proy = Number(v)
-                      const firstMoneda = proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.activo === 1)?.moneda ?? ''
-                      setForm((p) => ({ ...p, proyecto: proy, moneda: firstMoneda }))
-                    }}
-                  >
-                    <SelectTrigger variant="l-border" className="w-full">
-                      <SelectValue placeholder="Selecciona proyecto">
-                        {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {proyectosFiltrados.map((p) => (
-                        <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Moneda */}
-                <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
-                  <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
-                    <SelectTrigger variant="l-border" className="w-full">
-                      <SelectValue placeholder="Selecciona moneda">
-                        {(v: string) => {
-                          const flag = CURRENCY_FLAG_MAP.get(v)
-                          return flag ? (
-                            <span className="flex items-center gap-1.5">
-                              <img src={`https://flagcdn.com/w20/${flag}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                              {v}
-                            </span>
-                          ) : v || null
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {monedasDisponibles.map((m) => {
-                        const flag = CURRENCY_FLAG_MAP.get(m.moneda)
-                        return (
-                          <SelectItem key={m.moneda} value={m.moneda}>
-                            <span className="flex items-center gap-2">
-                              {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} alt={m.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                              {m.moneda}
-                            </span>
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                    <SectionDivider label="GENERAL" />
-
-                    {/* Fecha */}
-                    <div className="col-span-1 grid gap-1">
-                      <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha *</Label>
-                      <Input variant="l-border"
-                        id="fecha"
-                        aria-invalid={campoInvalido?.id === 'fecha' || undefined}
-                        type="date"
-                        value={form.fecha}
-                        onChange={(e) => f('fecha', e.target.value)}
-                      />
-                    </div>
-                    <div className="col-span-1 grid gap-1">
-                      <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio *</Label>
-                      <Input variant="l-border"
-                        id="tasa_cambio"
-                        aria-invalid={campoInvalido?.id === 'tasa_cambio' || undefined}
-                        type="number"
-                        value={form.tasa_cambio}
-                        onChange={(e) => {
-                          limpiarCampoInvalido()
-                          setForm((p) => ({ ...p, tasa_cambio: e.target.value === '' ? '' : Number(e.target.value) }))
-                        }}
-                        placeholder="0.00000000"
-                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                    </div>
-
-                  </div>
-                </TabsContent>
-              </Tabs>
+              <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="flex flex-col" contenidoClassName="mt-2">
+              {pasoGeneral()}
+            </FormWizard>
             )}
 
           </div>
@@ -863,11 +864,13 @@ export default function TasasCambioClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando..."
+                className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

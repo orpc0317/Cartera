@@ -39,6 +39,7 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
@@ -253,6 +254,8 @@ export function FasesClient({
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [viewTarget, setViewTarget] = useState<(Fase & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<Fase | null>(null)
   const [auditTarget, setAuditTarget] = useState<Fase | null>(null)
 
@@ -537,6 +540,131 @@ export function FasesClient({
     ? `${nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa))} / ${nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))}`
     : undefined
 
+  function pasoGeneral() {
+    return (
+    <>
+
+              {/* -- View mode -- */}
+              {!isEditing && viewTarget ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="Identificacion">
+                    <div className="col-span-2">
+                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
+                    </div>
+                    <div className="col-span-2">
+                      <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="General">
+                    <div className="col-span-2">
+                      <ViewField label="Nombre" value={viewTarget.nombre} />
+                    </div>
+                    <div className="col-span-1">
+                      <ViewField label="Medida" value={UNIDAD_MEDIDA[viewTarget.medida] ?? viewTarget.medida} />
+                    </div>
+                  </SegmentCard>
+                </div>
+              ) : (
+
+              /* -- Edit / Create mode -- */
+              <div className="grid grid-cols-2 gap-2">
+                <SegmentCard label="Identificacion">
+
+                {/* Empresa */}
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                    Empresa *
+                  </Label>
+                  <Select
+                    value={form.empresa ? String(form.empresa) : ''}
+                    onValueChange={(v) => f('empresa', Number(v))}
+                    disabled={!!viewTarget}
+                  >
+                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
+                      <SelectValue placeholder="Selecciona empresa">
+                        {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {empresas.map((e) => (
+                        <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Proyecto */}
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                    Proyecto *
+                  </Label>
+                  <Select
+                    value={form.proyecto ? String(form.proyecto) : ''}
+                    onValueChange={(v) => f('proyecto', Number(v))}
+                    disabled={!!viewTarget}
+                  >
+                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
+                      <SelectValue placeholder="Selecciona proyecto">
+                        {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {proyectosPorEmpresa.map((p) => (
+                        <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                </SegmentCard>
+
+                <SegmentCard label="General">
+                {/* Nombre */}
+                <div className="col-span-2 grid gap-1">
+                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                    Nombre *
+                  </Label>
+                  <Input variant="l-border"
+                    id="nombre"
+                    aria-invalid={campoInvalido?.id === 'nombre' || undefined}
+                    value={form.nombre}
+                    onChange={(e) => f('nombre', e.target.value)}
+                    placeholder="Nombre de la fase"
+                  />
+                </div>
+
+                {/* Medida */}
+                <div className="col-span-1 grid gap-1">
+                  <Label htmlFor="medida" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
+                    Medida *
+                  </Label>
+                  <Select
+                    value={form.medida}
+                    onValueChange={(v) => f('medida', v ?? '')}
+                  >
+                    <SelectTrigger variant="l-border" id="medida" aria-invalid={campoInvalido?.id === 'medida' || undefined} className="w-full">
+                      <SelectValue placeholder="Selecciona medida">
+                        {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(UNIDAD_MEDIDA).map(([k, label]) => (
+                        <SelectItem key={k} value={k}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                </SegmentCard>
+              </div>
+              )}
+
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -744,6 +872,11 @@ export function FasesClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -752,125 +885,10 @@ export function FasesClient({
             </TabsList></div>
 
             <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-
-              {/* -- View mode -- */}
-              {!isEditing && viewTarget ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="Identificacion">
-                    <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
-                    </div>
-                    <div className="col-span-2">
-                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
-                    </div>
-                    <div className="col-span-2">
-                      <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
-                    </div>
-                  </SegmentCard>
-                  <SegmentCard label="General">
-                    <div className="col-span-2">
-                      <ViewField label="Nombre" value={viewTarget.nombre} />
-                    </div>
-                    <div className="col-span-1">
-                      <ViewField label="Medida" value={UNIDAD_MEDIDA[viewTarget.medida] ?? viewTarget.medida} />
-                    </div>
-                  </SegmentCard>
-                </div>
-              ) : (
-
-              /* -- Edit / Create mode -- */
-              <div className="grid grid-cols-2 gap-2">
-                <SegmentCard label="Identificacion">
-
-                {/* Empresa */}
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Empresa *
-                  </Label>
-                  <Select
-                    value={form.empresa ? String(form.empresa) : ''}
-                    onValueChange={(v) => f('empresa', Number(v))}
-                    disabled={!!viewTarget}
-                  >
-                    <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
-                      <SelectValue placeholder="Selecciona empresa">
-                        {(v: string) => v ? (empresaMap.get(Number(v)) ?? v) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {empresas.map((e) => (
-                        <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Proyecto */}
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Proyecto *
-                  </Label>
-                  <Select
-                    value={form.proyecto ? String(form.proyecto) : ''}
-                    onValueChange={(v) => f('proyecto', Number(v))}
-                    disabled={!!viewTarget}
-                  >
-                    <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
-                      <SelectValue placeholder="Selecciona proyecto">
-                        {(v: string) => v ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {proyectosPorEmpresa.map((p) => (
-                        <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                </SegmentCard>
-
-                <SegmentCard label="General">
-                {/* Nombre */}
-                <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Nombre *
-                  </Label>
-                  <Input variant="l-border"
-                    id="nombre"
-                    aria-invalid={campoInvalido?.id === 'nombre' || undefined}
-                    value={form.nombre}
-                    onChange={(e) => f('nombre', e.target.value)}
-                    placeholder="Nombre de la fase"
-                  />
-                </div>
-
-                {/* Medida */}
-                <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="medida" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Medida *
-                  </Label>
-                  <Select
-                    value={form.medida}
-                    onValueChange={(v) => f('medida', v ?? '')}
-                  >
-                    <SelectTrigger variant="l-border" id="medida" aria-invalid={campoInvalido?.id === 'medida' || undefined} className="w-full">
-                      <SelectValue placeholder="Selecciona medida">
-                        {(v: string) => v ? (UNIDAD_MEDIDA[v] ?? v) : null}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(UNIDAD_MEDIDA).map(([k, label]) => (
-                        <SelectItem key={k} value={k}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                </SegmentCard>
-              </div>
-              )}
-
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -899,11 +917,13 @@ export function FasesClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-violet-50 dark:hover:bg-violet-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

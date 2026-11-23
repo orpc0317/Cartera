@@ -158,7 +158,7 @@ test('nueva empresa exige razon social', async ({ page }) => {
   await dialog.getByLabel('Nombre *').fill('EMPRESA DE PRUEBA')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('La razon social es requerida.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const razon = dialog.getByLabel('Razon Social *')
   await expect(razon).toBeVisible()
   await expect(razon).toHaveAttribute('aria-invalid', 'true')

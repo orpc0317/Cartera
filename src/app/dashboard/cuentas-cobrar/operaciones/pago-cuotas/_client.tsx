@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  HandCoins, Search, Loader2, AlertCircle, X, ChevronDown,
+  HandCoins, Search, Loader2, AlertCircle, X, ChevronDown, Receipt,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +26,13 @@ import type {
 import type { TasaCambio } from '@/lib/types/tasas-cambio'
 import type { PromesaBusqueda, PlanPagoPendiente } from '@/lib/types/pago-cuotas'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
+
+const PASOS_PAGO: readonly WizardStep[] = [
+  { id: 'promesa', label: 'Identificar Promesa', icon: Search },
+  { id: 'encabezado', label: 'Encabezado', icon: Receipt },
+  { id: 'pago', label: 'Forma de Pago', icon: HandCoins },
+]
 
 // ─── Constantes ───────────────────────────────────────────────────────────
 
@@ -202,9 +209,11 @@ export function PagoCuotasClient({
   const [resultados,   setResultados]   = useState<PromesaBusqueda[]>([])
   const [searchError,  setSearchError]  = useState('')
   const [promesa,      setPromesa]      = useState<PromesaBusqueda | null>(null)
+  const [candidata,    setCandidata]    = useState<PromesaBusqueda | null>(null)
   const [planPago,     setPlanPago]     = useState<PlanPagoPendiente | null>(null)
   const [isPendingSearch, startSearch]  = useTransition()
-  const { campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('promesa')
+  const wizard = useWizardNav(PASOS_PAGO, activeTab, setActiveTab, true)
   const [isPendingPlan,   startPlan]    = useTransition()
   const [isPendingSave,   startSave]    = useTransition()
 
@@ -250,6 +259,7 @@ export function PagoCuotasClient({
     setQuery('')
     setResultados([])
     setSearchError('')
+    setCandidata(null)
   }
 
   function onProyectoChange(val: string | null) {
@@ -257,6 +267,7 @@ export function PagoCuotasClient({
     setQuery('')
     setResultados([])
     setSearchError('')
+    setCandidata(null)
   }
 
   // ── Buscar promesas ──
@@ -265,6 +276,7 @@ export function PagoCuotasClient({
     if (!query.trim()) { setSearchError('Ingresa un criterio de busqueda.'); return }
     setSearchError('')
     setResultados([])
+    setCandidata(null)
     startSearch(async () => {
       const data = await buscarPromesas(empresa, proyecto, query.trim())
       setResultados(data)
@@ -296,6 +308,7 @@ export function PagoCuotasClient({
     setNumDocumento('')
     setMoneda(monBase)
     setMonto('')
+    setActiveTab('encabezado')
 
     startPlan(async () => {
       const data = await getCuotasPendientes(p.empresa, p.proyecto, p.numero)
@@ -306,18 +319,22 @@ export function PagoCuotasClient({
   function handleCambiarPromesa() {
     setPromesa(null)
     setPlanPago(null)
+    setCandidata(null)
     setResultados([])
     setQuery('')
     setSearchError('')
+    wizard.reiniciar()
   }
 
   function handleLimpiarFormulario() {
     limpiarCampoInvalido()
-    if (!promesa) return
-    const seriesDisp = seriesRecibo.filter((s) => s.activo === 1 && s.empresa === promesa.empresa && s.proyecto === promesa.proyecto)
-    const defSerie    = seriesDisp.find((s) => s.predeterminado === 1) ?? seriesDisp[0]
-    const monBase     = proyectoMonedas.find((m) => m.activo === 1 && m.empresa === promesa.empresa && m.proyecto === promesa.proyecto && m.predeterminado === 1)?.moneda ?? promesa.moneda
-    setSerie(defSerie?.serie ?? '')
+    setPromesa(null)
+    setPlanPago(null)
+    setCandidata(null)
+    setResultados([])
+    setQuery('')
+    setSearchError('')
+    setSerie('')
     setNumero('')
     setFecha(new Date().toISOString().slice(0, 10))
     setCobrador(0)
@@ -326,8 +343,31 @@ export function PagoCuotasClient({
     setCuentaBancaria(0)
     setNumCuenta('')
     setNumDocumento('')
-    setMoneda(monBase)
+    setMoneda('')
     setMonto('')
+    wizard.reiniciar()
+  }
+
+  function irSiguiente() {
+    if (activeTab === 'promesa') {
+      if (candidata) {
+        const misma = promesa
+          && candidata.empresa === promesa.empresa
+          && candidata.proyecto === promesa.proyecto
+          && candidata.numero === promesa.numero
+        if (misma) setActiveTab('encabezado')
+        else handleSeleccionarPromesa(candidata)
+        return
+      }
+      if (promesa) setActiveTab('encabezado')
+      return
+    }
+    wizard.siguiente()
+  }
+
+  function irAnterior() {
+    if (activeTab === 'encabezado' && promesa) setCandidata(promesa)
+    wizard.anterior()
   }
 
   // ── Cascada forma de pago ──
@@ -344,17 +384,17 @@ export function PagoCuotasClient({
   // ── Grabar el recibo ──
   function handleGuardar() {
     if (!promesa || !planPago) return
-    if (!serie) { rechazar('pc-serie', 'Selecciona la serie de recibo.'); return }
-    if (!reciboAutomatico && !numero.trim()) { rechazar('pc-numero', 'Ingresa el numero de recibo.'); return }
-    if (!cobrador) { rechazar('pc-cobrador', 'Selecciona el cobrador.'); return }
-    if (!formaPago) { rechazar('pc-forma-pago', 'Selecciona la forma de pago.'); return }
-    if (formaPago === 2 && !banco) { rechazar('pc-banco', 'Completa los datos del cheque.'); return }
-    if (formaPago === 2 && !numDocumento.trim()) { rechazar('pc-num-documento', 'Completa los datos del cheque.'); return }
-    if ((formaPago === 3 || formaPago === 4) && !cuentaBancaria) { rechazar('pc-cuenta', 'Completa los datos de la cuenta bancaria.'); return }
-    if ((formaPago === 3 || formaPago === 4) && !numDocumento.trim()) { rechazar('pc-num-documento', 'Completa los datos de la cuenta bancaria.'); return }
-    if (!moneda) { rechazar('pc-moneda', 'Selecciona la moneda.'); return }
-    if (montoNum <= 0) { rechazar('pc-monto', 'El monto a pagar debe ser mayor a cero.'); return }
-    if (moneda !== monedaBase && !tasaCambio) { rechazar('pc-moneda', 'No hay tasa de cambio registrada para esa moneda en esta fecha.'); return }
+    if (!serie) { rechazar('pc-serie', 'Selecciona la serie de recibo.', 'encabezado'); return }
+    if (!reciboAutomatico && !numero.trim()) { rechazar('pc-numero', 'Ingresa el numero de recibo.', 'encabezado'); return }
+    if (!cobrador) { rechazar('pc-cobrador', 'Selecciona el cobrador.', 'encabezado'); return }
+    if (!formaPago) { rechazar('pc-forma-pago', 'Selecciona la forma de pago.', 'pago'); return }
+    if (formaPago === 2 && !banco) { rechazar('pc-banco', 'Completa los datos del cheque.', 'pago'); return }
+    if (formaPago === 2 && !numDocumento.trim()) { rechazar('pc-num-documento', 'Completa los datos del cheque.', 'pago'); return }
+    if ((formaPago === 3 || formaPago === 4) && !cuentaBancaria) { rechazar('pc-cuenta', 'Completa los datos de la cuenta bancaria.', 'pago'); return }
+    if ((formaPago === 3 || formaPago === 4) && !numDocumento.trim()) { rechazar('pc-num-documento', 'Completa los datos de la cuenta bancaria.', 'pago'); return }
+    if (!moneda) { rechazar('pc-moneda', 'Selecciona la moneda.', 'pago'); return }
+    if (montoNum <= 0) { rechazar('pc-monto', 'El monto a pagar debe ser mayor a cero.', 'pago'); return }
+    if (moneda !== monedaBase && !tasaCambio) { rechazar('pc-moneda', 'No hay tasa de cambio registrada para esa moneda en esta fecha.', 'pago'); return }
 
     startSave(async () => {
       const result = await registrarPagoCuotas({
@@ -494,8 +534,14 @@ export function PagoCuotasClient({
         </div>
       </div>
 
-      {/* ── Identificar promesa (solo si no hay una seleccionada) ── */}
-      {!promesa && (
+      <FormWizard
+        steps={PASOS_PAGO}
+        value={activeTab}
+        onValueChange={setActiveTab}
+        maxIndice={wizard.maxIndice}
+        className="min-h-0 flex-1"
+      >
+      {activeTab === 'promesa' && (
         <div className="min-h-0 flex-1 overflow-auto">
         <div className="rounded-xl border border-border/60 bg-card p-4">
           <div className="grid grid-cols-2 gap-2 mb-3">
@@ -579,15 +625,15 @@ export function PagoCuotasClient({
                   {resultados.map((r) => (
                     <TableRow
                       key={`${r.empresa}-${r.proyecto}-${r.numero}`}
-                      className="cursor-pointer hover:bg-red-50/60"
-                      onClick={() => handleSeleccionarPromesa(r)}
+                      className={`cursor-pointer hover:bg-red-50/60 ${candidata?.empresa === r.empresa && candidata?.proyecto === r.proyecto && candidata?.numero === r.numero ? 'bg-red-50' : ''}`}
+                      onClick={() => setCandidata(r)}
                     >
                       <TableCell className="font-mono text-xs">{r.numero}</TableCell>
                       <TableCell className="text-xs">{r.referencia}</TableCell>
                       <TableCell className="max-w-[220px] truncate">{r.cliente_codigo} - {r.cliente_nombre}</TableCell>
                       <TableCell className="text-xs">{fmtDate(r.fecha)}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50">Seleccionar</Button>
+                        <Button type="button" size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setCandidata(r)}>Seleccionar</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -599,8 +645,7 @@ export function PagoCuotasClient({
         </div>
       )}
 
-      {/* ── Promesa identificada + resto de la pantalla ── */}
-      {promesa && (
+      {promesa && activeTab !== 'promesa' && (
         <>
           {/* Barra resumen de la promesa */}
           <div className={`${LIST_BLOCK} rounded-xl border border-red-200 bg-red-50/40 p-4 flex items-start justify-between gap-4`}>
@@ -617,12 +662,9 @@ export function PagoCuotasClient({
             <Button variant="outline" size="sm" onClick={handleCambiarPromesa}>Cambiar Promesa</Button>
           </div>
 
-          {/* ── Dos paneles ── */}
-          <div className="flex min-h-0 flex-1 gap-6">
-
-            {/* ── Panel izquierdo — Encabezado + Forma de Pago ── */}
-            <div className="w-80 shrink-0 min-h-0 overflow-y-auto rounded-xl border border-border/60 bg-card p-4">
-              <div className="grid grid-cols-2 gap-2">
+          {activeTab === 'encabezado' ? (
+          <div className="mx-auto w-full max-w-xl rounded-xl border border-border/60 bg-card p-4">
+            <div className="grid grid-cols-2 gap-2">
 
                 <SectionDivider label="Encabezado Recibo" />
 
@@ -672,6 +714,14 @@ export function PagoCuotasClient({
                     placeholder="Selecciona cobrador..."
                   />
                 </div>
+
+            </div>
+          </div>
+          ) : (
+          <div className="flex min-h-0 flex-1 gap-6">
+
+            <div className="w-80 shrink-0 min-h-0 overflow-y-auto rounded-xl border border-border/60 bg-card p-4">
+              <div className="grid grid-cols-2 gap-2">
 
                 <SectionDivider label="Forma de Pago" />
 
@@ -879,13 +929,21 @@ export function PagoCuotasClient({
 
             </div>
           </div>
+          )}
 
-          {/* ── Footer sticky ── */}
-          <div className={`${LIST_BLOCK} bg-card border-t border-border/60 px-6 py-3 flex items-center justify-between gap-4`}>
-            <p className="text-xs text-muted-foreground max-w-xs">
-              El monto se aplica de la cuota mas antigua a la mas reciente (mora, otros ingresos, intereses y capital, en ese orden).
-            </p>
-            <div className="flex items-center gap-6">
+        </>
+      )}
+      </FormWizard>
+
+      <div className={`${LIST_BLOCK} bg-card border-t border-border/60 px-6 py-3 flex items-center justify-between gap-4`}>
+        {activeTab === 'pago' ? (
+          <p className="text-xs text-muted-foreground max-w-xs">
+            El monto se aplica de la cuota mas antigua a la mas reciente (mora, otros ingresos, intereses y capital, en ese orden).
+          </p>
+        ) : <span />}
+        <div className="flex items-center gap-6">
+          {activeTab === 'pago' && (
+            <>
               <div className="text-right">
                 <span className="block text-[11px] uppercase tracking-wider text-muted-foreground">Monto a Pagar</span>
                 <span className="font-mono text-sm font-semibold">{moneda} {fmt(montoNum)}</span>
@@ -906,21 +964,32 @@ export function PagoCuotasClient({
                   <span className="font-mono text-sm font-semibold text-amber-600">{monedaBase} {fmt(sobrante)}</span>
                 </div>
               )}
-              <Button variant="outline" onClick={handleLimpiarFormulario} disabled={isPendingSave}>Limpiar</Button>
-              {puedeAgregar && (
-                <Button
-                  onClick={handleGuardar}
-                  disabled={isPendingSave || isPendingPlan || montoNum <= 0}
-                  className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
-                >
-                  {isPendingSave && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {isPendingSave ? 'Guardando...' : 'Guardar Recibo'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          )}
+          <Button variant="outline" onClick={handleLimpiarFormulario} disabled={isPendingSave}>Limpiar</Button>
+          {!wizard.esPrimero && (
+            <Button variant="outline" onClick={irAnterior} disabled={isPendingSave}>Anterior</Button>
+          )}
+          {!wizard.esUltimo ? (
+            <Button
+              onClick={irSiguiente}
+              disabled={isPendingSave || (activeTab === 'promesa' && !candidata && !promesa)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Siguiente
+            </Button>
+          ) : puedeAgregar && (
+            <Button
+              onClick={handleGuardar}
+              disabled={isPendingSave || isPendingPlan || montoNum <= 0}
+              className="bg-red-600 hover:bg-red-700 text-white gap-1.5"
+            >
+              {isPendingSave && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isPendingSave ? 'Guardando...' : 'Guardar Recibo'}
+            </Button>
+          )}
+        </div>
+      </div>
 
     </div>
   )
