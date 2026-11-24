@@ -161,10 +161,11 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 // Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
-// pestañas bg-muted/20; cajas en blanco (bg-popover); en Ver el diálogo usa el gris
-// de las cajas de los demás CRUD (bg-muted/20 compuesto sobre el blanco del diálogo);
-// icono entre la barra y el título; pie del modal en text-sm font-medium como la pestaña.
-const FONDO_MODAL_VER = 'bg-[color-mix(in_oklab,var(--muted)_20%,var(--popover))]'
+// en Ver el diálogo es un tono más que el gris de las cajas (muted al 30% sobre blanco);
+// la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
+// icono entre la barra y el título; pie en text-sm font-medium como la pestaña.
+const FONDO_MODAL_VER = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
+const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
   IDENTIFICACION: IdCard,
   GENERAL: User,
@@ -174,13 +175,13 @@ const SEGMENTO_ICONO = {
 
 const CLASE_PESTANA_MODAL = [
   'gap-1.5 rounded-md border-b-2 border-b-transparent px-3 py-1 text-sm font-medium',
-  'bg-muted/20 text-foreground/70 after:hidden',
-  'data-active:border-b-primary data-active:bg-muted/20 data-active:text-primary',
-  'group-data-[variant=line]/tabs-list:bg-muted/20',
-  'group-data-[variant=line]/tabs-list:data-active:bg-muted/20',
-  'dark:bg-muted/20 dark:data-active:bg-muted/20',
-  'dark:group-data-[variant=line]/tabs-list:bg-muted/20',
-  'dark:group-data-[variant=line]/tabs-list:data-active:bg-muted/20',
+  'bg-transparent text-foreground/70 after:hidden',
+  'data-active:border-b-primary data-active:bg-transparent data-active:text-primary',
+  'group-data-[variant=line]/tabs-list:bg-transparent',
+  'group-data-[variant=line]/tabs-list:data-active:bg-transparent',
+  'dark:bg-transparent dark:data-active:bg-transparent',
+  'dark:group-data-[variant=line]/tabs-list:bg-transparent',
+  'dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
 ].join(' ')
 
 const CLASE_PIE_MODAL = 'text-sm font-medium'
@@ -1434,12 +1435,12 @@ export function ClientesClient({
 
           {/* Tabs */}
           {esAlta ? (
-            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} pasoClassName="bg-muted/20" className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
               {pasoGeneral()}
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
               <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
@@ -1452,7 +1453,7 @@ export function ClientesClient({
           )}
 
           {/* Footer */}
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
                 <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={() => setAuditTarget(viewTarget)}>
