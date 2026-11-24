@@ -161,8 +161,10 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 // Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
-// pestañas bg-muted/20 (antes de las cajas), cajas bg-transparent (antes de las pestañas),
-// icono entre la barra y el título, pie del modal en text-sm font-medium como la pestaña.
+// pestañas bg-muted/20; cajas en blanco (bg-popover); en Ver el diálogo usa el gris
+// de las cajas de los demás CRUD (bg-muted/20 compuesto sobre el blanco del diálogo);
+// icono entre la barra y el título; pie del modal en text-sm font-medium como la pestaña.
+const FONDO_MODAL_VER = 'bg-[color-mix(in_oklab,var(--muted)_20%,var(--popover))]'
 const SEGMENTO_ICONO = {
   IDENTIFICACION: IdCard,
   GENERAL: User,
@@ -194,7 +196,7 @@ function SegmentCard({ label, children }: { label: string; children: React.React
           {label}
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-transparent p-3">
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-popover p-3">
         {children}
       </div>
     </div>
@@ -1404,7 +1406,7 @@ export function ClientesClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden${!isEditing && viewTarget ? ` ${FONDO_MODAL_VER}` : ''}`}>
 
           {/* Header */}
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-indigo-50/70 to-transparent border-b border-border/50 shrink-0">
