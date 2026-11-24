@@ -112,7 +112,45 @@ export async function obtenerEntity(empresa: number, proyecto: number, codigo: n
 }
 ```
 
-`requirePermiso(..., 'consultar')` es la primera instrucción. `filaConNombres` y `leerNombres` viven en `src/lib/leer-nombres.ts`. El cliente abre Ver con `useRegistroVer` (`components.mdc` § C): pide esta función, reemplaza solo esa fila en la lista y, si el usuario ya está editando, no pisa lo que está escribiendo. El alta no llama `obtener*`.
+`requirePermiso(..., 'consultar')` es la primera instrucción. `filaConNombres` y `leerNombres` viven en `src/lib/leer-nombres.ts`. El cliente abre Ver con `useRegistroVer` (`components.mdc` § C): pide esta función, reemplaza solo esa fila en la lista y, si el usuario ya está editando, no pisa lo que está escribiendo. El alta no llama `obtener*`. `obtener*` lee la tabla base. La grilla lee la vista de la sección siguiente.
+
+---
+
+## Listas principales — una lectura
+
+Cada grilla sale de una vista `cartera.v_<entidad>_lista` definida en `scripts/vistas_listas.sql`. Una ida a la base trae la fila y los nombres de lo que referencia. PostgREST no puede unir estas tablas: no hay `FOREIGN KEY` declarada.
+
+La vista:
+
+- Nombra cada columna de la tabla base y cada nombre (`empresa_nombre`, `proyecto_nombre`, y el que corresponda). Sin `SELECT *`.
+- Lleva `WITH (security_invoker = true)` para que siga la RLS de las tablas base, y `GRANT SELECT` a `authenticated` y `service_role`.
+- Hace `INNER JOIN` a `t_empresa` y `t_proyecto` cuando esas columnas son parte de la llave.
+- Hace `LEFT JOIN` a país, departamento, municipio, fase, banco, cliente, vendedor, coordinador, supervisor y cuenta bancaria. Un código `0` significa “sin asignar”: el join exige que el código sea mayor que `0`, para no esconder la fila.
+- No filtra `t_usuario_proyecto` ni usa `auth.uid()`. El admin de la cuenta ve toda la cuenta y puede no tener filas en esa tabla.
+
+El `get*` de la lista lee esa vista con la misma lista de columnas y aplica el alcance del usuario:
+
+```ts
+const acceso = await leerAcceso()
+if (!acceso) return []
+let query = (await clienteDatos())
+  .schema('cartera')
+  .from('v_cliente_lista')
+  .select('cuenta, empresa, proyecto, codigo, nombre, empresa_nombre, proyecto_nombre, pais_nombre, departamento_nombre, municipio_nombre')
+  .eq('cuenta', acceso.cuenta)
+const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
+if (!acotada) return []
+```
+
+El `.select` del `get*` real nombra cada columna de la vista que el tipo y la grilla necesitan.
+
+`restringirProyecto` (`src/lib/acceso-proyecto.ts`) arma el `OR` de los pares empresa/proyecto de `t_usuario_proyecto`. Empresas no tiene columna `proyecto`: usa `empresasVisibles` y `.in('codigo', ids)`. En proyectos la columna del proyecto es `codigo`.
+
+Un catálogo trae todas las filas de la cuenta ya recortadas por ese alcance. El buscador y los filtros de columna se quedan en memoria. Los catálogos que alimentan los selects del formulario se siguen cargando en `page.tsx`.
+
+Transacciones, Recibos, Reservas y Promesas usan la misma función de lista. El segmento de filtros arma el `WHERE` antes de ejecutarla. Se piden 501 filas: se muestran 500 y, si sobra, la pantalla avisa con `limitReached`. El orden del tope deja visibles las más recientes (`fecha` o `numero` descendente). Transacciones abre con los últimos 30 días por `fecha`. Reservas abre en estado Abierta (`1`). Promesas abre en estado vigente (`1`). Recibos filtra el cliente con `ilike` sobre `cliente_nombre` en esa misma lectura. El buscador y las columnas filtran el bloque devuelto. Buscar algo que no vino en el bloque cambia el segmento y vuelve a llamar la misma función. Tras guardar, anular o eliminar, esa relectura usa el segmento aplicado. `router.refresh()` solo recarga la ventana por defecto.
+
+Una lista nueva agrega su vista a `scripts/vistas_listas.sql`. Hay que correr ese script en el SQL Editor de Supabase: sin la vista, la lectura falla.
 
 ---
 

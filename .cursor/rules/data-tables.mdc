@@ -26,6 +26,14 @@ const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVi
 
 ---
 
+## Names on the row
+
+The grid, the search box, the column filters, and the CSV read the name that came with the row. Use `nombreDeLista(row.empresa_nombre, mapFallback)` from `@/lib/registro-ver`. The maps stay: they fill the form selects and they cover a row whose joined name is empty.
+
+Do not resolve the list by walking those maps as the only source, and do not add a second query to fetch the names.
+
+On Transacciones, Recibos, Reservas, and Promesas the search and the column filters run on the loaded block. A lookup that has to reach rows outside that block changes the filter segment and calls the same list function again. After a save, anulación, or delete, reload that applied segment. `router.refresh()` by itself reloads the default window and replaces the rows while the inputs still show the segment the user applied.
+
 ## Table wrapper
 
 The list fills the free height of the dashboard. Vertical and horizontal scroll belong to the table, not the page. Column titles stay fixed. Search, filters and the counter stay outside the scroll. Constants live in `src/lib/list-table.ts`. Reference: `promesas/clientes/_client.tsx`.
