@@ -9,7 +9,7 @@ import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyect
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto, exigirEmpresa } from '@/app/actions/permisos'
-import { restringirProyecto } from '@/lib/acceso-proyecto'
+import { restringirProyecto, type AccesoLectura } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
 
 async function getAuditUser() {
@@ -55,6 +55,59 @@ async function writeAudit(
   })
 }
 
+const COLUMNAS_PROYECTO = 'cuenta, empresa, codigo, nombre, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha'
+
+type FilaProyecto = Omit<Proyecto, 'moneda'>
+type ClienteLectura = Awaited<ReturnType<typeof clienteDatos>>
+
+async function monedasPredeterminadas(
+  admin: ClienteLectura,
+  acceso: AccesoLectura,
+  pares: { empresa: number; proyecto: number }[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  if (pares.length === 0) return map
+  const consulta = admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('empresa, proyecto, moneda')
+    .eq('cuenta', acceso.cuenta)
+    .eq('predeterminado', 1)
+  const acotada = restringirProyecto(consulta, acceso)
+  if (!acotada) return map
+  const { data, error } = await acotada
+  if (error) throw new Error(error.message)
+  const claves = new Set(pares.map((par) => `${par.empresa}-${par.proyecto}`))
+  for (const row of data ?? []) {
+    const clave = `${row.empresa}-${row.proyecto}`
+    if (claves.has(clave)) map.set(clave, row.moneda)
+  }
+  return map
+}
+
+async function monedaPredeterminada(
+  admin: ClienteLectura,
+  cuenta: string,
+  empresa: number,
+  proyecto: number,
+): Promise<{ moneda?: string; error?: string }> {
+  const { data, error } = await admin
+    .schema('cartera')
+    .from('t_proyecto_moneda')
+    .select('moneda')
+    .eq('cuenta', cuenta)
+    .eq('empresa', empresa)
+    .eq('proyecto', proyecto)
+    .eq('predeterminado', 1)
+    .limit(1)
+  if (error) return { error: error.message }
+  return { moneda: data?.[0]?.moneda ?? '' }
+}
+
+function conMoneda(fila: FilaProyecto, moneda: string): Proyecto {
+  return { ...fila, moneda }
+}
+
 export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
@@ -62,7 +115,7 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .select(COLUMNAS_PROYECTO)
     .eq('cuenta', acceso.cuenta)
     .order('nombre')
   const acotada = restringirProyecto(
@@ -74,7 +127,13 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   if (!acotada) return []
   const { data, error } = await acotada
   if (error) throw new Error(error.message)
-  return data as Proyecto[]
+  const filas = (data ?? []) as FilaProyecto[]
+  const monedas = await monedasPredeterminadas(
+    admin,
+    acceso,
+    filas.map((fila) => ({ empresa: fila.empresa, proyecto: fila.codigo })),
+  )
+  return filas.map((fila) => conMoneda(fila, monedas.get(`${fila.empresa}-${fila.codigo}`) ?? ''))
 }
 
 export type ProyectoVer = Proyecto & NombresVer & { monedas_del_proyecto?: ProyectoMoneda[] }
@@ -90,14 +149,14 @@ export async function obtenerProyecto(empresa: number, codigo: number): Promise<
   const { data, error } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .select(COLUMNAS_PROYECTO)
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
     .maybeSingle()
   if (error) return { error: error.message }
   if (!data) return { error: 'Registro no encontrado.' }
-  const row = data as Proyecto
+  const row = data as FilaProyecto
   const [monedasResult, nombres] = await Promise.all([
     admin.schema('cartera').from('t_proyecto_moneda').select('cuenta, empresa, proyecto, moneda, predeterminado, activo, agrego_usuario, agrego_fecha')
       .eq('cuenta', cuenta).eq('empresa', empresa).eq('proyecto', codigo)
@@ -110,8 +169,10 @@ export async function obtenerProyecto(empresa: number, codigo: number): Promise<
     }),
   ])
   if (monedasResult.error) return { error: monedasResult.error.message }
+  const monedas = (monedasResult.data ?? []) as ProyectoMoneda[]
+  const predeterminada = monedas.find((item) => item.predeterminado === 1)?.moneda ?? ''
   return {
-    row: { ...row, ...nombres, monedas_del_proyecto: (monedasResult.data ?? []) as ProyectoMoneda[] },
+    row: { ...conMoneda(row, predeterminada), ...nombres, monedas_del_proyecto: monedas },
   }
 }
 
@@ -224,7 +285,7 @@ export async function updateProyecto(
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .select(COLUMNAS_PROYECTO)
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
@@ -281,7 +342,9 @@ export async function updateProyecto(
   })
 
   revalidatePath('/dashboard/proyectos/proyectos')
-  return { row: data[0] as Proyecto }
+  const predeterminada = await monedaPredeterminada(admin, cuenta, empresa, codigo)
+  if (predeterminada.error) return { error: predeterminada.error }
+  return { row: conMoneda(data[0] as FilaProyecto, predeterminada.moneda ?? '') }
 }
 
 export async function deleteProyecto(empresa: number, codigo: number): Promise<{ error?: string }> {
@@ -379,7 +442,7 @@ export async function deleteProyecto(empresa: number, codigo: number): Promise<{
   const { data: oldRow } = await admin
     .schema('cartera')
     .from('t_proyecto')
-    .select('cuenta, empresa, codigo, nombre, moneda, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, telefono1, telefono2, mora_automatica, fijar_parametros_mora, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, inicio_calculo_mora, calcular_mora_antes, minimo_mora, minimo_abono_capital, inicio_abono_capital_estricto, promesa_vencida, promesa_correlativo, visibilidad_ventas, visibilidad_cobros, logo_url, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .select(COLUMNAS_PROYECTO)
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('codigo', codigo)
