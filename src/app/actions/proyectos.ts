@@ -316,6 +316,8 @@ export async function updateProyecto(
   }
 
   const { moneda: _moneda, ...proyectoPayload } = normalized
+  const predeterminada = await monedaPredeterminada(admin, cuenta, empresa, codigo)
+  if (predeterminada.error) return { error: predeterminada.error }
 
   let query = admin
     .schema('cartera')
@@ -342,8 +344,6 @@ export async function updateProyecto(
   })
 
   revalidatePath('/dashboard/proyectos/proyectos')
-  const predeterminada = await monedaPredeterminada(admin, cuenta, empresa, codigo)
-  if (predeterminada.error) return { error: predeterminada.error }
   return { row: conMoneda(data[0] as FilaProyecto, predeterminada.moneda ?? '') }
 }
 
