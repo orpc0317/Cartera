@@ -43,6 +43,7 @@ El protocolo de trabajo está en `AGENTS.md`. La arquitectura de la aplicación 
 - **Server vs Client:** preferir Server Components. Marcar con `"use client"` solo los componentes que requieran estado, efectos o eventos del navegador.
 - **Data fetching:** en `page.tsx` usar `Promise.all` con `.catch()` por llamada (nunca un `try/catch` global). Ver `.cursor/rules/server-actions.mdc`.
 - **Queries:** seleccionar solo las columnas necesarias (`.select('col1, col2')`), no `select('*')` salvo justificación.
+- **Listas principales:** una sola lectura de `cartera.v_*_lista`. La vista trae los nombres (`empresa_nombre` y el resto) y la grilla pinta esos campos. El corte por empresas y proyectos del usuario queda en la action, con `restringirProyecto`. `obtener*` sigue leyendo la tabla. El detalle está en `.cursor/rules/server-actions.mdc`.
 - **Revalidación:** usar `router.refresh()` después de mutaciones (patrón establecido del proyecto).
 - **Modal tras guardar una edición:** obligatorio en todo catálogo con Ver/Editar. El `update*` devuelve `{ row }` con la fila guardada, `modifico_fecha` incluido. El modal no se cierra: esa fila se asigna a `viewTarget`, el formulario se rearma como en `openView` y se vuelve a Ver con `setIsEditing(false)`. Sin cambios equivale a Cancelar. El alta sí cierra el modal. `router.refresh()` sigue actualizando la lista. El snippet que se copia está en `.cursor/rules/components.mdc` § C y en `.cursor/rules/server-actions.mdc`.
 - **Relectura al abrir Ver:** obligatorio en todo modal Ver de un registro. Al abrir, se vuelve a leer solo esa fila (y los nombres de sus referencias) con `obtener*`. Editar permanece deshabilitado hasta que esa lectura termina, para que el guardado use el `modifico_fecha` recién leído. No se recarga el catálogo ni la página. El alta no hace esta lectura. El snippet está en `.cursor/rules/components.mdc` § C.
@@ -78,6 +79,7 @@ Sustituye a `get_errors` y a los chequeos en PowerShell. Marcar la tarea termina
 4. **Comentarios JSX cerrados** (`{/* ... */}`).
 5. **Si el cambio se ve en pantalla:** recorrer el flujo en el navegador.
 6. **Catálogo nuevo:** el formulario usa `useCampoInvalido` como dice `.cursor/rules/crud-screens.mdc` § Campo con error al grabar, y `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` está en verde. El plano de esas pruebas está en `.cursor/skills/crud-screen/SKILL.md`.
+7. **Lista principal:** el `get*` lee `v_*_lista` con las columnas nombradas, la vista está en `scripts/vistas_listas.sql`, y la celda usa el nombre que vino en la fila.
 
 ---
 

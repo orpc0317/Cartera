@@ -1,6 +1,6 @@
 ---
 name: crud-screen
-description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, re-read of the open record on Ver (obtener* + useRegistroVer), permission-gated UI, campo con error al grabar, and the Playwright file in test/definidas. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
+description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, the main grid as one read of cartera.v_*_lista, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, re-read of the open record on Ver (obtener* + useRegistroVer), permission-gated UI, campo con error al grabar, and the Playwright file in test/definidas. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
 argument-hint: 'Ruta al spec, e.g. prompts/crud-bancos.md — o el pedido de la pantalla, si no hay spec'
 ---
 
@@ -122,7 +122,7 @@ Create `src/app/actions/<entity>.ts`. Required exports:
 
 | Function | Description |
 |----------|-------------|
-| `getEntities()` | Fetch all rows filtered by cuenta |
+| `getEntities()` | One read of `cartera.v_<entidad>_lista` for the grid, scoped with `restringirProyecto`. See below |
 | `obtenerEntity(...pk)` | Re-read one row when Ver opens. `requirePermiso(..., 'consultar')` first, then `getCuentaActiva`, then one row with reference names. See `server-actions.mdc` |
 | `createEntity(form: EntityForm)` | Insert with audit fields |
 | `updateEntity(pk, form, lastModified?)` | Update with optimistic concurrency and return `{ row }` |
@@ -137,6 +137,12 @@ Rules (from `.cursor/rules/server-actions.mdc`):
 - `updateEntity` must use `modifico_fecha` for optimistic concurrency and return `{ row: data[0] }` — see the rule for the exact query pattern. The client puts that row back into `viewTarget`.
 - Call `writeAudit(...)` after every successful mutation (import from `src/app/actions/audit.ts`)
 - Do not re-export values from a `"use server"` file. In `page.tsx`, import FK helpers from their source action file.
+
+`getEntities()` reads `v_<entidad>_lista`, not the base table. Add that view to `scripts/vistas_listas.sql` in the same change: named columns, no `SELECT *`, `security_invoker = true`, `GRANT SELECT` to `authenticated` and `service_role`, `INNER JOIN` to empresa and proyecto when those columns are part of the key, and `LEFT JOIN` for the other names. A code `0` means unassigned: that join requires the code to be greater than `0`. The view does not filter `t_usuario_proyecto`. `restringirProyecto` does that in the action. The full pattern is in `.cursor/rules/server-actions.mdc` under "Listas principales".
+
+The grid, the search box, the column filters, and the CSV display `nombreDeLista(row.empresa_nombre, mapFallback)`. Keep loading the relation catalogs in `page.tsx`: the form selects still use them. `obtenerEntity` keeps reading the base table through `filaConNombres`.
+
+Tell the user to run `scripts/vistas_listas.sql` in the Supabase SQL Editor. Without that view the list read fails.
 
 ### Step 7 — Generate page.tsx
 
@@ -228,6 +234,7 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 
 #### Table & Export
 
+- [ ] **The grid reads `v_<entidad>_lista`.** Cells, search, column filters, and CSV use `nombreDeLista(row.*_nombre, mapFallback)`. The view is in `scripts/vistas_listas.sql`. `obtenerEntity` still reads the base table.
 - [ ] **`STORAGE_KEY` includes `${userId}`** so column preferences are per-user.
 - [ ] **Export filename matches the spec's `EXPORTACION` section** exactly (e.g. `tipos-ingresos-YYYY-MM-DD.csv`).
 - [ ] **Sticky left column is `codigo`; sticky right column is the "Ver" button** (single action, no dropdown/chevron) — both have `z-10` and mirror their background class to the active-row highlight class.
