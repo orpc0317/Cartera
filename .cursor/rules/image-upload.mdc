@@ -83,7 +83,7 @@ function extractStoragePath(publicUrl: string, bucket: string): string | null {
 
 ```ts
 import { createAdminClient } from '@/lib/supabase/admin'
-// getCuentaActiva se define localmente en el archivo de acciones (ver server-actions.instructions.md)
+// getCuentaActiva se define localmente en el archivo de acciones (ver .cursor/rules/server-actions.mdc)
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 const MAX_BYTES     = 5 * 1024 * 1024   // 5 MB
@@ -212,7 +212,7 @@ const up = await uploadProjectLogo(fd, viewTarget?.logo_url ?? undefined)
 
 ## AC · LogoUploadField — Carga de imagen / logo
 
-Usar solo en pantallas que tengan un campo `logo_url`. Leer también `image-upload.instructions.md` para las reglas de seguridad de la Server Action.
+Usar solo en pantallas que tengan un campo `logo_url`. Las reglas de seguridad de la Server Action están arriba, en este mismo archivo.
 
 ### Imports adicionales
 

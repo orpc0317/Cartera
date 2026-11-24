@@ -107,7 +107,7 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 
 Estos estándares garantizan que labels y bordes de campo se vean consistentes en toda la app, especialmente cuando un `ViewField` (solo lectura) aparece lado a lado con un `Input`/`Select` (editable).
 
-**Alcance — sin excepción de ubicación ni de patrón de pantalla:** esta regla aplica a **todo** `<Input>`/`<Select>` que exista en un `_client.tsx`, sin importar dónde esté en el layout (grid de edición dentro del modal, panel de filtros server-side, toolbar de búsqueda, tabla, drawer) **ni qué patrón de pantalla lo contiene** (Formulario simple, Maestro-Detalle, Transacción, Reporte, Drawer, o cualquier patrón nuevo aún no documentado en `patterns.instructions.md`). No existe una variante "toolbar" o "filtro" con estilo propio, y un patrón de pantalla nuevo tampoco crea una excepción automática. Si el campo es un `Input` o un `Select`, lleva `variant="l-border"`; si tiene una etiqueta encima, es un `<Label>` con las clases de esta tabla — nunca un `<span>` suelto.
+**Alcance — sin excepción de ubicación ni de patrón de pantalla:** esta regla aplica a **todo** `<Input>`/`<Select>` que exista en un `_client.tsx`, sin importar dónde esté en el layout (grid de edición dentro del modal, panel de filtros server-side, toolbar de búsqueda, tabla, drawer) **ni qué patrón de pantalla lo contiene** (Formulario simple, Maestro-Detalle, Transacción, Reporte, Drawer, o cualquier patrón nuevo aún no documentado en `.cursor/rules/patterns.mdc`). No existe una variante "toolbar" o "filtro" con estilo propio, y un patrón de pantalla nuevo tampoco crea una excepción automática. Si el campo es un `Input` o un `Select`, lleva `variant="l-border"`; si tiene una etiqueta encima, es un `<Label>` con las clases de esta tabla — nunca un `<span>` suelto.
 
 | Elemento | className obligatorio | style |
 |---|---|---|
@@ -155,14 +155,9 @@ El color del valor dice si el campo se puede editar. El subrayado no cambia. No 
 
 ---
 
-## Geo / country rules
+## Geo y moneda
 
-- `pais` stores ISO-2 code (e.g. `'GT'`). `departamento` / `municipio` store numeric varchar codes.
-- **Always resolve codes to names** via the `paises` / `departamentos` / `municipios` prop arrays.
-- **Pais must always show the flag** (`https://flagcdn.com/w20/{iso.toLowerCase()}.png`, `width={20} height={14}`) to the left of the country name — in table cells, ViewField, and edit previews. No exceptions.
-- Never display a raw code for Pais, Departamento, or Municipio.
-
----
+Pais, departamento, municipio y moneda se muestran con nombre o código ISO y bandera, nunca con el código pelado ni con el nombre de la divisa. El snippet y la preselección están en `.cursor/rules/advanced-components.mdc`.
 
 ## Placeholder text rules
 
@@ -221,11 +216,11 @@ When the spec notes `NO normalizar a mayúsculas; SÍ quitar tildes` for a field
 
 The `activo` field (smallint 0/1) renders as a badge in every table and as a `Checkbox card` in every view mode modal. No exceptions unless the spec explicitly overrides.
 
-→ **Snippets verbatim en `components.instructions.md § Y · Campo activo`** (tabla, vista y edición).
+→ **Snippets verbatim en `.cursor/skills/crud-screen/references/fields.md § Y · Campo activo`** (tabla, vista y edición).
 
 - **Table cell:** Badge verde `Activo` cuando `activo === 1`, badge muted `Inactivo` cuando `activo === 0`.
 - **View mode:** `<Checkbox>` disabled dentro de card `rounded-lg bg-muted/50 border border-border/40 px-3 py-2.5`.
-- **Edit mode:** Para checkboxes que comparten fila con input/select → ver **§ J** en `components.instructions.md`.
+- **Edit mode:** Para checkboxes que comparten fila con input/select → ver **§ J** en `.cursor/skills/crud-screen/references/fields.md`.
 
 ---
 
@@ -320,73 +315,40 @@ This app uses **Base UI** (`@base-ui/react/select`). `SelectValue` does **not** 
 
 ---
 
-## Moneda display rules
+## Status badge variants
 
-**Global rule — two contexts with different verbosity:**
+Use these classes for status/state badges anywhere in the UI (table cells, transaction headers, detail cards). These complement the `activo` badge rule in `.cursor/rules/ui-conventions.mdc`.
 
-| Contexto | Formato | Ejemplos |
-|----------|---------|---------|
-| Display (tabla, ViewField, **Select trigger**) | bandera + ISO code only | `🇬🇹 GTQ` ✅ |
-| Selección (**Select dropdown items**) | bandera + ISO | `🇬🇹 GTQ` ✅ |
+```tsx
+// success — confirmed, active, paid
+<Badge variant="secondary" className="font-normal bg-green-100 text-green-700">Confirmado</Badge>
 
-```
-🇬🇹 GTQ           ✅ (trigger, tabla, ViewField, dropdown items)
-GTQ               ❌ (sin bandera)
-USD (US Dollar)   ❌ (sin bandera, mal formato)
-```
+// error — cancelled, rejected, overdue
+<Badge variant="secondary" className="font-normal bg-red-100 text-red-700">Anulado</Badge>
 
-> **Razón:** el trigger es compacto (espacio limitado); el dropdown también muestra bandera + código ISO para consistencia visual.
+// warning — pending, expiring, draft
+<Badge variant="secondary" className="font-normal bg-amber-100 text-amber-700">Borrador</Badge>
 
-→ **Snippets verbatim (CURRENCY_FLAG_MAP, tabla, ViewField, Select trigger, Select items, ColumnFilter):**  
-→ **`components.instructions.md § W · Select moneda con bandera`**
+// info — informational, neutral state
+<Badge variant="secondary" className="font-normal bg-blue-100 text-blue-700">En Proceso</Badge>
 
-### Column filter values
-
-When building `uniqueMonedaLabels` for the column filter dropdown, use only the ISO code (no name):
-
-```ts
-const uniqueMonedaLabels = useMemo(() =>
-  [...new Set(initialData.map((r) => r.moneda))].sort(),
-  [initialData]
-)
+// default — muted/neutral
+<Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Sin Estado</Badge>
 ```
 
-And in the filter match:
-```ts
-if (col === 'moneda') return vals.has(r.moneda)
-```
+**Rules:**
+- Always use `variant="secondary"` as the base — it disables the default shadcn/ui color.
+- Always include `font-normal` — `variant="secondary"` inherits `font-medium` which is too heavy for status text.
+- Map all status values to one of the five variants above; never use raw accent colors for status badges.
+- Define a `const` map above the component for multi-state entities (avoids inline conditionals):
+  ```tsx
+  const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
+    borrador:   { label: 'Borrador',   className: 'bg-amber-100 text-amber-700' },
+    confirmado: { label: 'Confirmado', className: 'bg-green-100 text-green-700' },
+    anulado:    { label: 'Anulado',    className: 'bg-red-100   text-red-700'   },
+  }
+  // Usage:
+  const badge = ESTADO_BADGE[row.estado] ?? { label: row.estado, className: 'bg-muted text-muted-foreground' }
+  <Badge variant="secondary" className={`font-normal ${badge.className}`}>{badge.label}</Badge>
+  ```
 
----
-
-## Currency pre-selection from country (COUNTRY_CURRENCY_MAP)
-
-Any screen that has a `moneda` field **must** pre-select a sensible default in `openCreate()` based on the detected country. Use `COUNTRY_CURRENCY_MAP` from `@/lib/constants` to convert the ISO-2 country code to an ISO-4217 currency code.
-
-### Algorithm (apply after country detection — see *Country / Geo pre-selection* in `crud-screens.instructions.md`):
-
-```ts
-import { COUNTRY_CURRENCY_MAP } from '@/lib/constants'
-
-const detectedMoneda = COUNTRY_CURRENCY_MAP[detectedCountryIso] ?? ''
-const monedaDefault = monedas.find((m) => m.codigo === detectedMoneda)
-  ? detectedMoneda
-  : (monedas[0]?.codigo ?? '')
-setForm((prev) => ({ ...prev, moneda: monedaDefault }))
-```
-
-### COUNTRY_CURRENCY_MAP definition (in `src/lib/constants.ts`)
-
-If the map does not yet exist in `constants.ts`, add it:
-
-```ts
-export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
-  AR: 'ARS', BO: 'BOB', BR: 'BRL', CA: 'CAD',
-  CL: 'CLP', CO: 'COP', CR: 'CRC', CU: 'CUP',
-  DO: 'DOP', EC: 'USD', EU: 'EUR', GB: 'GBP',
-  GT: 'GTQ', HN: 'HNL', MX: 'MXN', NI: 'NIO',
-  PA: 'PAB', PE: 'PEN', PY: 'PYG', SV: 'SVC',
-  US: 'USD', UY: 'UYU', VE: 'VES',
-}
-```
-
-> This map is a **shared constant** — define it once in `@/lib/constants` and import it in every `_client.tsx` that needs currency pre-selection. Never redefine it inline.

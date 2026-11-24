@@ -11,7 +11,7 @@
 | TABLA_BD       | `cartera.t_reserva` (+ `cartera.t_recibo_caja` para datos del pago) |
 | RUTA           | `/dashboard/promesas/reservas`                               |
 | PERMISO        | `RES_OPE` — ya existe en `src/lib/permisos.ts`              |
-| COLOR_ACENTO   | elegir según tabla de `ui-conventions.instructions.md`       |
+| COLOR_ACENTO   | elegir según tabla de `.cursor/rules/ui-conventions.mdc`       |
 | ICONO_LUCIDE   | `ClipboardList`                                              |
 | MODAL_LAYOUT   | ancho                                              |
 | MODO           | nuevo                                                        |
@@ -219,7 +219,7 @@ const RESERVA_ESTADOS: Record<number, { label: string; cls: string }> = {
 ```
 
 `estado` renderiza como `<Badge variant="outline">` usando el `cls` del mapa.
-`moneda` renderiza con bandera + codigo ISO segun regla global **Moneda display rules** en `ui-conventions.instructions.md`.
+`moneda` renderiza con bandera + codigo ISO segun regla global **Moneda display rules** en `.cursor/rules/ui-conventions.mdc`.
 `monto` renderiza como `fmt(monto)` (locale es-GT, 2 decimales). La moneda ya se muestra en la columna `moneda`; no se repite el prefijo en este campo.
 
 ---

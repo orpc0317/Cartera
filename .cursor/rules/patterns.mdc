@@ -1,12 +1,11 @@
 ---
-description: "Cartera — layout patterns for non-trivial screens: pattern selection guide, Maestro-Detalle, Transacción, Reporte, and Drawer. Load when designing screens beyond a simple CRUD list."
-globs: "src/app/dashboard/**/_client.tsx"
+description: "Layout de pantallas que no son un catálogo simple: Maestro-Detalle, Transacción, Reporte y Drawer. Cargar solo al diseñar una de esas pantallas. No cambia el aspecto de Input, Select ni Checkbox."
 alwaysApply: false
 ---
 
 # Cartera — Screen Patterns
 
-> **Estos patrones son SOLO de layout/composición** — dónde va cada bloque, cuántos paneles hay, dónde vive el botón de export, etc. **Ninguno redefine cómo luce o se comporta un primitivo individual** (Input, Select, Checkbox, Label, tabla, modal). Un `<Input>` es el mismo `<Input>` (§ D de `components.instructions.md` + el contrato visual de `ui-conventions.instructions.md`) sin importar en cuál de estos patrones aparezca, o en un patrón futuro todavía no listado aquí. Si al aplicar un patrón nuevo surge la duda de "¿este campo necesita un estilo distinto porque el patrón es distinto?", la respuesta por defecto es **no** — usa el snippet universal y sigue adelante.
+> **Estos patrones son SOLO de layout/composición** — dónde va cada bloque, cuántos paneles hay, dónde vive el botón de export, etc. **Ninguno redefine cómo luce o se comporta un primitivo individual** (Input, Select, Checkbox, Label, tabla, modal). Un `<Input>` es el mismo `<Input>` (`.cursor/skills/crud-screen/references/fields.md` § D + el contrato visual de `.cursor/rules/ui-conventions.mdc`) sin importar en cuál de estos patrones aparezca, o en un patrón futuro todavía no listado aquí. Si al aplicar un patrón nuevo surge la duda de "¿este campo necesita un estilo distinto porque el patrón es distinto?", la respuesta por defecto es **no** — usa el snippet universal y sigue adelante.
 
 ## Pattern selection guide
 
@@ -14,12 +13,12 @@ Use this decision tree to pick the right layout before writing any code:
 
 | Scenario | Pattern |
 |---|---|
-| Simple catalog entity (no child tables, no totals) | **Formulario simple** — the default CRUD pattern in `crud-screens.instructions.md` |
+| Simple catalog entity (no child tables, no totals) | **Formulario simple** — the default CRUD pattern in `.cursor/rules/crud-screens.mdc` |
 | Entity that owns child rows (header + lines) | **Maestro-Detalle** |
 | Financial document with totals and workflow states | **Transacción** |
 | Analytical listing for reporting/export | **Reporte** |
 | Quick inline edit without navigating away | **Drawer** |
-| History / event log for an entity | **Auditoría tab** (add to existing modal — see `crud-screens.instructions.md`) |
+| History / event log for an entity | **Auditoría tab** (add to existing modal — see `.cursor/rules/crud-screens.mdc`) |
 
 ---
 
@@ -57,7 +56,7 @@ Two-panel layout. The master panel lists entities; selecting one loads its detai
 
 - Click on master row → sets `selectedId`; detail panel re-renders with the filtered child data.
 - "Nuevo" button lives in the **detail panel header**, not in the master panel or the global page header.
-- Use the same `Dialog` modal pattern from `crud-screens.instructions.md` for create/edit of child rows.
+- Use the same `Dialog` modal pattern from `.cursor/rules/crud-screens.mdc` for create/edit of child rows.
 - Master list highlights selected row: `bg-{accent}-50/60 border-l-2 border-{accent}-500`.
 - Master panel has its own text search input; the detail panel has a separate search/toolbar for child rows.
 
@@ -82,7 +81,7 @@ For documents that have a header, one or more line-item tables, computed totals,
 ### Rules
 
 - Header always shows: document code, date, entity (client/supplier), and status badge.
-- Status badge uses the global badge variants (see `crud-screens.instructions.md → Status badge variants`).
+- Status badge uses the global badge variants (see `.cursor/rules/crud-screens.mdc → Status badge variants`).
 - Footer is `sticky bottom-0 bg-card border-t border-border/60 px-6 py-3 flex items-center justify-between`.
 - Totals in footer: right-aligned, formatted with `fmt()` for monetary values.
 - Action buttons (Confirmar / Anular) live in the footer, gated by permissions and current status.
@@ -107,7 +106,7 @@ Analytical listing optimized for filtering and export. No create/edit modals.
 ### Rules
 
 - Export button lives in the **header** (right side), not in the toolbar.
-- Toolbar can contain date-range pickers, multi-selects, and text search — more controls than a standard CRUD toolbar. **Every one of these fields is still a normal `Input`/`Select`** — apply `variant="l-border"` and the `<Label>` classes from `ui-conventions.instructions.md § Label & field-wrapper visual standards` exactly as in an edit-mode form. There is no separate "toolbar/filter" style.
+- Toolbar can contain date-range pickers, multi-selects, and text search — more controls than a standard CRUD toolbar. **Every one of these fields is still a normal `Input`/`Select`** — apply `variant="l-border"` and the `<Label>` classes from `.cursor/rules/ui-conventions.mdc § Label & field-wrapper visual standards` exactly as in an edit-mode form. There is no separate "toolbar/filter" style.
 - No row action dropdown (no edit/delete). Rows may be clickable to open a read-only detail drawer.
 - Summary / totals row pinned at the bottom of the table when applicable.
 - No `ColumnManager` unless the column count exceeds 8. Prefer a fixed, well-chosen set of columns.

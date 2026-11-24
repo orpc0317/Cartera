@@ -25,7 +25,7 @@
 | Animaciones | Framer Motion (solo sidebar) | — |
 | Toasts | Sonner | — |
 
-> **Advertencia:** Los componentes headless son **@base-ui/react**, no Radix UI. Las APIs son diferentes — ver `base-ui-gotchas.instructions.md` antes de escribir cualquier componente interactivo.
+> **Advertencia:** Los componentes headless son **@base-ui/react**, no Radix UI. Las APIs son diferentes — ver `.cursor/rules/base-ui-gotchas.mdc` antes de escribir cualquier componente interactivo.
 
 ---
 
@@ -116,12 +116,12 @@ El cliente admin usa `SUPABASE_SERVICE_ROLE_KEY` — **nunca exponer al browser*
 
 ## 6. Patrones de Server Actions
 
-> Patrones completos en `server-actions.instructions.md`. Resumen:
+> Patrones completos en `.cursor/rules/server-actions.mdc`. Resumen:
 
 - **`getCuentaActiva()`**: la cuenta del JWT `app_metadata.cuenta_activa`, la misma que lee `fn_cuenta_del_usuario()`. Solo la devuelve si el usuario tiene fila en `t_usuario`. Si la cookie `cartera-cuenta` difiere, se reescribe con ese valor. Toda query filtra `.eq('cuenta', cuenta)`.
 - **`page.tsx`**: `Promise.all` con `.catch(() => [])` **por llamada individual** — nunca un try/catch global.
 - **`modifico_fecha`**: toda tabla editable tiene este campo; el update lleva `.eq('modifico_fecha', modificoFecha)` para detectar concurrencia.
-- **Exports**: solo `async function` y `export type`. Prohibido re-exportar valores desde `"use server"` — rompe el build (no detectable por `get_errors`).
+- **Exports**: solo `async function` y `export type`. Prohibido re-exportar valores desde `"use server"` — rompe el build y el language server no lo marca.
 
 ---
 

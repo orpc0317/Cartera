@@ -1,5 +1,5 @@
 ---
-description: "Cartera data table patterns: column definitions, filtering, row/cell rules, keyboard nav. Full component code lives in existing _client.tsx files."
+description: "Lista de catálogo: columnas, filtros, scroll, teclado y CSV. El JSX de ColumnFilter, toolbar y exportCsv está en el skill crud-screen, references/table.md. Las constantes de scroll están en src/lib/list-table.ts."
 globs: "src/app/dashboard/**/_client.tsx"
 alwaysApply: false
 ---
@@ -21,8 +21,8 @@ const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVi
 
 - Use `__prefix` for virtual columns that don't map 1:1 to a DB field (e.g. `__regimen_iva`).
 - `STORAGE_KEY = '<entity>_cols_v1_${userId}'` — replace `<entity>` with the lowercase plural slug used in the route (e.g. `clientes_cols_v1_${userId}`, `series-recibos_cols_v1_${userId}`).
-- Label naming: no accents, Title Case (see ui-conventions.instructions.md).
-- Copy `ColumnFilter`, `ColumnManager`, and `handleTableKeyDown` verbatim from `components.instructions.md § M` — do **not** read individual `_client.tsx` files for these utilities.
+- Label naming: no accents, Title Case (see .cursor/rules/ui-conventions.mdc).
+- Copy `ColumnFilter`, `ColumnManager`, and `handleTableKeyDown` verbatim from `.cursor/skills/crud-screen/references/table.md § M` — do **not** read individual `_client.tsx` files for these utilities.
 
 ---
 
@@ -114,11 +114,11 @@ return <TableHead key={col.key}>{col.label}</TableHead>
 
 When a column has no filterable values (e.g. a free-text field with too many unique values), pass `values={[]}` — `ColumnFilter` still renders the styled label correctly, just without a dropdown.
 
-FK columns (empresa, proyecto, fase…) and enum columns (medida, moneda…) require label↔key translation in both `values` and `active`/`onChange` — see the filter pipeline in `components.instructions.md § M` for reference.
+FK columns (empresa, proyecto, fase…) and enum columns (medida, moneda…) require label↔key translation in both `values` and `active`/`onChange` — see the filter pipeline in `.cursor/skills/crud-screen/references/table.md § M` for reference.
 
 ---
 
-## Active row highlight (use module accent color from ui-conventions.instructions.md)
+## Active row highlight (use module accent color from .cursor/rules/ui-conventions.mdc)
 
 ```tsx
 // Row
@@ -134,7 +134,7 @@ className={`group cursor-pointer transition-colors ${isActive ? 'bg-{accent}-50 
 isActive ? 'bg-{accent}-50 dark:bg-{accent}-950/30' : 'bg-card group-hover:bg-muted/40'
 ```
 
-Row interactions: `onClick`  `setCursorIdx(rowIdx)`, `onDoubleClick`  `openView(row)`. The re-read of that record lives inside the client, in `components.mdc` § C. The double-click still calls `openView(row)`.
+Row interactions: `onClick`  `setCursorIdx(rowIdx)`, `onDoubleClick`  `openView(row)`. The re-read of that record lives inside the client, in `.cursor/skills/crud-screen/references/modal.md § C. The double-click still calls `openView(row)`.
 PK key: `key={row.codigo}` for single PK, `key={`${row.empresa}-${row.codigo}`}` for composite PK.
 
 ---
@@ -161,7 +161,7 @@ Use `switch (col.key)` with explicit cases; `default` for generic text columns.
 
 The last column of the main table is the actions column. It shows **only** the view icon (`Eye`). A click opens the record detail (`openView`). No dropdown, no chevron, no `MoreHorizontal`.
 
-Copy the button from `components.mdc` § L. Editar, Historial, Eliminar, and any extra action live in the detail modal footer (§ R), not in the row.
+Copy the button from `.cursor/skills/crud-screen/references/modal.md § L. Editar, Historial, Eliminar, and any extra action live in the detail modal footer (§ R), not in the row.
 
 `title={puedeModificar ? 'Ver / Editar' : 'Ver'}`.
 
@@ -183,7 +183,7 @@ Always check both `search` and `hasActiveFilters`.
 
 ## Keyboard navigation
 
-Copy `handleTableKeyDown` from `components.instructions.md § M`. Reset cursor on filter change:
+Copy `handleTableKeyDown` from `.cursor/skills/crud-screen/references/table.md § M`. Reset cursor on filter change:
 ```ts
 useEffect(() => { setCursorIdx(null) }, [search, colFilters])
 ```
@@ -311,9 +311,9 @@ Just add a counter (no navigation controls):
 ## Checklist for a new table
 
 1. `ALL_COLUMNS` / `DEFAULT_PREFS` / `STORAGE_KEY`
-2. Copy `ColumnFilter`, `ColumnManager`, `handleTableKeyDown` from `components.instructions.md § M`
+2. Copy `ColumnFilter`, `ColumnManager`, `handleTableKeyDown` from `.cursor/skills/crud-screen/references/table.md § M`
 3. Scrollport + fixed header (`LIST_SHELL`, `LIST_SCROLLPORT`, `scrollable={false}`, `LIST_HEAD` / `LIST_HEAD_LEFT` / `LIST_HEAD_RIGHT`). Sticky left `Codigo` (w-20), sticky right actions (w-12)
-4. Active row: module accent color (see ui-conventions.instructions.md)
+4. Active row: module accent color (see .cursor/rules/ui-conventions.mdc)
 5. Cell `switch`: explicit cases for nombre, pais, FK lookups, enums; geo codes  resolve to name
 6. Empty state with `search || hasActiveFilters` ternary
 7. Last column: only the Ver icon (§ L). Historial, Editar, and Eliminar live in the modal footer
@@ -324,7 +324,7 @@ Just add a counter (no navigation controls):
 
 ## Toolbar layout
 
-→ **Copiar verbatim de `components.instructions.md § S · Toolbar`**
+→ **Copiar verbatim de `.cursor/skills/crud-screen/references/table.md § S · Toolbar`**
 
 **Reglas:**
 - `hasActiveFilters = Object.keys(colFilters).length > 0` — declarar cerca de los computed values.
@@ -354,7 +354,7 @@ Every CRUD table must include a **"Exportar CSV"** button in the toolbar (see la
 
 ### Implementación
 
-→ **Copiar verbatim de `components.instructions.md § T · Función exportCsv`**
+→ **Copiar verbatim de `.cursor/skills/crud-screen/references/table.md § T · Función exportCsv`**
 
 > `formatCsvCell` envuelve valores en comillas dobles cuando contienen comas, saltos de línea o comillas — no se necesita librería externa.
 
