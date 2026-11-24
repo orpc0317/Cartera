@@ -161,10 +161,10 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 // Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
-// en Ver el diálogo es un tono más que el gris de las cajas (muted al 30% sobre blanco);
+// en Ver y Editar el diálogo es muted al 30% sobre blanco; Nuevo queda blanco;
 // la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
 // icono entre la barra y el título; pie en text-sm font-medium como la pestaña.
-const FONDO_MODAL_VER = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
+const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
   IDENTIFICACION: IdCard,
@@ -1407,7 +1407,7 @@ export function ClientesClient({
         }}
         modal={false}
       >
-        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden${!isEditing && viewTarget ? ` ${FONDO_MODAL_VER}` : ''}`}>
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden${viewTarget ? ` ${FONDO_MODAL}` : ''}`}>
 
           {/* Header */}
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-indigo-50/70 to-transparent border-b border-border/50 shrink-0">
