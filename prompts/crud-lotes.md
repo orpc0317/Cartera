@@ -152,7 +152,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 > `empresa` → nombre de la empresa (prop `empresas`); 
 > `proyecto` → nombre del proyecto (prop `proyectos`);
 > `fase` → nombre de la fase (prop `fases`);
-> `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
+> `moneda` → bandera + ISO segun **Moneda display rules** de `.cursor/rules/ui-conventions.mdc`.
 
 | key                         | label           | defaultVisible | render                                                |
 |-----------------------------|-----------------|----------------|-------------------------------------------------------|

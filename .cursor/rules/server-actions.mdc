@@ -35,7 +35,7 @@ import { getEmpresas } from '@/app/actions/empresas'          // ← directo
 import { getProyectos, getProyectoMonedas } from '@/app/actions/proyectos'  // ← directo
 ```
 
-> **Nota:** `get_errors` (TS language server) **no detecta** esta violación — solo se manifiesta en build time. Por eso esta regla debe seguirse en tiempo de escritura.
+> **Nota:** el language server no detecta esta violación. Solo aparece en el build. Por eso se cumple al escribir.
 
 ---
 
@@ -112,7 +112,7 @@ export async function obtenerEntity(empresa: number, proyecto: number, codigo: n
 }
 ```
 
-`requirePermiso(..., 'consultar')` es la primera instrucción. `filaConNombres` y `leerNombres` viven en `src/lib/leer-nombres.ts`. El cliente abre Ver con `useRegistroVer` (`components.mdc` § C): pide esta función, reemplaza solo esa fila en la lista y, si el usuario ya está editando, no pisa lo que está escribiendo. El alta no llama `obtener*`. `obtener*` lee la tabla base. La grilla lee la vista de la sección siguiente.
+`requirePermiso(..., 'consultar')` es la primera instrucción. `filaConNombres` y `leerNombres` viven en `src/lib/leer-nombres.ts`. El cliente abre Ver con `useRegistroVer` (`.cursor/skills/crud-screen/references/modal.md § C): pide esta función, reemplaza solo esa fila en la lista y, si el usuario ya está editando, no pisa lo que está escribiendo. El alta no llama `obtener*`. `obtener*` lee la tabla base. La grilla lee la vista de la sección siguiente.
 
 ---
 
@@ -254,7 +254,7 @@ GRANT EXECUTE ON FUNCTION cartera.fn_nombre_funcion(...) TO service_role;
 Toda función `create*`/`update*`/`delete*` debe dejar rastro en `cartera.t_audit_log` llamando a
 `writeAudit` **inmediatamente después** de que la mutación se confirme exitosa. **No existe ningún
 trigger de base de datos que haga esto automáticamente** — es 100% responsabilidad de la Server
-Action. Sin esta llamada, el botón "Historial" (`components.instructions.md § AF`) de esa pantalla
+Action. Sin esta llamada, el botón "Historial" (`.cursor/skills/crud-screen/references/modal.md § AF`) de esa pantalla
 queda permanentemente vacío para los registros afectados (bug real ya detectado en Reservas y en
 Mantenimiento Pagos — ver por qué abajo).
 
@@ -311,7 +311,7 @@ async function writeAudit(
 - `DELETE`: `datoAntes: <fila antes de borrar>`, `datoDespues: null`.
 - `registroId` debe incluir **todos** los campos de la PK compuesta — debe coincidir exactamente
   con el `registroId` que arma el `<AuditLogDialog>` en el cliente (ver
-  `components.instructions.md § AF`).
+  `.cursor/skills/crud-screen/references/modal.md § AF`).
 
 ### Regla obligatoria — aplica TAMBIEN a creación/edición vía función RPC (`SECURITY DEFINER`)
 
@@ -365,44 +365,7 @@ export async function updateEntity(
 
 ### Client component (_client.tsx)
 
-```ts
-const [hadConflict, setHadConflict] = useState(false)
-
-// In handleSave, keep update and create in separate branches.
-// A ternary union drops `row` because create does not return it.
-const editing = viewTarget
-const lastModified = editing?.modifico_fecha ?? undefined
-if (editing) {
-  const result = await updateEntity(..., form, lastModified)
-  if (result.error) {
-    toast.error(result.error)
-    if (result.error.includes('modificado')) setHadConflict(true)
-    return
-  }
-  if (!result.row) { toast.error('No se pudo recargar el registro.'); return }
-  setHadConflict(false)
-  setViewTarget(result.row)
-  setForm(buildFormFromEntity(result.row))
-  setIsEditing(false)
-  toast.success('X actualizado.')
-  router.refresh()
-  return
-}
-const result = await createEntity(form)
-if (result.error) {
-  toast.error(result.error)
-  return
-}
-setHadConflict(false)
-toast.success('X creado.')
-setDialogOpen(false)
-router.refresh()
-
-// In Dialog onOpenChange:
-if (!open && hadConflict) { setHadConflict(false); router.refresh() }
-```
-
-Rules:
+El JSX de `handleSave` está en `.cursor/skills/crud-screen/references/modal.md` § C. Reglas:
 - Always pass `viewTarget?.modifico_fecha ?? undefined` to every update call.
 - A successful update returns `{ row }` from `.select()`. Keep the update call in its own branch, apart from create: the create type has no `row`, and a ternary does not narrow it. The client assigns that row to `viewTarget`, rebuilds the form the same way `openView` does, and sets `setIsEditing(false)`. The dialog stays open. Create still calls `setDialogOpen(false)`.
 - Set `hadConflict(true)` **only** when `result.error.includes('modificado')`.

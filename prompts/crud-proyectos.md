@@ -160,7 +160,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
 > `empresa` → nombre de la empresa (prop `empresas`);
-> `pais` → bandera + nombre del pais segun **Country flag rules** de `ui-conventions.instructions.md`;
+> `pais` → bandera + nombre del pais segun **Country flag rules** de `.cursor/rules/ui-conventions.mdc`;
 > `departamento` → nombre del departamento (prop `departamentos`);
 > `municipio` → nombre del municipio (prop `municipios`).
 
@@ -248,7 +248,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 | visibilidad_ventas    | Visibilidad Ventas   | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               | 0=granular (cada quien ve solo lo suyo), 1=abierto (todos ven todo) |
 | visibilidad_cobros    | Visibilidad Cobros   | third  | Checkbox [§I]; disabled                 | Checkbox [§I]; siempre habilitado                                                       | 0               | 0=granular (cobrador ve solo sus recibos), 1=abierto |
 | moneda                | Moneda               | third | _(no se renderiza — ver pestaña Monedas)_ | Select FK [§F]; req; **solo visible en modo Nuevo** (en Ver/Editar se gestiona desde pestaña Monedas)     | primer elemento de `monedas` | prop `monedas`; muestra código ISO; usar `CURRENCY_FLAG_MAP` si disponible |
-| logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `image-upload.instructions.md`. |
+| logo_url        | Logo            | full  | `<img>` si existe, ViewField si no    | LogoUpload [§AC]; drag-and-drop o click; PNG/JPG/WebP/SVG; máx 5 MB; mín 200×200px; máx 4000×4000px (no aplica SVG) | '' | Preview inmediato via `URL.createObjectURL`. Ver reglas completas en `.cursor/rules/image-upload.mdc`. |
 
 ### Tab: Monedas  (icono: Coins)
 
@@ -351,7 +351,7 @@ Cuando `mora_automatica !== 1` quedan **disabled**: `forma_mora`, `tipoCalculo` 
 
 Soporta click o drag-and-drop. Formatos: PNG, JPG, WebP, SVG. Máx 5 MB. Para no-SVG: mín 200×200px, máx 4000×4000px. Preview inmediato via `URL.createObjectURL`. Al guardar, el archivo se sube via `uploadProjectLogo(formData, oldUrl?)` y la URL resultante reemplaza `logo_url` en el payload.
 
-**Seguridad — ver `image-upload.instructions.md` para el patrón completo:**
+**Seguridad — ver `.cursor/rules/image-upload.mdc` para el patrón completo:**
 - Servidor verifica magic bytes (no confiar solo en `file.type` del cliente).
 - Servidor elimina el archivo anterior en Supabase Storage cuando se reemplaza un logo: pasar `viewTarget?.logo_url` como segundo argumento al action.
 - Nunca usar `dangerouslySetInnerHTML` con el SVG; solo `<img src={...}>`.
@@ -395,7 +395,7 @@ El AlertDialog **"Moneda requerida"** ofrece:
 - **"Agregar moneda ahora"** → cierra el AlertDialog y cambia `activeTab` a `'monedas'`.
 - **"Cerrar sin agregar"** → cierra el AlertDialog y cierra el modal principal (`setDialogOpen(false)`).
 
-Usar `<AlertDialogDescription render={<div />}>` (requerido para contenido compuesto; ver `base-ui-gotchas.instructions.md`).
+Usar `<AlertDialogDescription render={<div />}>` (requerido para contenido compuesto; ver `.cursor/rules/base-ui-gotchas.mdc`).
 
 ---
 

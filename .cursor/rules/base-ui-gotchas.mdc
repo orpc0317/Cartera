@@ -1,5 +1,5 @@
 ---
-description: "Base UI vs Radix/shadcn API differences that cause silent bugs in Cartera. Load alongside crud-screens.instructions.md for every _client.tsx."
+description: "Diferencias de Base UI frente a Radix que producen bugs silenciosos en Cartera. Se adjunta con cada _client.tsx."
 globs: "src/app/dashboard/**/_client.tsx"
 alwaysApply: false
 ---
@@ -147,8 +147,8 @@ archivo (no solo `deleteTarget`):
 }}>
 ```
 
-> **Por qué importa más desde el estándar 2026-08:** con el footer de acciones consolidado (§L/§R de
-> `components.instructions.md`), Historial/Eliminar/acciones extra se abren **mientras el modal Ver ya
+> **Por qué importa más desde el estándar 2026-08:** con el footer de acciones consolidado (§ L y § R de
+> `.cursor/skills/crud-screen/references/modal.md`), Historial/Eliminar/acciones extra se abren **mientras el modal Ver ya
 > está abierto** (antes se abrían solo desde la fila, con el modal cerrado). Si el guard no incluye el
 > target del dialog anidado, cerrar ese dialog anidado cierra también el modal Ver por error — bug real
 > encontrado y corregido en `promesas/promesas/_client.tsx`. Verificar este guard en cada pantalla

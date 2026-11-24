@@ -1,6 +1,5 @@
 ---
-description: "Cartera — business domain context: who the clients are, cuenta/empresa/proyecto hierarchy, subscription model, and core business rules."
-globs: "src/app/**/*.ts,src/app/**/*.tsx,src/lib/**/*.ts"
+description: "Contexto de negocio de Cartera: jerarquía cuenta/empresa/proyecto, suscripción y catálogos fijos (formas de pago, tipo de identificación, forma de cálculo). Cargar al modelar reglas de negocio o al usar uno de esos catálogos. El aislamiento por cuenta está en cartera-core."
 alwaysApply: false
 ---
 
@@ -117,7 +116,48 @@ Un proyecto puede tener **máximo 2 fases**. Si el usuario necesita una tercera 
 
 ### Aislamiento de datos por cuenta
 Ninguna query debe retornar datos de otra cuenta. El filtro `.eq('cuenta', cuenta)` es **obligatorio en toda operación**.
-Si `cuenta` está vacía (sesión no válida), las operaciones de escritura deben retornar `{ error: 'Sesión no válida.' }` inmediatamente — ver patrón en `server-actions.instructions.md`.
+Si `cuenta` está vacía (sesión no válida), las operaciones de escritura deben retornar `{ error: 'Sesión no válida.' }` inmediatamente — ver patrón en `.cursor/rules/server-actions.mdc`.
 
 ### Acceso de usuarios finales (compradores de lotes)
 Los compradores de lotes también tienen acceso a la plataforma, pero con un rol de solo lectura limitado a su propia información: estado de cuenta, facturas, pagos. Este módulo es futuro y no está implementado aún.
+
+---
+
+## Hardcoded dropdown catalog
+
+Catalog of all `Record<number, string>` constants used across the app. When a screen needs one of these, copy the constant definition verbatim — never redefine values differently. When a new constant is added, append it here.
+
+```ts
+// Tipo de identificación tributaria
+const TIPO_ID_LABELS: Record<number, string> = {
+  0: 'NIT',
+  1: 'DPI',
+  2: 'Extranjero',
+}
+
+// Regímenes de ISR (importar de @/lib/constants → REGIMENES_ISR)
+// { 0: 'General', 1: 'Pequeño Contribuyente', ... } — ver constants.ts
+
+// Regímenes de IVA (importar de @/lib/constants → REGIMENES_IVA)
+// { 0: 'General', 1: 'Pequeño Contribuyente', ... } — ver constants.ts
+
+// Formas de pago para reservas/transacciones de cobro
+const FORMAS_PAGO: Record<number, string> = {
+  1: 'Efectivo',
+  2: 'Cheque',
+  3: 'Depósito',
+  4: 'Transferencia',
+}
+
+// Forma de cálculo — método de cálculo en tipos de ingreso (otros cargos)
+const FORMA_CALCULO_OTROS: Record<number, string> = {
+  1: 'Monto Mensual Fijo',
+  2: '% (Anual) Precio Lote',
+  3: '% (Anual) Precio Lote - Enganche',
+  4: '% (Anual) Saldo Capital',
+  5: '% Capital Cuota',
+}
+```
+
+> **Regla:** la clave es siempre un entero (`number`). El primer item del `Record` es el pre-seleccionado por defecto en `openCreate()`. Si el backend almacena el campo como `smallint`, usar `Number(v)` en los handlers del Select.
+

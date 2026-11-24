@@ -101,7 +101,7 @@ Cascade triple: empresa → proyecto → banco.
 > `getMonedas` **no** filtra por cuenta — es un catálogo global compartido entre todas las cuentas.
 
 **Enriquecimiento de display para moneda:** `t_moneda` solo tiene `codigo` (varchar PK).
-Ver regla global en `ui-conventions.instructions.md` → sección **Moneda display rules**.
+Ver regla global en `.cursor/rules/ui-conventions.mdc` → sección **Moneda display rules**.
 Resumen: siempre bandera + codigo ISO (ej: 🇬🇹 GTQ). El mapa de banderas se llama `CURRENCY_FLAG_MAP`.
 
 ---
@@ -134,7 +134,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 > `empresa` → nombre de la empresa (prop `empresas`); 
 > `proyecto` → nombre del proyecto (prop `proyectos`);
 > `banco` → nombre del banco (prop `bancos`); 
-> `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
+> `moneda` → bandera + ISO segun **Moneda display rules** de `.cursor/rules/ui-conventions.mdc`.
 
 | key      | label    | defaultVisible | render                                                |
 |----------|----------|----------------|-------------------------------------------------------|
@@ -213,7 +213,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
 - `moneda` esta en `SKIP_KEYS`: no aplicar `toDbString()` en la funcion `f()`.
 - `openCreate()`: pre-seleccionar primera empresa, primer proyecto de esa empresa, primer banco
-  de ese proyecto **Y** pre-seleccionar `moneda` usando el algoritmo de **Currency pre-selection from country** de `ui-conventions.instructions.md`: detectar el pais por proyecto → empresa → IP (ver **Country / Geo pre-selection** en `crud-screens.instructions.md`) y convertirlo a moneda con `COUNTRY_CURRENCY_MAP` de `@/lib/constants`. Si no existe match, usar `monedas[0].codigo` como fallback.
+  de ese proyecto **Y** pre-seleccionar `moneda` usando el algoritmo de **Currency pre-selection from country** de `.cursor/rules/ui-conventions.mdc`: detectar el pais por proyecto → empresa → IP (ver **Country / Geo pre-selection** en `.cursor/rules/crud-screens.mdc`) y convertirlo a moneda con `COUNTRY_CURRENCY_MAP` de `@/lib/constants`. Si no existe match, usar `monedas[0].codigo` como fallback.
 
 ---
 

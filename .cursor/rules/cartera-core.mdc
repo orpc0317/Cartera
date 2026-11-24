@@ -1,109 +1,44 @@
 ---
-description: "Cartera — stack, ciberseguridad y definición de terminado. Siempre activa."
+description: "Contrato de Cartera: seguridad, lista, modal de catálogo y definición de terminado. Siempre activo. El procedimiento de un catálogo está en el skill crud-screen."
 alwaysApply: true
 ---
 
-# Cartera — Stack, seguridad y definición de terminado
+# Cartera — Contrato
 
-Actúa como un desarrollador senior experto en Next.js, TypeScript, Supabase y Tailwind CSS.
+Next.js App Router. Antes de escribir, lee la guía en `node_modules/next/dist/docs/`. TypeScript estricto. Supabase, schema `cartera`, cliente con RLS. Tailwind, shadcn/ui y Lucide. Auth de Supabase.
 
-Tu código debe cumplir estrictamente con las mejores prácticas de ingeniería de software.
+Archivos: `page.tsx` más `_client.tsx`, acciones en `src/app/actions/<entidad>.ts`, tipos en `src/lib/types/`, permisos en `src/lib/permisos.ts`. Nombres de código en camelCase inglés. Labels y mensajes en español.
 
-El protocolo de trabajo está en `AGENTS.md`. La arquitectura de la aplicación está en `ARCHITECTURE.md`.
+## Seguridad
 
----
+- En el servidor, `supabase.auth.getUser()`. Nunca `getSession()`.
+- Toda query filtra por `cuenta`, importando `getCuentaActiva()` desde `@/app/actions/permisos`. Si `cuenta` está vacía, no operar. En un action no leas `user.app_metadata.cuenta_activa`.
+- Toda escritura (`create*`, `update*`, `delete*`, `upload*`) llama `requirePermiso(PERMISOS.<KEY>, 'agregar'|'modificar'|'eliminar')` como primera instrucción. Si retorna `{ error }`, propágalo.
+- Queries del cliente Supabase. Sin armar SQL con strings. Sin `select('*')` salvo justificación.
+- Sin `dangerouslySetInnerHTML`. Sin exponer `SUPABASE_SERVICE_ROLE_KEY`. Lo público lleva `NEXT_PUBLIC_`.
+- Cliente de usuario por defecto. `admin.ts` solo cuando el uso esté justificado en el cambio.
+- Una función nueva `SECURITY DEFINER` en `cartera` fija `search_path` y revoca `EXECUTE` de `PUBLIC`. El snippet está en `.cursor/rules/server-actions.mdc`.
 
-## Stack tecnológico
+## Datos en pantalla
 
-- **Framework:** Next.js (App Router) — lee `node_modules/next/dist/docs/` antes de escribir código; las APIs pueden diferir de tu conocimiento previo.
-- **Lenguaje:** TypeScript estricto.
-- **Base de datos:** Supabase (PostgreSQL), schema `cartera`. Todas las queries deben usar el cliente de Supabase con RLS; nunca construir SQL concatenando strings.
-- **UI:** Tailwind CSS + shadcn/ui + Lucide React.
-- **Auth:** Supabase Auth. Toda acción de servidor debe verificar el usuario activo antes de operar.
+- `page.tsx` es Server Component. `"use client"` solo si hay estado, efectos o eventos.
+- En `page.tsx`, `Promise.all` con `.catch()` por llamada.
+- La grilla principal es una lectura de `cartera.v_*_lista` (`scripts/vistas_listas.sql`), recortada con `restringirProyecto`. `obtener*` lee la tabla. El detalle está en `.cursor/rules/server-actions.mdc`.
+- En un catálogo con Ver/Editar, `update*` devuelve `{ row }` y el modal vuelve a Ver. El alta cierra el modal. Al abrir Ver, `obtener*` relee esa fila y Editar espera esa lectura. El snippet está en `.cursor/skills/crud-screen/references/modal.md` § C.
+- No comentes, no refactorices y no amplíes lo que el pedido no tocó.
+- Un comentario JSX va cerrado: `{/* texto */}`.
+- Al quitar una propiedad de un object literal, el reemplazo incluye la línea siguiente para no dejar una coma de más.
 
----
+## Catálogo
 
-## 1. Ciberseguridad
+Si el pedido es un CRUD de catálogo (`prompts/crud-*.md`, lista, modal, alta, cambio o baja), lee y ejecuta `.cursor/skills/crud-screen/SKILL.md` antes de escribir. No sustituyas ese procedimiento con esta regla. Pagos, depósitos, promesas, transacciones y KPIs no usan ese skill.
 
-- Aplica OWASP Top 10 en todo momento.
-- **SQL Injection:** usar siempre el cliente Supabase con queries parametrizadas. Nunca interpolar valores de usuario en strings SQL.
-- **XSS:** no usar `dangerouslySetInnerHTML`. Dejar que React escape los valores por defecto.
-- **CSRF:** las Server Actions de Next.js incluyen protección CSRF nativa; no bypassearla.
-- **Auth & autorización:** toda Server Action debe obtener el usuario con `supabase.auth.getUser()` (nunca `getSession()` en el servidor) y verificar permisos antes de mutar datos.
-- **Secretos:** nunca exponer `SUPABASE_SERVICE_ROLE_KEY` ni ninguna variable de entorno privada al cliente. Las variables públicas usan prefijo `NEXT_PUBLIC_`.
-- **Cuenta activa:** toda query debe filtrar por `cuenta`, obtenida **siempre** importando `getCuentaActiva()` desde `@/app/actions/permisos`. Esa función devuelve el JWT `app_metadata.cuenta_activa`, que es la cuenta que lee la RLS, y alinea la cookie `cartera-cuenta` con ese valor. **Nunca** leer `user.app_metadata.cuenta_activa` directamente en un action file. Si `cuenta` está vacía, no operar.
-- **IDOR / permisos en escritura:** toda Server Action de escritura (`create*`, `update*`, `delete*`, `upload*`) debe llamar `requirePermiso(PERMISOS.<KEY>, 'agregar'|'modificar'|'eliminar')` importado de `@/app/actions/permisos` como **primera instrucción**. `requirePermiso` verifica autenticación, membresía de cuenta en `t_usuario` (previene cookie-tampering cross-tenant) y el flag CRUD específico en `t_menu_usuario`. Si retorna `{ error }`, propagar inmediatamente.
-- **Mínimo privilegio:** usar el cliente de usuario para reads/writes normales; el cliente admin (`admin.ts`) solo cuando sea estrictamente necesario y documentado.
-- **Funciones `SECURITY DEFINER`:** toda función nueva en schema `cartera` debe fijar `search_path` y revocar `EXECUTE` de `PUBLIC` (dejando solo `service_role`) — ver detalle y snippet en `.cursor/rules/server-actions.mdc`. Sin esto, la función es invocable sin login vía `/rest/v1/rpc/...`.
+## Terminado
 
----
-
-## 2. Performance y optimización
-
-- **Server vs Client:** preferir Server Components. Marcar con `"use client"` solo los componentes que requieran estado, efectos o eventos del navegador.
-- **Data fetching:** en `page.tsx` usar `Promise.all` con `.catch()` por llamada (nunca un `try/catch` global). Ver `.cursor/rules/server-actions.mdc`.
-- **Queries:** seleccionar solo las columnas necesarias (`.select('col1, col2')`), no `select('*')` salvo justificación.
-- **Listas principales:** una sola lectura de `cartera.v_*_lista`. La vista trae los nombres (`empresa_nombre` y el resto) y la grilla pinta esos campos. El corte por empresas y proyectos del usuario queda en la action, con `restringirProyecto`. `obtener*` sigue leyendo la tabla. El detalle está en `.cursor/rules/server-actions.mdc`.
-- **Revalidación:** usar `router.refresh()` después de mutaciones (patrón establecido del proyecto).
-- **Modal tras guardar una edición:** obligatorio en todo catálogo con Ver/Editar. El `update*` devuelve `{ row }` con la fila guardada, `modifico_fecha` incluido. El modal no se cierra: esa fila se asigna a `viewTarget`, el formulario se rearma como en `openView` y se vuelve a Ver con `setIsEditing(false)`. Sin cambios equivale a Cancelar. El alta sí cierra el modal. `router.refresh()` sigue actualizando la lista. El snippet que se copia está en `.cursor/rules/components.mdc` § C y en `.cursor/rules/server-actions.mdc`.
-- **Relectura al abrir Ver:** obligatorio en todo modal Ver de un registro. Al abrir, se vuelve a leer solo esa fila (y los nombres de sus referencias) con `obtener*`. Editar permanece deshabilitado hasta que esa lectura termina, para que el guardado use el `modifico_fecha` recién leído. No se recarga el catálogo ni la página. El alta no hace esta lectura. El snippet está en `.cursor/rules/components.mdc` § C.
-- **Lazy loading:** preferir imports dinámicos para componentes pesados que no son necesarios en el render inicial.
-- **Evitar re-renders:** no crear objetos/funciones inline dentro del JSX de listas grandes; usar `useCallback`/`useMemo` cuando el profiler lo justifique, no de forma preventiva.
-
----
-
-## 3. Calidad del código
-
-- **Principios:** SOLID, DRY y KISS — pero sin over-engineering. No crear abstracciones para operaciones que solo ocurren una vez.
-- **Convenciones del proyecto:**
-  - Estructura de archivos: `page.tsx` (Server Component) + `_client.tsx` (Client Component).
-  - Acciones en `src/app/actions/<entidad>.ts`.
-  - Tipos en `src/lib/types/`.
-  - Constantes de permisos en `src/lib/permisos.ts`.
-- **Nombrado:** variables y funciones en camelCase en inglés; labels y mensajes de UI en español (idioma del negocio).
-- **No agregar** comentarios, docstrings ni tipos a código que no fue modificado.
-- **No agregar** manejo de errores para escenarios imposibles. Validar solo en los límites del sistema (entradas de usuario y respuestas de red).
-- **No refactorizar** código existente que no fue solicitado.
-- **Comentarios JSX:** siempre usar la forma completa `{/* texto */}`. La forma `{/* texto */` sin `}` deja un bloque de expresión abierto y produce el error de parsing `Expected '</', got '{'`.
-- **Regla de contexto en reemplazos de object literals:** al eliminar una propiedad de un object literal (`key: value,`), el `oldString` DEBE incluir al menos una línea **después** de la propiedad eliminada (la línea siguiente del objeto) para garantizar que la coma de separación quede correcta y no se genere coma doble.
-
----
-
-## Definición de terminado
-
-Sustituye a `get_errors` y a los chequeos en PowerShell. Marcar la tarea terminada solo con esto en verde:
-
-1. **`npx tsc --noEmit`** cuando se tocó TypeScript o TSX.
-2. **ESLint** en los archivos tocados (`npx eslint <archivos>`).
-3. **Escrituras:** `getCuentaActiva` importada desde `@/app/actions/permisos`, `requirePermiso` como primera instrucción, `writeAudit` tras el éxito de la mutación (incluye RPC `SECURITY DEFINER` que inserta, actualiza o borra). Ver `.cursor/rules/server-actions.mdc`.
-4. **Comentarios JSX cerrados** (`{/* ... */}`).
-5. **Si el cambio se ve en pantalla:** recorrer el flujo en el navegador.
-6. **Catálogo nuevo:** el formulario usa `useCampoInvalido` como dice `.cursor/rules/crud-screens.mdc` § Campo con error al grabar, y `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` está en verde. El plano de esas pruebas está en `.cursor/skills/crud-screen/SKILL.md`.
-7. **Lista principal:** el `get*` lee `v_*_lista` con las columnas nombradas, la vista está en `scripts/vistas_listas.sql`, y la celda usa el nombre que vino en la fila.
-
----
-
-## Reglas por área
-
-Las reglas con glob se adjuntan al editar esos archivos. El protocolo de `AGENTS.md` manda sobre el layout: en un CRUD de catálogo nuevo la estructura es la de Clientes. `.cursor/rules/components.mdc` y `.cursor/rules/spec-field-tokens.mdc` apoyan los casos que esa referencia no muestra, y las trampas de Base UI, seguridad y auditoría.
-
-| Regla | Se aplica a |
-|---|---|
-| `.cursor/rules/components.mdc` | `src/app/dashboard/**/_client.tsx` |
-| `.cursor/rules/crud-screens.mdc` | `src/app/dashboard/**/_client.tsx` |
-| `.cursor/rules/data-tables.mdc` | `src/app/dashboard/**/_client.tsx` |
-| `.cursor/rules/ui-conventions.mdc` | `src/app/dashboard/**/_client.tsx` |
-| `.cursor/rules/patterns.mdc` | `src/app/dashboard/**/_client.tsx` |
-| `.cursor/rules/base-ui-gotchas.mdc` | `src/app/dashboard/**/_client.tsx` |
-| `.cursor/rules/server-actions.mdc` | `src/app/actions/*.ts`, `src/app/dashboard/**/page.tsx` |
-| `.cursor/rules/business-context.mdc` | `src/app/**/*.ts`, `src/app/**/*.tsx`, `src/lib/**/*.ts` |
-| `.cursor/rules/spec-field-tokens.mdc` | `prompts/**` |
-
-Abrir solo si la pantalla trae el widget:
-
-| Regla | Cuándo |
-|---|---|
-| `.cursor/rules/image-upload.mdc` | Campo de imagen (`logo_url` u otro) |
-| `.cursor/rules/advanced-components.mdc` | Moneda, cascada geográfica, o combobox |
-
-`components.mdc` y `ui-conventions.mdc` definen qué es cada primitivo. `crud-screens.mdc` y `patterns.mdc` describen composición. Ningún patrón nuevo autoriza un estilo de campo distinto al de la referencia y al de esas reglas. Un token de campo desconocido en un spec detiene el trabajo.
+1. `npx tsc --noEmit` si se tocó TypeScript o TSX.
+2. `npx eslint` en los archivos tocados.
+3. En escrituras: `getCuentaActiva` importada desde `@/app/actions/permisos`, `requirePermiso` primero, `writeAudit` tras el éxito.
+4. Comentarios JSX cerrados.
+5. Si el cambio se ve, recorrer el flujo en el navegador.
+6. Catálogo nuevo: `useCampoInvalido` como dice `.cursor/rules/crud-screens.mdc`, y `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` en verde.
+7. La lista: el `get*` lee `v_*_lista` con columnas nombradas, la vista está en `scripts/vistas_listas.sql`, y la celda usa el nombre que vino en la fila.

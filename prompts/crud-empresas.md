@@ -119,7 +119,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 `STORAGE_KEY = 'empresas_cols_v1_${userId}'`
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
-> `direccion_pais` → bandera + ISO del pais segun **Country flag rules** de `ui-conventions.instructions.md`;
+> `direccion_pais` → bandera + ISO del pais segun **Country flag rules** de `.cursor/rules/ui-conventions.mdc`;
 > `direccion_departamento` → nombre del departamento (prop `departamentos`);
 > `direccion_municipio` → nombre del municipio (prop `municipios`).
 
