@@ -169,7 +169,7 @@ test('nuevo vendedor exige nombre y se cierra sin guardar', async ({ page }) => 
   await expect(dialog.getByLabel('Nombre Vendedor *')).toHaveValue('')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('El nombre es requerido.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const nombre = dialog.getByLabel('Nombre Vendedor *')
   await expect(nombre).toHaveAttribute('aria-invalid', 'true')
   await expect(nombre).toBeFocused()

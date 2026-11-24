@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Pencil, Trash2, Plus, Search,
-  History, Eye, Settings2, ChevronDown, ChevronUp, X, FileSpreadsheet, Download, Check, MapPin,
+  History, Eye, Settings2, ChevronDown, ChevronUp, X, FileSpreadsheet, Download, MapPin,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { createSerieFactura, updateSerieFactura, deleteSerieFactura,
   obtenerSerieFactura,
 } from '@/app/actions/series-facturas'
@@ -264,6 +265,8 @@ export function SeriesFacturasClient({
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
   const [viewTarget, setViewTarget]     = useState<(SerieFactura & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<SerieFactura | null>(null)
   const [auditTarget, setAuditTarget]   = useState<SerieFactura | null>(null)
   const [form, setForm]                 = useState<SerieFacturaForm>(EMPTY_FORM)
@@ -553,6 +556,188 @@ export function SeriesFacturasClient({
     ? [nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ')
     : ''
 
+  function pasoGeneral() {
+    return (
+    <>
+              {!isEditing && viewTarget ? (
+                <div className="flex gap-6 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2"><ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} /></div>
+                      <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
+                      <div className="col-span-2"><ViewField locked label="Serie" value={viewTarget.serie} /></div>
+                    </SegmentCard>
+                    <SegmentCard label="CONFIGURACION">
+                      <ViewField label="Formato" value={String(viewTarget.formato)} />
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox checked={viewTarget.predeterminado === 1} disabled />
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Predeterminado</span>
+                      </div>
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox checked={viewTarget.activo === 1} disabled />
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
+                      </div>
+                    </SegmentCard>
+                  </div>
+                  <div className="w-px self-stretch bg-primary/30" />
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="DOCUMENTOS ELECTRONICOS">
+                      <div className="col-span-2"><ViewField label="Gface" value={viewTarget.gface ? nombreLeido(viewTarget.gface_nombre, nombreGface(viewTarget.empresa, viewTarget.proyecto, viewTarget.gface) || 'Sin certificador') : 'Sin certificador'} /></div>
+                      <div className="col-span-2"><ViewField label="Id Documento" value={viewTarget.id_docto_gface ?? ''} /></div>
+                      <ViewField label="Establecimiento" value={String(viewTarget.establecimiento)} />
+                      <ViewField label="Dispositivo" value={String(viewTarget.dispositivo)} />
+                      <div className="col-span-2"><ViewField label="Carpeta DTE" value={viewTarget.carpeta_dtes ?? ''} /></div>
+                    </SegmentCard>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-6 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                        <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                          <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
+                            <SelectValue placeholder="Selecciona empresa">
+                              {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                        <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
+                          <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
+                            <SelectValue placeholder="Selecciona proyecto">
+                              {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="serie" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie *</Label>
+                        <Input
+                          variant="l-border"
+                          id="serie"
+                          aria-invalid={campoInvalido?.id === 'serie' || undefined}
+                          value={form.serie}
+                          onChange={(e) => f('serie', e.target.value)}
+                          placeholder="Ej: A, B, FAC1..."
+                          disabled={!!viewTarget}
+                          autoComplete="off"
+                        />
+                      </div>
+                    </SegmentCard>
+                    <SegmentCard label="CONFIGURACION">
+                      <div className="col-span-2 grid grid-cols-2 gap-2 items-end">
+                        <div className="grid gap-1">
+                          <Label htmlFor="formato" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Formato</Label>
+                          <Input
+                            variant="l-border"
+                            id="formato"
+                            type="number"
+                            min={0}
+                            value={form.formato}
+                            onChange={(e) => f('formato', enteroNoNegativo(e.target.value))}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 pb-1">
+                          <Checkbox
+                            id="predeterminado"
+                            checked={form.predeterminado === 1}
+                            onCheckedChange={(checked) => f('predeterminado', checked ? 1 : 0)}
+                          />
+                          <Label htmlFor="predeterminado" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Predeterminado</Label>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 py-1">
+                        <Checkbox
+                          id="activo"
+                          checked={form.activo === 1}
+                          onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
+                        />
+                        <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
+                      </div>
+                    </SegmentCard>
+                  </div>
+                  <div className="w-px self-stretch bg-primary/30" />
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="DOCUMENTOS ELECTRONICOS">
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="gface" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Gface</Label>
+                        <Select value={String(form.gface)} onValueChange={(v) => f('gface', Number(v))}>
+                          <SelectTrigger variant="l-border" id="gface" aria-invalid={campoInvalido?.id === 'gface' || undefined} className="w-full">
+                            <SelectValue placeholder="Sin certificador">
+                              {(v: string) => !v || v === '0' ? 'Sin certificador' : (gfaceMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v)}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">Sin certificador</SelectItem>
+                            {gfacesFiltrados.map((g) => (
+                              <SelectItem key={g.codigo} value={String(g.codigo)}>{g.nombre}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="id_docto_gface" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Id Documento</Label>
+                        <Input
+                          variant="l-border"
+                          id="id_docto_gface"
+                          value={form.id_docto_gface ?? ''}
+                          onChange={(e) => f('id_docto_gface', e.target.value)}
+                          placeholder="Identificador del documento"
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="establecimiento" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Establecimiento</Label>
+                        <Input
+                          variant="l-border"
+                          id="establecimiento"
+                          type="number"
+                          min={0}
+                          value={form.establecimiento}
+                          onChange={(e) => f('establecimiento', enteroNoNegativo(e.target.value))}
+                        />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label htmlFor="dispositivo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Dispositivo</Label>
+                        <Input
+                          variant="l-border"
+                          id="dispositivo"
+                          type="number"
+                          min={0}
+                          value={form.dispositivo}
+                          onChange={(e) => f('dispositivo', enteroNoNegativo(e.target.value))}
+                        />
+                      </div>
+                      <div className="col-span-2 grid gap-1">
+                        <Label htmlFor="carpeta_dtes" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Carpeta DTE</Label>
+                        <Input
+                          variant="l-border"
+                          id="carpeta_dtes"
+                          value={form.carpeta_dtes ?? ''}
+                          onChange={(e) => f('carpeta_dtes', e.target.value)}
+                          placeholder="Ruta de la carpeta"
+                          autoComplete="off"
+                        />
+                      </div>
+                    </SegmentCard>
+                  </div>
+                </div>
+              )}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
       <div className={`${LIST_BLOCK} flex items-start justify-between`}>
@@ -747,6 +932,11 @@ export function SeriesFacturasClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full">
               <TabsList variant="line" className="">
@@ -758,182 +948,10 @@ export function SeriesFacturasClient({
             </div>
 
             <TabsContent value="general" className="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
-              {!isEditing && viewTarget ? (
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2"><ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} /></div>
-                      <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
-                      <div className="col-span-2"><ViewField locked label="Serie" value={viewTarget.serie} /></div>
-                    </SegmentCard>
-                    <SegmentCard label="CONFIGURACION">
-                      <ViewField label="Formato" value={String(viewTarget.formato)} />
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox checked={viewTarget.predeterminado === 1} disabled />
-                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Predeterminado</span>
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox checked={viewTarget.activo === 1} disabled />
-                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
-                      </div>
-                    </SegmentCard>
-                  </div>
-                  <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="DOCUMENTOS ELECTRONICOS">
-                      <div className="col-span-2"><ViewField label="Gface" value={viewTarget.gface ? nombreLeido(viewTarget.gface_nombre, nombreGface(viewTarget.empresa, viewTarget.proyecto, viewTarget.gface) || 'Sin certificador') : 'Sin certificador'} /></div>
-                      <div className="col-span-2"><ViewField label="Id Documento" value={viewTarget.id_docto_gface ?? ''} /></div>
-                      <ViewField label="Establecimiento" value={String(viewTarget.establecimiento)} />
-                      <ViewField label="Dispositivo" value={String(viewTarget.dispositivo)} />
-                      <div className="col-span-2"><ViewField label="Carpeta DTE" value={viewTarget.carpeta_dtes ?? ''} /></div>
-                    </SegmentCard>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                        <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                          <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
-                            <SelectValue placeholder="Selecciona empresa">
-                              {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                        <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                          <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
-                            <SelectValue placeholder="Selecciona proyecto">
-                              {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="serie" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie *</Label>
-                        <Input
-                          variant="l-border"
-                          id="serie"
-                          aria-invalid={campoInvalido?.id === 'serie' || undefined}
-                          value={form.serie}
-                          onChange={(e) => f('serie', e.target.value)}
-                          placeholder="Ej: A, B, FAC1..."
-                          disabled={!!viewTarget}
-                          autoComplete="off"
-                        />
-                      </div>
-                    </SegmentCard>
-                    <SegmentCard label="CONFIGURACION">
-                      <div className="col-span-2 grid grid-cols-2 gap-2 items-end">
-                        <div className="grid gap-1">
-                          <Label htmlFor="formato" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Formato</Label>
-                          <Input
-                            variant="l-border"
-                            id="formato"
-                            type="number"
-                            min={0}
-                            value={form.formato}
-                            onChange={(e) => f('formato', enteroNoNegativo(e.target.value))}
-                          />
-                        </div>
-                        <div className="flex items-center gap-2 pb-1">
-                          <Checkbox
-                            id="predeterminado"
-                            checked={form.predeterminado === 1}
-                            onCheckedChange={(checked) => f('predeterminado', checked ? 1 : 0)}
-                          />
-                          <Label htmlFor="predeterminado" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Predeterminado</Label>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <Checkbox
-                          id="activo"
-                          checked={form.activo === 1}
-                          onCheckedChange={(checked) => f('activo', checked ? 1 : 0)}
-                        />
-                        <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
-                      </div>
-                    </SegmentCard>
-                  </div>
-                  <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="DOCUMENTOS ELECTRONICOS">
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="gface" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Gface</Label>
-                        <Select value={String(form.gface)} onValueChange={(v) => f('gface', Number(v))}>
-                          <SelectTrigger variant="l-border" id="gface" aria-invalid={campoInvalido?.id === 'gface' || undefined} className="w-full">
-                            <SelectValue placeholder="Sin certificador">
-                              {(v: string) => !v || v === '0' ? 'Sin certificador' : (gfaceMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v)}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">Sin certificador</SelectItem>
-                            {gfacesFiltrados.map((g) => (
-                              <SelectItem key={g.codigo} value={String(g.codigo)}>{g.nombre}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="id_docto_gface" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Id Documento</Label>
-                        <Input
-                          variant="l-border"
-                          id="id_docto_gface"
-                          value={form.id_docto_gface ?? ''}
-                          onChange={(e) => f('id_docto_gface', e.target.value)}
-                          placeholder="Identificador del documento"
-                          autoComplete="off"
-                        />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="establecimiento" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Establecimiento</Label>
-                        <Input
-                          variant="l-border"
-                          id="establecimiento"
-                          type="number"
-                          min={0}
-                          value={form.establecimiento}
-                          onChange={(e) => f('establecimiento', enteroNoNegativo(e.target.value))}
-                        />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label htmlFor="dispositivo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Dispositivo</Label>
-                        <Input
-                          variant="l-border"
-                          id="dispositivo"
-                          type="number"
-                          min={0}
-                          value={form.dispositivo}
-                          onChange={(e) => f('dispositivo', enteroNoNegativo(e.target.value))}
-                        />
-                      </div>
-                      <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="carpeta_dtes" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Carpeta DTE</Label>
-                        <Input
-                          variant="l-border"
-                          id="carpeta_dtes"
-                          value={form.carpeta_dtes ?? ''}
-                          onChange={(e) => f('carpeta_dtes', e.target.value)}
-                          placeholder="Ruta de la carpeta"
-                          autoComplete="off"
-                        />
-                      </div>
-                    </SegmentCard>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -958,11 +976,13 @@ export function SeriesFacturasClient({
                 <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-neutral-50 dark:hover:bg-neutral-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando..."
+                className="hover:bg-neutral-50 dark:hover:bg-neutral-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

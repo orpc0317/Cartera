@@ -45,6 +45,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import {
   createCuentaBancaria, updateCuentaBancaria, deleteCuentaBancaria,
   obtenerCuentaBancaria,
@@ -249,6 +250,8 @@ export function CuentasBancariasClient({
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
   const [viewTarget, setViewTarget]     = useState<(CuentaBancaria & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<CuentaBancaria | null>(null)
   const [auditTarget, setAuditTarget]   = useState<CuentaBancaria | null>(null)
   const [form, setForm]                 = useState<CuentaBancariaForm>(EMPTY_FORM)
@@ -523,6 +526,140 @@ export function CuentasBancariasClient({
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  function pasoGeneral() {
+    return (
+    <>
+              {!isEditing && viewTarget ? (
+                /* ── View mode ── */
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="Identificacion">
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
+                  </SegmentCard>
+                  <SegmentCard label="General">
+                    <div className="col-span-2"><ViewField label="Banco"    value={nombreLeido(viewTarget.banco_nombre, bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`)} /></div>
+                    <div className="col-span-2"><ViewField label="Nombre Cuenta"  value={viewTarget.nombre} /></div>
+                    <ViewField label="Numero Cuenta" value={viewTarget.numero} />
+                    <div className="grid gap-1">
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                        {(() => {
+                          const flagIso = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                          return flagIso ? (
+                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                              <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                              {viewTarget.moneda}
+                            </span>
+                          ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda || '—'}</span>
+                        })()}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 py-1">
+                      <Checkbox checked={!!viewTarget.activo} disabled />
+                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
+                    </div>
+                  </SegmentCard>
+                </div>
+              ) : (
+                /* ── Edit / Create mode ── */
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="Identificacion">
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                      <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                      <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="General">
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco *</Label>
+                      <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
+                        <SelectTrigger variant="l-border" id="banco" aria-invalid={campoInvalido?.id === 'banco' || undefined} className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v && v !== '0' ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectContent>
+                          {bancosFiltrados.length === 0
+                            ? <SelectItem value="0" disabled>Sin bancos para este proyecto</SelectItem>
+                            : bancosFiltrados.map((b) => <SelectItem key={b.codigo} value={String(b.codigo)}>{b.nombre}</SelectItem>)
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Cuenta *</Label>
+                      <Input variant="l-border"
+                        id="nombre"
+                        aria-invalid={campoInvalido?.id === 'nombre' || undefined}
+                        value={form.nombre}
+                        onChange={(e) => f('nombre', e.target.value)}
+                        placeholder="Ej: cuenta operativa principal..."
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label htmlFor="numero" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Cuenta *</Label>
+                      <Input variant="l-border"
+                        id="numero"
+                        aria-invalid={campoInvalido?.id === 'numero' || undefined}
+                        value={form.numero}
+                        onChange={(e) => f('numero', e.target.value)}
+                        placeholder="Ej: 1234567890"
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
+                      <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
+                        <SelectTrigger variant="l-border" id="moneda" aria-invalid={campoInvalido?.id === 'moneda' || undefined} className="w-full">
+                          <SelectValue placeholder="Selecciona moneda">
+                            {(v: string) => {
+                              const flagIso = CURRENCY_FLAG_MAP.get(v)
+                              return v ? (
+                                <span className="flex items-center gap-1.5">
+                                  {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                  {v}
+                                </span>
+                              ) : null
+                            }}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monedas.map((m) => {
+                            const flagIso = CURRENCY_FLAG_MAP.get(m.codigo)
+                            return (
+                              <SelectItem key={m.codigo} value={m.codigo}>
+                                <span className="flex items-center gap-2">
+                                  {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                                  {m.codigo}
+                                </span>
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2 py-1">
+                      <Checkbox
+                        id="activo"
+                        checked={form.activo === 1}
+                        onCheckedChange={(v: boolean) => setForm((p) => ({ ...p, activo: v ? 1 : 0 }))}
+                      />
+                      <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
+                    </div>
+                  </SegmentCard>
+                </div>
+              )}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -726,6 +863,11 @@ export function CuentasBancariasClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -735,134 +877,10 @@ export function CuentasBancariasClient({
             </TabsList></div>
 
             <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto pr-1">
-              {!isEditing && viewTarget ? (
-                /* ── View mode ── */
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="Identificacion">
-                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)  ?? `#${viewTarget.empresa}`)} /></div>
-                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
-                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
-                  </SegmentCard>
-                  <SegmentCard label="General">
-                    <div className="col-span-2"><ViewField label="Banco"    value={nombreLeido(viewTarget.banco_nombre, bancoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.banco}`) ?? `#${viewTarget.banco}`)} /></div>
-                    <div className="col-span-2"><ViewField label="Nombre Cuenta"  value={viewTarget.nombre} /></div>
-                    <ViewField label="Numero Cuenta" value={viewTarget.numero} />
-                    <div className="grid gap-1">
-                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
-                      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-                        {(() => {
-                          const flagIso = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                          return flagIso ? (
-                            <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                              {viewTarget.moneda}
-                            </span>
-                          ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda || '—'}</span>
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 py-1">
-                      <Checkbox checked={!!viewTarget.activo} disabled />
-                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</span>
-                    </div>
-                  </SegmentCard>
-                </div>
-              ) : (
-                /* ── Edit / Create mode ── */
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="Identificacion">
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                      <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                        <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                      <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
-                        <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </SegmentCard>
-                  <SegmentCard label="General">
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco *</Label>
-                      <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
-                        <SelectTrigger variant="l-border" id="banco" aria-invalid={campoInvalido?.id === 'banco' || undefined} className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v && v !== '0' ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
-                        <SelectContent>
-                          {bancosFiltrados.length === 0
-                            ? <SelectItem value="0" disabled>Sin bancos para este proyecto</SelectItem>
-                            : bancosFiltrados.map((b) => <SelectItem key={b.codigo} value={String(b.codigo)}>{b.nombre}</SelectItem>)
-                          }
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Cuenta *</Label>
-                      <Input variant="l-border"
-                        id="nombre"
-                        aria-invalid={campoInvalido?.id === 'nombre' || undefined}
-                        value={form.nombre}
-                        onChange={(e) => f('nombre', e.target.value)}
-                        placeholder="Ej: cuenta operativa principal..."
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label htmlFor="numero" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Cuenta *</Label>
-                      <Input variant="l-border"
-                        id="numero"
-                        aria-invalid={campoInvalido?.id === 'numero' || undefined}
-                        value={form.numero}
-                        onChange={(e) => f('numero', e.target.value)}
-                        placeholder="Ej: 1234567890"
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda *</Label>
-                      <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
-                        <SelectTrigger variant="l-border" id="moneda" aria-invalid={campoInvalido?.id === 'moneda' || undefined} className="w-full">
-                          <SelectValue placeholder="Selecciona moneda">
-                            {(v: string) => {
-                              const flagIso = CURRENCY_FLAG_MAP.get(v)
-                              return v ? (
-                                <span className="flex items-center gap-1.5">
-                                  {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                                  {v}
-                                </span>
-                              ) : null
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {monedas.map((m) => {
-                            const flagIso = CURRENCY_FLAG_MAP.get(m.codigo)
-                            return (
-                              <SelectItem key={m.codigo} value={m.codigo}>
-                                <span className="flex items-center gap-2">
-                                  {flagIso && <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={flagIso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
-                                  {m.codigo}
-                                </span>
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2 flex items-center gap-2 py-1">
-                      <Checkbox
-                        id="activo"
-                        checked={form.activo === 1}
-                        onCheckedChange={(v: boolean) => setForm((p) => ({ ...p, activo: v ? 1 : 0 }))}
-                      />
-                      <Label htmlFor="activo" className="font-semibold tracking-wider text-muted-foreground cursor-pointer" style={{ fontSize: 'var(--ui-form-label)' }}>Activo</Label>
-                    </div>
-                  </SegmentCard>
-                </div>
-              )}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -891,11 +909,13 @@ export function CuentasBancariasClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-cyan-50 dark:hover:bg-cyan-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

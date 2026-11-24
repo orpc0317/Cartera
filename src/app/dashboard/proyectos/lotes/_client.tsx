@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
@@ -258,6 +259,8 @@ export function LotesClient({
   const [isEditing, setIsEditing] = useState(false)
   const [hadConflict, setHadConflict] = useState(false)
   const [viewTarget, setViewTarget] = useState<(Lote & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<Lote | null>(null)
   const [auditTarget, setAuditTarget] = useState<Lote | null>(null)
   const [form, setForm] = useState<LoteForm>(EMPTY_FORM)
@@ -695,6 +698,212 @@ export function LotesClient({
 
   // --- Render ---
 
+  function pasoGeneral() {
+    return (
+    <>
+              {!isEditing && viewTarget ? (
+                <div className="flex gap-6 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? '')} /></div>
+                      <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
+                      <ViewField locked label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} />
+                      <ViewField locked label="Manzana" value={viewTarget.manzana} />
+                      <ViewField locked label="Codigo"  value={viewTarget.codigo}  />
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
+                      <div className="grid gap-1">
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
+                        <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                          {(() => {
+                            const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
+                            return flag ? (
+                              <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                                <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                {viewTarget.moneda}
+                              </span>
+                            ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
+                          })()}
+                        </div>
+                      </div>
+                      <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
+                      <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
+                    </SegmentCard>
+                  </div>
+                  <div className="w-px self-stretch bg-primary/30" />
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="REGISTRO">
+                      <ViewField label="Finca" value={viewTarget.finca} />
+                      <ViewField label="Folio" value={viewTarget.folio} />
+                      <ViewField label="Libro" value={viewTarget.libro} />
+                    </SegmentCard>
+                    <SegmentCard label="COLINDANCIAS">
+                      <ViewField label="Norte" value={viewTarget.norte} />
+                      <ViewField label="Sur"   value={viewTarget.sur}   />
+                      <ViewField label="Este"  value={viewTarget.este}  />
+                      <ViewField label="Oeste" value={viewTarget.oeste} />
+                      <ViewField label="Otros" value={viewTarget.otro}  />
+                    </SegmentCard>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-6 items-start">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
+                      <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue placeholder="Selecciona empresa">
+                            {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto</Label>
+                      <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue placeholder="Selecciona proyecto">
+                            {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase</Label>
+                      <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue placeholder="Selecciona fase">
+                            {(v: string) => v && v !== '0' ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fasesFiltradas.map((fa) => <SelectItem key={fa.codigo} value={String(fa.codigo)}>{fa.nombre}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana</Label>
+                      <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue placeholder="Selecciona manzana">
+                            {(v: string) => v || null}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {manzanasFiltradas.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {!viewTarget ? (
+                      <div className="grid gap-1">
+                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
+                        <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
+                      </div>
+                    ) : (
+                      <ViewField locked label="Codigo" value={viewTarget.codigo} />
+                    )}
+                    </SegmentCard>
+                    <SegmentCard label="GENERAL">
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
+                      <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
+                        <SelectTrigger variant="l-border" className="w-full">
+                          <SelectValue placeholder="Selecciona moneda">
+                            {(v: string) => {
+                              const flag = CURRENCY_FLAG_MAP.get(v)
+                              return flag ? (
+                                <span className="flex items-center gap-1.5">
+                                  <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  {v}
+                                </span>
+                              ) : v || null
+                            }}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monedasDelProyecto.map((pm) => {
+                            const flag = CURRENCY_FLAG_MAP.get(pm.moneda)
+                            return (
+                              <SelectItem key={pm.moneda} value={pm.moneda}>
+                                {flag ? (
+                                  <span className="flex items-center gap-2">
+                                    <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                    {pm.moneda}
+                                  </span>
+                                ) : pm.moneda}
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Valor</Label>
+                      <Input variant="l-border" type="number" min={0} step="0.01" value={valorStr} onChange={(e) => setValorStr(e.target.value)} placeholder="0.00" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Extension</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input variant="l-border" type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => setExtensionStr(e.target.value)} placeholder="0.00" className="flex-1" />
+                        {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
+                      </div>
+                    </div>
+                    </SegmentCard>
+                  </div>
+                  <div className="w-px self-stretch bg-primary/30" />
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="REGISTRO">
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Finca</Label>
+                      <Input variant="l-border" value={form.finca ?? ''} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Folio</Label>
+                      <Input variant="l-border" value={form.folio ?? ''} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Libro</Label>
+                      <Input variant="l-border" value={form.libro ?? ''} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" />
+                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="COLINDANCIAS">
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Norte</Label>
+                      <Input variant="l-border" value={form.norte ?? ''} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia norte" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Sur</Label>
+                      <Input variant="l-border" value={form.sur ?? ''} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia sur" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Este</Label>
+                      <Input variant="l-border" value={form.este ?? ''} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia este" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Oeste</Label>
+                      <Input variant="l-border" value={form.oeste ?? ''} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia oeste" />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Otros</Label>
+                      <Input variant="l-border" value={form.otro ?? ''} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias" />
+                    </div>
+                    </SegmentCard>
+                  </div>
+                </div>
+              )}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -918,6 +1127,11 @@ export function LotesClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
               <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
@@ -932,205 +1146,8 @@ export function LotesClient({
 
             {/* Tab General */}
             <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
-              {!isEditing && viewTarget ? (
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="IDENTIFICACION">
-                      <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? '')} /></div>
-                      <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
-                      <ViewField locked label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} />
-                      <ViewField locked label="Manzana" value={viewTarget.manzana} />
-                      <ViewField locked label="Codigo"  value={viewTarget.codigo}  />
-                    </SegmentCard>
-                    <SegmentCard label="GENERAL">
-                      <div className="grid gap-1">
-                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</span>
-                        <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-                          {(() => {
-                            const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                            return flag ? (
-                              <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                                <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                {viewTarget.moneda}
-                              </span>
-                            ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
-                          })()}
-                        </div>
-                      </div>
-                      <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
-                      <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
-                    </SegmentCard>
-                  </div>
-                  <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="REGISTRO">
-                      <ViewField label="Finca" value={viewTarget.finca} />
-                      <ViewField label="Folio" value={viewTarget.folio} />
-                      <ViewField label="Libro" value={viewTarget.libro} />
-                    </SegmentCard>
-                    <SegmentCard label="COLINDANCIAS">
-                      <ViewField label="Norte" value={viewTarget.norte} />
-                      <ViewField label="Sur"   value={viewTarget.sur}   />
-                      <ViewField label="Este"  value={viewTarget.este}  />
-                      <ViewField label="Oeste" value={viewTarget.oeste} />
-                      <ViewField label="Otros" value={viewTarget.otro}  />
-                    </SegmentCard>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-6 items-start">
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
-                      <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
-                          <SelectValue placeholder="Selecciona empresa">
-                            {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto</Label>
-                      <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
-                          <SelectValue placeholder="Selecciona proyecto">
-                            {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase</Label>
-                      <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
-                          <SelectValue placeholder="Selecciona fase">
-                            {(v: string) => v && v !== '0' ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fasesFiltradas.map((fa) => <SelectItem key={fa.codigo} value={String(fa.codigo)}>{fa.nombre}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana</Label>
-                      <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
-                          <SelectValue placeholder="Selecciona manzana">
-                            {(v: string) => v || null}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {manzanasFiltradas.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {!viewTarget ? (
-                      <div className="grid gap-1">
-                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
-                        <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
-                      </div>
-                    ) : (
-                      <ViewField locked label="Codigo" value={viewTarget.codigo} />
-                    )}
-                    </SegmentCard>
-                    <SegmentCard label="GENERAL">
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
-                      <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-                        <SelectTrigger variant="l-border" className="w-full">
-                          <SelectValue placeholder="Selecciona moneda">
-                            {(v: string) => {
-                              const flag = CURRENCY_FLAG_MAP.get(v)
-                              return flag ? (
-                                <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {v}
-                                </span>
-                              ) : v || null
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {monedasDelProyecto.map((pm) => {
-                            const flag = CURRENCY_FLAG_MAP.get(pm.moneda)
-                            return (
-                              <SelectItem key={pm.moneda} value={pm.moneda}>
-                                {flag ? (
-                                  <span className="flex items-center gap-2">
-                                    <img src={`https://flagcdn.com/w20/${flag}.png`} alt={flag} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                    {pm.moneda}
-                                  </span>
-                                ) : pm.moneda}
-                              </SelectItem>
-                            )
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Valor</Label>
-                      <Input variant="l-border" type="number" min={0} step="0.01" value={valorStr} onChange={(e) => setValorStr(e.target.value)} placeholder="0.00" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Extension</Label>
-                      <div className="flex gap-2 items-center">
-                        <Input variant="l-border" type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => setExtensionStr(e.target.value)} placeholder="0.00" className="flex-1" />
-                        {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
-                      </div>
-                    </div>
-                    </SegmentCard>
-                  </div>
-                  <div className="w-px self-stretch bg-primary/30" />
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-                    <SegmentCard label="REGISTRO">
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Finca</Label>
-                      <Input variant="l-border" value={form.finca ?? ''} onChange={(e) => f('finca', e.target.value)} placeholder="No. de finca" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Folio</Label>
-                      <Input variant="l-border" value={form.folio ?? ''} onChange={(e) => f('folio', e.target.value)} placeholder="No. de folio" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Libro</Label>
-                      <Input variant="l-border" value={form.libro ?? ''} onChange={(e) => f('libro', e.target.value)} placeholder="No. de libro" />
-                    </div>
-                    </SegmentCard>
-                    <SegmentCard label="COLINDANCIAS">
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Norte</Label>
-                      <Input variant="l-border" value={form.norte ?? ''} onChange={(e) => f('norte', e.target.value)} placeholder="Colindancia norte" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Sur</Label>
-                      <Input variant="l-border" value={form.sur ?? ''} onChange={(e) => f('sur', e.target.value)} placeholder="Colindancia sur" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Este</Label>
-                      <Input variant="l-border" value={form.este ?? ''} onChange={(e) => f('este', e.target.value)} placeholder="Colindancia este" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Oeste</Label>
-                      <Input variant="l-border" value={form.oeste ?? ''} onChange={(e) => f('oeste', e.target.value)} placeholder="Colindancia oeste" />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Otros</Label>
-                      <Input variant="l-border" value={form.otro ?? ''} onChange={(e) => f('otro', e.target.value)} placeholder="Otras colindancias" />
-                    </div>
-                    </SegmentCard>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
 
             {/* Tab Promesas — solo en modo Ver */}
             {!isEditing && viewTarget && (
@@ -1168,6 +1185,7 @@ export function LotesClient({
               </TabsContent>
             )}
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -1201,11 +1219,13 @@ export function LotesClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-rose-50 dark:hover:bg-rose-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando..."
+                className="hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

@@ -45,6 +45,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { createTipoIngreso, updateTipoIngreso, deleteTipoIngreso,
   obtenerTipoIngreso,
 } from '@/app/actions/tipos-ingresos'
@@ -286,6 +287,8 @@ export function TiposIngresosClient({
   const [isEditing, setIsEditing]       = useState(false)
   const [hadConflict, setHadConflict]   = useState(false)
   const [viewTarget, setViewTarget]     = useState<(TipoIngreso & NombresVer) | null>(null)
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [deleteTarget, setDeleteTarget] = useState<TipoIngreso | null>(null)
   const [auditTarget, setAuditTarget]   = useState<TipoIngreso | null>(null)
   const [similarWarning, setSimilarWarning] = useState<string[]>([])
@@ -662,203 +665,9 @@ export function TiposIngresosClient({
   const viewFlag = CURRENCY_FLAG_MAP.get(viewMoneda)
 
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div className={LIST_SHELL}>
-
-      {/* ── Header ── */}
-      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-yellow-100 p-2.5">
-            <Tags className="h-5 w-5 text-yellow-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Tipos Ingresos</h1>
-            <p className="text-sm text-muted-foreground">Catalogo de tipos de ingresos por proyecto</p>
-          </div>
-        </div>
-        {puedeAgregar && (
-          <Button
-            onClick={openCreate}
-            disabled={proyectos.length === 0}
-            className="gap-2 bg-yellow-600 hover:bg-yellow-700 text-white"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo Tipo Ingreso
-          </Button>
-        )}
-      </div>
-
-      {proyectos.length === 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          No hay proyectos disponibles. Crea un proyecto antes de agregar tipos de ingresos.
-        </div>
-      )}
-
-      {/* ── Toolbar ── */}
-      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input variant="l-border" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8" style={{ fontSize: 'var(--ui-input)' }} />
-        </div>
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
-            <X className="h-3.5 w-3.5" /> Limpiar filtros
-          </Button>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => exportCsv(filtered, colPrefs, empresaMap, proyectoMap)}>
-            <Download className="h-3.5 w-3.5" /> Exportar CSV
-          </Button>
-          <ColumnManager prefs={colPrefs} onToggle={toggleColPref} onMove={moveColPref} onReset={resetColPrefs} />
-        </div>
-      </div>
-
-      {/* ── Table ── */}
-      <div
-        ref={tableRef}
-        className={LIST_SCROLLPORT}
-        tabIndex={0}
-        onKeyDown={handleTableKeyDown}
-        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
-      >
-        <Table scrollable={false}>
-          <TableHeader className={LIST_THEAD}>
-            <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
-                <span className="text-xs font-medium text-muted-foreground">Codigo</span>
-              </TableHead>
-              {visibleCols.map((col) => (
-                <TableHead key={col.key} className={LIST_HEAD}>
-                  <ColumnFilter
-                    label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
-                    values={
-                      col.key === 'empresa'  ? uniqueEmpresaNames  :
-                      col.key === 'proyecto' ? uniqueProyectoNames :
-                      col.key === 'moneda'   ? uniqueMonedaValues  :
-                      col.key === 'nombre'   ? uniqueNombreValues  : []
-                    }
-                    active={colFilters[col.key] ?? new Set()}
-                    onChange={(v) => setColFilter(col.key, v)}
-                  />
-                </TableHead>
-              ))}
-              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
-                  {search || hasActiveFilters
-                    ? 'No se encontraron tipos de ingresos con ese criterio.'
-                    : 'Todavia no hay tipos de ingresos. Haz clic en "Nuevo Tipo Ingreso" para comenzar.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((row, rowIdx) => {
-                const isActive = cursorIdx === rowIdx
-                return (
-                  <TableRow
-                    key={`${row.empresa}-${row.proyecto}-${row.codigo}`}
-                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30' : 'hover:bg-muted/40'}`}
-                    onClick={() => setCursorIdx(rowIdx)}
-                    onDoubleClick={() => openView(row)}
-                  >
-                    <TableCell className={`sticky left-0 z-10 font-mono text-xs ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30 border-l-[3px] border-l-yellow-600 text-yellow-700 dark:text-yellow-400 font-semibold' : 'bg-card text-muted-foreground group-hover:bg-muted/40'}`}>
-                      {row.codigo}
-                    </TableCell>
-                    {visibleCols.map((col) => {
-                      switch (col.key) {
-                        case 'empresa':
-                          return <TableCell key={col.key} className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
-                        case 'proyecto':
-                          return <TableCell key={col.key} className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
-                        case 'moneda': {
-                          const flag = CURRENCY_FLAG_MAP.get(row.moneda)
-                          return (
-                            <TableCell key={col.key}>
-                              <span className="flex items-center gap-1.5 text-sm">
-                                {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt="" className="rounded-sm" />}
-                                {row.moneda}
-                              </span>
-                            </TableCell>
-                          )
-                        }
-                        case 'nombre':
-                          return <TableCell key={col.key} className="font-medium">{row.nombre}</TableCell>
-                        case 'activo':
-                          return (
-                            <TableCell key={col.key}>
-                              {row.activo === 1
-                                ? <Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>
-                                : <Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>}
-                            </TableCell>
-                          )
-                        default:
-                          return <TableCell key={col.key} className="text-muted-foreground">{String(row[col.key as keyof TipoIngreso] ?? '')}</TableCell>
-                      }
-                    })}
-                    <TableCell className={`sticky right-0 z-10 ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
-                      <button
-                        type="button"
-                        onClick={() => openView(row)}
-                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} tipo{filtered.length !== 1 ? 's' : ''} de ingreso</p>
-
-      {/* ── Main dialog ── */}
-      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
-        if (!open && (similarWarning.length > 0 || deleteTarget !== null || auditTarget !== null)) return
-        setDialogOpen(open)
-        if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
-      }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
-          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-yellow-50/70 to-transparent border-b border-border/50 shrink-0">
-            <div className="flex items-center gap-3 pr-8">
-              <div className={`shrink-0 rounded-xl p-2 ${
-                isEditing && !viewTarget ? 'bg-yellow-100' :
-                isEditing ? 'bg-amber-100' : 'bg-yellow-100'
-              }`}>
-                {isEditing && !viewTarget
-                  ? <Plus className={`h-4 w-4 ${isEditing && !viewTarget ? 'text-yellow-600' : 'text-amber-600'}`} />
-                  : isEditing
-                  ? <Pencil className="h-4 w-4 text-amber-600" />
-                  : <Tags className="h-4 w-4 text-yellow-600" />
-                }
-              </div>
-              <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Tipo Ingreso' : isEditing ? 'Editar Tipo Ingreso' : viewTarget?.nombre}
-                </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </DialogHeader>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
-                <MapPin className="h-3.5 w-3.5" /> General
-              </TabsTrigger>
-            </TabsList></div>
-            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+  function pasoGeneral() {
+    return (
+    <>
               {!isEditing && viewTarget ? (
                 // ── View mode ──────────────────────────────────────────────
                 <div className="flex gap-6 items-start">
@@ -1239,8 +1048,217 @@ export function TiposIngresosClient({
                   </div>
                 </div>
               )}
-            </TabsContent>
+            
+    </>
+    )
+  }
+
+  return (
+    <div className={LIST_SHELL}>
+
+      {/* ── Header ── */}
+      <div className={`${LIST_BLOCK} flex items-start justify-between`}>
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-yellow-100 p-2.5">
+            <Tags className="h-5 w-5 text-yellow-600" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Tipos Ingresos</h1>
+            <p className="text-sm text-muted-foreground">Catalogo de tipos de ingresos por proyecto</p>
+          </div>
+        </div>
+        {puedeAgregar && (
+          <Button
+            onClick={openCreate}
+            disabled={proyectos.length === 0}
+            className="gap-2 bg-yellow-600 hover:bg-yellow-700 text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo Tipo Ingreso
+          </Button>
+        )}
+      </div>
+
+      {proyectos.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          No hay proyectos disponibles. Crea un proyecto antes de agregar tipos de ingresos.
+        </div>
+      )}
+
+      {/* ── Toolbar ── */}
+      <div className={`${LIST_BLOCK} flex items-center gap-2`}>
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input variant="l-border" placeholder="Buscar tipos de ingresos..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8" style={{ fontSize: 'var(--ui-input)' }} />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
+            <X className="h-3.5 w-3.5" /> Limpiar filtros
+          </Button>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => exportCsv(filtered, colPrefs, empresaMap, proyectoMap)}>
+            <Download className="h-3.5 w-3.5" /> Exportar CSV
+          </Button>
+          <ColumnManager prefs={colPrefs} onToggle={toggleColPref} onMove={moveColPref} onReset={resetColPrefs} />
+        </div>
+      </div>
+
+      {/* ── Table ── */}
+      <div
+        ref={tableRef}
+        className={LIST_SCROLLPORT}
+        tabIndex={0}
+        onKeyDown={handleTableKeyDown}
+        onFocus={() => { if (cursorIdx === null && filtered.length > 0) setCursorIdx(0) }}
+      >
+        <Table scrollable={false}>
+          <TableHeader className={LIST_THEAD}>
+            <TableRow className={LIST_HEAD_BG}>
+              <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
+                <span className="text-xs font-medium text-muted-foreground">Codigo</span>
+              </TableHead>
+              {visibleCols.map((col) => (
+                <TableHead key={col.key} className={LIST_HEAD}>
+                  <ColumnFilter
+                    label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
+                    values={
+                      col.key === 'empresa'  ? uniqueEmpresaNames  :
+                      col.key === 'proyecto' ? uniqueProyectoNames :
+                      col.key === 'moneda'   ? uniqueMonedaValues  :
+                      col.key === 'nombre'   ? uniqueNombreValues  : []
+                    }
+                    active={colFilters[col.key] ?? new Set()}
+                    onChange={(v) => setColFilter(col.key, v)}
+                  />
+                </TableHead>
+              ))}
+              <TableHead className={`${LIST_HEAD_RIGHT} w-12`} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={visibleCols.length + 2} className="py-16 text-center text-muted-foreground">
+                  {search || hasActiveFilters
+                    ? 'No se encontraron tipos de ingresos con ese criterio.'
+                    : 'Todavia no hay tipos de ingresos. Haz clic en "Nuevo Tipo Ingreso" para comenzar.'}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((row, rowIdx) => {
+                const isActive = cursorIdx === rowIdx
+                return (
+                  <TableRow
+                    key={`${row.empresa}-${row.proyecto}-${row.codigo}`}
+                    className={`group cursor-pointer transition-colors ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30' : 'hover:bg-muted/40'}`}
+                    onClick={() => setCursorIdx(rowIdx)}
+                    onDoubleClick={() => openView(row)}
+                  >
+                    <TableCell className={`sticky left-0 z-10 font-mono text-xs ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30 border-l-[3px] border-l-yellow-600 text-yellow-700 dark:text-yellow-400 font-semibold' : 'bg-card text-muted-foreground group-hover:bg-muted/40'}`}>
+                      {row.codigo}
+                    </TableCell>
+                    {visibleCols.map((col) => {
+                      switch (col.key) {
+                        case 'empresa':
+                          return <TableCell key={col.key} className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
+                        case 'proyecto':
+                          return <TableCell key={col.key} className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
+                        case 'moneda': {
+                          const flag = CURRENCY_FLAG_MAP.get(row.moneda)
+                          return (
+                            <TableCell key={col.key}>
+                              <span className="flex items-center gap-1.5 text-sm">
+                                {flag && <img src={`https://flagcdn.com/w20/${flag}.png`} width={20} height={14} alt="" className="rounded-sm" />}
+                                {row.moneda}
+                              </span>
+                            </TableCell>
+                          )
+                        }
+                        case 'nombre':
+                          return <TableCell key={col.key} className="font-medium">{row.nombre}</TableCell>
+                        case 'activo':
+                          return (
+                            <TableCell key={col.key}>
+                              {row.activo === 1
+                                ? <Badge variant="secondary" className="font-normal bg-emerald-100 text-emerald-700">Activo</Badge>
+                                : <Badge variant="secondary" className="font-normal bg-muted text-muted-foreground">Inactivo</Badge>}
+                            </TableCell>
+                          )
+                        default:
+                          return <TableCell key={col.key} className="text-muted-foreground">{String(row[col.key as keyof TipoIngreso] ?? '')}</TableCell>
+                      }
+                    })}
+                    <TableCell className={`sticky right-0 z-10 ${isActive ? 'bg-yellow-50 dark:bg-yellow-950/30' : 'bg-card group-hover:bg-muted/40'}`}>
+                      <button
+                        type="button"
+                        onClick={() => openView(row)}
+                        title={puedeModificar ? 'Ver / Editar' : 'Ver'}
+                        className={`inline-flex h-7 w-7 items-center justify-center rounded-md text-sm font-medium transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:outline-none ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <p className={`${LIST_BLOCK} text-xs text-muted-foreground`}>{filtered.length} tipo{filtered.length !== 1 ? 's' : ''} de ingreso</p>
+
+      {/* ── Main dialog ── */}
+      <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
+        if (!open && (similarWarning.length > 0 || deleteTarget !== null || auditTarget !== null)) return
+        setDialogOpen(open)
+        if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
+      }}>
+        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-yellow-50/70 to-transparent border-b border-border/50 shrink-0">
+            <div className="flex items-center gap-3 pr-8">
+              <div className={`shrink-0 rounded-xl p-2 ${
+                isEditing && !viewTarget ? 'bg-yellow-100' :
+                isEditing ? 'bg-amber-100' : 'bg-yellow-100'
+              }`}>
+                {isEditing && !viewTarget
+                  ? <Plus className={`h-4 w-4 ${isEditing && !viewTarget ? 'text-yellow-600' : 'text-amber-600'}`} />
+                  : isEditing
+                  ? <Pencil className="h-4 w-4 text-amber-600" />
+                  : <Tags className="h-4 w-4 text-yellow-600" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-semibold leading-tight truncate">
+                  {isEditing && !viewTarget ? 'Nuevo Tipo Ingreso' : isEditing ? 'Editar Tipo Ingreso' : viewTarget?.nombre}
+                </DialogTitle>
+                {viewTarget && (
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
+                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
+            <div className="shrink-0 w-full"><TabsList variant="line" className="">
+              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <MapPin className="h-3.5 w-3.5" /> General
+              </TabsTrigger>
+            </TabsList></div>
+            <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -1269,11 +1287,13 @@ export function TiposIngresosClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando..."
+                className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

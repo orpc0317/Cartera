@@ -44,6 +44,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { createBanco, updateBanco, deleteBanco,
   obtenerBanco,
 } from '@/app/actions/bancos'
@@ -231,6 +232,8 @@ export function BancosClient({
   const [similarWarning, setSimilarWarning] = useState<Banco[] | null>(null)
   const [colFilters, setColFilters]   = useState<ColFilters>({})
   const [activeTab, setActiveTab]     = useState('general')
+  const esAlta = isEditing && !viewTarget
+  const wizard = useWizardNav(PASOS_GENERAL, activeTab, setActiveTab, esAlta)
   const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
 
   useEffect(() => {
@@ -479,6 +482,60 @@ export function BancosClient({
 
   // ─── Render ──────────────────────────────────────────────────────────────
 
+  function pasoGeneral() {
+    return (
+    <>
+              {!isEditing && viewTarget ? (
+                /* ── View mode ── */
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="IDENTIFICACION">
+                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
+                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
+                  </SegmentCard>
+                  <SegmentCard label="GENERAL">
+                    <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
+                  </SegmentCard>
+                </div>
+              ) : (
+                /* ── Edit / Create mode ── */
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentCard label="IDENTIFICACION">
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                      <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                      <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
+                        <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                        <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </SegmentCard>
+                  <SegmentCard label="GENERAL">
+                    <div className="col-span-2 grid gap-1">
+                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                      <Input variant="l-border"
+                        id="nombre"
+                        aria-invalid={campoInvalido?.id === 'nombre' || undefined}
+                        value={form.nombre}
+                        onChange={(e) => f('nombre', e.target.value)}
+                        placeholder="Nombre de la institucion financiera"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </SegmentCard>
+                </div>
+              )}
+            
+    </>
+    )
+  }
+
   return (
     <div className={LIST_SHELL}>
 
@@ -651,6 +708,11 @@ export function BancosClient({
             </div>
           </DialogHeader>
 
+          {esAlta ? (
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 overflow-y-auto pr-1">
+              {pasoGeneral()}
+            </FormWizard>
+          ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full">
               <TabsList variant="line" className="">
@@ -662,54 +724,10 @@ export function BancosClient({
             </div>
 
             <TabsContent value="general" className="mt-0 flex-1 overflow-y-auto pr-1">
-              {!isEditing && viewTarget ? (
-                /* ── View mode ── */
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} /></div>
-                    <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} /></div>
-                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
-                  </SegmentCard>
-                  <SegmentCard label="GENERAL">
-                    <div className="col-span-2"><ViewField label="Nombre" value={viewTarget.nombre} /></div>
-                  </SegmentCard>
-                </div>
-              ) : (
-                /* ── Edit / Create mode ── */
-                <div className="grid grid-cols-2 gap-2">
-                  <SegmentCard label="IDENTIFICACION">
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
-                      <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
-                        <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
-                      <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
-                        <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </SegmentCard>
-                  <SegmentCard label="GENERAL">
-                    <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
-                      <Input variant="l-border"
-                        id="nombre"
-                        aria-invalid={campoInvalido?.id === 'nombre' || undefined}
-                        value={form.nombre}
-                        onChange={(e) => f('nombre', e.target.value)}
-                        placeholder="Nombre de la institucion financiera"
-                        autoComplete="off"
-                      />
-                    </div>
-                  </SegmentCard>
-                </div>
-              )}
-            </TabsContent>
+{pasoGeneral()}
+</TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
@@ -738,11 +756,13 @@ export function BancosClient({
                 </Button>
               </div>
             ) : (
-              <div className="flex w-full justify-end">
-                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={handleSave} disabled={isPending}>
-                  <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
+              <WizardAltaActions
+                nav={wizard}
+                onSave={handleSave}
+                pending={isPending}
+                pendingLabel="Guardando…"
+                className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
+              />
             )}
           </DialogFooter>
         </DialogContent>

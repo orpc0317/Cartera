@@ -192,7 +192,7 @@ test('nuevo coordinador exige nombre y se cierra sin guardar', async ({ page }) 
   const supervisor = dialog.locator('#supervisor')
   const texto = textoDelTrigger(await supervisor.innerText())
   await dialog.getByRole('button', { name: 'Guardar' }).click()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   if (!texto || texto === 'Selecciona supervisor' || texto === '0') {
     await expect(page.getByText('El supervisor es requerido.')).toBeVisible()
     await expect(supervisor).toHaveAttribute('aria-invalid', 'true')
@@ -226,7 +226,7 @@ test('nuevo coordinador exige nombre cuando el supervisor ya esta elegido', asyn
   }
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('El nombre es requerido.')).toBeVisible()
-  await expect(dialog.getByRole('tab', { name: 'General', selected: true })).toBeVisible()
+  await expect(dialog.getByRole('listitem', { name: 'General' })).toHaveAttribute('aria-current', 'step')
   const nombre = dialog.getByLabel('Nombre *')
   await expect(nombre).toHaveAttribute('aria-invalid', 'true')
   await expect(nombre).toBeFocused()
