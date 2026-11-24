@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -565,7 +566,7 @@ export function PagoCuotasClient({
           <div className="grid grid-cols-2 gap-3 mb-3">
             {/* Empresa */}
             <div className="grid gap-1">
-              <Label className={LABEL_CLS} style={LABEL_STYLE}>Empresa *</Label>
+              <Label className={LABEL_CLS} style={LABEL_STYLE}>Empresa <RequiredMark /></Label>
               <Select value={String(empresa)} onValueChange={onEmpresaChange}>
                 <SelectTrigger variant="l-border" className="w-full">
                   <SelectValue placeholder="Selecciona empresa">
@@ -582,7 +583,7 @@ export function PagoCuotasClient({
 
             {/* Proyecto */}
             <div className="grid gap-1">
-              <Label className={LABEL_CLS} style={LABEL_STYLE}>Proyecto *</Label>
+              <Label className={LABEL_CLS} style={LABEL_STYLE}>Proyecto <RequiredMark /></Label>
               <Select value={String(proyecto)} onValueChange={onProyectoChange} disabled={empresa === 0}>
                 <SelectTrigger variant="l-border" className="w-full">
                   <SelectValue placeholder="Selecciona proyecto">
@@ -684,7 +685,7 @@ export function PagoCuotasClient({
 
                 <div className="col-span-2 grid grid-cols-2 gap-2">
                   <div className="grid gap-1">
-                    <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie *</Label>
+                    <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie <RequiredMark /></Label>
                     <Select value={serie} onValueChange={(v) => { limpiarCampoInvalido(); setSerie(v ?? '') }}>
                       <SelectTrigger variant="l-border" id="pc-serie" aria-invalid={campoInvalido?.id === 'pc-serie' || undefined} className="w-full">
                         <SelectValue placeholder={seriesDisponibles.length === 0 ? 'Sin series' : 'Serie'} />
@@ -699,7 +700,7 @@ export function PagoCuotasClient({
 
                   {!reciboAutomatico ? (
                     <div className="grid gap-1">
-                      <Label className={LABEL_CLS} style={LABEL_STYLE}>Numero *</Label>
+                      <Label className={LABEL_CLS} style={LABEL_STYLE}>Numero <RequiredMark /></Label>
                       <Input variant="l-border" id="pc-numero" aria-invalid={campoInvalido?.id === 'pc-numero' || undefined} value={numero} onChange={(e) => { limpiarCampoInvalido(); setNumero(e.target.value) }} placeholder="No. recibo" />
                     </div>
                   ) : (
@@ -713,12 +714,12 @@ export function PagoCuotasClient({
                 </div>
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Fecha *</Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Fecha <RequiredMark /></Label>
                   <Input variant="l-border" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
                 </div>
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Cobrador *</Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Cobrador <RequiredMark /></Label>
                   <CobradorCombobox
                     cobradores={cobradoresDisponibles}
                     value={cobrador}
@@ -740,7 +741,7 @@ export function PagoCuotasClient({
                 <SectionDivider label="Forma de Pago" />
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Forma de Pago *</Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Forma de Pago <RequiredMark /></Label>
                   <Select value={formaPago ? String(formaPago) : ''} onValueChange={onFormaPagoChange}>
                     <SelectTrigger variant="l-border" id="pc-forma-pago" aria-invalid={campoInvalido?.id === 'pc-forma-pago' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
@@ -756,7 +757,7 @@ export function PagoCuotasClient({
                 {formaPago === 2 && (
                   <>
                     <div className="col-span-2 grid gap-1">
-                      <Label className={LABEL_CLS} style={LABEL_STYLE}>Banco *</Label>
+                      <Label className={LABEL_CLS} style={LABEL_STYLE}>Banco <RequiredMark /></Label>
                       <Select value={banco ? String(banco) : ''} onValueChange={(v) => { limpiarCampoInvalido(); setBanco(Number(v)) }}>
                         <SelectTrigger variant="l-border" id="pc-banco" aria-invalid={campoInvalido?.id === 'pc-banco' || undefined} className="w-full">
                           <SelectValue placeholder={bancosDisponibles.length === 0 ? 'Sin bancos registrados' : 'Selecciona banco'}>{(v: string) => v ? (bancoMap.get(Number(v)) ?? v) : null}</SelectValue>
@@ -769,11 +770,11 @@ export function PagoCuotasClient({
                       </Select>
                     </div>
                     <div className="grid gap-1">
-                      <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Cuenta *</Label>
+                      <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Cuenta <RequiredMark /></Label>
                       <Input variant="l-border" value={numCuenta} onChange={(e) => setNumCuenta(e.target.value)} placeholder="Numero de cuenta" />
                     </div>
                     <div className="grid gap-1">
-                      <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento *</Label>
+                      <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento <RequiredMark /></Label>
                       <Input variant="l-border" id="pc-num-documento" aria-invalid={campoInvalido?.id === 'pc-num-documento' || undefined} value={numDocumento} onChange={(e) => { limpiarCampoInvalido(); setNumDocumento(e.target.value) }} placeholder="Numero de cheque" />
                     </div>
                   </>
@@ -782,7 +783,7 @@ export function PagoCuotasClient({
                 {(formaPago === 3 || formaPago === 4) && (
                   <>
                     <div className="col-span-2 grid gap-1">
-                      <Label className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria *</Label>
+                      <Label className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria <RequiredMark /></Label>
                       <Select value={cuentaBancaria ? String(cuentaBancaria) : ''} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }}>
                         <SelectTrigger variant="l-border" id="pc-cuenta" aria-invalid={campoInvalido?.id === 'pc-cuenta' || undefined} className="w-full">
                           <SelectValue placeholder={cuentasDisponibles.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>{(v: string) => v ? (cuentaBancariaMap.get(Number(v)) ?? v) : null}</SelectValue>
@@ -795,7 +796,7 @@ export function PagoCuotasClient({
                       </Select>
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento *</Label>
+                      <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento <RequiredMark /></Label>
                       <Input variant="l-border" id="pc-num-documento" aria-invalid={campoInvalido?.id === 'pc-num-documento' || undefined} value={numDocumento} onChange={(e) => { limpiarCampoInvalido(); setNumDocumento(e.target.value) }} placeholder="Numero de documento" />
                     </div>
                   </>
@@ -804,7 +805,7 @@ export function PagoCuotasClient({
                 <SectionDivider label="Monto" />
 
                 <div className="grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Moneda *</Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Moneda <RequiredMark /></Label>
                   <Select value={moneda} onValueChange={(v) => { limpiarCampoInvalido(); setMoneda(v ?? '') }}>
                     <SelectTrigger variant="l-border" id="pc-moneda" aria-invalid={campoInvalido?.id === 'pc-moneda' || undefined} className="w-full">
                       <SelectValue placeholder={monedasDisponibles.length === 0 ? 'Sin monedas' : 'Selecciona moneda'}>
@@ -837,7 +838,7 @@ export function PagoCuotasClient({
                 </div>
 
                 <div className="grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Monto a Pagar *</Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Monto a Pagar <RequiredMark /></Label>
                   <Input
                     variant="l-border"
                     id="pc-monto"

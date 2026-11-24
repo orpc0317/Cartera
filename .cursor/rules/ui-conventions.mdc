@@ -117,6 +117,8 @@ Estos estándares garantizan que labels y bordes de campo se vean consistentes e
 
 **Wrapper de campo** — usar siempre `<div className="grid gap-1">`. **Nunca** `space-y-1.5`.
 
+**Asterisco de obligatorio.** Un campo requerido termina el `<Label>` con un espacio y `<RequiredMark />` importado de `@/components/ui/required-mark`. El asterisco es rojo (`text-destructive`). No se escribe ` *` como texto del label.
+
 ```tsx
 // ✅ Correcto
 <div className="grid gap-1">

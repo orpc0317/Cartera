@@ -25,6 +25,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -1151,9 +1152,7 @@ export function ReservasClient({
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                      Empresa *
-                    </Label>
+                    <Label htmlFor="res-empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                     <Select
                       value={form.empresa ? String(form.empresa) : ''}
                       onValueChange={(v) => f('empresa', Number(v))}
@@ -1171,9 +1170,7 @@ export function ReservasClient({
 
                   {/* Proyecto */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                      Proyecto *
-                    </Label>
+                    <Label htmlFor="res-proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                     <Select
                       value={form.proyecto ? String(form.proyecto) : ''}
                       onValueChange={(v) => f('proyecto', Number(v))}
@@ -1198,9 +1195,7 @@ export function ReservasClient({
 
                     {/* Fase */}
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-fase" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Fase *
-                      </Label>
+                      <Label htmlFor="res-fase" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase <RequiredMark /></Label>
                       <Select
                         value={form.fase ? String(form.fase) : ''}
                         onValueChange={(v) => f('fase', Number(v))}
@@ -1221,9 +1216,7 @@ export function ReservasClient({
 
                     {/* Manzana */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-manzana" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Manzana *
-                      </Label>
+                      <Label htmlFor="res-manzana" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana <RequiredMark /></Label>
                       <Select
                         value={form.manzana}
                         onValueChange={(v) => f('manzana', v ?? '')}
@@ -1242,9 +1235,7 @@ export function ReservasClient({
 
                     {/* Lote */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-lote" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Lote *
-                      </Label>
+                      <Label htmlFor="res-lote" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Lote <RequiredMark /></Label>
                       <Select
                         value={form.lote}
                         onValueChange={(v) => f('lote', v ?? '')}
@@ -1284,9 +1275,7 @@ export function ReservasClient({
 
                     {/* Fecha */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Fecha *
-                      </Label>
+                      <Label htmlFor="res-fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha <RequiredMark /></Label>
                       <Input variant="l-border"
                         id="res-fecha"
                         aria-invalid={campoInvalido?.id === 'res-fecha' || undefined}
@@ -1298,9 +1287,7 @@ export function ReservasClient({
 
                     {/* Moneda */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Moneda *
-                      </Label>
+                      <Label htmlFor="res-moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
                       <Select
                         value={form.moneda}
                         onValueChange={(v) => f('moneda', v ?? '')}
@@ -1338,9 +1325,7 @@ export function ReservasClient({
 
                     {/* Monto */}
                     <div className="grid gap-1">
-                      <Label htmlFor="res-monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Monto *
-                      </Label>
+                      <Label htmlFor="res-monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Monto <RequiredMark /></Label>
                       <Input variant="l-border"
                         id="res-monto"
                         aria-invalid={campoInvalido?.id === 'res-monto' || undefined}
@@ -1372,9 +1357,7 @@ export function ReservasClient({
 
                   {/* Cliente */}
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                      Cliente *
-                    </Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente <RequiredMark /></Label>
                     <ClienteCombobox
                       clientes={clientesPorProyecto}
                       value={form.cliente}
@@ -1388,9 +1371,7 @@ export function ReservasClient({
 
                   {/* Vendedor */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="res-vendedor" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                      Vendedor *
-                    </Label>
+                    <Label htmlFor="res-vendedor" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Vendedor <RequiredMark /></Label>
                     <Select
                       value={form.vendedor ? String(form.vendedor) : ''}
                       onValueChange={(v) => f('vendedor', Number(v))}
@@ -1422,9 +1403,7 @@ export function ReservasClient({
 
                       {/* Serie */}
                       <div className="grid gap-1">
-                        <Label htmlFor="res-serie-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                          Serie *
-                        </Label>
+                        <Label htmlFor="res-serie-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie <RequiredMark /></Label>
                         <Select
                           value={form.serie_recibo}
                           onValueChange={(v) => f('serie_recibo', v ?? '')}
@@ -1443,9 +1422,7 @@ export function ReservasClient({
                       {/* Numero Recibo */}
                       {!reciboAutomatico ? (
                         <div className="grid gap-1">
-                          <Label htmlFor="res-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                            Numero Recibo *
-                          </Label>
+                          <Label htmlFor="res-recibo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Recibo <RequiredMark /></Label>
                           <Input variant="l-border"
                             id="res-recibo"
                             aria-invalid={campoInvalido?.id === 'res-recibo' || undefined}
@@ -1463,9 +1440,7 @@ export function ReservasClient({
 
                     {/* Cobrador */}
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-cobrador" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Cobrador *
-                      </Label>
+                      <Label htmlFor="res-cobrador" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cobrador <RequiredMark /></Label>
                       <Select
                         value={form.cobrador ? String(form.cobrador) : ''}
                         onValueChange={(v) => f('cobrador', Number(v))}
@@ -1486,9 +1461,7 @@ export function ReservasClient({
 
                     {/* Forma Pago */}
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                        Forma de Pago *
-                      </Label>
+                      <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Forma de Pago <RequiredMark /></Label>
                       <Select
                         value={form.forma_pago ? String(form.forma_pago) : ''}
                         onValueChange={(v) => f('forma_pago', Number(v))}
@@ -1507,9 +1480,7 @@ export function ReservasClient({
                     {/* Cheque: Banco */}
                     {form.forma_pago === 2 && (
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="res-banco" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                          Banco *
-                        </Label>
+                        <Label htmlFor="res-banco" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco <RequiredMark /></Label>
                         <Select
                           value={form.banco ? String(form.banco) : ''}
                           onValueChange={(v) => f('banco', Number(v))}
@@ -1530,9 +1501,7 @@ export function ReservasClient({
                     {form.forma_pago === 2 && (
                       <>
                         <div className="grid gap-1">
-                          <Label htmlFor="res-num-cuenta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                            No. Cuenta *
-                          </Label>
+                          <Label htmlFor="res-num-cuenta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>No. Cuenta <RequiredMark /></Label>
                           <Input variant="l-border"
                             id="res-num-cuenta"
                             aria-invalid={campoInvalido?.id === 'res-num-cuenta' || undefined}
@@ -1542,9 +1511,7 @@ export function ReservasClient({
                           />
                         </div>
                         <div className="grid gap-1">
-                          <Label htmlFor="res-num-doc-cheque" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                            No. Documento *
-                          </Label>
+                          <Label htmlFor="res-num-doc-cheque" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>No. Documento <RequiredMark /></Label>
                           <Input variant="l-border"
                             id="res-num-doc-cheque"
                             aria-invalid={campoInvalido?.id === 'res-num-doc-cheque' || undefined}
@@ -1559,9 +1526,7 @@ export function ReservasClient({
                     {/* Deposito / Transferencia: Cuenta Bancaria */}
                     {(form.forma_pago === 3 || form.forma_pago === 4) && (
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="res-cuenta-bancaria" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                          Cuenta Bancaria *
-                        </Label>
+                        <Label htmlFor="res-cuenta-bancaria" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cuenta Bancaria <RequiredMark /></Label>
                         <Select
                           value={form.cuenta_bancaria ? String(form.cuenta_bancaria) : ''}
                           onValueChange={(v) => f('cuenta_bancaria', Number(v))}
@@ -1581,9 +1546,7 @@ export function ReservasClient({
                     {/* Deposito / Transferencia: No. Documento */}
                     {(form.forma_pago === 3 || form.forma_pago === 4) && (
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="res-num-doc" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                          No. Documento *
-                        </Label>
+                        <Label htmlFor="res-num-doc" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>No. Documento <RequiredMark /></Label>
                         <Input variant="l-border"
                           id="res-num-doc"
                           aria-invalid={campoInvalido?.id === 'res-num-doc' || undefined}

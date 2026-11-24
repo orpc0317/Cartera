@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -562,9 +563,7 @@ export function TiposDocumentoClient({
 
                 {/* Empresa */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Empresa *
-                  </Label>
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                   <Select
                     value={form.empresa ? String(form.empresa) : ''}
                     onValueChange={(v) => f('empresa', Number(v))}
@@ -585,9 +584,7 @@ export function TiposDocumentoClient({
 
                 {/* Proyecto */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Proyecto *
-                  </Label>
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                   <Select
                     value={form.proyecto ? String(form.proyecto) : ''}
                     onValueChange={(v) => f('proyecto', Number(v))}
@@ -610,9 +607,7 @@ export function TiposDocumentoClient({
                 <SegmentCard label="General">
                 {/* Descripcion */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="descripcion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Descripcion *
-                  </Label>
+                  <Label htmlFor="descripcion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Descripcion <RequiredMark /></Label>
                   <Input variant="l-border"
                     id="descripcion"
                     aria-invalid={campoInvalido?.id === 'descripcion' || undefined}
