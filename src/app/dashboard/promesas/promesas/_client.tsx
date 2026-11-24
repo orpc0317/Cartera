@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -48,7 +48,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { PlanPagoDialog } from '@/components/ui/plan-pago-dialog'
-import { createPromesa, updatePromesa, deletePromesa, anularPromesa,
+import { createPromesa, getPromesas, updatePromesa, deletePromesa, anularPromesa,
   obtenerPromesa,
 } from '@/app/actions/promesas'
 import {
@@ -414,6 +414,7 @@ const PASOS_ALTA = [
 
 export function PromesasClient({
   initialData,
+  initialLimitReached,
   empresas,
   proyectos,
   fases,
@@ -428,7 +429,8 @@ export function PromesasClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: Promesa[]
+  initialData: (Promesa & NombresVer)[]
+  initialLimitReached: boolean
   empresas: Empresa[]
   proyectos: Proyecto[]
   fases: Fase[]
@@ -447,6 +449,12 @@ export function PromesasClient({
 
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [filtrosPending, startFiltrosTransition] = useTransition()
+  const [limitReached, setLimitReached] = useState(initialLimitReached)
+  const [filtroEstado, setFiltroEstado] = useState('1')
+  const [filtroNumero, setFiltroNumero] = useState('')
+  const [filtroReferencia, setFiltroReferencia] = useState('')
+  const [filtroCliente, setFiltroCliente] = useState('')
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   const [search, setSearch]           = useState('')
@@ -551,14 +559,14 @@ export function PromesasClient({
   ), [tiposIngreso, form.empresa, form.proyecto, otros])
 
   // -- Unique filter values for table columns --------------------------------
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)   ?? ''))].filter(Boolean).sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].filter(Boolean).sort(), [filas, proyectoMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].filter(Boolean).sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].filter(Boolean).sort(), [filas, proyectoMap])
   const uniqueFechaVals     = useMemo(() => [...new Set(filas.map((r) => r.fecha))].filter(Boolean).sort(), [filas])
-  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].filter(Boolean).sort(), [filas, faseMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '')))].filter(Boolean).sort(), [filas, faseMap])
   const uniqueManzanaVals   = useMemo(() => [...new Set(filas.map((r) => r.manzana))].filter(Boolean).sort(), [filas])
   const uniqueLoteVals      = useMemo(() => [...new Set(filas.map((r) => r.lote))].filter(Boolean).sort(), [filas])
-  const uniqueClienteNames  = useMemo(() => [...new Set(filas.map((r) => clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? ''))].filter(Boolean).sort(), [filas, clienteMap])
-  const uniqueVendedorNames = useMemo(() => [...new Set(filas.map((r) => vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? ''))].filter(Boolean).sort(), [filas, vendedorMap])
+  const uniqueClienteNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.cliente_nombre, clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? '')))].filter(Boolean).sort(), [filas, clienteMap])
+  const uniqueVendedorNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.vendedor_nombre, vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? '')))].filter(Boolean).sort(), [filas, vendedorMap])
 
   // -- Filtered rows ---------------------------------------------------------
   const filtered = useMemo(() => {
@@ -567,24 +575,44 @@ export function PromesasClient({
       if (q &&
           !String(r.numero).includes(q) &&
           !r.referencia.toLowerCase().includes(q) &&
-          !(empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) &&
-          !(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) &&
-          !(clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? '').toLowerCase().includes(q)) {
+          !nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) &&
+          !nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) &&
+          !nombreDeLista(r.cliente_nombre, clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? '').toLowerCase().includes(q)) {
         return false
       }
       return Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa)   ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+        if (col === 'empresa')  return vals.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+        if (col === 'proyecto') return vals.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
         if (col === 'fecha')    return vals.has(r.fecha)
-        if (col === 'fase')     return vals.has(faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '')
+        if (col === 'fase')     return vals.has(nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))
         if (col === 'manzana')  return vals.has(r.manzana)
         if (col === 'lote')     return vals.has(r.lote)
-        if (col === 'cliente')  return vals.has(clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? '')
-        if (col === 'vendedor') return vals.has(vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? '')
+        if (col === 'cliente')  return vals.has(nombreDeLista(r.cliente_nombre, clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? ''))
+        if (col === 'vendedor') return vals.has(nombreDeLista(r.vendedor_nombre, vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? ''))
         return vals.has(String((r as Record<string, unknown>)[col] ?? ''))
       })
     })
   }, [filas, search, colFilters, empresaMap, proyectoMap, faseMap, clienteMap, vendedorMap])
+
+  function aplicarSegmento() {
+    const numero = filtroNumero.trim() ? Number(filtroNumero) : undefined
+    if (filtroNumero.trim() && Number.isNaN(numero)) {
+      toast.error('El numero de promesa debe ser numerico.')
+      return
+    }
+    startFiltrosTransition(async () => {
+      const result = await getPromesas({
+        estado: filtroEstado ? Number(filtroEstado) : null,
+        numero,
+        referencia: filtroReferencia.trim() || undefined,
+        cliente: filtroCliente.trim() || undefined,
+      })
+      setFilas(result.data)
+      setLimitReached(result.limitReached)
+      setSearch('')
+      setColFilters({})
+    })
+  }
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -1089,12 +1117,12 @@ export function PromesasClient({
     const headers = keys.map((k) => COL_LABELS[k] ?? k)
     const rows = filtered.map((r) =>
       keys.map((k) => {
-        if (k === 'empresa')  return empresaMap.get(r.empresa)   ?? r.empresa
-        if (k === 'proyecto') return proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto
+        if (k === 'empresa')  return nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? r.empresa)
+        if (k === 'proyecto') return nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto)
         if (k === 'fecha')    return fmtDate(r.fecha)
-        if (k === 'fase')     return faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? r.fase
-        if (k === 'cliente')  return clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? r.cliente
-        if (k === 'vendedor') return vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? r.vendedor
+        if (k === 'fase')     return nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? r.fase)
+        if (k === 'cliente')  return nombreDeLista(r.cliente_nombre, clienteMap.get(`${r.empresa}-${r.proyecto}-${r.cliente}`) ?? r.cliente)
+        if (k === 'vendedor') return nombreDeLista(r.vendedor_nombre, vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? r.vendedor)
         return (r as Record<string, unknown>)[k] ?? ''
       })
     )
@@ -1897,6 +1925,30 @@ export function PromesasClient({
         </div>
       </div>
 
+      <div className={`${LIST_BLOCK} flex flex-wrap items-center gap-2`}>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+        >
+          <option value="">Todos los estados</option>
+          <option value="1">Vigente</option>
+          <option value="2">Pagada</option>
+          <option value="3">Anulada</option>
+        </select>
+        <Input variant="l-border" value={filtroNumero} onChange={(e) => setFiltroNumero(e.target.value)} placeholder="Numero" className="h-8 w-24 text-xs" />
+        <Input variant="l-border" value={filtroReferencia} onChange={(e) => setFiltroReferencia(e.target.value)} placeholder="Referencia" className="h-8 w-36 text-xs" />
+        <Input variant="l-border" value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)} placeholder="Cliente" className="h-8 w-40 text-xs" />
+        <Button variant="outline" size="sm" onClick={aplicarSegmento} disabled={filtrosPending}>
+          {filtrosPending ? 'Buscando...' : 'Aplicar'}
+        </Button>
+      </div>
+      {limitReached && (
+        <div className={`${LIST_BLOCK} text-sm text-amber-700 dark:text-amber-400`}>
+          Se alcanzo el limite de 500 registros mostrados. Refina los filtros para ver resultados mas especificos.
+        </div>
+      )}
+
       {/* Tabla */}
       <div
         ref={tableRef}
@@ -1968,21 +2020,21 @@ export function PromesasClient({
                     {colPrefs.filter((p) => p.visible).map((pref) => {
                       switch (pref.key) {
                         case 'empresa':
-                          return <TableCell key="empresa"  className="whitespace-nowrap">{empresaMap.get(row.empresa)   ?? row.empresa}</TableCell>
+                          return <TableCell key="empresa"  className="whitespace-nowrap">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? row.empresa)}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="whitespace-nowrap">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
+                          return <TableCell key="proyecto" className="whitespace-nowrap">{nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto)}</TableCell>
                         case 'fecha':
                           return <TableCell key="fecha"    className="whitespace-nowrap tabular-nums">{fmtDate(row.fecha)}</TableCell>
                         case 'fase':
-                          return <TableCell key="fase"     className="whitespace-nowrap">{faseMap.get(`${row.empresa}-${row.proyecto}-${row.fase}`) ?? row.fase}</TableCell>
+                          return <TableCell key="fase"     className="whitespace-nowrap">{nombreDeLista(row.fase_nombre, faseMap.get(`${row.empresa}-${row.proyecto}-${row.fase}`) ?? row.fase)}</TableCell>
                         case 'manzana':
                           return <TableCell key="manzana">{row.manzana}</TableCell>
                         case 'lote':
                           return <TableCell key="lote" className="font-mono text-xs">{row.lote}</TableCell>
                         case 'cliente':
-                          return <TableCell key="cliente"  className="whitespace-nowrap">{clienteMap.get(`${row.empresa}-${row.proyecto}-${row.cliente}`) ?? row.cliente}</TableCell>
+                          return <TableCell key="cliente"  className="whitespace-nowrap">{nombreDeLista(row.cliente_nombre, clienteMap.get(`${row.empresa}-${row.proyecto}-${row.cliente}`) ?? row.cliente)}</TableCell>
                         case 'vendedor':
-                          return <TableCell key="vendedor" className="whitespace-nowrap">{vendedorMap.get(`${row.empresa}-${row.proyecto}-${row.vendedor}`) ?? row.vendedor}</TableCell>
+                          return <TableCell key="vendedor" className="whitespace-nowrap">{nombreDeLista(row.vendedor_nombre, vendedorMap.get(`${row.empresa}-${row.proyecto}-${row.vendedor}`) ?? row.vendedor)}</TableCell>
                         default: {
                           const cellVal = (row as Record<string, unknown>)[pref.key]
                           return <TableCell key={pref.key}>{cellVal != null ? String(cellVal) : '\u2014'}</TableCell>

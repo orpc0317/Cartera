@@ -54,14 +54,14 @@ async function writeAudit(
   })
 }
 
-export async function getManzanas(empresa?: number, proyecto?: number, fase?: number): Promise<Manzana[]> {
+export async function getManzanas(empresa?: number, proyecto?: number, fase?: number): Promise<(Manzana & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_manzana')
-    .select('cuenta, empresa, proyecto, fase, codigo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_manzana_lista')
+    .select('cuenta, empresa, proyecto, fase, codigo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, fase_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('codigo')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -70,7 +70,7 @@ export async function getManzanas(empresa?: number, proyecto?: number, fase?: nu
   if (fase !== undefined) query = query.eq('fase', fase)
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as Manzana[]
+  return data as (Manzana & NombresVer)[]
 }
 
 export async function obtenerManzana(

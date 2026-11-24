@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -44,7 +44,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, Cliente, Banco, CuentaBancaria, Vendedor, Cobrador, SerieRecibo, ProyectoMoneda } from '@/lib/types/proyectos'
 import type { TasaCambio } from '@/lib/types/tasas-cambio'
-import { createReserva, type ReservaRow,
+import { createReserva, getReservas, type ReservaRow,
   obtenerReserva,
 } from '@/app/actions/lotes'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
@@ -408,7 +408,8 @@ type Reserva = {
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  reservasIniciales:  ReservaRow[]
+  reservasIniciales:  (ReservaRow & NombresVer)[]
+  initialLimitReached: boolean
   lotesDisponibles:  Lote[]
   manzanas:          Manzana[]
   fases:             Fase[]
@@ -461,7 +462,7 @@ function firstLoteCodigo(lotes: Lote[], empresa: number, proyecto: number, fase:
 }
 
 /** Mapea ReservaRow (BD) al tipo local Reserva */
-function mapReservas(rows: ReservaRow[]): Reserva[] {
+function mapReservas(rows: (ReservaRow & NombresVer)[]): (Reserva & NombresVer)[] {
   return rows.map((r) => ({
     id:              String(r.numero),
     numero:          r.numero,
@@ -485,19 +486,31 @@ function mapReservas(rows: ReservaRow[]): Reserva[] {
     cobrador:        r.cobrador,
     serie_recibo:    r.recibo_serie,
     recibo:          String(r.recibo_numero),
+    empresa_nombre:  r.empresa_nombre,
+    proyecto_nombre: r.proyecto_nombre,
+    fase_nombre:     r.fase_nombre,
+    cliente_nombre:  r.cliente_nombre,
+    vendedor_nombre: r.vendedor_nombre,
+    banco_nombre:    r.banco_nombre,
+    cuenta_deposito_nombre: r.cuenta_deposito_nombre,
   }))
 }
 
 export function ReservasClient({
-  reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes,
+  reservasIniciales, initialLimitReached, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes,
   bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, tasasCambio, puedeAgregar, userId,
 }: Props) {
   const router = useRouter()
   const [, startTransition] = useTransition()
+  const [filtrosPending, startFiltrosTransition] = useTransition()
   const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 
   // ── Estado de tabla ─────────────────────────────────────────────────────────────────
-  const [reservas, setReservas] = useState<Reserva[]>(() => mapReservas(reservasIniciales))
+  const [reservas, setReservas] = useState<(Reserva & NombresVer)[]>(() => mapReservas(reservasIniciales))
+  const [limitReached, setLimitReached] = useState(initialLimitReached)
+  const [filtroEstado, setFiltroEstado] = useState('1')
+  const [filtroNumero, setFiltroNumero] = useState('')
+  const [filtroCliente, setFiltroCliente] = useState('')
 
   useEffect(() => {
     setReservas(mapReservas(reservasIniciales))
@@ -749,14 +762,12 @@ export function ReservasClient({
   const afterSearch = useMemo(() => reservas.filter((r) => {
     const q = search.toLowerCase()
     if (!q) return true
-    const proyNombre = proyectoMap.get(`${r.empresa}-${r.proyecto}`)?.toLowerCase() ?? ''
-    const clienteNombre = clienteMap.get(r.cliente)?.toLowerCase() ?? ''
+    const proyNombre = nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase()
+    const clienteNombre = nombreDeLista(r.cliente_nombre, clienteMap.get(r.cliente) ?? '').toLowerCase()
     return proyNombre.includes(q) || clienteNombre.includes(q) || r.lote.toLowerCase().includes(q) || r.fecha.includes(q)
   }), [reservas, search, proyectoMap, clienteMap])
 
   const filtered = useMemo(() => afterSearch.filter((r) => {
-    if (fechaDesde && r.fecha < fechaDesde) return false
-    if (fechaHasta && r.fecha > fechaHasta) return false
     return Object.entries(colFilters).every(([col, vals]) => {
       if (col === '__empresa')         return vals.has(String(r.empresa))
       if (col === '__proyecto')        return vals.has(`${r.empresa}-${r.proyecto}`)
@@ -773,9 +784,30 @@ export function ReservasClient({
       if (col === '__estado')           return vals.has(String(r.estado))
       return vals.has(String(r[col as keyof Reserva] ?? ''))
     })
-  }), [afterSearch, colFilters, fechaDesde, fechaHasta])
+  }), [afterSearch, colFilters])
 
-  const hasActiveFilters = Object.keys(colFilters).length > 0 || !!fechaDesde || !!fechaHasta
+  const hasActiveFilters = Object.keys(colFilters).length > 0
+
+  function aplicarSegmento() {
+    const numero = filtroNumero.trim() ? Number(filtroNumero) : undefined
+    if (filtroNumero.trim() && Number.isNaN(numero)) {
+      toast.error('El numero de reserva debe ser numerico.')
+      return
+    }
+    startFiltrosTransition(async () => {
+      const result = await getReservas({
+        estado: filtroEstado ? Number(filtroEstado) : null,
+        numero,
+        cliente: filtroCliente.trim() || undefined,
+        fechaDesde: fechaDesde || undefined,
+        fechaHasta: fechaHasta || undefined,
+      })
+      setReservas(mapReservas(result.data))
+      setLimitReached(result.limitReached)
+      setSearch('')
+      setColFilters({})
+    })
+  }
 
   // ── Preferencias de columnas ──────────────────────────────────────────
   const STORAGE_KEY = `reservas_cols_v1_${userId}`
@@ -1616,7 +1648,7 @@ export function ReservasClient({
           />
         </div>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta('') }} className="gap-1.5 text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
@@ -1648,7 +1680,27 @@ export function ReservasClient({
             className="h-8 w-36 text-xs"
           />
         </div>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+        >
+          <option value="">Todos los estados</option>
+          {Object.entries(RESERVA_ESTADOS).map(([codigo, est]) => (
+            <option key={codigo} value={codigo}>{est.label}</option>
+          ))}
+        </select>
+        <Input variant="l-border" value={filtroNumero} onChange={(e) => setFiltroNumero(e.target.value)} placeholder="Numero" className="h-8 w-24 text-xs" />
+        <Input variant="l-border" value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)} placeholder="Cliente" className="h-8 w-40 text-xs" />
+        <Button variant="outline" size="sm" onClick={aplicarSegmento} disabled={filtrosPending}>
+          {filtrosPending ? 'Buscando...' : 'Aplicar'}
+        </Button>
       </div>
+      {limitReached && (
+        <div className={`${LIST_BLOCK} text-sm text-amber-700 dark:text-amber-400`}>
+          Se alcanzo el limite de 500 registros mostrados. Refina los filtros para ver resultados mas especificos.
+        </div>
+      )}
 
       {/* ── Tabla ── */}
       <div
@@ -1684,7 +1736,7 @@ export function ReservasClient({
                     <TableHead key="__proyecto" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(reservas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`))].sort()}
+                        values={[...new Set(reservas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`)))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -1699,7 +1751,7 @@ export function ReservasClient({
                     <TableHead key="__cliente" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Cliente"
-                        values={[...new Set(reservas.map((r) => clienteMap.get(r.cliente) ?? `#${r.cliente}`))].sort()}
+                        values={[...new Set(reservas.map((r) => nombreDeLista(r.cliente_nombre, clienteMap.get(r.cliente) ?? `#${r.cliente}`)))].sort()}
                         active={new Set([...(colFilters['__cliente'] ?? new Set())].map((k) => clienteMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(clientes.map((c) => [c.nombre, String(c.codigo)]))
@@ -1877,7 +1929,7 @@ export function ReservasClient({
                         case '__empresa':
                           return <TableCell key="__empresa" className="text-muted-foreground">{empresaMap.get(r.empresa) ?? `#${r.empresa}`}</TableCell>
                         case '__proyecto':
-                          return <TableCell key="__proyecto" className="font-medium">{proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`}</TableCell>
+                          return <TableCell key="__proyecto" className="font-medium">{nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? `#${r.proyecto}`)}</TableCell>
                         case '__fase':
                           return <TableCell key="__fase" className="text-muted-foreground">{faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? `#${r.fase}`}</TableCell>
                         case '__manzana':
@@ -1885,9 +1937,9 @@ export function ReservasClient({
                         case 'lote':
                           return <TableCell key="lote" className="font-mono text-xs text-muted-foreground">{r.lote}</TableCell>
                         case '__cliente':
-                          return <TableCell key="__cliente" className="text-muted-foreground">{clienteMap.get(r.cliente) ?? `#${r.cliente}`}</TableCell>
+                          return <TableCell key="__cliente" className="text-muted-foreground">{nombreDeLista(r.cliente_nombre, clienteMap.get(r.cliente) ?? `#${r.cliente}`)}</TableCell>
                         case '__vendedor':
-                          return <TableCell key="__vendedor" className="text-muted-foreground">{vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`}</TableCell>
+                          return <TableCell key="__vendedor" className="text-muted-foreground">{nombreDeLista(r.vendedor_nombre, vendedorMap.get(`${r.empresa}-${r.proyecto}-${r.vendedor}`) ?? `#${r.vendedor}`)}</TableCell>
                         case 'fecha':
                           return <TableCell key="fecha" className="text-muted-foreground">{r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</TableCell>
                         case '__moneda': {

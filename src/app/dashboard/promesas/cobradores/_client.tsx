@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -84,7 +84,7 @@ function formatCsvCell(value: unknown): string {
 }
 
 function exportCsv(
-  rows: Cobrador[], colPrefs: ColPref[],
+  rows: (Cobrador & NombresVer)[], colPrefs: ColPref[],
   empresaMap: Map<number, string>, proyectoMap: Map<string, string>
 ) {
   const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
@@ -93,8 +93,8 @@ function exportCsv(
   const lines = [
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
-      if (k === '__empresa')  return formatCsvCell(empresaMap.get(r.empresa)  ?? r.empresa)
-      if (k === '__proyecto') return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto)
+      if (k === '__empresa')  return formatCsvCell(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? r.empresa))
+      if (k === '__proyecto') return formatCsvCell(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto))
       if (k === '__activo')   return formatCsvCell(r.activo === 1 ? 'Activo' : 'Inactivo')
       return formatCsvCell(r[k as keyof Cobrador])
     }).join(',')),
@@ -229,7 +229,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  initialData: Cobrador[]
+  initialData: (Cobrador & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   puedeAgregar: boolean
@@ -280,8 +280,8 @@ export function CobradoresClient({
     if (!q) return filas
     return filas.filter((c) =>
       c.nombre.toLowerCase().includes(q) ||
-      (empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q)
+      nombreDeLista(c.empresa_nombre, empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(c.proyecto_nombre, proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q)
     )
   }, [filas, search, empresaMap, proyectoMap])
 
@@ -687,7 +687,7 @@ export function CobradoresClient({
                     <TableHead key="__empresa" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreDeLista(c.empresa_nombre, empresaMap.get(c.empresa) ?? `#${c.empresa}`)))].sort()}
                         active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -702,7 +702,7 @@ export function CobradoresClient({
                     <TableHead key="__proyecto" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreDeLista(c.proyecto_nombre, proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`)))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -775,14 +775,14 @@ export function CobradoresClient({
                         case '__empresa':
                           return (
                             <TableCell key="__empresa" className="text-muted-foreground">
-                              {empresaMap.get(cobrador.empresa) ?? `#${cobrador.empresa}`}
+                              {nombreDeLista(cobrador.empresa_nombre, empresaMap.get(cobrador.empresa) ?? `#${cobrador.empresa}`)}
                             </TableCell>
                           )
 
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(`${cobrador.empresa}-${cobrador.proyecto}`) ?? `#${cobrador.proyecto}`}
+                              {nombreDeLista(cobrador.proyecto_nombre, proyectoMap.get(`${cobrador.empresa}-${cobrador.proyecto}`) ?? `#${cobrador.proyecto}`)}
                             </TableCell>
                           )
 

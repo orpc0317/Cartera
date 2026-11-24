@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -88,8 +88,8 @@ function exportCsv(rows: TasaCambioGrupo[], colPrefs: ColPref[],
   const lines = [
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
-      if (k === 'proyecto') return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto)
-      if (k === 'empresa')  return formatCsvCell(empresaMap.get(r.empresa) ?? r.empresa)
+      if (k === 'proyecto') return formatCsvCell(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto))
+      if (k === 'empresa')  return formatCsvCell(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? r.empresa))
       return formatCsvCell(r[k as keyof TasaCambioGrupo] ?? '')
     }).join(',')),
   ]
@@ -130,7 +130,7 @@ const SKIP_KEYS = new Set<keyof TasaCambioForm>(['moneda', 'fecha'])
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  tasas: TasaCambio[]
+  tasas: (TasaCambio & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   proyectoMonedas: ProyectoMoneda[]
@@ -296,7 +296,7 @@ export default function TasasCambioClient({
     const map = new Map<string, TasaCambioGrupo>()
     for (const t of filas) {
       const key = `${t.empresa}-${t.proyecto}-${t.moneda}`
-      if (!map.has(key)) map.set(key, { empresa: t.empresa, proyecto: t.proyecto, moneda: t.moneda, ultima_fecha: t.fecha, ultima_tasa: t.tasa_cambio })
+      if (!map.has(key)) map.set(key, { empresa: t.empresa, proyecto: t.proyecto, moneda: t.moneda, ultima_fecha: t.fecha, ultima_tasa: t.tasa_cambio, empresa_nombre: t.empresa_nombre, proyecto_nombre: t.proyecto_nombre })
     }
     return Array.from(map.values())
   }, [filas])
@@ -429,15 +429,15 @@ export default function TasasCambioClient({
   }
 
   // ── Filter pipeline ───────────────────────────────────────────────────────
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(grupos.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [grupos, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(grupos.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [grupos, proyectoMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(grupos.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [grupos, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(grupos.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [grupos, proyectoMap])
   const uniqueMonedaLabels  = useMemo(() => [...new Set(grupos.map((r) => r.moneda))].sort(), [grupos])
 
   const afterSearch = useMemo(() => {
     const q = search.toLowerCase()
     return !q ? grupos : grupos.filter((r) =>
-      (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) ||
       r.moneda.toLowerCase().includes(q)
     )
   }, [grupos, search, empresaMap, proyectoMap])
@@ -445,8 +445,8 @@ export default function TasasCambioClient({
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')      return vals.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto')     return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+        if (col === 'empresa')      return vals.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+        if (col === 'proyecto')     return vals.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
         if (col === 'moneda')       return vals.has(r.moneda)
         if (col === 'ultima_fecha') return vals.has(formatDate(r.ultima_fecha))
         return vals.has(String(r[col as keyof TasaCambioGrupo] ?? ''))
@@ -692,7 +692,7 @@ export default function TasasCambioClient({
             ) : (
               filtered.map((row, idx) => {
                 const isActive = cursorIdx === idx
-                const proyectoNombre = proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? String(row.proyecto)
+                const proyectoNombre = nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? String(row.proyecto))
                 return (
                   <TableRow
                     key={`${row.empresa}-${row.proyecto}-${row.moneda}`}
@@ -709,7 +709,7 @@ export default function TasasCambioClient({
                     {visibleCols.map((col) => {
                       switch (col.key) {
                         case 'empresa':
-                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
+                          return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? row.empresa)}</TableCell>
                         case 'moneda': {
                           const flag = CURRENCY_FLAG_MAP.get(row.moneda)
                           return (

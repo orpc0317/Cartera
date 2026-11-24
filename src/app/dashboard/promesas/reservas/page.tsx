@@ -19,7 +19,7 @@ export default async function ReservasPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const [reservasIniciales, lotesDisponibles, manzanas, fases, proyectos, empresas, clientes, bancos, cuentasBancarias, vendedores, cobradores, seriesRecibo, proyectoMonedas, tasasCambio, permisos] = await Promise.all([
-    getReservas().catch((e: Error)                  => { console.error('getReservas:', e.message);                  return [] as Awaited<ReturnType<typeof getReservas>>                  }),
+    getReservas().catch((e: Error)                  => { console.error('getReservas:', e.message);                  return { data: [], limitReached: false } as Awaited<ReturnType<typeof getReservas>> }),
     getLotesDisponibles().catch((e: Error)          => { console.error('getLotesDisponibles:', e.message);          return [] as Awaited<ReturnType<typeof getLotesDisponibles>>          }),
     getManzanas().catch((e: Error)                  => { console.error('getManzanas:', e.message);                  return [] as Awaited<ReturnType<typeof getManzanas>>                  }),
     getFases().catch((e: Error)                     => { console.error('getFases:', e.message);                     return [] as Awaited<ReturnType<typeof getFases>>                     }),
@@ -38,7 +38,8 @@ export default async function ReservasPage() {
 
   return (
     <ReservasClient
-      reservasIniciales={reservasIniciales}
+      reservasIniciales={reservasIniciales.data}
+      initialLimitReached={reservasIniciales.limitReached}
       lotesDisponibles={lotesDisponibles}
       manzanas={manzanas}
       fases={fases}

@@ -57,14 +57,14 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getBancos(empresa?: number, proyecto?: number): Promise<Banco[]> {
+export async function getBancos(empresa?: number, proyecto?: number): Promise<(Banco & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_banco')
-    .select('cuenta, empresa, proyecto, codigo, nombre, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_banco_lista')
+    .select('cuenta, empresa, proyecto, codigo, nombre, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })

@@ -46,24 +46,46 @@ async function proyectosDeCuentaBancaria(
   }
 }
 
-export async function getTransaccionesBancarias(): Promise<TransaccionBancaria[]> {
-  const acceso = await leerAcceso()
-  if (!acceso) return []
-  const admin = await clienteDatos()
+const LIMITE_FILAS = 500
 
-  const consulta = admin
+export type TransaccionFiltros = {
+  fechaDesde?: string
+  fechaHasta?: string
+}
+
+function haceDias(dias: number): string {
+  const fecha = new Date()
+  fecha.setUTCDate(fecha.getUTCDate() - dias)
+  return fecha.toISOString().slice(0, 10)
+}
+
+export async function getTransaccionesBancarias(
+  filtros: TransaccionFiltros = {},
+): Promise<{ data: (TransaccionBancaria & NombresVer)[]; limitReached: boolean }> {
+  const acceso = await leerAcceso()
+  if (!acceso) return { data: [], limitReached: false }
+  const admin = await clienteDatos()
+  const desde = filtros.fechaDesde || haceDias(30)
+
+  let consulta = admin
     .schema('cartera')
-    .from('t_transaccion_bancaria')
-    .select('empresa, proyecto, cuenta_bancaria, numero_transaccion, tipo_transaccion, fecha, numero_documento, valor, estado, origen, a_nombre_de, comentario, partida, tipo_saldo, en_circulacion, fecha_conciliacion, tasa_cambio, cuenta_transferencia, transaccion_transferencia, usuario_agrego, fecha_agrego, usuario_modifico, fecha_modifico')
+    .from('v_transaccion_bancaria_lista')
+    .select('empresa, proyecto, cuenta_bancaria, numero_transaccion, tipo_transaccion, fecha, numero_documento, valor, estado, origen, a_nombre_de, comentario, partida, tipo_saldo, en_circulacion, fecha_conciliacion, tasa_cambio, cuenta_transferencia, transaccion_transferencia, usuario_agrego, fecha_agrego, usuario_modifico, fecha_modifico, empresa_nombre, proyecto_nombre, cuenta_bancaria_nombre')
     .eq('cuenta', acceso.cuenta)
+    .gte('fecha', desde)
+  if (filtros.fechaHasta) consulta = consulta.lte('fecha', filtros.fechaHasta)
+  consulta = consulta
     .order('fecha', { ascending: false })
     .order('numero_transaccion', { ascending: false })
+    .limit(LIMITE_FILAS + 1)
   const acotada = restringirProyecto(consulta, acceso)
-  if (!acotada) return []
+  if (!acotada) return { data: [], limitReached: false }
   const { data, error } = await acotada
 
   if (error) throw new Error(error.message)
-  return (data ?? []) as TransaccionBancaria[]
+  const rows = (data ?? []) as (TransaccionBancaria & NombresVer)[]
+  const limitReached = rows.length > LIMITE_FILAS
+  return { data: limitReached ? rows.slice(0, LIMITE_FILAS) : rows, limitReached }
 }
 
 export async function obtenerTransaccionBancaria(

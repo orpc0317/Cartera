@@ -58,14 +58,14 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getTiposIngresos(): Promise<TipoIngreso[]> {
+export async function getTiposIngresos(): Promise<(TipoIngreso & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
-    .from('t_tipo_ingreso')
-    .select('cuenta, empresa, proyecto, codigo, nombre, etiqueta, forma_pago, monto, moneda, hasta_monto, facturacion_item, facturacion_descripcion, mora, impuesto, editable, fijo, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_tipo_ingreso_lista')
+    .select('cuenta, empresa, proyecto, codigo, nombre, etiqueta, forma_pago, monto, moneda, hasta_monto, facturacion_item, facturacion_descripcion, mora, impuesto, editable, fijo, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')

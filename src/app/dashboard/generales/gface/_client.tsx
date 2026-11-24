@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
@@ -297,7 +297,7 @@ function buildForm(row: Gface): GfaceForm {
 }
 
 interface Props {
-  initialData: Gface[]
+  initialData: (Gface & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   puedeAgregar: boolean
@@ -337,8 +337,8 @@ export function GfaceClient({
     [proyectos, form.empresa],
   )
 
-  const uniqueEmpresaNames = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? String(r.empresa)))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? String(r.proyecto)))].sort(), [filas, proyectoMap])
+  const uniqueEmpresaNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? String(r.empresa))))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? String(r.proyecto))))].sort(), [filas, proyectoMap])
   const uniqueText = useMemo(() => {
     const keys = ['nombre', 'requestor', 'entity', 'user_name', 'web_service', 'web_service_documento', 'certificado_post', 'certificado_ruta', 'certificado_nombre', 'correo_envio', 'correo_copia'] as const
     const out: Record<string, string[]> = {}
@@ -924,9 +924,9 @@ export function GfaceClient({
                     {visibleCols.map((col) => {
                       switch (col.key) {
                         case 'empresa':
-                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
+                          return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? row.empresa)}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
+                          return <TableCell key="proyecto" className="text-muted-foreground">{nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto)}</TableCell>
                         case 'nombre':
                           return <TableCell key="nombre" className="font-medium">{row.nombre}</TableCell>
                         case 'primera_firma':

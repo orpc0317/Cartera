@@ -18,7 +18,7 @@ export default async function PromesasPage() {
   const { data: { user } } = await supabase.auth.getUser()
 
   const [promesas, empresas, proyectos, fases, manzanas, lotes, clientes, vendedores, tiposDocumento, tiposIngreso, permisos] = await Promise.all([
-    getPromesas().catch((e: Error) => { console.error('getPromesas:', e.message); return [] }),
+    getPromesas().catch((e: Error) => { console.error('getPromesas:', e.message); return { data: [], limitReached: false } as Awaited<ReturnType<typeof getPromesas>> }),
     getEmpresasUsuario().catch((e: Error) => { console.error('getEmpresasUsuario:', e.message); return [] }),
     getProyectosUsuario().catch((e: Error) => { console.error('getProyectosUsuario:', e.message); return [] }),
     getFases().catch((e: Error) => { console.error('getFases:', e.message); return [] }),
@@ -33,7 +33,8 @@ export default async function PromesasPage() {
 
   return (
     <PromesasClient
-      initialData={promesas}
+      initialData={promesas.data}
+      initialLimitReached={promesas.limitReached}
       empresas={empresas}
       proyectos={proyectos}
       fases={fases}

@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -230,7 +230,7 @@ export function SeriesRecibosClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: SerieRecibo[]
+  initialData: (SerieRecibo & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   seriesFactura: SerieFactura[]
@@ -272,8 +272,8 @@ export function SeriesRecibosClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames   = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames  = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueEmpresaNames   = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [filas, proyectoMap])
   const uniqueFormatoNames   = useMemo(() => [...new Set(filas.map((r) => String(r.formato)))].sort(), [filas])
 
   // ─── Filtering pipeline ──────────────────────────────────────────────────
@@ -283,16 +283,16 @@ export function SeriesRecibosClient({
     return !q ? filas : filas.filter((r) =>
       r.serie.toLowerCase().includes(q) ||
       (r.serie_factura ?? '').toLowerCase().includes(q) ||
-      (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
+      nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
     )
   }, [filas, search, empresaMap, proyectoMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')        return vals.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto')       return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+        if (col === 'empresa')        return vals.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+        if (col === 'proyecto')       return vals.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
         if (col === 'formato')        return vals.has(String(r.formato))
         if (col === 'predeterminado')    return vals.has(r.predeterminado === 1 ? 'Si' : 'No')
         if (col === 'recibo_automatico') return vals.has(r.recibo_automatico === 1 ? 'Si' : 'No')
@@ -810,8 +810,8 @@ export function SeriesRecibosClient({
                     </TableCell>
                     {visibleCols.map((col) => {
                       switch (col.key) {
-                        case 'empresa':        return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(row.empresa) ?? `#${row.empresa}`}</TableCell>
-                        case 'proyecto':       return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? `#${row.proyecto}`}</TableCell>
+                        case 'empresa':        return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? `#${row.empresa}`)}</TableCell>
+                        case 'proyecto':       return <TableCell key="proyecto" className="text-muted-foreground">{nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? `#${row.proyecto}`)}</TableCell>
                         case 'serie_factura':  return <TableCell key="serie_factura" className="font-mono text-xs text-muted-foreground">{row.serie_factura || '—'}</TableCell>
                         case 'dias_fecha':     return <TableCell key="dias_fecha" className="text-muted-foreground">{row.dias_fecha}</TableCell>
                         case 'correlativo':    return <TableCell key="correlativo" className="text-muted-foreground">{row.correlativo || ''}</TableCell>

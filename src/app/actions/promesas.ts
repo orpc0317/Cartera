@@ -59,24 +59,47 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getPromesas(empresa?: number, proyecto?: number): Promise<Promesa[]> {
+const LIMITE_PROMESAS = 500
+
+export type PromesaFiltros = {
+  empresa?: number
+  proyecto?: number
+  estado?: number | null
+  numero?: number
+  referencia?: string
+  cliente?: string
+}
+
+export async function getPromesas(
+  filtros: PromesaFiltros = {},
+): Promise<{ data: (Promesa & NombresVer)[]; limitReached: boolean }> {
   const acceso = await leerAcceso()
-  if (!acceso) return []
+  if (!acceso) return { data: [], limitReached: false }
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_promesa')
-    .select('cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_promesa_lista')
+    .select('cuenta, empresa, proyecto, numero, referencia, fecha, cliente, vendedor, fase, manzana, lote, moneda, valor_lote, subsidio, arras, monto_enganche, primer_enganche, plazo_enganche, interes_anual, forma_mora, interes_mora, fijo_mora, mora_enganche, dias_gracia, dias_afectos, forma_financiamiento, fecha_financiamiento, monto_financiamiento, plazo_financiamiento, fecha_cancelacion, venta, observacion, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, fase_nombre, cliente_nombre, vendedor_nombre')
     .eq('cuenta', acceso.cuenta)
-    .order('empresa')
-    .order('proyecto')
-    .order('numero')
-  const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
-  if (!acotada) return []
-  query = acotada
-  const { data, error } = await query
+  query = filtros.estado === undefined
+    ? query.eq('estado', 1)
+    : filtros.estado === null
+      ? query
+      : query.eq('estado', filtros.estado)
+  if (filtros.numero !== undefined) query = query.eq('numero', filtros.numero)
+  if (filtros.referencia?.trim()) query = query.ilike('referencia', `%${filtros.referencia.trim()}%`)
+  if (filtros.cliente?.trim()) query = query.ilike('cliente_nombre', `%${filtros.cliente.trim()}%`)
+  query = query.order('empresa').order('proyecto').order('numero').limit(LIMITE_PROMESAS + 1)
+  const acotada = restringirProyecto(query, acceso, {
+    empresa: filtros.empresa,
+    proyecto: filtros.proyecto,
+  })
+  if (!acotada) return { data: [], limitReached: false }
+  const { data, error } = await acotada
   if (error) throw new Error(error.message)
-  return (data ?? []) as Promesa[]
+  const rows = (data ?? []) as (Promesa & NombresVer)[]
+  const limitReached = rows.length > LIMITE_PROMESAS
+  return { data: limitReached ? rows.slice(0, LIMITE_PROMESAS) : rows, limitReached }
 }
 
 export async function obtenerPromesa(

@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
@@ -219,7 +219,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // --- Props -------------------------------------------------------------------
 
 interface Props {
-  initialData: TipoDocumento[]
+  initialData: (TipoDocumento & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   puedeAgregar: boolean
@@ -269,8 +269,8 @@ export function TiposDocumentoClient({
   )
 
   // -- Unique filter values -----------------------------------------------
-  const uniqueEmpresaNames    = useMemo(() => [...new Set(filas.map((t) => empresaMap.get(t.empresa) ?? String(t.empresa)))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames   = useMemo(() => [...new Set(filas.map((t) => proyectoMap.get(`${t.empresa}-${t.proyecto}`) ?? String(t.proyecto)))].sort(), [filas, proyectoMap])
+  const uniqueEmpresaNames    = useMemo(() => [...new Set(filas.map((t) => nombreDeLista(t.empresa_nombre, empresaMap.get(t.empresa) ?? String(t.empresa))))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames   = useMemo(() => [...new Set(filas.map((t) => nombreDeLista(t.proyecto_nombre, proyectoMap.get(`${t.empresa}-${t.proyecto}`) ?? String(t.proyecto))))].sort(), [filas, proyectoMap])
   const uniqueDescripcionVals = useMemo(() => [...new Set(filas.map((t) => t.descripcion).filter(Boolean))].sort(), [filas])
 
   // -- Filter helpers -----------------------------------------------------
@@ -759,13 +759,13 @@ export function TiposDocumentoClient({
                         case 'empresa':
                           return (
                             <TableCell key="empresa" className="text-muted-foreground">
-                              {empresaMap.get(tipo.empresa) ?? tipo.empresa}
+                              {nombreDeLista(tipo.empresa_nombre, empresaMap.get(tipo.empresa) ?? tipo.empresa)}
                             </TableCell>
                           )
                         case 'proyecto':
                           return (
                             <TableCell key="proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(`${tipo.empresa}-${tipo.proyecto}`) ?? tipo.proyecto}
+                              {nombreDeLista(tipo.proyecto_nombre, proyectoMap.get(`${tipo.empresa}-${tipo.proyecto}`) ?? tipo.proyecto)}
                             </TableCell>
                           )
                         case 'descripcion':

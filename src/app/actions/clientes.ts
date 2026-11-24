@@ -63,14 +63,14 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getClientes(empresa?: number, proyecto?: number): Promise<Cliente[]> {
+export async function getClientes(empresa?: number, proyecto?: number): Promise<(Cliente & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_cliente')
-    .select('cuenta, empresa, proyecto, codigo, nombre, direccion, direccion_pais, direccion_departamento, direccion_municipio, codigo_postal, telefono1, telefono2, correo, nombre_factura, identificacion_tributaria, tipo_identificacion, regimen_iva, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_cliente_lista')
+    .select('cuenta, empresa, proyecto, codigo, nombre, direccion, direccion_pais, direccion_departamento, direccion_municipio, codigo_postal, telefono1, telefono2, correo, nombre_factura, identificacion_tributaria, tipo_identificacion, regimen_iva, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, pais_nombre, departamento_nombre, municipio_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -78,7 +78,7 @@ export async function getClientes(empresa?: number, proyecto?: number): Promise<
   query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as Cliente[]
+  return data as (Cliente & NombresVer)[]
 }
 
 export async function obtenerCliente(

@@ -76,14 +76,14 @@ export async function getSeriesFactura(empresa?: number, proyecto?: number): Pro
   return data as SerieFactura[]
 }
 
-export async function getSeriesRecibos(empresa?: number, proyecto?: number): Promise<SerieRecibo[]> {
+export async function getSeriesRecibos(empresa?: number, proyecto?: number): Promise<(SerieRecibo & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_serie_recibo')
-    .select('cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_serie_recibo_lista')
+    .select('cuenta, empresa, proyecto, serie, serie_factura, dias_fecha, correlativo, formato, predeterminado, recibo_automatico, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')

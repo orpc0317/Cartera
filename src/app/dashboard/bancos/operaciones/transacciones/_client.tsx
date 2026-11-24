@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useRef, useCallback, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -45,6 +45,7 @@ import type { TransaccionBancaria, Empresa, Proyecto, CuentaBancaria, Banco } fr
 import {
   anularTransaccionBancaria,
   eliminarTransaccionBancaria,
+  getTransaccionesBancarias,
   obtenerTransaccionBancaria,
 } from '@/app/actions/transacciones-bancarias'
 
@@ -191,7 +192,9 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  initialData:      TransaccionBancaria[]
+  initialData:      (TransaccionBancaria & NombresVer)[]
+  initialLimitReached: boolean
+  initialFechaDesde: string
   empresas:         Empresa[]
   proyectos:        Proyecto[]
   cuentasBancarias: CuentaBancaria[]
@@ -204,19 +207,21 @@ interface Props {
 // ─── Componente principal ──────────────────────────────────────────────────
 
 export function TransaccionesBancariasClient({
-  initialData, empresas, proyectos, cuentasBancarias, bancos,
+  initialData, initialLimitReached, initialFechaDesde, empresas, proyectos, cuentasBancarias, bancos,
   puedeAnular, puedeEliminar, userId,
 }: Props) {
   const [filas, setFilas] = useFilas(initialData)
 
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [filtrosPending, startFiltrosTransition] = useTransition()
 
   // ── Estado ────────────────────────────────────────────────────────────
   const [search, setSearch]             = useState('')
   const [colFilters, setColFilters]     = useState<ColFilters>({})
-  const [fechaDesde, setFechaDesde]     = useState('')
+  const [fechaDesde, setFechaDesde]     = useState(initialFechaDesde)
   const [fechaHasta, setFechaHasta]     = useState('')
+  const [limitReached, setLimitReached] = useState(initialLimitReached)
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [viewTarget, setViewTarget]     = useState<(TransaccionBancaria & NombresVer) | null>(null)
   const [anularTarget, setAnularTarget] = useState<TransaccionBancaria | null>(null)
@@ -260,10 +265,28 @@ export function TransaccionesBancariasClient({
 
   // Proyecto display for a transaction (via cuenta_bancaria → proyecto)
   function getProyectoNombre(r: TransaccionBancaria & NombresVer): string {
-    if (r.proyecto_nombre !== undefined) return r.proyecto_nombre ?? ''
     const cb = cuentaBancariaObjMap.get(r.cuenta_bancaria)
-    if (!cb) return `#${r.cuenta_bancaria}`
-    return proyectoMap.get(`${r.empresa}-${cb.proyecto}`) ?? `#${cb.proyecto}`
+    const respaldo = cb
+      ? (proyectoMap.get(`${r.empresa}-${cb.proyecto}`) ?? `#${cb.proyecto}`)
+      : `#${r.cuenta_bancaria}`
+    return nombreDeLista(r.proyecto_nombre, respaldo)
+  }
+
+  function nombreCuenta(r: TransaccionBancaria & NombresVer): string {
+    return nombreDeLista(r.cuenta_bancaria_nombre, cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? `#${r.cuenta_bancaria}`)
+  }
+
+  function aplicarSegmento() {
+    startFiltrosTransition(async () => {
+      const result = await getTransaccionesBancarias({
+        fechaDesde: fechaDesde || undefined,
+        fechaHasta: fechaHasta || undefined,
+      })
+      setFilas(result.data)
+      setLimitReached(result.limitReached)
+      setSearch('')
+      setColFilters({})
+    })
   }
 
   // ── Filtrado ──────────────────────────────────────────────────────────
@@ -281,7 +304,7 @@ export function TransaccionesBancariasClient({
     if (!q) return filas
     return filas.filter((r) => {
       const proy = getProyectoNombre(r).toLowerCase()
-      const cb   = cuentaBancariaDisplayMap.get(r.cuenta_bancaria)?.toLowerCase() ?? ''
+      const cb   = nombreCuenta(r).toLowerCase()
       return (
         r.numero_transaccion.toLowerCase().includes(q) ||
         proy.includes(q) ||
@@ -294,23 +317,21 @@ export function TransaccionesBancariasClient({
   }, [filas, search, cuentaBancariaDisplayMap])
 
   const filtered = useMemo(() => afterSearch.filter((r) => {
-    if (fechaDesde && r.fecha < fechaDesde) return false
-    if (fechaHasta && r.fecha > fechaHasta) return false
     return Object.entries(colFilters).every(([col, vals]) => {
       if (col === '__proyecto')        return vals.has(getProyectoNombre(r))
-      if (col === '__cuenta_bancaria') return vals.has(cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? '')
+      if (col === '__cuenta_bancaria') return vals.has(nombreCuenta(r))
       if (col === '__tipo')            return vals.has(TIPOS_TRANSACCION[r.tipo_transaccion] ?? String(r.tipo_transaccion))
       if (col === '__estado')          return vals.has(ESTADOS_TRANSACCION[r.estado]?.label ?? String(r.estado))
       return vals.has(String(r[col as keyof TransaccionBancaria] ?? ''))
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [afterSearch, colFilters, fechaDesde, fechaHasta, cuentaBancariaDisplayMap])
+  }), [afterSearch, colFilters, cuentaBancariaDisplayMap])
 
-  const hasActiveFilters = Object.keys(colFilters).length > 0 || !!fechaDesde || !!fechaHasta
+  const hasActiveFilters = Object.keys(colFilters).length > 0
 
   // ── Unique values para filtros ─────────────────────────────────────────
   const uniqueProyectos   = useMemo(() => [...new Set(filas.map((r) => getProyectoNombre(r)))].sort(), [filas, proyectoMap, cuentaBancariaObjMap]) // eslint-disable-line react-hooks/exhaustive-deps
-  const uniqueCuentas     = useMemo(() => [...new Set(filas.map((r) => cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? ''))].sort(), [filas, cuentaBancariaDisplayMap])
+  const uniqueCuentas     = useMemo(() => [...new Set(filas.map((r) => nombreCuenta(r)))].sort(), [filas, cuentaBancariaDisplayMap]) // eslint-disable-line react-hooks/exhaustive-deps
   const uniqueTipos       = useMemo(() => [...new Set(filas.map((r) => TIPOS_TRANSACCION[r.tipo_transaccion] ?? String(r.tipo_transaccion)))].sort(), [filas])
   const uniqueEstados     = useMemo(() => [...new Set(filas.map((r) => ESTADOS_TRANSACCION[r.estado]?.label ?? String(r.estado)))].sort(), [filas])
 
@@ -462,7 +483,7 @@ export function TransaccionesBancariasClient({
       ...filtered.map((r) => [
         r.numero_transaccion,
         getProyectoNombre(r),
-        cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? '',
+        nombreCuenta(r),
         r.fecha,
         TIPOS_TRANSACCION[r.tipo_transaccion] ?? r.tipo_transaccion,
         r.a_nombre_de ?? '',
@@ -508,7 +529,7 @@ export function TransaccionesBancariasClient({
           />
         </div>
         {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { setColFilters({}); setFechaDesde(''); setFechaHasta('') }} className="gap-1.5 text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={() => setColFilters({})} className="gap-1.5 text-muted-foreground">
             <X className="h-3.5 w-3.5" /> Limpiar filtros
           </Button>
         )}
@@ -540,7 +561,15 @@ export function TransaccionesBancariasClient({
             className="h-8 w-36 text-xs"
           />
         </div>
+        <Button variant="outline" size="sm" onClick={aplicarSegmento} disabled={filtrosPending}>
+          {filtrosPending ? 'Buscando...' : 'Aplicar'}
+        </Button>
       </div>
+      {limitReached && (
+        <div className={`${LIST_BLOCK} text-sm text-amber-700 dark:text-amber-400`}>
+          Se alcanzo el limite de 500 registros mostrados. Refina los filtros para ver resultados mas especificos.
+        </div>
+      )}
 
       {/* Tabla */}
       <div
@@ -644,7 +673,7 @@ export function TransaccionesBancariasClient({
                         case '__proyecto':
                           return <TableCell key="__proyecto" className="font-medium">{getProyectoNombre(r)}</TableCell>
                         case '__cuenta_bancaria':
-                          return <TableCell key="__cuenta_bancaria" className="text-muted-foreground text-sm">{cuentaBancariaDisplayMap.get(r.cuenta_bancaria) ?? `#${r.cuenta_bancaria}`}</TableCell>
+                          return <TableCell key="__cuenta_bancaria" className="text-muted-foreground text-sm">{nombreCuenta(r)}</TableCell>
                         case 'fecha':
                           return <TableCell key="fecha" className="text-muted-foreground">{r.fecha ? r.fecha.split('-').reverse().join('/') : '—'}</TableCell>
                         case '__tipo':

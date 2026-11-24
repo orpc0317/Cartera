@@ -59,7 +59,6 @@ const COLUMNAS_PROYECTO = 'cuenta, empresa, codigo, nombre, direccion_pais, dire
 
 type FilaProyecto = Omit<Proyecto, 'moneda'>
 type ClienteLectura = Awaited<ReturnType<typeof clienteDatos>>
-type ProyectoConMoneda = FilaProyecto & { t_proyecto_moneda: { moneda: string }[] }
 
 async function monedaPredeterminada(
   admin: ClienteLectura,
@@ -84,16 +83,15 @@ function conMoneda(fila: FilaProyecto, moneda: string): Proyecto {
   return { ...fila, moneda }
 }
 
-export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
+export async function getProyectos(empresa?: number): Promise<(Proyecto & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
-    .from('t_proyecto')
-    .select(`${COLUMNAS_PROYECTO}, t_proyecto_moneda!inner(moneda)`)
+    .from('v_proyecto_lista')
+    .select(`${COLUMNAS_PROYECTO}, moneda, empresa_nombre, pais_nombre, departamento_nombre, municipio_nombre`)
     .eq('cuenta', acceso.cuenta)
-    .eq('t_proyecto_moneda.predeterminado', 1)
     .order('nombre')
   const acotada = restringirProyecto(
     consulta,
@@ -104,10 +102,7 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   if (!acotada) return []
   const { data, error } = await acotada
   if (error) throw new Error(error.message)
-  return ((data ?? []) as ProyectoConMoneda[]).map((fila) => {
-    const { t_proyecto_moneda, ...resto } = fila
-    return conMoneda(resto, t_proyecto_moneda[0]?.moneda ?? '')
-  })
+  return (data ?? []) as (Proyecto & NombresVer)[]
 }
 
 export type ProyectoVer = Proyecto & NombresVer & { monedas_del_proyecto?: ProyectoMoneda[] }

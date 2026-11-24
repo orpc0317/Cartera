@@ -211,14 +211,14 @@ function conMarcas<T extends { empresa: number; proyecto: number; codigo: number
   })
 }
 
-export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gface[]> {
+export async function getGfaces(empresa?: number, proyecto?: number): Promise<(Gface & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_gface')
-    .select(GFACE_COLUMNS)
+    .from('v_gface_lista')
+    .select(`${GFACE_COLUMNS}, empresa_nombre, proyecto_nombre`)
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
@@ -228,7 +228,7 @@ export async function getGfaces(empresa?: number, proyecto?: number): Promise<Gf
   query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return conMarcas(data as Gface[], await marcasSecreto())
+  return conMarcas(data as (Gface & NombresVer)[], await marcasSecreto())
 }
 
 export async function obtenerGface(

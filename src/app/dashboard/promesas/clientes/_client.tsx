@@ -247,7 +247,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  initialData: Cliente[]
+  initialData: (Cliente & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   paises: Pais[]
@@ -315,6 +315,27 @@ export function ClientesClient({
   // ── Mapas para FKs ────────────────────────────────────────────────────
   const empresaMap = useMemo(() => new Map(empresas.map((e) => [e.codigo, e.nombre])), [empresas])
   const proyectoMap = useMemo(() => new Map(proyectos.map((p) => [`${p.empresa}-${p.codigo}`, p.nombre])), [proyectos])
+  function nombreEmpresa(c: Cliente & NombresVer) {
+    return c.empresa_nombre || empresaMap.get(c.empresa) || `#${c.empresa}`
+  }
+  function nombreProyecto(c: Cliente & NombresVer) {
+    return c.proyecto_nombre || proyectoMap.get(`${c.empresa}-${c.proyecto}`) || `#${c.proyecto}`
+  }
+  function nombrePais(c: Cliente & NombresVer) {
+    if (c.pais_nombre) return c.pais_nombre
+    const p = paises.find((x) => x.codigo === c.direccion_pais)
+    return c.direccion_pais ? (p?.nombre ?? c.direccion_pais) : ''
+  }
+  function nombreDepartamento(c: Cliente & NombresVer) {
+    if (c.departamento_nombre) return c.departamento_nombre
+    const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
+    return d?.nombre ?? c.direccion_departamento ?? ''
+  }
+  function nombreMunicipio(c: Cliente & NombresVer) {
+    if (c.municipio_nombre) return c.municipio_nombre
+    const m = municipios.find((x) => x.pais === c.direccion_pais && x.departamento === c.direccion_departamento && x.codigo === c.direccion_municipio)
+    return m?.nombre ?? c.direccion_municipio ?? ''
+  }
 
   // ── Proyectos filtrados por empresa (para selects del modal) ──────────
   const proyectosPorEmpresa = useMemo(
@@ -352,21 +373,13 @@ export function ClientesClient({
       if (col === 'proyecto') return vals.has(`${c.empresa}-${c.proyecto}`)
       if (col === 'tipo_identificacion') return vals.has(String(c.tipo_identificacion ?? 0))
       if (col === 'regimen_iva') return vals.has(String(c.regimen_iva))
-      if (col === 'direccion_pais') {
-        const p = paises.find((x) => x.codigo === c.direccion_pais)
-        return vals.has(p?.nombre ?? c.direccion_pais ?? '')
-      }
-      if (col === 'direccion_departamento') {
-        const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
-        return vals.has(d?.nombre ?? c.direccion_departamento ?? '')
-      }
-      if (col === 'direccion_municipio') {
-        const m = municipios.find((x) => x.pais === c.direccion_pais && x.departamento === c.direccion_departamento && x.codigo === c.direccion_municipio)
-        return vals.has(m?.nombre ?? c.direccion_municipio ?? '')
-      }
+      if (col === 'direccion_pais') return vals.has(nombrePais(c))
+      if (col === 'direccion_departamento') return vals.has(nombreDepartamento(c))
+      if (col === 'direccion_municipio') return vals.has(nombreMunicipio(c))
       return vals.has(String(c[col as keyof Cliente] ?? ''))
     })
-  ), [afterSearch, colFilters, departamentos, municipios])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [afterSearch, colFilters, paises, departamentos, municipios])
 
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
@@ -1080,7 +1093,7 @@ export function ClientesClient({
                     <TableHead key="empresa" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreEmpresa(c)))].sort()}
                         active={new Set([...(colFilters['empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -1095,7 +1108,7 @@ export function ClientesClient({
                     <TableHead key="proyecto" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreProyecto(c)))].sort()}
                         active={new Set([...(colFilters['proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -1140,10 +1153,7 @@ export function ClientesClient({
                     <TableHead key="direccion_pais" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Pais"
-                        values={[...new Set(filas.map((c) => {
-                          const p = paises.find((x) => x.codigo === c.direccion_pais)
-                          return c.direccion_pais ? (p?.nombre ?? c.direccion_pais) : ''
-                        }))].filter(Boolean).sort()}
+                        values={[...new Set(filas.map((c) => nombrePais(c)))].filter(Boolean).sort()}
                         active={colFilters['direccion_pais'] ?? new Set()}
                         onChange={(v) => setColFilter('direccion_pais', v)}
                       />
@@ -1155,10 +1165,7 @@ export function ClientesClient({
                     <TableHead key="direccion_departamento" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Departamento"
-                        values={[...new Set(filas.map((c) => {
-                          const d = departamentos.find((x) => x.pais === c.direccion_pais && x.codigo === c.direccion_departamento)
-                          return d?.nombre ?? c.direccion_departamento ?? ''
-                        }))].filter(Boolean).sort()}
+                        values={[...new Set(filas.map((c) => nombreDepartamento(c)))].filter(Boolean).sort()}
                         active={colFilters['direccion_departamento'] ?? new Set()}
                         onChange={(v) => setColFilter('direccion_departamento', v)}
                       />
@@ -1170,10 +1177,7 @@ export function ClientesClient({
                     <TableHead key="direccion_municipio" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Municipio"
-                        values={[...new Set(filas.map((c) => {
-                          const m = municipios.find((x) => x.pais === c.direccion_pais && x.departamento === c.direccion_departamento && x.codigo === c.direccion_municipio)
-                          return m?.nombre ?? c.direccion_municipio ?? ''
-                        }))].filter(Boolean).sort()}
+                        values={[...new Set(filas.map((c) => nombreMunicipio(c)))].filter(Boolean).sort()}
                         active={colFilters['direccion_municipio'] ?? new Set()}
                         onChange={(v) => setColFilter('direccion_municipio', v)}
                       />
@@ -1229,14 +1233,14 @@ export function ClientesClient({
                         case 'empresa':
                           return (
                             <TableCell key="empresa" className="text-muted-foreground">
-                              {empresaMap.get(cliente.empresa) ?? `#${cliente.empresa}`}
+                              {nombreEmpresa(cliente)}
                             </TableCell>
                           )
 
                         case 'proyecto':
                           return (
                             <TableCell key="proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(`${cliente.empresa}-${cliente.proyecto}`) ?? `#${cliente.proyecto}`}
+                              {nombreProyecto(cliente)}
                             </TableCell>
                           )
 
@@ -1274,7 +1278,7 @@ export function ClientesClient({
                           )
 
                         case 'direccion_pais': {
-                          const p = paises.find((x) => x.codigo === cliente.direccion_pais)
+                          const pais = nombrePais(cliente)
                           return (
                             <TableCell key="direccion_pais" className="text-muted-foreground">
                               {cliente.direccion_pais ? (
@@ -1286,30 +1290,26 @@ export function ClientesClient({
                                     height={14}
                                     className="object-cover rounded-sm shrink-0"
                                   />
-                                  {p?.nombre ?? cliente.direccion_pais}
+                                  {pais}
                                 </span>
                               ) : '\u2014'}
                             </TableCell>
                           )
                         }
 
-                        case 'direccion_departamento': {
-                          const d = departamentos.find((x) => x.pais === cliente.direccion_pais && x.codigo === cliente.direccion_departamento)
+                        case 'direccion_departamento':
                           return (
                             <TableCell key="direccion_departamento" className="text-muted-foreground">
-                              {d?.nombre ?? cliente.direccion_departamento ?? '—'}
+                              {nombreDepartamento(cliente) || '—'}
                             </TableCell>
                           )
-                        }
 
-                        case 'direccion_municipio': {
-                          const m = municipios.find((x) => x.pais === cliente.direccion_pais && x.departamento === cliente.direccion_departamento && x.codigo === cliente.direccion_municipio)
+                        case 'direccion_municipio':
                           return (
                             <TableCell key="direccion_municipio" className="text-muted-foreground">
-                              {m?.nombre ?? cliente.direccion_municipio ?? '—'}
+                              {nombreMunicipio(cliente) || '—'}
                             </TableCell>
                           )
-                        }
 
                         default:
                           return (
