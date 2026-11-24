@@ -9,7 +9,7 @@ import type { Proyecto, ProyectoForm, ProyectoMoneda } from '@/lib/types/proyect
 import type { NombresVer } from '@/lib/registro-ver'
 import { leerNombres } from '@/lib/leer-nombres'
 import { requirePermiso, getCuentaActiva, leerAcceso, exigirProyecto, exigirEmpresa } from '@/app/actions/permisos'
-import { restringirProyecto, type AccesoLectura } from '@/lib/acceso-proyecto'
+import { restringirProyecto } from '@/lib/acceso-proyecto'
 import { PERMISOS } from '@/lib/permisos'
 
 async function getAuditUser() {
@@ -59,31 +59,7 @@ const COLUMNAS_PROYECTO = 'cuenta, empresa, codigo, nombre, direccion_pais, dire
 
 type FilaProyecto = Omit<Proyecto, 'moneda'>
 type ClienteLectura = Awaited<ReturnType<typeof clienteDatos>>
-
-async function monedasPredeterminadas(
-  admin: ClienteLectura,
-  acceso: AccesoLectura,
-  pares: { empresa: number; proyecto: number }[],
-): Promise<Map<string, string>> {
-  const map = new Map<string, string>()
-  if (pares.length === 0) return map
-  const consulta = admin
-    .schema('cartera')
-    .from('t_proyecto_moneda')
-    .select('empresa, proyecto, moneda')
-    .eq('cuenta', acceso.cuenta)
-    .eq('predeterminado', 1)
-  const acotada = restringirProyecto(consulta, acceso)
-  if (!acotada) return map
-  const { data, error } = await acotada
-  if (error) throw new Error(error.message)
-  const claves = new Set(pares.map((par) => `${par.empresa}-${par.proyecto}`))
-  for (const row of data ?? []) {
-    const clave = `${row.empresa}-${row.proyecto}`
-    if (claves.has(clave)) map.set(clave, row.moneda)
-  }
-  return map
-}
+type ProyectoConMoneda = FilaProyecto & { t_proyecto_moneda: { moneda: string }[] }
 
 async function monedaPredeterminada(
   admin: ClienteLectura,
@@ -115,8 +91,9 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   const consulta = admin
     .schema('cartera')
     .from('t_proyecto')
-    .select(COLUMNAS_PROYECTO)
+    .select(`${COLUMNAS_PROYECTO}, t_proyecto_moneda!inner(moneda)`)
     .eq('cuenta', acceso.cuenta)
+    .eq('t_proyecto_moneda.predeterminado', 1)
     .order('nombre')
   const acotada = restringirProyecto(
     consulta,
@@ -127,13 +104,10 @@ export async function getProyectos(empresa?: number): Promise<Proyecto[]> {
   if (!acotada) return []
   const { data, error } = await acotada
   if (error) throw new Error(error.message)
-  const filas = (data ?? []) as FilaProyecto[]
-  const monedas = await monedasPredeterminadas(
-    admin,
-    acceso,
-    filas.map((fila) => ({ empresa: fila.empresa, proyecto: fila.codigo })),
-  )
-  return filas.map((fila) => conMoneda(fila, monedas.get(`${fila.empresa}-${fila.codigo}`) ?? ''))
+  return ((data ?? []) as ProyectoConMoneda[]).map((fila) => {
+    const { t_proyecto_moneda, ...resto } = fila
+    return conMoneda(resto, t_proyecto_moneda[0]?.moneda ?? '')
+  })
 }
 
 export type ProyectoVer = Proyecto & NombresVer & { monedas_del_proyecto?: ProyectoMoneda[] }
