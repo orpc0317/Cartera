@@ -62,14 +62,14 @@ async function writeAudit(
 export async function getCuentasBancarias(
   empresa?: number,
   proyecto?: number,
-): Promise<CuentaBancaria[]> {
+): Promise<(CuentaBancaria & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_cuenta_bancaria')
-    .select('cuenta, empresa, proyecto, codigo, numero, nombre, banco, moneda, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_cuenta_bancaria_lista')
+    .select('cuenta, empresa, proyecto, codigo, numero, nombre, banco, moneda, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, banco_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })

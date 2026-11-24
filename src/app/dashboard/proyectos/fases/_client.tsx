@@ -45,7 +45,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { createFase, updateFase, deleteFase, obtenerFase } from '@/app/actions/fases'
 import type { Empresa, Proyecto, Fase, FaseForm } from '@/lib/types/proyectos'
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { UNIDAD_MEDIDA } from '@/lib/constants'
@@ -225,7 +225,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // --- Props -------------------------------------------------------------------
 
 interface Props {
-  initialData: Fase[]
+  initialData: (Fase & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   puedeAgregar: boolean
@@ -274,8 +274,8 @@ export function FasesClient({
   )
 
   // -- Unique filter values -----------------------------------------------
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((f) => empresaMap.get(f.empresa) ?? String(f.empresa)))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((f) => proyectoMap.get(`${f.empresa}-${f.proyecto}`) ?? String(f.proyecto)))].sort(), [filas, proyectoMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((f) => nombreDeLista(f.empresa_nombre, empresaMap.get(f.empresa) ?? String(f.empresa))))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((f) => nombreDeLista(f.proyecto_nombre, proyectoMap.get(`${f.empresa}-${f.proyecto}`) ?? String(f.proyecto))))].sort(), [filas, proyectoMap])
   const uniqueNombreValues  = useMemo(() => [...new Set(filas.map((f) => f.nombre).filter(Boolean))].sort(), [filas])
   const uniqueMedidaLabels  = useMemo(() => [...new Set(filas.map((f) => UNIDAD_MEDIDA[f.medida] ?? f.medida))].sort(), [filas])
   const medidaLabelToKey    = useMemo(() => new Map(Object.entries(UNIDAD_MEDIDA).map(([k, v]) => [v, k])), [])
@@ -798,13 +798,13 @@ export function FasesClient({
                         case 'empresa':
                           return (
                             <TableCell key="empresa" className="text-muted-foreground">
-                              {empresaMap.get(fase.empresa) ?? fase.empresa}
+                              {nombreDeLista(fase.empresa_nombre, empresaMap.get(fase.empresa) ?? fase.empresa)}
                             </TableCell>
                           )
                         case 'proyecto':
                           return (
                             <TableCell key="proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(`${fase.empresa}-${fase.proyecto}`) ?? fase.proyecto}
+                              {nombreDeLista(fase.proyecto_nombre, proyectoMap.get(`${fase.empresa}-${fase.proyecto}`) ?? fase.proyecto)}
                             </TableCell>
                           )
                         case 'nombre':

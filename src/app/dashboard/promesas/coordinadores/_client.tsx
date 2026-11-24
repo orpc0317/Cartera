@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -81,7 +81,7 @@ function formatCsvCell(value: unknown): string {
 }
 
 function exportCsv(
-  rows: Coordinador[],
+  rows: (Coordinador & NombresVer)[],
   colPrefs: ColPref[],
   empresaMap: Map<number, string>,
   proyectoMap: Map<string, string>,
@@ -93,9 +93,9 @@ function exportCsv(
   const lines = [
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
-      if (k === '__empresa')    return formatCsvCell(empresaMap.get(r.empresa)      ?? r.empresa)
-      if (k === '__proyecto')   return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`)              ?? r.proyecto)
-      if (k === '__supervisor') return formatCsvCell(supervisorMap.get(`${r.empresa}-${r.proyecto}-${r.supervisor}`) ?? r.supervisor)
+      if (k === '__empresa')    return formatCsvCell(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? r.empresa))
+      if (k === '__proyecto')   return formatCsvCell(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto))
+      if (k === '__supervisor') return formatCsvCell(nombreDeLista(r.supervisor_nombre, supervisorMap.get(`${r.empresa}-${r.proyecto}-${r.supervisor}`) ?? r.supervisor))
       if (k === '__activo')     return formatCsvCell(r.activo === 1 ? 'Activo' : 'Inactivo')
       return formatCsvCell(r[k as keyof Coordinador])
     }).join(',')),
@@ -229,7 +229,7 @@ const EMPTY_FORM: CoordinadorForm = {
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  initialData: Coordinador[]
+  initialData: (Coordinador & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   supervisores: Supervisor[]
@@ -287,9 +287,9 @@ export function CoordinadoresClient({
     if (!q) return filas
     return filas.filter((c) =>
       c.nombre.toLowerCase().includes(q) ||
-      (empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q) ||
-      (supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? '').toLowerCase().includes(q)
+      nombreDeLista(c.empresa_nombre, empresaMap.get(c.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(c.proyecto_nombre, proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(c.supervisor_nombre, supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? '').toLowerCase().includes(q)
     )
   }, [filas, search, empresaMap, proyectoMap, supervisorMap])
 
@@ -711,7 +711,7 @@ export function CoordinadoresClient({
                     <TableHead key="__empresa" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(filas.map((c) => empresaMap.get(c.empresa) ?? `#${c.empresa}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreDeLista(c.empresa_nombre, empresaMap.get(c.empresa) ?? `#${c.empresa}`)))].sort()}
                         active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -726,7 +726,7 @@ export function CoordinadoresClient({
                     <TableHead key="__proyecto" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(filas.map((c) => proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreDeLista(c.proyecto_nombre, proyectoMap.get(`${c.empresa}-${c.proyecto}`) ?? `#${c.proyecto}`)))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -741,7 +741,7 @@ export function CoordinadoresClient({
                     <TableHead key="__supervisor" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Supervisor"
-                        values={[...new Set(filas.map((c) => supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? `#${c.supervisor}`))].sort()}
+                        values={[...new Set(filas.map((c) => nombreDeLista(c.supervisor_nombre, supervisorMap.get(`${c.empresa}-${c.proyecto}-${c.supervisor}`) ?? `#${c.supervisor}`)))].sort()}
                         active={new Set([...(colFilters['__supervisor'] ?? new Set())].map((k) => supervisorMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(supervisores.map((s) => [s.nombre, `${s.empresa}-${s.proyecto}-${s.codigo}`]))
@@ -812,13 +812,13 @@ export function CoordinadoresClient({
                         case '__empresa':
                           return (
                             <TableCell key="__empresa" className="text-muted-foreground">
-                              {empresaMap.get(coordinador.empresa) ?? `#${coordinador.empresa}`}
+                              {nombreDeLista(coordinador.empresa_nombre, empresaMap.get(coordinador.empresa) ?? `#${coordinador.empresa}`)}
                             </TableCell>
                           )
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(`${coordinador.empresa}-${coordinador.proyecto}`) ?? `#${coordinador.proyecto}`}
+                              {nombreDeLista(coordinador.proyecto_nombre, proyectoMap.get(`${coordinador.empresa}-${coordinador.proyecto}`) ?? `#${coordinador.proyecto}`)}
                             </TableCell>
                           )
                         case 'nombre':
@@ -826,7 +826,7 @@ export function CoordinadoresClient({
                         case '__supervisor':
                           return (
                             <TableCell key="__supervisor" className="text-muted-foreground">
-                              {supervisorMap.get(`${coordinador.empresa}-${coordinador.proyecto}-${coordinador.supervisor}`) ?? `#${coordinador.supervisor}`}
+                              {nombreDeLista(coordinador.supervisor_nombre, supervisorMap.get(`${coordinador.empresa}-${coordinador.proyecto}-${coordinador.supervisor}`) ?? `#${coordinador.supervisor}`)}
                             </TableCell>
                           )
                         case '__activo':

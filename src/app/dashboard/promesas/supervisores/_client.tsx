@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -84,7 +84,7 @@ function formatCsvCell(value: unknown): string {
 }
 
 function exportCsv(
-  rows: Supervisor[], colPrefs: ColPref[],
+  rows: (Supervisor & NombresVer)[], colPrefs: ColPref[],
   empresaMap: Map<number, string>, proyectoMap: Map<string, string>
 ) {
   const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
@@ -93,8 +93,8 @@ function exportCsv(
   const lines = [
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
-      if (k === '__empresa')  return formatCsvCell(empresaMap.get(r.empresa)  ?? r.empresa)
-      if (k === '__proyecto') return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto)
+      if (k === '__empresa')  return formatCsvCell(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? r.empresa))
+      if (k === '__proyecto') return formatCsvCell(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto))
       if (k === '__activo')   return formatCsvCell(r.activo === 1 ? 'Activo' : 'Inactivo')
       return formatCsvCell(r[k as keyof Supervisor])
     }).join(',')),
@@ -228,7 +228,7 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
-  initialData: Supervisor[]
+  initialData: (Supervisor & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   puedeAgregar: boolean
@@ -279,8 +279,8 @@ export function SupervisoresClient({
     if (!q) return filas
     return filas.filter((s) =>
       s.nombre.toLowerCase().includes(q) ||
-      (empresaMap.get(s.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? '').toLowerCase().includes(q)
+      nombreDeLista(s.empresa_nombre, empresaMap.get(s.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(s.proyecto_nombre, proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? '').toLowerCase().includes(q)
     )
   }, [filas, search, empresaMap, proyectoMap])
 
@@ -686,7 +686,7 @@ export function SupervisoresClient({
                     <TableHead key="__empresa" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Empresa"
-                        values={[...new Set(filas.map((s) => empresaMap.get(s.empresa) ?? `#${s.empresa}`))].sort()}
+                        values={[...new Set(filas.map((s) => nombreDeLista(s.empresa_nombre, empresaMap.get(s.empresa) ?? `#${s.empresa}`)))].sort()}
                         active={new Set([...(colFilters['__empresa'] ?? new Set())].map((k) => empresaMap.get(Number(k)) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(empresas.map((e) => [e.nombre, String(e.codigo)]))
@@ -701,7 +701,7 @@ export function SupervisoresClient({
                     <TableHead key="__proyecto" className={LIST_HEAD}>
                       <ColumnFilter
                         label="Proyecto"
-                        values={[...new Set(filas.map((s) => proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? `#${s.proyecto}`))].sort()}
+                        values={[...new Set(filas.map((s) => nombreDeLista(s.proyecto_nombre, proyectoMap.get(`${s.empresa}-${s.proyecto}`) ?? `#${s.proyecto}`)))].sort()}
                         active={new Set([...(colFilters['__proyecto'] ?? new Set())].map((k) => proyectoMap.get(k) ?? `#${k}`))}
                         onChange={(labels) => {
                           const byLabel = new Map(proyectos.map((p) => [p.nombre, `${p.empresa}-${p.codigo}`]))
@@ -774,14 +774,14 @@ export function SupervisoresClient({
                         case '__empresa':
                           return (
                             <TableCell key="__empresa" className="text-muted-foreground">
-                              {empresaMap.get(supervisor.empresa) ?? `#${supervisor.empresa}`}
+                              {nombreDeLista(supervisor.empresa_nombre, empresaMap.get(supervisor.empresa) ?? `#${supervisor.empresa}`)}
                             </TableCell>
                           )
 
                         case '__proyecto':
                           return (
                             <TableCell key="__proyecto" className="text-muted-foreground">
-                              {proyectoMap.get(`${supervisor.empresa}-${supervisor.proyecto}`) ?? `#${supervisor.proyecto}`}
+                              {nombreDeLista(supervisor.proyecto_nombre, proyectoMap.get(`${supervisor.empresa}-${supervisor.proyecto}`) ?? `#${supervisor.proyecto}`)}
                             </TableCell>
                           )
 

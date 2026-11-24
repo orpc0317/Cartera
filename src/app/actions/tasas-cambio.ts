@@ -54,14 +54,14 @@ async function writeAudit(
   })
 }
 
-export async function getTasasCambio(): Promise<TasaCambio[]> {
+export async function getTasasCambio(): Promise<(TasaCambio & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
-    .from('t_moneda_tasa_cambio')
-    .select('cuenta, empresa, proyecto, moneda, fecha, tasa_cambio, agrego_usuario, agrego_fecha')
+    .from('v_tasa_cambio_lista')
+    .select('cuenta, empresa, proyecto, moneda, fecha, tasa_cambio, agrego_usuario, agrego_fecha, empresa_nombre, proyecto_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa', { ascending: true })
     .order('proyecto', { ascending: true })

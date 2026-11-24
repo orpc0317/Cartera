@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -189,7 +189,7 @@ export function ManzanasClient({
   puedeEliminar,
   userId,
 }: {
-  manzanas:       Manzana[]
+  manzanas:       (Manzana & NombresVer)[]
   empresas:       Empresa[]
   proyectos:      Proyecto[]
   fases:          Fase[]
@@ -242,9 +242,9 @@ export function ManzanasClient({
     })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
-  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [filas, faseMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [filas, proyectoMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '')))].sort(), [filas, faseMap])
 
   // --- Filtering pipeline ---------------------------------------------------
 
@@ -252,16 +252,16 @@ export function ManzanasClient({
     const q = search.toLowerCase()
     return !q ||
       r.codigo.toLowerCase().includes(q) ||
-      (empresaMap.get(r.empresa)   ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) ||
-      (faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '').toLowerCase().includes(q)
+      nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '').toLowerCase().includes(q)
   })
 
   const filtered = afterSearch.filter((r) =>
     Object.entries(colFilters).every(([col, vals]) => {
-      if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa)   ?? '')
-      if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
-      if (col === 'fase')     return vals.has(faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '')
+      if (col === 'empresa')  return vals.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+      if (col === 'proyecto') return vals.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
+      if (col === 'fase')     return vals.has(nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))
       return vals.has(String((r as Record<string, unknown>)[col] ?? ''))
     }),
   )
@@ -431,9 +431,9 @@ export function ManzanasClient({
     const headers = ['Codigo', 'Empresa', 'Proyecto', 'Fase', 'Agrego Fecha', 'Modifico Fecha']
     const rows = filtered.map((m) => [
       m.codigo,
-      empresaMap.get(m.empresa)   ?? String(m.empresa),
-      proyectoMap.get(`${m.empresa}-${m.proyecto}`) ?? String(m.proyecto),
-      faseMap.get(`${m.empresa}-${m.proyecto}-${m.fase}`) ?? String(m.fase),
+      nombreDeLista(m.empresa_nombre, empresaMap.get(m.empresa) ?? String(m.empresa)),
+      nombreDeLista(m.proyecto_nombre, proyectoMap.get(`${m.empresa}-${m.proyecto}`) ?? String(m.proyecto)),
+      nombreDeLista(m.fase_nombre, faseMap.get(`${m.empresa}-${m.proyecto}-${m.fase}`) ?? String(m.fase)),
       m.agrego_fecha   ?? '',
       m.modifico_fecha ?? '',
     ])
@@ -631,9 +631,9 @@ export function ManzanasClient({
 
                     {visibleCols.map((col) => {
                       switch (col.key) {
-                        case 'empresa':  return <TableCell key="empresa"  className="text-muted-foreground">{empresaMap.get(m.empresa)   ?? String(m.empresa)}</TableCell>
-                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${m.empresa}-${m.proyecto}`) ?? String(m.proyecto)}</TableCell>
-                        case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{faseMap.get(`${m.empresa}-${m.proyecto}-${m.fase}`) ?? String(m.fase)}</TableCell>
+                        case 'empresa':  return <TableCell key="empresa"  className="text-muted-foreground">{nombreDeLista(m.empresa_nombre, empresaMap.get(m.empresa) ?? String(m.empresa))}</TableCell>
+                        case 'proyecto': return <TableCell key="proyecto" className="text-muted-foreground">{nombreDeLista(m.proyecto_nombre, proyectoMap.get(`${m.empresa}-${m.proyecto}`) ?? String(m.proyecto))}</TableCell>
+                        case 'fase':     return <TableCell key="fase"     className="text-muted-foreground">{nombreDeLista(m.fase_nombre, faseMap.get(`${m.empresa}-${m.proyecto}-${m.fase}`) ?? String(m.fase))}</TableCell>
                         default:         return <TableCell key={col.key}  className="text-muted-foreground">{String((m as Record<string, unknown>)[col.key] ?? '') || '—'}</TableCell>
                       }
                     })}

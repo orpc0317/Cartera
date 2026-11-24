@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -229,7 +229,7 @@ export function CuentasBancariasClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: CuentaBancaria[]
+  initialData: (CuentaBancaria & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   bancos: Banco[]
@@ -277,9 +277,9 @@ export function CuentasBancariasClient({
   }
 
   // Unique values for column filters
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)  ?? ''))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
-  const uniqueBancoNames    = useMemo(() => [...new Set(filas.map((r) => bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? ''))].sort(), [filas, bancoMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [filas, proyectoMap])
+  const uniqueBancoNames    = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.banco_nombre, bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '')))].sort(), [filas, bancoMap])
   const uniqueMonedaLabels  = useMemo(() => [...new Set(filas.map((r) => r.moneda))].sort(), [filas])
 
   // ─── Filtering pipeline ───────────────────────────────────────────────────
@@ -289,7 +289,7 @@ export function CuentasBancariasClient({
     return !q ? filas : filas.filter((r) =>
       r.nombre?.toLowerCase().includes(q) ||
       r.numero?.toLowerCase().includes(q) ||
-      (bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.banco_nombre, bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '').toLowerCase().includes(q) ||
       String(r.codigo).includes(q)
     )
   }, [filas, search, bancoMap])
@@ -297,9 +297,9 @@ export function CuentasBancariasClient({
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')  return vals.has(empresaMap.get(r.empresa)  ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
-        if (col === 'banco')    return vals.has(bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? '')
+        if (col === 'empresa')  return vals.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+        if (col === 'proyecto') return vals.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
+        if (col === 'banco')    return vals.has(nombreDeLista(r.banco_nombre, bancoMap.get(`${r.empresa}-${r.proyecto}-${r.banco}`) ?? ''))
         if (col === 'moneda') return vals.has(r.moneda)
         if (col === 'activo') return vals.has(r.activo === 1 ? 'Activo' : 'Inactivo')
         return vals.has(String(r[col as keyof CuentaBancaria] ?? ''))
@@ -778,11 +778,11 @@ export function CuentasBancariasClient({
                         case 'numero':
                           return <TableCell key="numero" className="font-mono text-xs text-muted-foreground">{cb.numero || '—'}</TableCell>
                         case 'empresa':
-                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(cb.empresa) ?? `#${cb.empresa}`}</TableCell>
+                          return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(cb.empresa_nombre, empresaMap.get(cb.empresa) ?? `#${cb.empresa}`)}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${cb.empresa}-${cb.proyecto}`) ?? `#${cb.proyecto}`}</TableCell>
+                          return <TableCell key="proyecto" className="text-muted-foreground">{nombreDeLista(cb.proyecto_nombre, proyectoMap.get(`${cb.empresa}-${cb.proyecto}`) ?? `#${cb.proyecto}`)}</TableCell>
                         case 'banco':
-                          return <TableCell key="banco" className="text-muted-foreground">{bancoMap.get(`${cb.empresa}-${cb.proyecto}-${cb.banco}`) ?? `#${cb.banco}`}</TableCell>
+                          return <TableCell key="banco" className="text-muted-foreground">{nombreDeLista(cb.banco_nombre, bancoMap.get(`${cb.empresa}-${cb.proyecto}-${cb.banco}`) ?? `#${cb.banco}`)}</TableCell>
                         case 'moneda':
                           return (
                             <TableCell key="moneda" className="text-muted-foreground">

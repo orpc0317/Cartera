@@ -32,7 +32,7 @@ function rangoDia(fecha: string): { desde: string; hasta: string } {
  */
 export async function getRecibosCaja(
   filtros: PagosFiltros,
-): Promise<{ data: ReciboCaja[]; limitReached: boolean; error?: string }> {
+): Promise<{ data: (ReciboCaja & NombresVer)[]; limitReached: boolean; error?: string }> {
   const acceso = await leerAcceso()
   if (!acceso) return { data: [], limitReached: false, error: 'Sesión no válida.' }
   const cuenta = acceso.cuenta
@@ -41,8 +41,8 @@ export async function getRecibosCaja(
 
   let query = admin
     .schema('cartera')
-    .from('t_recibo_caja')
-    .select('cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_recibo_caja_lista')
+    .select('cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, cliente_nombre, cobrador_nombre, banco_nombre')
     .eq('cuenta', cuenta)
 
   const acotada = restringirProyecto(query, acceso, {
@@ -91,23 +91,7 @@ export async function getRecibosCaja(
     query = query.lte('numero', filtros.numeroHasta)
   }
 
-  if (filtros.cliente?.trim()) {
-    const clientesConsulta = admin
-      .schema('cartera')
-      .from('t_cliente')
-      .select('empresa, proyecto, codigo')
-      .eq('cuenta', cuenta)
-    const clientesAcotados = restringirProyecto(clientesConsulta, acceso)
-    if (!clientesAcotados) return { data: [], limitReached: false }
-    const { data: clientesMatch, error: clienteError } = await clientesAcotados
-      .ilike('nombre', `%${filtros.cliente.trim()}%`)
-
-    if (clienteError) return { data: [], limitReached: false, error: clienteError.message }
-    if (!clientesMatch || clientesMatch.length === 0) return { data: [], limitReached: false }
-
-    const codigos = [...new Set(clientesMatch.map((c) => c.codigo as number))]
-    query = query.in('cliente', codigos)
-  }
+  if (filtros.cliente?.trim()) query = query.ilike('cliente_nombre', `%${filtros.cliente.trim()}%`)
 
   const { data, error } = await query
     .order('secuencia', { ascending: false })
@@ -115,7 +99,7 @@ export async function getRecibosCaja(
 
   if (error) return { data: [], limitReached: false, error: error.message }
 
-  const rows = (data ?? []) as ReciboCaja[]
+  const rows = (data ?? []) as (ReciboCaja & NombresVer)[]
   const limitReached = rows.length > LIMITE_FILAS
   return { data: limitReached ? rows.slice(0, LIMITE_FILAS) : rows, limitReached }
 }

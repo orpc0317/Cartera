@@ -24,4 +24,6 @@ export type TasaCambioGrupo = {
   moneda: string
   ultima_fecha: string
   ultima_tasa: number
+  empresa_nombre?: string | null
+  proyecto_nombre?: string | null
 }

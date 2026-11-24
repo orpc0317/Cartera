@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -172,15 +172,15 @@ function formatCsvCell(value: unknown): string {
     ? `"${str.replace(/"/g, '""')}"` : str
 }
 
-function exportCsv(rows: TipoIngreso[], colPrefs: ColPref[], empresaMap: Map<number, string>, proyectoMap: Map<string, string>) {
+function exportCsv(rows: (TipoIngreso & NombresVer)[], colPrefs: ColPref[], empresaMap: Map<number, string>, proyectoMap: Map<string, string>) {
   const keys = ['codigo', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
     .filter((k) => !NEVER_EXPORT.has(k))
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
   const lines = [
     headers.join(','),
     ...rows.map((r) => keys.map((k) => {
-      if (k === 'empresa') return formatCsvCell(empresaMap.get(r.empresa) ?? r.empresa)
-      if (k === 'proyecto') return formatCsvCell(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto)
+      if (k === 'empresa') return formatCsvCell(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? r.empresa))
+      if (k === 'proyecto') return formatCsvCell(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? r.proyecto))
       return formatCsvCell(r[k as keyof TipoIngreso])
     }).join(',')),
   ]
@@ -258,7 +258,7 @@ export function TiposIngresosClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: TipoIngreso[]
+  initialData: (TipoIngreso & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   monedas: Moneda[]
@@ -371,8 +371,8 @@ export function TiposIngresosClient({
   const hasActiveFilters = Object.keys(colFilters).length > 0
 
   // ── Unique filter values ──────────────────────────────────────────────────
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [filas, proyectoMap])
   const uniqueNombreValues  = useMemo(() => [...new Set(filas.map((r) => r.nombre))].sort(), [filas])
   const uniqueMonedaValues  = useMemo(() => [...new Set(filas.map((r) => r.moneda))].sort(), [filas])
 
@@ -394,8 +394,8 @@ export function TiposIngresosClient({
     for (const [col, active] of Object.entries(colFilters)) {
       if (active.size === 0) continue
       rows = rows.filter((r) => {
-        if (col === 'empresa')  return active.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto') return active.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
+        if (col === 'empresa')  return active.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+        if (col === 'proyecto') return active.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
         if (col === 'moneda')   return active.has(r.moneda)
         if (col === 'nombre')   return active.has(r.nombre)
         return active.has(String(r[col as keyof TipoIngreso]))
@@ -1161,9 +1161,9 @@ export function TiposIngresosClient({
                     {visibleCols.map((col) => {
                       switch (col.key) {
                         case 'empresa':
-                          return <TableCell key={col.key} className="text-muted-foreground">{empresaMap.get(row.empresa) ?? row.empresa}</TableCell>
+                          return <TableCell key={col.key} className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? row.empresa)}</TableCell>
                         case 'proyecto':
-                          return <TableCell key={col.key} className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto}</TableCell>
+                          return <TableCell key={col.key} className="text-muted-foreground">{nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? row.proyecto)}</TableCell>
                         case 'moneda': {
                           const flag = CURRENCY_FLAG_MAP.get(row.moneda)
                           return (

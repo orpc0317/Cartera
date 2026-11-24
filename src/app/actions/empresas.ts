@@ -61,14 +61,14 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getEmpresas(): Promise<Empresa[]> {
+export async function getEmpresas(): Promise<(Empresa & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_empresa')
-    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_empresa_lista')
+    .select('cuenta, codigo, nombre, razon_social, identificacion_tributaria, direccion_pais, direccion_departamento, direccion_municipio, direccion, codigo_postal, regimen_isr, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, pais_nombre, departamento_nombre, municipio_nombre')
     .eq('cuenta', acceso.cuenta)
   const ids = empresasVisibles(acceso)
   if (ids) {
@@ -77,7 +77,7 @@ export async function getEmpresas(): Promise<Empresa[]> {
   }
   const { data, error } = await query.order('nombre')
   if (error) throw new Error(error.message)
-  return data as Empresa[]
+  return data as (Empresa & NombresVer)[]
 }
 
 export async function getEmpresasUsuario(): Promise<Empresa[]> {

@@ -11,9 +11,12 @@ import { TransaccionesBancariasClient } from './_client'
 export default async function TransaccionesBancariasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const fecha = new Date()
+  fecha.setUTCDate(fecha.getUTCDate() - 30)
+  const fechaDesde = fecha.toISOString().slice(0, 10)
 
   const [data, empresas, proyectos, cuentasBancarias, bancos, permisos] = await Promise.all([
-    getTransaccionesBancarias().catch((e: Error) => { console.error('getTransaccionesBancarias:', e.message); return [] as Awaited<ReturnType<typeof getTransaccionesBancarias>> }),
+    getTransaccionesBancarias({ fechaDesde }).catch((e: Error) => { console.error('getTransaccionesBancarias:', e.message); return { data: [], limitReached: false } as Awaited<ReturnType<typeof getTransaccionesBancarias>> }),
     getEmpresasUsuario().catch((e: Error)          => { console.error('getEmpresasUsuario:', e.message);          return [] as Awaited<ReturnType<typeof getEmpresasUsuario>> }),
     getProyectosUsuario().catch((e: Error)          => { console.error('getProyectosUsuario:', e.message);         return [] as Awaited<ReturnType<typeof getProyectosUsuario>> }),
     getCuentasBancarias().catch((e: Error)          => { console.error('getCuentasBancarias:', e.message);         return [] as Awaited<ReturnType<typeof getCuentasBancarias>> }),
@@ -23,7 +26,9 @@ export default async function TransaccionesBancariasPage() {
 
   return (
     <TransaccionesBancariasClient
-      initialData={data}
+      initialData={data.data}
+      initialLimitReached={data.limitReached}
+      initialFechaDesde={fechaDesde}
       empresas={empresas}
       proyectos={proyectos}
       cuentasBancarias={cuentasBancarias}

@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -457,7 +457,7 @@ export function ProyectosClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: Proyecto[]
+  initialData: (Proyecto & NombresVer)[]
   empresas: Empresa[]
   fases: Fase[]
   paises: Pais[]
@@ -555,7 +555,7 @@ export function ProyectosClient({
   }
 
   const uniqueEmpresaNames = useMemo(
-    () => [...new Set(filas.map((p) => empresaMap.get(p.empresa) ?? ''))].sort(),
+    () => [...new Set(filas.map((p) => nombreDeLista(p.empresa_nombre, empresaMap.get(p.empresa) ?? '')))].sort(),
     [filas, empresaMap]
   )
 
@@ -566,15 +566,15 @@ export function ProyectosClient({
     const q = search.toLowerCase()
     return !q ||
       p.nombre?.toLowerCase().includes(q) ||
-      (empresaMap.get(p.empresa) ?? '').toLowerCase().includes(q) ||
-      p.direccion_pais?.toLowerCase().includes(q) ||
+      nombreDeLista(p.empresa_nombre, empresaMap.get(p.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(p.pais_nombre, p.direccion_pais).toLowerCase().includes(q) ||
       p.direccion_departamento?.toLowerCase().includes(q) ||
       String(p.codigo).includes(q)
   })
 
   const filtered = afterSearch.filter((p) =>
     Object.entries(colFilters).every(([col, vals]) => {
-      if (col === 'empresa') return vals.has(empresaMap.get(p.empresa) ?? '')
+      if (col === 'empresa') return vals.has(nombreDeLista(p.empresa_nombre, empresaMap.get(p.empresa) ?? ''))
       return vals.has(String(p[col as keyof Proyecto] ?? ''))
     })
   )
@@ -993,10 +993,10 @@ export function ProyectosClient({
       headers.join(','),
       ...filtered.map((p) => keys.map((k) => {
         switch (k) {
-          case 'empresa': return formatCsvCell(empresaMap.get(p.empresa) ?? '')
-          case 'direccion_pais': return formatCsvCell(paises.find((x) => x.codigo === p.direccion_pais)?.nombre ?? p.direccion_pais ?? '')
-          case 'direccion_departamento': return formatCsvCell(departamentos.find((d) => d.codigo === p.direccion_departamento)?.nombre ?? p.direccion_departamento ?? '')
-          case 'direccion_municipio': return formatCsvCell(municipios.find((m) => m.codigo === p.direccion_municipio)?.nombre ?? p.direccion_municipio ?? '')
+          case 'empresa': return formatCsvCell(nombreDeLista(p.empresa_nombre, empresaMap.get(p.empresa) ?? ''))
+          case 'direccion_pais': return formatCsvCell(nombreDeLista(p.pais_nombre, paises.find((x) => x.codigo === p.direccion_pais)?.nombre ?? p.direccion_pais))
+          case 'direccion_departamento': return formatCsvCell(nombreDeLista(p.departamento_nombre, departamentos.find((d) => d.codigo === p.direccion_departamento)?.nombre ?? p.direccion_departamento))
+          case 'direccion_municipio': return formatCsvCell(nombreDeLista(p.municipio_nombre, municipios.find((m) => m.codigo === p.direccion_municipio)?.nombre ?? p.direccion_municipio))
           default: return formatCsvCell(p[k as keyof Proyecto])
         }
       }).join(',')),
@@ -1506,24 +1506,25 @@ export function ProyectosClient({
                         case 'nombre':
                           return <TableCell key="nombre" className="font-medium">{proyecto.nombre}</TableCell>
                         case 'empresa':
-                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(proyecto.empresa) ?? `#${proyecto.empresa}`}</TableCell>
+                          return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(proyecto.empresa_nombre, empresaMap.get(proyecto.empresa) ?? `#${proyecto.empresa}`)}</TableCell>
                         case 'direccion_pais': {
-                          const p = paises.find((x) => x.codigo === proyecto.direccion_pais)
+                          const iso = proyecto.direccion_pais
+                          const pais = nombreDeLista(proyecto.pais_nombre, paises.find((x) => x.codigo === iso)?.nombre ?? iso)
                           return (
                             <TableCell key="direccion_pais" className="text-muted-foreground">
-                              {p ? (
+                              {iso ? (
                                 <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {p.nombre}
+                                  <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                  {pais}
                                 </span>
-                              ) : (proyecto.direccion_pais ?? '—')}
+                              ) : '—'}
                             </TableCell>
                           )
                         }
                         case 'direccion_departamento':
-                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{departamentos.find((d) => d.codigo === proyecto.direccion_departamento)?.nombre ?? proyecto.direccion_departamento ?? '—'}</TableCell>
+                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{nombreDeLista(proyecto.departamento_nombre, departamentos.find((d) => d.codigo === proyecto.direccion_departamento)?.nombre ?? proyecto.direccion_departamento) || '—'}</TableCell>
                         case 'direccion_municipio':
-                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{municipios.find((m) => m.codigo === proyecto.direccion_municipio)?.nombre ?? proyecto.direccion_municipio ?? '—'}</TableCell>
+                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{nombreDeLista(proyecto.municipio_nombre, municipios.find((m) => m.codigo === proyecto.direccion_municipio)?.nombre ?? proyecto.direccion_municipio) || '—'}</TableCell>
                         default:
                           return <TableCell key={col.key} className="text-muted-foreground">{(proyecto[col.key as keyof Proyecto] as string) || '—'}</TableCell>
                       }

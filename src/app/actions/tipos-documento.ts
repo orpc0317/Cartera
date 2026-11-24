@@ -54,14 +54,14 @@ async function writeAudit(
   })
 }
 
-export async function getTiposDocumento(empresa?: number, proyecto?: number): Promise<TipoDocumento[]> {
+export async function getTiposDocumento(empresa?: number, proyecto?: number): Promise<(TipoDocumento & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_tipo_documento')
-    .select('cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_tipo_documento_lista')
+    .select('cuenta, empresa, proyecto, codigo, descripcion, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')

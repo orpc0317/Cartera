@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -235,7 +235,7 @@ export function LotesClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: Lote[]
+  initialData: (Lote & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   fases: Fase[]
@@ -341,9 +341,9 @@ export function LotesClient({
     })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa)   ?? ''))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
-  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? ''))].sort(), [filas, faseMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [filas, proyectoMap])
+  const uniqueFaseNames     = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.fase_nombre, faseMap.get(`${r.empresa}-${r.proyecto}-${r.fase}`) ?? '')))].sort(), [filas, faseMap])
   const uniqueManzanaVals   = useMemo(() => [...new Set(filas.map((r) => r.manzana))].sort(),                         [filas])
   const uniqueMonedaVals    = useMemo(() => [...new Set(filas.map((r) => r.moneda))].sort(),                          [filas])
   const uniqueEstadoVals    = ['Disponible', 'Reservado', 'Vendido']
@@ -354,12 +354,12 @@ export function LotesClient({
       if (q &&
           !l.codigo.toLowerCase().includes(q) &&
           !l.manzana.toLowerCase().includes(q) &&
-          !(proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? '').toLowerCase().includes(q) &&
-          !(faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? '').toLowerCase().includes(q)) return false
+          !nombreDeLista(l.proyecto_nombre, proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? '').toLowerCase().includes(q) &&
+          !nombreDeLista(l.fase_nombre, faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? '').toLowerCase().includes(q)) return false
       return Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')  return vals.has(empresaMap.get(l.empresa)   ?? '')
-        if (col === 'proyecto') return vals.has(proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? '')
-        if (col === 'fase')     return vals.has(faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? '')
+        if (col === 'empresa')  return vals.has(nombreDeLista(l.empresa_nombre, empresaMap.get(l.empresa) ?? ''))
+        if (col === 'proyecto') return vals.has(nombreDeLista(l.proyecto_nombre, proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? ''))
+        if (col === 'fase')     return vals.has(nombreDeLista(l.fase_nombre, faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? ''))
         if (col === 'manzana')  return vals.has(l.manzana)
         if (col === 'moneda')   return vals.has(l.moneda)
         if (col === '__estado') return vals.has(getLoteEstado(l.promesa, l.recibo_numero))
@@ -649,9 +649,9 @@ export function LotesClient({
     const headers = colsToExport.map((k) => k === 'codigo' ? 'Codigo' : (ALL_COLUMNS.find((c) => c.key === k)?.label ?? k))
     const rows = filtered.map((l) =>
       colsToExport.map((k) => {
-        if (k === 'empresa')  return empresaMap.get(l.empresa)   ?? ''
-        if (k === 'proyecto') return proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? ''
-        if (k === 'fase')     return faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? ''
+        if (k === 'empresa')  return nombreDeLista(l.empresa_nombre, empresaMap.get(l.empresa) ?? '')
+        if (k === 'proyecto') return nombreDeLista(l.proyecto_nombre, proyectoMap.get(`${l.empresa}-${l.proyecto}`) ?? '')
+        if (k === 'fase')     return nombreDeLista(l.fase_nombre, faseMap.get(`${l.empresa}-${l.proyecto}-${l.fase}`) ?? '')
         const v = (l as Record<string, unknown>)[k]
         return v ?? ''
       }),
@@ -1021,11 +1021,11 @@ export function LotesClient({
                     {colPrefs.filter((p) => p.visible).map((pref) => {
                       switch (pref.key) {
                         case 'empresa':
-                          return <TableCell key="empresa"  className="whitespace-nowrap">{empresaMap.get(lote.empresa)   ?? lote.empresa}</TableCell>
+                          return <TableCell key="empresa"  className="whitespace-nowrap">{nombreDeLista(lote.empresa_nombre, empresaMap.get(lote.empresa) ?? lote.empresa)}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="whitespace-nowrap">{proyectoMap.get(`${lote.empresa}-${lote.proyecto}`) ?? lote.proyecto}</TableCell>
+                          return <TableCell key="proyecto" className="whitespace-nowrap">{nombreDeLista(lote.proyecto_nombre, proyectoMap.get(`${lote.empresa}-${lote.proyecto}`) ?? lote.proyecto)}</TableCell>
                         case 'fase':
-                          return <TableCell key="fase"     className="whitespace-nowrap">{faseMap.get(`${lote.empresa}-${lote.proyecto}-${lote.fase}`) ?? lote.fase}</TableCell>
+                          return <TableCell key="fase"     className="whitespace-nowrap">{nombreDeLista(lote.fase_nombre, faseMap.get(`${lote.empresa}-${lote.proyecto}-${lote.fase}`) ?? lote.fase)}</TableCell>
                         case 'manzana':
                           return <TableCell key="manzana">{lote.manzana}</TableCell>
                         case 'moneda': {

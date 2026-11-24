@@ -56,14 +56,14 @@ async function writeAudit(
 
 // ─── Lectura ───────────────────────────────────────────────────────────────
 
-export async function getVendedores(empresa?: number, proyecto?: number): Promise<Vendedor[]> {
+export async function getVendedores(empresa?: number, proyecto?: number): Promise<(Vendedor & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_vendedor')
-    .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_vendedor_lista')
+    .select('cuenta, empresa, proyecto, codigo, nombre, coordinador, userid, activo, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, coordinador_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('nombre')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })

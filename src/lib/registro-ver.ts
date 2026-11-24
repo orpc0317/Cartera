@@ -22,6 +22,12 @@ export function nombreLeido(leido: string | null | undefined, respaldo?: string 
   return respaldo ?? ''
 }
 
+export function nombreDeLista(leido: string | null | undefined, respaldo?: string | number | null): string {
+  if (leido) return leido
+  if (respaldo == null || respaldo === '') return ''
+  return String(respaldo)
+}
+
 export function reemplazarFila<T>(filas: T[], clave: (row: T) => string, fresca: T): T[] {
   const id = clave(fresca)
   return filas.map((row) => clave(row) === id ? fresca : row)

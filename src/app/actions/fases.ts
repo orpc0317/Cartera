@@ -54,14 +54,14 @@ async function writeAudit(
   })
 }
 
-export async function getFases(empresa?: number, proyecto?: number): Promise<Fase[]> {
+export async function getFases(empresa?: number, proyecto?: number): Promise<(Fase & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_fase')
-    .select('cuenta, empresa, proyecto, codigo, nombre, medida, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_fase_lista')
+    .select('cuenta, empresa, proyecto, codigo, nombre, medida, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
@@ -71,7 +71,7 @@ export async function getFases(empresa?: number, proyecto?: number): Promise<Fas
   query = acotada
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as Fase[]
+  return data as (Fase & NombresVer)[]
 }
 
 export async function obtenerFase(

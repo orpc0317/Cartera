@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 
 import { useState, useTransition, useMemo, useRef, useCallback, useEffect } from 'react'
@@ -245,7 +245,7 @@ export function SeriesFacturasClient({
   puedeEliminar,
   userId,
 }: {
-  initialData: SerieFactura[]
+  initialData: (SerieFactura & NombresVer)[]
   empresas: Empresa[]
   proyectos: Proyecto[]
   gfaces: Gface[]
@@ -287,8 +287,8 @@ export function SeriesFacturasClient({
     [gfaces, form.empresa, form.proyecto],
   )
 
-  function nombreGface(empresa: number, proyecto: number, codigo: number) {
-    return nombreDeGface(gfaceMap, empresa, proyecto, codigo)
+  function nombreGface(empresa: number, proyecto: number, codigo: number, leido?: string | null) {
+    return nombreDeLista(leido, nombreDeGface(gfaceMap, empresa, proyecto, codigo))
   }
 
   function primerGface(empresa: number, proyecto: number) {
@@ -299,9 +299,9 @@ export function SeriesFacturasClient({
     setColFilters((prev) => { const u = { ...prev }; if (next.size === 0) delete u[col]; else u[col] = next; return u })
   }
 
-  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => empresaMap.get(r.empresa) ?? ''))].sort(), [filas, empresaMap])
-  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))].sort(), [filas, proyectoMap])
-  const uniqueGfaceNames    = useMemo(() => [...new Set(filas.map((r) => nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface)))].sort(), [filas, gfaceMap])
+  const uniqueEmpresaNames  = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '')))].sort(), [filas, empresaMap])
+  const uniqueProyectoNames = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')))].sort(), [filas, proyectoMap])
+  const uniqueGfaceNames    = useMemo(() => [...new Set(filas.map((r) => nombreDeLista(r.gface_nombre, nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface))))].sort(), [filas, gfaceMap])
   const uniqueFormato       = useMemo(() => [...new Set(filas.map((r) => String(r.formato)))].sort(), [filas])
   const uniqueEstablecimiento = useMemo(() => [...new Set(filas.map((r) => String(r.establecimiento)))].sort(), [filas])
   const uniqueDispositivo   = useMemo(() => [...new Set(filas.map((r) => String(r.dispositivo)))].sort(), [filas])
@@ -312,18 +312,18 @@ export function SeriesFacturasClient({
       r.serie.toLowerCase().includes(q) ||
       (r.id_docto_gface ?? '').toLowerCase().includes(q) ||
       (r.carpeta_dtes ?? '').toLowerCase().includes(q) ||
-      nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface).toLowerCase().includes(q) ||
-      (empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
-      (proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
+      nombreDeLista(r.gface_nombre, nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface)).toLowerCase().includes(q) ||
+      nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? '').toLowerCase().includes(q) ||
+      nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '').toLowerCase().includes(q)
     )
   }, [filas, search, empresaMap, proyectoMap, gfaceMap])
 
   const filtered = useMemo(() =>
     afterSearch.filter((r) =>
       Object.entries(colFilters).every(([col, vals]) => {
-        if (col === 'empresa')        return vals.has(empresaMap.get(r.empresa) ?? '')
-        if (col === 'proyecto')       return vals.has(proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? '')
-        if (col === 'gface')          return vals.has(nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface))
+        if (col === 'empresa')        return vals.has(nombreDeLista(r.empresa_nombre, empresaMap.get(r.empresa) ?? ''))
+        if (col === 'proyecto')       return vals.has(nombreDeLista(r.proyecto_nombre, proyectoMap.get(`${r.empresa}-${r.proyecto}`) ?? ''))
+        if (col === 'gface')          return vals.has(nombreDeLista(r.gface_nombre, nombreDeGface(gfaceMap, r.empresa, r.proyecto, r.gface)))
         if (col === 'formato')        return vals.has(String(r.formato))
         if (col === 'establecimiento') return vals.has(String(r.establecimiento))
         if (col === 'dispositivo')    return vals.has(String(r.dispositivo))
@@ -535,10 +535,10 @@ export function SeriesFacturasClient({
     })
   }
 
-  function csvCell(row: SerieFactura, key: string): string {
-    if (key === 'empresa') return empresaMap.get(row.empresa) ?? ''
-    if (key === 'proyecto') return proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? ''
-    if (key === 'gface') return nombreGface(row.empresa, row.proyecto, row.gface)
+  function csvCell(row: SerieFactura & NombresVer, key: string): string {
+    if (key === 'empresa') return nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? '')
+    if (key === 'proyecto') return nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? '')
+    if (key === 'gface') return nombreGface(row.empresa, row.proyecto, row.gface, row.gface_nombre)
     if (key === 'predeterminado' || key === 'activo') return row[key] === 1 ? 'Si' : 'No'
     const value = row[key as keyof SerieFactura]
     return value == null ? '' : String(value)
@@ -853,11 +853,11 @@ export function SeriesFacturasClient({
                     {visibleCols.map((col) => {
                       switch (col.key) {
                         case 'empresa':
-                          return <TableCell key="empresa" className="text-muted-foreground">{empresaMap.get(row.empresa) ?? ''}</TableCell>
+                          return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? '')}</TableCell>
                         case 'proyecto':
-                          return <TableCell key="proyecto" className="text-muted-foreground">{proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? ''}</TableCell>
+                          return <TableCell key="proyecto" className="text-muted-foreground">{nombreDeLista(row.proyecto_nombre, proyectoMap.get(`${row.empresa}-${row.proyecto}`) ?? '')}</TableCell>
                         case 'gface':
-                          return <TableCell key="gface" className="text-muted-foreground">{nombreGface(row.empresa, row.proyecto, row.gface) || '—'}</TableCell>
+                          return <TableCell key="gface" className="text-muted-foreground">{nombreGface(row.empresa, row.proyecto, row.gface, row.gface_nombre) || '—'}</TableCell>
                         case 'id_docto_gface':
                           return <TableCell key="id_docto_gface" className="font-mono text-xs text-muted-foreground">{row.id_docto_gface || '—'}</TableCell>
                         case 'establecimiento':

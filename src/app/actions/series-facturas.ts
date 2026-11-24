@@ -160,14 +160,14 @@ function refrescar() {
   revalidatePath('/dashboard/cuentas-cobrar/series-recibos')
 }
 
-export async function getSeriesFacturas(): Promise<SerieFactura[]> {
+export async function getSeriesFacturas(): Promise<(SerieFactura & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   const consulta = admin
     .schema('cartera')
-    .from('t_serie_factura')
-    .select(COLUMNS)
+    .from('v_serie_factura_lista')
+    .select(`${COLUMNS}, empresa_nombre, proyecto_nombre, gface_nombre`)
     .eq('cuenta', acceso.cuenta)
     .order('empresa')
     .order('proyecto')
@@ -176,7 +176,7 @@ export async function getSeriesFacturas(): Promise<SerieFactura[]> {
   if (!acotada) return []
   const { data, error } = await acotada
   if (error) throw new Error(error.message)
-  return data as SerieFactura[]
+  return data as (SerieFactura & NombresVer)[]
 }
 
 export async function obtenerSerieFactura(

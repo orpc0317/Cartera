@@ -54,14 +54,14 @@ async function writeAudit(
   })
 }
 
-export async function getLotes(empresa?: number, proyecto?: number, fase?: number, manzana?: string): Promise<Lote[]> {
+export async function getLotes(empresa?: number, proyecto?: number, fase?: number, manzana?: string): Promise<(Lote & NombresVer)[]> {
   const acceso = await leerAcceso()
   if (!acceso) return []
   const admin = await clienteDatos()
   let query = admin
     .schema('cartera')
-    .from('t_lote')
-    .select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha')
+    .from('v_lote_lista')
+    .select('cuenta, empresa, proyecto, fase, manzana, codigo, moneda, valor, extension, finca, folio, libro, norte, sur, este, oeste, otro, promesa, recibo_serie, recibo_numero, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha, empresa_nombre, proyecto_nombre, fase_nombre')
     .eq('cuenta', acceso.cuenta)
     .order('empresa').order('proyecto').order('fase').order('manzana').order('codigo')
   const acotada = restringirProyecto(query, acceso, { empresa, proyecto })
@@ -71,7 +71,7 @@ export async function getLotes(empresa?: number, proyecto?: number, fase?: numbe
   if (manzana !== undefined) query = query.eq('manzana', manzana)
   const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data as Lote[]
+  return data as (Lote & NombresVer)[]
 }
 
 export async function obtenerLote(
@@ -340,71 +340,49 @@ export type ReservaRow = {
   cobrador:         number
 }
 
-export async function getReservas(empresa?: number, proyecto?: number): Promise<ReservaRow[]> {
-  const acceso = await leerAcceso()
-  if (!acceso) return []
-  const cuenta = acceso.cuenta
-  const admin  = await clienteDatos()
+const LIMITE_RESERVAS = 500
 
+export type ReservaFiltros = {
+  empresa?: number
+  proyecto?: number
+  estado?: number | null
+  numero?: number
+  cliente?: string
+  fechaDesde?: string
+  fechaHasta?: string
+}
+
+export async function getReservas(
+  filtros: ReservaFiltros = {},
+): Promise<{ data: (ReservaRow & NombresVer)[]; limitReached: boolean }> {
+  const acceso = await leerAcceso()
+  if (!acceso) return { data: [], limitReached: false }
+  const admin = await clienteDatos()
   let reservaQuery = admin
     .schema('cartera')
-    .from('t_reserva')
-    .select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado')
-    .eq('cuenta', cuenta)
-    .order('numero', { ascending: false })
-  const reservasAcotadas = restringirProyecto(reservaQuery, acceso, { empresa, proyecto })
-  if (!reservasAcotadas) return []
-  reservaQuery = reservasAcotadas
-  const { data: reservas, error: err1 } = await reservaQuery
-  if (err1) throw new Error(err1.message)
-  if (!reservas || reservas.length === 0) return []
-
-  const numerosRecibo = [...new Set(reservas.map((r) => r.recibo_numero).filter((n) => n > 0))]
-
-  let reciboQuery = admin
-    .schema('cartera')
-    .from('t_recibo_caja')
-    .select('empresa, proyecto, serie, numero, fecha, monto, moneda, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, cobrador')
-    .eq('cuenta', cuenta)
-    .in('numero', numerosRecibo)
-  const recibosAcotados = restringirProyecto(reciboQuery, acceso, { empresa, proyecto })
-  if (!recibosAcotados) return []
-  reciboQuery = recibosAcotados
-  const { data: recibos, error: err2 } = await reciboQuery
-  if (err2) throw new Error(err2.message)
-
-  // Composite key: empresa-proyecto-serie-numero
-  const reciboMap = new Map<string, NonNullable<typeof recibos>[number]>()
-  for (const r of recibos ?? []) {
-    reciboMap.set(`${r.empresa}-${r.proyecto}-${r.serie}-${r.numero}`, r)
-  }
-
-  return reservas.map((r) => {
-    const rc = reciboMap.get(`${r.empresa}-${r.proyecto}-${r.recibo_serie}-${r.recibo_numero}`)
-    return {
-      cuenta:           cuenta,
-      numero:           r.numero,
-      empresa:          r.empresa,
-      proyecto:         r.proyecto,
-      fase:             r.fase,
-      manzana:          r.manzana,
-      lote:             r.lote,
-      cliente:          r.cliente,
-      vendedor:         r.vendedor,
-      recibo_serie:     r.recibo_serie ?? '',
-      recibo_numero:    r.recibo_numero,
-      estado:           r.estado,
-      fecha:            rc?.fecha ?? '',
-      monto:            rc?.monto ?? 0,
-      moneda:           rc?.moneda ?? 'GTQ',
-      forma_pago:       rc?.forma_pago ?? 0,
-      banco:            rc?.banco ?? 0,
-      numero_cuenta:    rc?.numero_cuenta ?? '',
-      numero_documento: rc?.numero_documento ?? '',
-      cuenta_deposito:  rc?.cuenta_deposito ?? 0,
-      cobrador:         rc?.cobrador ?? 0,
-    }
+    .from('v_reserva_lista')
+    .select('cuenta, numero, empresa, proyecto, fase, manzana, lote, cliente, vendedor, recibo_serie, recibo_numero, estado, fecha, monto, moneda, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, cobrador, empresa_nombre, proyecto_nombre, fase_nombre, cliente_nombre, vendedor_nombre, banco_nombre, cuenta_deposito_nombre')
+    .eq('cuenta', acceso.cuenta)
+  reservaQuery = filtros.estado === undefined
+    ? reservaQuery.eq('estado', 1)
+    : filtros.estado === null
+      ? reservaQuery
+      : reservaQuery.eq('estado', filtros.estado)
+  if (filtros.numero !== undefined) reservaQuery = reservaQuery.eq('numero', filtros.numero)
+  if (filtros.cliente?.trim()) reservaQuery = reservaQuery.ilike('cliente_nombre', `%${filtros.cliente.trim()}%`)
+  if (filtros.fechaDesde) reservaQuery = reservaQuery.gte('fecha', filtros.fechaDesde)
+  if (filtros.fechaHasta) reservaQuery = reservaQuery.lte('fecha', filtros.fechaHasta)
+  reservaQuery = reservaQuery.order('numero', { ascending: false }).limit(LIMITE_RESERVAS + 1)
+  const reservasAcotadas = restringirProyecto(reservaQuery, acceso, {
+    empresa: filtros.empresa,
+    proyecto: filtros.proyecto,
   })
+  if (!reservasAcotadas) return { data: [], limitReached: false }
+  const { data, error } = await reservasAcotadas
+  if (error) throw new Error(error.message)
+  const rows = ((data ?? []) as (ReservaRow & NombresVer)[]).map((r) => ({ ...r, fecha: r.fecha ?? '' }))
+  const limitReached = rows.length > LIMITE_RESERVAS
+  return { data: limitReached ? rows.slice(0, LIMITE_RESERVAS) : rows, limitReached }
 }
 
 export async function obtenerReserva(

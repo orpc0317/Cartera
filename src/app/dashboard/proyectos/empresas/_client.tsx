@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, reemplazarFila, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useTransition, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -243,7 +243,7 @@ const EMPTY_FORM: EmpresaForm = {
 // --- Props -----------------------------------------------------------------
 
 interface Props {
-  initialData: Empresa[]
+  initialData: (Empresa & NombresVer)[]
   paises: Pais[]
   departamentos: Departamento[]
   municipios: Municipio[]
@@ -313,9 +313,9 @@ export function EmpresasClient({
       e.nombre?.toLowerCase().includes(q) ||
       e.razon_social?.toLowerCase().includes(q) ||
       e.identificacion_tributaria?.toLowerCase().includes(q) ||
-      e.direccion_pais?.toLowerCase().includes(q) ||
-      e.direccion_departamento?.toLowerCase().includes(q) ||
-      e.direccion_municipio?.toLowerCase().includes(q) ||
+      nombreDeLista(e.pais_nombre, e.direccion_pais).toLowerCase().includes(q) ||
+      nombreDeLista(e.departamento_nombre, e.direccion_departamento).toLowerCase().includes(q) ||
+      nombreDeLista(e.municipio_nombre, e.direccion_municipio).toLowerCase().includes(q) ||
       e.direccion?.toLowerCase().includes(q) ||
       String(e.codigo).includes(q)
   })
@@ -323,6 +323,9 @@ export function EmpresasClient({
   const filtered = afterSearch.filter((e) =>
     Object.entries(colFilters).every(([col, vals]) => {
       if (col === '__regimen') return vals.has(String(e.regimen_isr))
+      if (col === 'direccion_pais') return vals.has(nombreDeLista(e.pais_nombre, paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais))
+      if (col === 'direccion_departamento') return vals.has(nombreDeLista(e.departamento_nombre, departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento))
+      if (col === 'direccion_municipio') return vals.has(nombreDeLista(e.municipio_nombre, municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio))
       return vals.has(String(e[col as keyof Empresa] ?? ''))
     }),
   )
@@ -582,9 +585,9 @@ export function EmpresasClient({
       e.razon_social,
       e.identificacion_tributaria,
       e.direccion,
-      paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais,
-      departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento,
-      municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio,
+      nombreDeLista(e.pais_nombre, paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais),
+      nombreDeLista(e.departamento_nombre, departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento),
+      nombreDeLista(e.municipio_nombre, municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio),
       e.codigo_postal,
       REGIMENES_ISR[e.regimen_isr] ?? String(e.regimen_isr),
     ])
@@ -949,11 +952,11 @@ export function EmpresasClient({
                       label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                       values={
                         col.key === 'direccion_pais'
-                          ? [...new Set(filas.map((e) => paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais ?? ''))].sort()
+                          ? [...new Set(filas.map((e) => nombreDeLista(e.pais_nombre, paises.find((p) => p.codigo === e.direccion_pais)?.nombre ?? e.direccion_pais)))].sort()
                           : col.key === 'direccion_departamento'
-                          ? [...new Set(filas.map((e) => departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento ?? ''))].sort()
+                          ? [...new Set(filas.map((e) => nombreDeLista(e.departamento_nombre, departamentos.find((d) => d.pais === e.direccion_pais && d.codigo === e.direccion_departamento)?.nombre ?? e.direccion_departamento)))].sort()
                           : col.key === 'direccion_municipio'
-                          ? [...new Set(filas.map((e) => municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio ?? ''))].sort()
+                          ? [...new Set(filas.map((e) => nombreDeLista(e.municipio_nombre, municipios.find((m) => m.pais === e.direccion_pais && m.departamento === e.direccion_departamento && m.codigo === e.direccion_municipio)?.nombre ?? e.direccion_municipio)))].sort()
                           : uniqueVals(col.key as keyof Empresa)
                       }
                       active={colFilters[col.key] ?? new Set()}
@@ -1004,7 +1007,7 @@ export function EmpresasClient({
                         case 'direccion':
                           return <TableCell key="direccion" className="text-muted-foreground">{empresa.direccion || '—'}</TableCell>
                         case 'direccion_pais': {
-                          const p = paises.find((x) => x.codigo === empresa.direccion_pais)
+                          const pais = nombreDeLista(empresa.pais_nombre, paises.find((x) => x.codigo === empresa.direccion_pais)?.nombre ?? empresa.direccion_pais)
                           return (
                             <TableCell key="direccion_pais" className="text-muted-foreground">
                               {empresa.direccion_pais ? (
@@ -1016,20 +1019,16 @@ export function EmpresasClient({
                                     height={14}
                                     className="object-cover rounded-sm shrink-0"
                                   />
-                                  {p?.nombre ?? empresa.direccion_pais}
+                                  {pais}
                                 </span>
                               ) : '—'}
                             </TableCell>
                           )
                         }
-                        case 'direccion_departamento': {
-                          const d = departamentos.find((x) => x.pais === empresa.direccion_pais && x.codigo === empresa.direccion_departamento)
-                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{(d?.nombre ?? empresa.direccion_departamento) || '—'}</TableCell>
-                        }
-                        case 'direccion_municipio': {
-                          const m = municipios.find((x) => x.pais === empresa.direccion_pais && x.departamento === empresa.direccion_departamento && x.codigo === empresa.direccion_municipio)
-                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{(m?.nombre ?? empresa.direccion_municipio) || '—'}</TableCell>
-                        }
+                        case 'direccion_departamento':
+                          return <TableCell key="direccion_departamento" className="text-muted-foreground">{nombreDeLista(empresa.departamento_nombre, departamentos.find((x) => x.pais === empresa.direccion_pais && x.codigo === empresa.direccion_departamento)?.nombre ?? empresa.direccion_departamento) || '—'}</TableCell>
+                        case 'direccion_municipio':
+                          return <TableCell key="direccion_municipio" className="text-muted-foreground">{nombreDeLista(empresa.municipio_nombre, municipios.find((x) => x.pais === empresa.direccion_pais && x.departamento === empresa.direccion_departamento && x.codigo === empresa.direccion_municipio)?.nombre ?? empresa.direccion_municipio) || '—'}</TableCell>
                         case 'codigo_postal':
                           return <TableCell key="codigo_postal" className="text-muted-foreground">{empresa.codigo_postal || '—'}</TableCell>
                         case '__regimen':
