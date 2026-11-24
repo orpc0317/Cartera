@@ -49,7 +49,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { CountrySelect } from '@/components/ui/country-select'
-import { PhoneField, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
+import { PhoneField, Flag, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
 import { createCliente, updateCliente, deleteCliente,
   obtenerCliente,
 } from '@/app/actions/clientes'
@@ -799,7 +799,7 @@ export function ClientesClient({
                           const { iso, local } = splitPhone(viewTarget.telefono1)
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              {iso && <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {iso && <Flag iso={iso} />}
                               {iso && DIAL_CODES[iso] ? `+${DIAL_CODES[iso]} ${local}` : viewTarget.telefono1}
                             </span>
                           )
@@ -814,7 +814,7 @@ export function ClientesClient({
                           const { iso, local } = splitPhone(viewTarget.telefono2)
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              {iso && <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {iso && <Flag iso={iso} />}
                               {iso && DIAL_CODES[iso] ? `+${DIAL_CODES[iso]} ${local}` : viewTarget.telefono2}
                             </span>
                           )

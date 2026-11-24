@@ -33,6 +33,18 @@ export const PHONE_COUNTRIES: { iso: string; code: string; name: string }[] = [
 
 export const DIAL_CODES: Record<string, string> = Object.fromEntries(PHONE_COUNTRIES.map((c) => [c.iso, c.code]))
 
+export function Flag({ iso }: { iso: string }) {
+  const code = iso.trim().toLowerCase()
+  if (!/^[a-z]{2}$/.test(code)) return null
+  return (
+    <span
+      aria-hidden
+      className="inline-block h-[14px] w-5 shrink-0 rounded-sm bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url("/flags/${code}.png")` }}
+    />
+  )
+}
+
 export function splitPhone(value: string): { iso: string; local: string } {
   if (!value.startsWith('+')) return { iso: '', local: value }
   const sorted = PHONE_COUNTRIES.slice().sort((a, b) => b.code.length - a.code.length)
@@ -60,7 +72,7 @@ export function PhoneField({
           <SelectValue placeholder="País">
             {(v: string) => v && DIAL_CODES[v] ? (
               <span className="flex items-center gap-1">
-                <img src={`https://flagcdn.com/w20/${v.toLowerCase()}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                <Flag iso={v} />
                 <span>+{DIAL_CODES[v]}</span>
               </span>
             ) : <span className="text-muted-foreground text-xs">País</span>}
@@ -70,7 +82,7 @@ export function PhoneField({
           {PHONE_COUNTRIES.map((c) => (
             <SelectItem key={c.iso} value={c.iso}>
               <span className="flex items-center gap-2">
-                <img src={`https://flagcdn.com/w20/${c.iso.toLowerCase()}.png`} alt={c.iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                <Flag iso={c.iso} />
                 +{c.code} — {c.name}
               </span>
             </SelectItem>
