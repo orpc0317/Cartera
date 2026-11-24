@@ -20,6 +20,7 @@ import {
   Pencil, Eye, Plus, Users, Search,
   History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
   ChevronLeft, ChevronRight, Check,
+  IdCard, Receipt, User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -159,14 +160,41 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
+// Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
+// pestañas bg-muted/20 (antes de las cajas), cajas bg-transparent (antes de las pestañas),
+// icono entre la barra y el título, pie del modal en text-sm font-medium como la pestaña.
+const SEGMENTO_ICONO = {
+  IDENTIFICACION: IdCard,
+  GENERAL: User,
+  DIRECCION: MapPin,
+  FACTURACION: Receipt,
+} as const
+
+const CLASE_PESTANA_MODAL = [
+  'gap-1.5 rounded-md border-b-2 border-b-transparent px-3 py-1 text-sm font-medium',
+  'bg-muted/20 text-foreground/70 after:hidden',
+  'data-active:border-b-primary data-active:bg-muted/20 data-active:text-primary',
+  'group-data-[variant=line]/tabs-list:bg-muted/20',
+  'group-data-[variant=line]/tabs-list:data-active:bg-muted/20',
+  'dark:bg-muted/20 dark:data-active:bg-muted/20',
+  'dark:group-data-[variant=line]/tabs-list:bg-muted/20',
+  'dark:group-data-[variant=line]/tabs-list:data-active:bg-muted/20',
+].join(' ')
+
+const CLASE_PIE_MODAL = 'text-sm font-medium'
+
 function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
+  const Icono = SEGMENTO_ICONO[label as keyof typeof SEGMENTO_ICONO]
   return (
     <div className="col-span-2 grid gap-1.5">
       <div className="flex items-center gap-2">
         <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
+        <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>
+          {Icono ? <Icono className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+          {label}
+        </span>
       </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-transparent p-3">
         {children}
       </div>
     </div>
@@ -1404,13 +1432,13 @@ export function ClientesClient({
 
           {/* Tabs */}
           {esAlta ? (
-            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
+            <FormWizard steps={PASOS_GENERAL} value={activeTab} onValueChange={setActiveTab} maxIndice={wizard.maxIndice} pasoClassName="bg-muted/20" className="mt-0.5 flex flex-col flex-1 min-h-0" contenidoClassName="mt-0 flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
               {pasoGeneral()}
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -1425,26 +1453,26 @@ export function ClientesClient({
           <DialogFooter className="mt-4 shrink-0">
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} text-destructive hover:text-destructive`} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
@@ -1454,7 +1482,7 @@ export function ClientesClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando…"
-                className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`}
               />
             )}
           </DialogFooter>

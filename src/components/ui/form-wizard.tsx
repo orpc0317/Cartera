@@ -64,6 +64,7 @@ export function FormWizard({
   maxIndice,
   className,
   contenidoClassName,
+  pasoClassName,
   children,
 }: {
   steps: readonly WizardStep[]
@@ -72,6 +73,7 @@ export function FormWizard({
   maxIndice: number
   className?: string
   contenidoClassName?: string
+  pasoClassName?: string
   children: ReactNode
 }) {
   return (
@@ -99,6 +101,7 @@ export function FormWizard({
                     actual && 'bg-primary/10 font-medium text-primary',
                     !actual && !futuro && 'text-foreground hover:bg-muted',
                     futuro && 'cursor-not-allowed text-muted-foreground/50',
+                    pasoClassName,
                   )}
                 >
                   <span
