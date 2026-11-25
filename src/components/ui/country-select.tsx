@@ -3,19 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FOCO_LINEA } from '@/lib/modal-look'
+import { Flag } from '@/components/ui/phone-field'
 import type { Pais } from '@/app/actions/geo'
-
-function FlagImg({ code }: { code: string }) {
-  return (
-    <img
-      src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`}
-      alt={code}
-      width={20}
-      height={14}
-      className="object-cover rounded-sm shrink-0"
-    />
-  )
-}
 
 interface CountrySelectProps {
   paises: Pais[]
@@ -63,14 +53,14 @@ export function CountrySelect({
         className={cn(
           'flex h-8 w-full items-center justify-between gap-1.5 px-2.5 outline-none',
           variant === 'underline'
-            ? 'rounded-t-sm border-0 border-b border-input bg-muted/30 focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 data-invalid:border-b-2 data-invalid:border-destructive'
+            ? `rounded-t-sm border-0 border-b border-input bg-muted/30 focus:bg-muted/40 focus-visible:bg-muted/40 ${FOCO_LINEA}`
             : variant === 'l-border'
-            ? 'rounded-none border-0 border-b border-primary/50 bg-transparent focus-visible:border-b-2 focus-visible:border-primary data-invalid:border-b-2 data-invalid:border-destructive'
-            : 'rounded-none border border-input bg-transparent focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-invalid:border-destructive',
+            ? `rounded-none border-0 border-b border-primary/50 bg-transparent ${FOCO_LINEA}`
+            : 'rounded-none border border-input bg-transparent focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-invalid:border-destructive focus:data-invalid:border-destructive',
         )}
       >
         {selected ? (
-          <span className="flex items-center gap-2"><FlagImg code={selected.codigo} /> {selected.nombre}</span>
+          <span className="flex items-center gap-2"><Flag iso={selected.codigo} /> {selected.nombre}</span>
         ) : (
           <span className="text-muted-foreground">{placeholder}</span>
         )}
@@ -102,7 +92,7 @@ export function CountrySelect({
                 setOpen(false)
               }}
             >
-              <span className="flex items-center gap-2"><FlagImg code={p.codigo} /> {p.nombre}</span>
+              <span className="flex items-center gap-2"><Flag iso={p.codigo} /> {p.nombre}</span>
             </div>
           ))}
         </div>

@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreDeLista, nombreLeido, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -47,6 +47,7 @@ import { createTasaCambio, deleteTasaCambio,
 import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/tasas-cambio'
 import type { Empresa, Proyecto, ProyectoMoneda } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 
 // ── Moneda flag map ─────────────────────────────────────────────────────────
 const CURRENCY_FLAG_MAP = new Map<string, string>([
@@ -760,26 +761,15 @@ export default function TasasCambioClient({
         setDialogOpen(open)
         if (!open) { setIsEditing(false); setViewTarget(null) }
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing ? 'Nueva Tasa de Cambio' : 'Historial de Tasas'}
+                  Tasas de Cambio
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} · {proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''} · {viewTarget.moneda}
-                    {(() => {
-                      const flag = CURRENCY_FLAG_MAP.get(viewTarget.moneda)
-                      return flag ? (
-                        <img src={`https://flagcdn.com/w20/${flag}.png`} alt={viewTarget.moneda} width={16} height={11} className="inline ml-1 object-cover rounded-sm align-middle" />
-                      ) : null
-                    })()}
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -841,14 +831,14 @@ export default function TasasCambioClient({
           </div>
 
           {/* ── Footer ── */}
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
                 {puedeAgregar && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                    className={CLASE_BOTON_MODAL}
                     onClick={() => openCreate({ empresa: viewTarget.empresa, proyecto: viewTarget.proyecto, moneda: viewTarget.moneda })}
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva Tasa
@@ -857,10 +847,10 @@ export default function TasasCambioClient({
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelCreate} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelCreate} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Volver
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
@@ -870,7 +860,7 @@ export default function TasasCambioClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando..."
-                className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>

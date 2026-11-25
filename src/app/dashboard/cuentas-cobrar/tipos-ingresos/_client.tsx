@@ -54,6 +54,9 @@ import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 import type { Empresa, Proyecto, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { ViewField, LockedField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -113,41 +116,6 @@ function ColumnFilter({ label, values, active, onChange }: {
     </Popover>
   )
 }
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // ─── Column definitions ────────────────────────────────────────────────────
 
 type ColDef  = { key: string; label: string; defaultVisible: boolean }
@@ -802,7 +770,7 @@ export function TiposIngresosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                     {viewTarget ? (
-                      <ViewField locked label="" value={empresaMap.get(form.empresa)} />
+                      <LockedField value={empresaMap.get(form.empresa)} />
                     ) : (
                       <Select value={String(form.empresa)} onValueChange={(v) => handleEmpresaChange(Number(v))}>
                         <SelectTrigger variant="l-border" id="empresa" className="w-full"><SelectValue>{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
@@ -817,7 +785,7 @@ export function TiposIngresosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                     {viewTarget ? (
-                      <ViewField locked label="" value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
+                      <LockedField value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
                       <Select value={String(form.proyecto)} onValueChange={(v) => handleProyectoChange(Number(v))}>
                         <SelectTrigger variant="l-border" id="proyecto" className="w-full"><SelectValue>{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
@@ -831,7 +799,7 @@ export function TiposIngresosClient({
                   {/* Codigo (solo edicion) */}
                   {viewTarget && (
                     <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
+                      <LockedField label="Codigo" value={String(viewTarget.codigo)} />
                       <div /><div />
                     </div>
                   )}
@@ -1216,7 +1184,7 @@ export function TiposIngresosClient({
         setDialogOpen(open)
         if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-yellow-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${
@@ -1232,14 +1200,8 @@ export function TiposIngresosClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Tipo Ingreso' : isEditing ? 'Editar Tipo Ingreso' : viewTarget?.nombre}
+                  Tipos Ingresos
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -1250,8 +1212,8 @@ export function TiposIngresosClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -1261,29 +1223,29 @@ export function TiposIngresosClient({
           </Tabs>
           )}
 
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
@@ -1293,7 +1255,7 @@ export function TiposIngresosClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando..."
-                className="hover:bg-yellow-50 dark:hover:bg-yellow-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -1311,7 +1273,7 @@ export function TiposIngresosClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDeleteConfirm} className={CLASE_BOTON_CONFIRMAR}>
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

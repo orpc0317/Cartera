@@ -48,6 +48,8 @@ import type { ReciboCaja, ReciboCajaDetalleExtra, PagosFiltros } from '@/lib/typ
 import type {
   Empresa, Proyecto, Cliente, Cobrador, Banco, CuentaBancaria, SerieRecibo,
 } from '@/lib/types/proyectos'
+import { ViewField } from '@/components/ui/view-field'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 
 // ─── Catálogos hardcoded ────────────────────────────────────────────────────
 
@@ -112,18 +114,6 @@ function formatCsvCell(value: unknown): string {
 }
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -1058,7 +1048,7 @@ export function PagosClient({
         setDialogOpen(open)
         if (!open) { setViewTarget(null); setExtra(null) }
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
           {viewTarget && (
             <>
               <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-stone-50/70 to-transparent border-b border-border/50 shrink-0">
@@ -1068,22 +1058,19 @@ export function PagosClient({
                   </div>
                   <div className="flex-1 min-w-0">
                     <DialogTitle className="text-base font-semibold leading-tight truncate">
-                      Recibo {viewTarget.serie}-{viewTarget.numero}
-                    </DialogTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {[empresaNombre(viewTarget), proyectoNombre(viewTarget)].filter(Boolean).join(' · ')}
-                    </p>
+                  Mantenimiento Pagos
+                </DialogTitle>
                   </div>
                 </div>
               </DialogHeader>
 
               <Tabs defaultValue="info" className="mt-0.5 flex flex-col flex-1 min-h-0">
-                <div className="shrink-0 w-full">
-                  <TabsList variant="line" className="">
-                    <TabsTrigger value="info" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+                <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}>
+                  <TabsList variant="line" className="bg-transparent">
+                    <TabsTrigger value="info" className={CLASE_PESTANA_MODAL}>
                       <Info className="h-3.5 w-3.5" /> Informacion
                     </TabsTrigger>
-                    <TabsTrigger value="detalle" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+                    <TabsTrigger value="detalle" className={CLASE_PESTANA_MODAL}>
                       <ListOrdered className="h-3.5 w-3.5" /> Detalle
                     </TabsTrigger>
                   </TabsList>
@@ -1229,9 +1216,9 @@ export function PagosClient({
                 </TabsContent>
               </Tabs>
 
-              <DialogFooter className="mt-4 shrink-0">
+              <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
                 <div className="flex w-full items-center gap-1">
-                  <Button variant="ghost" size="sm" className="hover:bg-stone-50 dark:hover:bg-stone-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                     <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                   </Button>
                 </div>

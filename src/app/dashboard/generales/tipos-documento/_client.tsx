@@ -54,6 +54,9 @@ import type { Empresa, Proyecto } from '@/lib/types/proyectos'
 import type { TipoDocumento, TipoDocumentoForm } from '@/lib/types/tipos-documento'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { ViewField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // --- Column types -----------------------------------------------------------
 
@@ -111,41 +114,6 @@ function exportCsv(rows: TipoDocumento[], colPrefs: ColPref[]) {
 }
 
 // --- Subcomponents -----------------------------------------------------------
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 function ColumnFilter({
   label, values, active, onChange,
 }: { label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void }) {
@@ -521,16 +489,6 @@ export function TiposDocumentoClient({
       ? <Plus className="h-4 w-4 text-slate-600" />
       : <IdCard className="h-4 w-4 text-slate-600" />
 
-  const dialogTitle = isEditing && !viewTarget
-    ? 'Nuevo Tipo Documento'
-    : isEditing
-      ? 'Editar Tipo Documento'
-      : (viewTarget?.descripcion ?? '')
-
-  const dialogSubtitle = viewTarget
-    ? `${nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')} / ${proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? ''}`
-    : undefined
-
   function pasoGeneral() {
     return (
     <>
@@ -803,21 +761,15 @@ export function TiposDocumentoClient({
           if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
         }}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-slate-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {dialogTitle}
+                  Tipos Documento
                 </DialogTitle>
-                {viewTarget && dialogSubtitle && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {dialogSubtitle}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -828,8 +780,8 @@ export function TiposDocumentoClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -840,29 +792,29 @@ export function TiposDocumentoClient({
           </Tabs>
           )}
 
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-slate-50 dark:hover:bg-slate-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-slate-50 dark:hover:bg-slate-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-slate-50 dark:hover:bg-slate-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-slate-50 dark:hover:bg-slate-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
@@ -872,7 +824,7 @@ export function TiposDocumentoClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando…"
-                className="hover:bg-slate-50 dark:hover:bg-slate-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -919,7 +871,7 @@ export function TiposDocumentoClient({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={CLASE_BOTON_CONFIRMAR}
               onClick={handleDelete}
               disabled={isPending}
             >

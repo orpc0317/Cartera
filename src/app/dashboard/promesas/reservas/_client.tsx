@@ -50,6 +50,8 @@ import { createReserva, getReservas, type ReservaRow,
 } from '@/app/actions/lotes'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { ViewField, LockedField } from '@/components/ui/view-field'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
 
@@ -190,18 +192,6 @@ const fmt = (n: number) =>
   n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -1343,7 +1333,7 @@ export function ReservasClient({
 
                   {form.moneda && form.moneda !== monedaBase && (
                     <div className="col-span-2">
-                      <ViewField locked
+                      <LockedField
                         label={`Tasa de Cambio (${form.moneda} > ${monedaBase})`}
                         value={tasaCambio ? tasaCambio.toFixed(4) : undefined}
                       />
@@ -2000,7 +1990,7 @@ export function ReservasClient({
         setDialogOpen(open)
         if (!open) { setIsEditing(false) }
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-teal-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
@@ -2009,13 +1999,8 @@ export function ReservasClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing ? 'Nueva Reserva' : 'Detalle de Reserva'}
+                  Reservas
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`))} — Lote {viewTarget.lote}
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -2026,8 +2011,8 @@ export function ReservasClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -2039,11 +2024,11 @@ export function ReservasClient({
           </Tabs>
           )}
 
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing ? (
               <div className="flex w-full items-center gap-1">
                 {viewTarget && (
-                  <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                     <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                   </Button>
                 )}
@@ -2054,9 +2039,9 @@ export function ReservasClient({
                 onSave={() => void handleSave()}
                 pending={isSaving}
                 pendingLabel="Guardando…"
-                className="hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                className={CLASE_BOTON_MODAL}
                 leading={(
-                  <Button variant="ghost" size="sm" className="hover:bg-teal-50 dark:hover:bg-teal-950/30" onClick={cancelEdit} disabled={isSaving}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isSaving}>
                     <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                   </Button>
                 )}

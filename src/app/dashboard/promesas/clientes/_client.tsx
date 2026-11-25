@@ -49,7 +49,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { CountrySelect } from '@/components/ui/country-select'
-import { PhoneField, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
+import { PhoneField, Flag, DIAL_CODES, splitPhone } from '@/components/ui/phone-field'
 import { createCliente, updateCliente, deleteCliente,
   obtenerCliente,
 } from '@/app/actions/clientes'
@@ -58,6 +58,9 @@ import type { Empresa, Proyecto, Cliente, ClienteForm } from '@/lib/types/proyec
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { ViewField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
 
@@ -139,41 +142,6 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
 }
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 function ColumnFilter({
   label, values, active, onChange,
 }: { label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void }) {
@@ -750,12 +718,12 @@ export function ClientesClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
+                      <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
+                      <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
                     </div>
-                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
+                    <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                     <div className="col-span-2">
@@ -769,7 +737,7 @@ export function ClientesClient({
                           const { iso, local } = splitPhone(viewTarget.telefono1)
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              {iso && <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {iso && <Flag iso={iso} />}
                               {iso && DIAL_CODES[iso] ? `+${DIAL_CODES[iso]} ${local}` : viewTarget.telefono1}
                             </span>
                           )
@@ -784,7 +752,7 @@ export function ClientesClient({
                           const { iso, local } = splitPhone(viewTarget.telefono2)
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              {iso && <img src={`https://flagcdn.com/w20/${iso.toLowerCase()}.png`} alt={iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {iso && <Flag iso={iso} />}
                               {iso && DIAL_CODES[iso] ? `+${DIAL_CODES[iso]} ${local}` : viewTarget.telefono2}
                             </span>
                           )
@@ -806,29 +774,32 @@ export function ClientesClient({
                     <div className="col-span-2">
                       <ViewField label="Direccion" value={viewTarget.direccion} />
                     </div>
-                    {/* Pais con bandera */}
-                    <div className="grid gap-1">
+                    <div className="col-span-2 grid gap-1">
                       <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
                       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                         {viewTarget.direccion_pais ? (() => {
                           const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {p && <Flag iso={p.codigo} />}
                               {nombreLeido(viewTarget.pais_nombre, p?.nombre ?? viewTarget.direccion_pais)}
                             </span>
                           )
-                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>—</span>}
+                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}></span>}
                       </div>
                     </div>
+                    <div className="col-span-2">
                     <ViewField
                       label="Departamento"
                       value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)}
                     />
+                    </div>
+                    <div className="col-span-2">
                     <ViewField
                       label="Municipio"
                       value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)}
                     />
+                    </div>
                     <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
                     </SegmentCard>
                     <SegmentCard label="FACTURACION">
@@ -908,7 +879,7 @@ export function ClientesClient({
                     <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
                     <Input variant="l-border" id="direccion" aria-invalid={campoInvalido?.id === 'direccion' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
                   </div>
-                  <div className="grid gap-1">
+                  <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
                     <CountrySelect
                       paises={paises}
@@ -929,7 +900,7 @@ export function ClientesClient({
                       }}
                     />
                   </div>
-                  <div className="grid gap-1">
+                  <div className="col-span-2 grid gap-1">
                     <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <RequiredMark /></Label>
                     <select
                       id="depto"
@@ -944,7 +915,7 @@ export function ClientesClient({
                         setDeptoCodigo(v)
                         setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: mCode }))
                       }}
-                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-b-2 aria-invalid:border-destructive"
+                      className={CLASE_SELECT_LINEA}
                       style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
                     >
                       <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
@@ -953,7 +924,7 @@ export function ClientesClient({
                       ))}
                     </select>
                   </div>
-                  <div className="grid gap-1">
+                  <div className="col-span-2 grid gap-1">
                     <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <RequiredMark /></Label>
                     <select
                       id="municipio"
@@ -962,7 +933,7 @@ export function ClientesClient({
                       value={form.direccion_municipio}
                       disabled={!deptoCodigo}
                       onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, direccion_municipio: e.target.value })) }}
-                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-b-2 aria-invalid:border-destructive"
+                      className={CLASE_SELECT_LINEA}
                       style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
                     >
                       <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
@@ -1377,7 +1348,7 @@ export function ClientesClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
           {/* Header */}
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-indigo-50/70 to-transparent border-b border-border/50 shrink-0">
@@ -1391,14 +1362,8 @@ export function ClientesClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Cliente' : isEditing ? 'Editar Cliente' : viewTarget?.nombre}
+                  Clientes
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -1410,8 +1375,8 @@ export function ClientesClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -1423,29 +1388,29 @@ export function ClientesClient({
           )}
 
           {/* Footer */}
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
@@ -1455,7 +1420,7 @@ export function ClientesClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando…"
-                className="hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -1501,7 +1466,7 @@ export function ClientesClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className={CLASE_BOTON_CONFIRMAR}>
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

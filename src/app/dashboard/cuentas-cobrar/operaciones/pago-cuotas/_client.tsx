@@ -28,6 +28,7 @@ import type { TasaCambio } from '@/lib/types/tasas-cambio'
 import type { PromesaBusqueda, PlanPagoPendiente } from '@/lib/types/pago-cuotas'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
+import { ViewField } from '@/components/ui/view-field'
 
 const PASOS_PAGO: readonly WizardStep[] = [
   { id: 'promesa', label: 'Identificar Promesa', icon: Search },
@@ -64,18 +65,6 @@ function fmtDate(d: string): string {
 }
 
 // ─── Primitivos de UI ─────────────────────────────────────────────────────
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value ?? ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">

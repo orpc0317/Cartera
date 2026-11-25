@@ -38,10 +38,7 @@ const icon = !isEditing
     ? <Plus   className={`h-4 w-4 ${iconBadgeClr}`} />              // creating
     : <Pencil className={`h-4 w-4 ${iconBadgeClr}`} />              // editing
 
-// Subtitle shown below entity name in modal header — pick ONE pattern based on the entity's FK depth:
-const subtitle = viewTarget ? (empresaMap.get(viewTarget.empresa) ?? '') : ''                   // entity belongs to empresa (not proyecto)
-// const subtitle = viewTarget ? [empresaMap.get(viewTarget.empresa), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' · ') : ''  // entity belongs to proyecto (e.g. cliente, vendedor, lote)
-// const subtitle = ''  // entity belongs only to cuenta, with no empresa/proyecto FK
+// El título del modal es el nombre del menú. No hay subtítulo de proyecto ni código.
 ```
 
 ---
@@ -264,29 +261,23 @@ ver § R. Pantalla de referencia: `promesas/promesas/_client.tsx`.
   setDialogOpen(open)
   if (!open) { setIsEditing(false); if (hadConflict) { setHadConflict(false); router.refresh() } }
 }}>
-  <DialogContent className="flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden">
+  <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[36rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
     <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-<accent>-50/70 to-transparent border-b border-border/50 shrink-0">
       <div className="flex items-center gap-3 pr-8">
         <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
         <div className="flex-1 min-w-0">
           <DialogTitle className="text-base font-semibold leading-tight truncate">
-            {isEditing && !viewTarget ? 'Nueva <Entidad>' : isEditing ? 'Editar <Entidad>' : viewTarget?.nombre}
+            <Nombre del menú>
           </DialogTitle>
-          {viewTarget && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              {subtitle}
-              <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-            </p>
-          )}
         </div>
       </div>
     </DialogHeader>
 
     <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 w-full">
-        <TabsList variant="line" className="">
-          <TabsTrigger value="general" className="gap-1.5 rounded-t-sm rounded-b-none border border-b-0 border-primary/50 bg-background px-3 after:hidden data-active:border-primary data-active:bg-background">
+      <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}>
+        <TabsList variant="line" className="bg-transparent">
+          <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
             <MapPin className="h-3.5 w-3.5" /> General
           </TabsTrigger>
         </TabsList>
@@ -314,23 +305,23 @@ ver § R. Pantalla de referencia: `promesas/promesas/_client.tsx`.
         Historial + Eliminar (+ acciones extra de la entidad, ej. Plan Pagos/Anular) y Editar
         quedan agrupados en una sola fila con variant="ghost", en el mismo orden mostrado abajo.
         El footer tiene TRES ramas: Ver / Editar (existente) / Nuevo (crear) — ver § siguiente. */}
-    <DialogFooter className="mt-4 shrink-0">
+    <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
       {!isEditing && viewTarget ? (
         /* ── Ver ── */
         <div className="flex w-full items-center gap-1">
-          <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={() => setAuditTarget(viewTarget)}>
+          <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
             <History className="mr-1.5 h-3.5 w-3.5" /> Historial
           </Button>
           {/* acciones extra de la entidad (ej. Plan Pagos, Anular) van aquí, mismo variant="ghost" +
               mismo hover de acento si es una acción neutra; las de advertencia/peligro (Anular,
               Desistir) conservan su propio color de texto y NO llevan el hover de acento */}
           {puedeEliminar && (
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+            <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
               <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
             </Button>
           )}
           {puedeModificar && (
-            <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+            <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
               <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
             </Button>
           )}
@@ -338,14 +329,14 @@ ver § R. Pantalla de referencia: `promesas/promesas/_client.tsx`.
       ) : viewTarget ? (
         /* ── Editar (registro existente) — Cancelar + Guardar, sin cambios ── */
         <div className="flex w-full justify-end gap-2">
-          <Button variant="outline" onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
+          <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>Cancelar</Button>
+          <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>{isPending ? 'Guardando...' : 'Guardar'}</Button>
         </div>
       ) : (
         /* ── Nuevo (crear) — Estándar 2026-08: sin "Cancelar" (la "x" del header ya cierra),
             Guardar como ghost button alineado a la derecha, mismo estilo que el footer Ver. */
         <div className="flex w-full justify-end">
-          <Button variant="ghost" size="sm" className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30" onClick={handleSave} disabled={isPending}>
+          <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
             <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
           </Button>
         </div>
@@ -355,28 +346,18 @@ ver § R. Pantalla de referencia: `promesas/promesas/_client.tsx`.
 </Dialog>
 ```
 
+> Las clases salen de `@/lib/modal-look`: `FONDO_MODAL`, `FRANJA_BLANCA`, `CLASE_PESTANA_MODAL`, `CLASE_BOTON_MODAL`, `CLASE_BOTON_PELIGRO`, `CLASE_BOTON_CONFIRMAR`.
+>
+> El título del diálogo es el nombre del menú. No hay subtítulo de proyecto ni código. El icono del encabezado y el degradado de acento se conservan.
+>
 > **Orden fijo de botones en el footer (modo vista):** Historial → acciones extra de la entidad (si
-> las hay) → Eliminar → Editar. Todos `variant="ghost" size="sm"`, salvo Eliminar que además lleva
-> `className="text-destructive hover:text-destructive"`.
+> las hay) → Eliminar → Editar. Todos `variant="ghost" size="sm"` con `CLASE_BOTON_MODAL`.
+> Eliminar y Desactivar del pie usan `CLASE_BOTON_PELIGRO`: gris rojizo y, al pasar, rojo, sin fondo.
+> El confirmar de la baja es el botón rojo relleno, `CLASE_BOTON_CONFIRMAR`.
 >
-> **Hover difuso con color de acento (2026-08):** el hover gris por defecto de `variant="ghost"`
-> (`hover:bg-muted`) se reemplaza en TODOS los botones ghost **neutros** del footer (Historial,
-> Editar, Guardar de Nuevo, y cualquier acción extra no destructiva como Plan Pagos) por
-> `className="hover:bg-{accent}-50 dark:hover:bg-{accent}-950/30"`, usando el `{accent}` de la
-> tabla maestra de colores (mismo tono `-50`/`dark:-950/30` que ya se usa para la fila activa de
-> la tabla — ver `.cursor/rules/ui-conventions.mdc`). Es un tinte difuso, no un color "bold": no se
-> toca el color del texto ni del ícono. Los botones con semántica de advertencia/peligro (Eliminar,
-> Anular, Desistir Reserva) **NO** llevan este hover de acento — conservan el hover gris por
-> defecto detrás de su propio `text-destructive` / `text-amber-700`, sin cambios.
->
-> **Footer modo Nuevo (crear) vs Editar (existente):** aunque ambos comparten el mismo `isEditing`
-> interno, el footer los distingue por `viewTarget` (`null` = Nuevo, con valor = Editar existente).
-> En **Editar** el footer se queda igual que siempre: `Cancelar` (`variant="outline"`) + `Guardar`
-> (botón sólido). En **Nuevo** NO lleva botón Cancelar (la "x" del header ya cierra el modal) y
-> `Guardar` se estiliza igual que los botones del footer Ver (`variant="ghost" size="sm"`, icono
-> `Check` a la izquierda), alineado a la derecha con `justify-end` (sin `gap` extra al ser un solo
-> botón). Si la pantalla no tiene modo Editar (solo Crear/Ver, ej. Manzanas), la rama `isCreating`
-> completa usa este mismo patrón de Nuevo.
+> **Footer modo Nuevo (crear) vs Editar (existente):** ambos usan `CLASE_BOTON_MODAL`.
+> En **Editar** van Cancelar y Guardar. En **Nuevo** no hay Cancelar (la "x" del header cierra)
+> y Guardar queda a la derecha, con el icono `Check`. Si la pantalla no tiene modo Editar, la rama de alta usa ese mismo patrón.
 
 
 
@@ -467,7 +448,7 @@ Usar cuando el modal tiene **3 o más secciones**, o **12+ campos** en total, y 
 ### DialogContent
 
 ```tsx
-<DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+<DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 ```
 
 ### Contenedor de 2 columnas

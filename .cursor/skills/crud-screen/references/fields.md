@@ -164,58 +164,24 @@ Same rule applies to `col-span-2 grid grid-cols-3 gap-4 items-end` for third-wid
 ---
 
 
-## N · ViewField + SectionDivider
+## N · ViewField + SegmentCard
 
-Definir **dentro de cada `_client.tsx`** (no son componentes compartidos).
+Se importan. No se vuelven a definir en el `_client.tsx`.
+
+```tsx
+import { ViewField, LockedField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+```
+
+`ViewField` pinta el dato en negro. Es el dato de Ver. En Editar, lo que no se puede cambiar es un control deshabilitado o `LockedField`; el gris `#b4bec9` sale de `globals.css`.
+
+`SegmentCard` pinta la caja en blanco (`bg-popover`), con borde fino, y pone un icono Lucide del mismo verde entre la barra y el título. El icono sale del nombre del segmento o de la prop `icon`.
 
 > **Fuente única de tamaños** — los `style={{ fontSize: 'var(--ui-xxx)' }}` referencian variables CSS definidas en `src/app/globals.css :root`:
 > `--ui-viewfield-label: 10px` · `--ui-viewfield-value: 11px` · `--ui-section-divider: 11px` · `--ui-form-label: 10px` · `--ui-input: 11px`.
 > Para cambiar todos los tamaños a la vez, editar solo ese bloque en `globals.css`.
 
-```tsx
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-```
-
-> **Estándar 2026-08 — `SegmentCard` reemplaza el uso suelto de `SectionDivider`.** Todo segmento
-> (bloque de campos bajo un título) en modo Ver, Editar **y** Crear debe envolverse en `<SegmentCard
-> label="...">...</SegmentCard>` en vez de `<SectionDivider label="..." />` + hermanos sueltos. El título
-> queda **arriba** de la caja (no dentro) — mismo look de `SectionDivider` (barra + texto uppercase),
-> solo que ahora el contenido del segmento queda visualmente agrupado en una caja con borde sutil.
-> `SectionDivider` se mantiene definido únicamente por compatibilidad de pantallas aún no migradas —
-> no usarlo directamente en pantallas nuevas ni en migraciones. Pantalla de referencia:
-> `promesas/promesas/_client.tsx`.
+Todo segmento (bloque de campos bajo un título) en Ver, Editar y Crear va en `<SegmentCard label="...">`. El título queda arriba de la caja. `SectionDivider` no se usa en pantallas nuevas. Referencia: `promesas/clientes/_client.tsx`.
 
 ### Reglas ViewField
 

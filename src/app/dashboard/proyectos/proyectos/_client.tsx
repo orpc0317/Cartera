@@ -52,8 +52,12 @@ import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import type { Empresa, Proyecto, ProyectoForm, Fase, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { CountrySelect } from '@/components/ui/country-select'
+import { Flag } from '@/components/ui/phone-field'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
+import { ViewField, LockedField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -115,32 +119,6 @@ function ColumnFilter({
     </Popover>
   )
 }
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // ─── Monedas ─────────────────────────────────────────────────────────────
 const CURRENCY_FLAG_MAP = new Map<string, string>([
   ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
@@ -217,7 +195,7 @@ function PhoneField({
           <SelectValue placeholder="Pais">
             {(v: string) => v && DIAL_CODES[v] ? (
               <span className="flex items-center gap-1">
-                <img src={`https://flagcdn.com/w20/${v.toLowerCase()}.png`} alt={v} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                <Flag iso={v} />
                 <span>+{DIAL_CODES[v]}</span>
               </span>
             ) : <span className="text-muted-foreground text-xs">Pais</span>}
@@ -227,7 +205,7 @@ function PhoneField({
           {PHONE_COUNTRIES.map((c) => (
             <SelectItem key={c.iso} value={c.iso}>
               <span className="flex items-center gap-2">
-                <img src={`https://flagcdn.com/w20/${c.iso.toLowerCase()}.png`} alt={c.iso} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                <Flag iso={c.iso} />
                 +{c.code} — {c.name}
               </span>
             </SelectItem>
@@ -1028,21 +1006,21 @@ export function ProyectosClient({
                     {(() => {
                       const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                       return (
-                        <div className="grid gap-1">
+                        <div className="col-span-2 grid gap-1">
                           <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
                           <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                             {p ? (
                               <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                                <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                                <Flag iso={p.codigo} />
                                 {nombreLeido(viewTarget.pais_nombre, p.nombre)}
                               </span>
-                            ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.direccion_pais ?? '—'}</span>}
+                            ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.direccion_pais ?? ''}</span>}
                           </div>
                         </div>
                       )
                     })()}
-                    <ViewField label="Departamento" value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)} />
-                    <ViewField label="Municipio" value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)} />
+                    <div className="col-span-2"><ViewField label="Departamento" value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)} /></div>
+                    <div className="col-span-2"><ViewField label="Municipio" value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)} /></div>
                     <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
                     <div className="col-span-2"><ViewField label="Telefono 1" value={viewTarget.telefono1} /></div>
                     <div className="col-span-2"><ViewField label="Telefono 2" value={viewTarget.telefono2} /></div>
@@ -1124,7 +1102,7 @@ export function ProyectosClient({
                       </Select>
                     </div>
                     {viewTarget && (
-                      <div className="col-span-1"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
+                      <div className="col-span-1"><LockedField label="Codigo" value={String(viewTarget.codigo)} /></div>
                     )}
                     </SegmentCard>
                     <SegmentCard label="General">
@@ -1136,7 +1114,7 @@ export function ProyectosClient({
                       <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
                       <Input variant="l-border" id="direccion_p" aria-invalid={campoInvalido?.id === 'direccion_p' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
                     </div>
-                    <div className="grid gap-1">
+                    <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
                       <CountrySelect paises={paises} value={paisCodigo} variant="l-border" id="direccion_pais" invalid={campoInvalido?.id === 'direccion_pais'}
                         onChange={(codigo, _nombre) => {
@@ -1148,24 +1126,24 @@ export function ProyectosClient({
                         }}
                       />
                     </div>
-                    <div className="grid gap-1">
+                    <div className="col-span-2 grid gap-1">
                       <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <RequiredMark /></Label>
                       <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo} aria-invalid={campoInvalido?.id === 'departamento_p' || undefined}
                         onChange={(e) => { setCampoInvalido(null); const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
-                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
+                        className={CLASE_SELECT_LINEA}
                         style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                         {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
                       </select>
                     </div>
-                    <div className="grid gap-1">
+                    <div className="col-span-2 grid gap-1">
                       <Label htmlFor="municipio_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <RequiredMark /></Label>
                       <select id="municipio_p" title="Municipio"
                         aria-invalid={campoInvalido?.id === 'municipio_p' || undefined}
                         value={form.direccion_municipio}
                         disabled={!deptoCodigo}
                         onChange={(e) => { setCampoInvalido(null); const v = e.target.value; setForm((prev) => ({ ...prev, direccion_municipio: v })) }}
-                        className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
+                        className={CLASE_SELECT_LINEA}
                         style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}>
                         <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                         {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
@@ -1573,7 +1551,7 @@ export function ProyectosClient({
         }}
         modal={false}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-sky-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${
@@ -1587,14 +1565,8 @@ export function ProyectosClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Proyecto' : isEditing ? 'Editar Proyecto' : viewTarget?.nombre}
+                  Proyectos
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? '')}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -1605,13 +1577,13 @@ export function ProyectosClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" />
                 General
               </TabsTrigger>
               {viewTarget && (
-              <TabsTrigger value="monedas" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+              <TabsTrigger value="monedas" className={CLASE_PESTANA_MODAL}>
                 <Coins className="h-3.5 w-3.5" />
                 Monedas
               </TabsTrigger>
@@ -1778,29 +1750,29 @@ export function ProyectosClient({
           </Tabs>
           )}
 
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && !fases.some((f) => f.empresa === viewTarget.empresa && f.proyecto === viewTarget.codigo) && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-sky-50 dark:hover:bg-sky-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
@@ -1810,7 +1782,7 @@ export function ProyectosClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando…"
-                className="hover:bg-sky-50 dark:hover:bg-sky-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -1880,7 +1852,7 @@ export function ProyectosClient({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={CLASE_BOTON_CONFIRMAR}
             >
               Eliminar
             </AlertDialogAction>

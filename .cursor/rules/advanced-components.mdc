@@ -130,11 +130,9 @@ Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos t
 
 **IMPORTANTE — Cascada en los onChange:** cada nivel debe auto-seleccionar el primer elemento del nivel inferior. Los `onChange` no deben simplemente resetear a `''` — deben buscar el primer item disponible y pre-seleccionarlo.
 
-Clase estándar (l-border, igual que los inputs del modal):
-```
-w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive
-```
-Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}`.
+Clase estándar: `CLASE_SELECT_LINEA` de `@/lib/modal-look`. Altura y fuente: `style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}`.
+
+País, Departamento y Municipio van cada uno en `col-span-2`. El código postal queda en su línea, con el ancho de una columna. La bandera del país sale de `<Flag>` (`/flags/{iso}.png`), no de flagcdn.
 
 ```tsx
 {/* País — al cambiar, auto-selecciona primer depto y primer municipio */}
@@ -156,7 +154,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
       setDeptoCodigo(dCode)
       setForm((p) => ({ ...p, pais: codigo, departamento: dCode, municipio: mCode }))
     }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
+    className={CLASE_SELECT_LINEA}
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">Selecciona país</option>
@@ -179,7 +177,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
       setDeptoCodigo(v)
       setForm((p) => ({ ...p, departamento: v, municipio: mCode }))
     }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
+    className={CLASE_SELECT_LINEA}
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un país'}</option>
@@ -196,7 +194,7 @@ Estilo de altura y fuente via `style={{ height: 'var(--ui-field-height)', fontSi
     value={form.municipio}
     disabled={!deptoCodigo}
     onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, municipio: e.target.value })) }}
-    className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
+    className={CLASE_SELECT_LINEA}
     style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
   >
     <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>

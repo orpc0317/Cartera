@@ -15,6 +15,7 @@ import {
 import { getPlanPago } from '@/app/actions/plan-pago'
 import type { Promesa } from '@/lib/types/promesas'
 import type { PlanPagoCuota, PlanOtroCuota, PlanOtroColumna } from '@/lib/types/plan-pago'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -334,24 +335,21 @@ export function PlanPagoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex flex-col w-[95vw] sm:max-w-[80rem] h-[750px] max-h-[90vh] overflow-hidden">
+      <DialogContent className={`flex flex-col w-[95vw] sm:max-w-[80rem] h-[750px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
         <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-fuchsia-50/70 to-transparent border-b border-border/50 shrink-0">
           <div className="flex items-center gap-3 pr-8">
             <div className="shrink-0 rounded-xl p-2 bg-fuchsia-100 text-fuchsia-700"><Receipt className="h-5 w-5" /></div>
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-semibold leading-tight truncate">
-                Plan de Pagos &mdash; Promesa {promesa.numero}
-              </DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {[empresaNombre, proyectoNombre].filter(Boolean).join(' \u00b7 ')}
-              </p>
+                  Plan de Pagos
+                </DialogTitle>
             </div>
           </div>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-4 pt-2">
           {/* Resumen */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-muted/20 p-3 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-popover p-3 shrink-0">
             <InfoField label="Cliente"        value={clienteNombre ?? ''} />
             <InfoField label="Lote"           value={`${faseNombre ?? ''} Mnz. ${promesa.manzana} Lote ${promesa.lote}`.trim()} />
             <InfoField label="Fecha Promesa"  value={fmtDate(promesa.fecha)} />
@@ -408,11 +406,11 @@ export function PlanPagoDialog({
           )}
         </div>
 
-        <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
+        <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
           <div className="flex w-full items-center gap-1">
             <Button
               variant="ghost" size="sm"
-              className="hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
+              className={CLASE_BOTON_MODAL}
               disabled={loading || cuotas.length === 0}
               onClick={() => exportPlanPagoCsv(engancheRows, financiamientoRows, otrosColumnas, {
                 empresa: promesa.empresa,
@@ -431,7 +429,7 @@ export function PlanPagoDialog({
             </Button>
             <Button
               variant="ghost" size="sm"
-              className="hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
+              className={CLASE_BOTON_MODAL}
               disabled={loading || cuotas.length === 0 || pdfPending}
               onClick={() => { void handlePrintPdf() }}
             >

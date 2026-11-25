@@ -115,6 +115,10 @@ Estos estándares garantizan que labels y bordes de campo se vean consistentes e
 | `<Label>` de checkbox (con `htmlFor`) | `font-semibold tracking-wider text-muted-foreground cursor-pointer` | `fontSize: 'var(--ui-form-label)'` |
 | `ViewField` label span | `font-semibold tracking-wider leading-none text-muted-foreground` | `fontSize: 'var(--ui-viewfield-label)'` |
 
+El asterisco de un campo obligatorio es `<RequiredMark />` de `@/components/ui/required-mark`. Es rojo.
+
+Al entrar a un `Input`, `Select` o `CountrySelect` de línea, el borde inferior pasa a 2px y verde fuerte, también con el mouse. El chevron no recibe ese borde. Si el campo está inválido, el borde sigue rojo. Esa regla es la clase `foco-linea` de `globals.css`, aplicada con `FOCO_LINEA` o `FOCO_SELECT`, para que el verde fuerte quede por encima de `border-primary/50` y `tailwind-merge` conserve la clase. El `<select>` nativo de geo usa `CLASE_SELECT_LINEA`.
+
 **Wrapper de campo** — usar siempre `<div className="grid gap-1">`. **Nunca** `space-y-1.5`.
 
 **Asterisco de obligatorio.** Un campo requerido termina el `<Label>` con un espacio y `<RequiredMark />` importado de `@/components/ui/required-mark`. El asterisco es rojo (`text-destructive`). No se escribe ` *` como texto del label.
@@ -152,14 +156,14 @@ Numeric `codigo` fields (auto-increment PKs) are displayed as plain `N` **withou
 
 El color del valor dice si el campo se puede editar. El subrayado no cambia. No usar `disabled:opacity-50` en inputs ni selects de formulario.
 
-- Editable, tambien en Ver si al pasar a Editar se habilita: casi negro (`--foreground`). `ViewField` sin `locked`.
-- No editable (Codigo ya asignado, calculado, select con `disabled={!!viewTarget}`): gris claro `#b4bec9`. `ViewField` lleva `locked`. Un input o select deshabilitado toma ese gris desde `src/app/globals.css`.
+- En Ver, todo dato se lee en negro (`text-foreground`). `ViewField` no pinta gris.
+- En Editar, lo que no se puede cambiar es un `Select` o `Input` deshabilitado, o `LockedField`. El gris `#b4bec9` sale de `src/app/globals.css`. No se usa `locked` en `ViewField` para ese gris.
 
 ---
 
 ## Geo y moneda
 
-Pais, departamento, municipio y moneda se muestran con nombre o código ISO y bandera, nunca con el código pelado ni con el nombre de la divisa. El snippet y la preselección están en `.cursor/rules/advanced-components.mdc`.
+Pais, departamento, municipio y moneda se muestran con nombre o código ISO y bandera, nunca con el código pelado ni con el nombre de la divisa. El snippet y la preselección están en `.cursor/rules/advanced-components.mdc`. País, Departamento y Municipio van cada uno en su línea.
 
 ## Placeholder text rules
 
