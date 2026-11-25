@@ -9,6 +9,7 @@ import {
 import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
 import { Label }    from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -304,7 +305,7 @@ export function DepositarPagosClient({
 
             {/* Empresa */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="empresa" className={LABEL_CLS} style={LABEL_STYLE}>Empresa *</Label>
+              <Label htmlFor="empresa" className={LABEL_CLS} style={LABEL_STYLE}>Empresa <RequiredMark /></Label>
               <Select value={String(empresa)} onValueChange={onEmpresaChange}>
                 <SelectTrigger variant="l-border" className="w-full">
                   <SelectValue placeholder="Selecciona empresa">
@@ -321,7 +322,7 @@ export function DepositarPagosClient({
 
             {/* Proyecto */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="proyecto" className={LABEL_CLS} style={LABEL_STYLE}>Proyecto *</Label>
+              <Label htmlFor="proyecto" className={LABEL_CLS} style={LABEL_STYLE}>Proyecto <RequiredMark /></Label>
               <Select value={String(proyecto)} onValueChange={onProyectoChange} disabled={empresa === 0}>
                 <SelectTrigger variant="l-border" className="w-full">
                   <SelectValue placeholder="Selecciona proyecto">
@@ -338,7 +339,7 @@ export function DepositarPagosClient({
 
             {/* Cuenta Bancaria */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria *</Label>
+              <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria <RequiredMark /></Label>
               <Select value={String(cuentaBancaria)} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }} disabled={proyecto === 0}>
                 <SelectTrigger variant="l-border" id="cuenta_bancaria" aria-invalid={campoInvalido?.id === 'cuenta_bancaria' || undefined} className="w-full">
                   <SelectValue placeholder={cuentasBancariasFiltradas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>
@@ -368,7 +369,7 @@ export function DepositarPagosClient({
 
             {/* Fecha */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="fecha" className={LABEL_CLS} style={LABEL_STYLE}>Fecha *</Label>
+              <Label htmlFor="fecha" className={LABEL_CLS} style={LABEL_STYLE}>Fecha <RequiredMark /></Label>
               <Input
                 variant="l-border"
                 id="fecha"
@@ -381,7 +382,7 @@ export function DepositarPagosClient({
 
             {/* Numero Documento */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>Numero Documento *</Label>
+              <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>Numero Documento <RequiredMark /></Label>
               <Input
                 variant="l-border"
                 id="numero_documento"

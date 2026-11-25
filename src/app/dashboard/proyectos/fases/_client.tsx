@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -575,9 +576,7 @@ export function FasesClient({
 
                 {/* Empresa */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Empresa *
-                  </Label>
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                   <Select
                     value={form.empresa ? String(form.empresa) : ''}
                     onValueChange={(v) => f('empresa', Number(v))}
@@ -598,9 +597,7 @@ export function FasesClient({
 
                 {/* Proyecto */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Proyecto *
-                  </Label>
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                   <Select
                     value={form.proyecto ? String(form.proyecto) : ''}
                     onValueChange={(v) => f('proyecto', Number(v))}
@@ -623,9 +620,7 @@ export function FasesClient({
                 <SegmentCard label="General">
                 {/* Nombre */}
                 <div className="col-span-2 grid gap-1">
-                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Nombre *
-                  </Label>
+                  <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                   <Input variant="l-border"
                     id="nombre"
                     aria-invalid={campoInvalido?.id === 'nombre' || undefined}
@@ -637,9 +632,7 @@ export function FasesClient({
 
                 {/* Medida */}
                 <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="medida" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-                    Medida *
-                  </Label>
+                  <Label htmlFor="medida" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Medida <RequiredMark /></Label>
                   <Select
                     value={form.medida}
                     onValueChange={(v) => f('medida', v ?? '')}

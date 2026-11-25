@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -804,7 +805,7 @@ export function LotesClient({
                     </div>
                     {!viewTarget ? (
                       <div className="grid gap-1">
-                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo *</Label>
+                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo <RequiredMark /></Label>
                         <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (

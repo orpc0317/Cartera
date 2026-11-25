@@ -236,7 +236,7 @@ Estos son **separados** de `form.direccion_pais` / `form.direccion_departamento`
 
 ```tsx
 <div className="grid gap-1">
-  <Label htmlFor="direccion_pais" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+  <Label htmlFor="direccion_pais" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
   <CountrySelect
     paises={paises}
     value={paisCodigo}
@@ -450,7 +450,7 @@ const clientesFiltrados = useMemo(
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente *</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente <RequiredMark /></Label>
   <ClienteCombobox
     clientes={clientesFiltrados}
     value={form.cliente}

@@ -10,10 +10,12 @@ Secciones: D, E, F, G, H, I, J, N, O, P, Y, Z, AD, AE.
 
 Requires `f()` helper (see `.cursor/rules/ui-conventions.mdc § Text input normalization`).
 
+El asterisco de un campo requerido es `<RequiredMark />` (`@/components/ui/required-mark`). Es rojo. Va con un espacio antes del componente. No se escribe ` *` en el texto del label.
+
 ```tsx
 <div className="grid gap-1">
   <Label htmlFor="<field>" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-    <Label text> *
+    <Label text> <RequiredMark />
   </Label>
   <Input
     id="<field>"
@@ -267,7 +269,7 @@ function SegmentCard({ label, children }: { label: string; children: React.React
 
   {/* full */}
   <div className="col-span-2 grid gap-1">
-    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
     <Input variant="l-border" id="nombre" value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del registro" />
   </div>
 
@@ -429,7 +431,7 @@ set<Field>Str(String(viewTarget.<field>))
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}><Label text> *</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}><Label text> <RequiredMark /></Label>
   <div className="flex gap-2 items-center">
     <Input
       type="number"

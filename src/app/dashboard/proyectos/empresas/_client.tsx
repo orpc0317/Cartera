@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -702,7 +703,7 @@ export function EmpresasClient({
                   <SegmentCard label="GENERAL">
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                     <Input variant="l-border"
                       id="nombre"
                       aria-invalid={campoInvalido?.id === 'nombre' || undefined}
@@ -713,7 +714,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="razon_social" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Razon Social *</Label>
+                    <Label htmlFor="razon_social" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Razon Social <RequiredMark /></Label>
                     <Input variant="l-border"
                       id="razon_social"
                       aria-invalid={campoInvalido?.id === 'razon_social' || undefined}
@@ -724,7 +725,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria *</Label>
+                    <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria <RequiredMark /></Label>
                     <Input variant="l-border"
                       id="id_trib"
                       aria-invalid={campoInvalido?.id === 'id_trib' || undefined}
@@ -744,7 +745,7 @@ export function EmpresasClient({
                   <SegmentCard label="DIRECCION">
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
                     <Input variant="l-border"
                       id="direccion"
                       aria-invalid={campoInvalido?.id === 'direccion' || undefined}
@@ -755,7 +756,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
                     <CountrySelect
                       paises={paises}
                       value={paisCodigo}

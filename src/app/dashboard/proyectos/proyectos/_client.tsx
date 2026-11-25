@@ -20,6 +20,7 @@ import { Pencil, Eye, Plus, FolderKanban, Search, History, ChevronDown, ChevronU
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -1110,7 +1111,7 @@ export function ProyectosClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="Identificacion">
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                      <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                           <SelectValue placeholder="Selecciona una empresa">
@@ -1128,15 +1129,15 @@ export function ProyectosClient({
                     </SegmentCard>
                     <SegmentCard label="General">
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto *</Label>
+                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto <RequiredMark /></Label>
                       <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                      <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
                       <Input variant="l-border" id="direccion_p" aria-invalid={campoInvalido?.id === 'direccion_p' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
                     </div>
                     <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
                       <CountrySelect paises={paises} value={paisCodigo} variant="l-border" id="direccion_pais" invalid={campoInvalido?.id === 'direccion_pais'}
                         onChange={(codigo, _nombre) => {
                           setCampoInvalido(null)
@@ -1148,7 +1149,7 @@ export function ProyectosClient({
                       />
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento *</Label>
+                      <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <RequiredMark /></Label>
                       <select id="departamento_p" title="Departamento" value={deptoCodigo} disabled={!paisCodigo} aria-invalid={campoInvalido?.id === 'departamento_p' || undefined}
                         onChange={(e) => { setCampoInvalido(null); const v = e.target.value; const firstMun = municipios.find((m) => m.pais === paisCodigo && m.departamento === v)?.codigo ?? ''; setDeptoCodigo(v); setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMun })) }}
                         className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-destructive"
@@ -1158,7 +1159,7 @@ export function ProyectosClient({
                       </select>
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor="municipio_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio *</Label>
+                      <Label htmlFor="municipio_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <RequiredMark /></Label>
                       <select id="municipio_p" title="Municipio"
                         aria-invalid={campoInvalido?.id === 'municipio_p' || undefined}
                         value={form.direccion_municipio}
@@ -1175,7 +1176,7 @@ export function ProyectosClient({
                       <Input variant="l-border" id="codigo_postal_p" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Ej: 01001" />
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 *</Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 <RequiredMark /></Label>
                       <PhoneField
                         iso={tel1Iso}
                         local={tel1Local}
@@ -1258,17 +1259,17 @@ export function ProyectosClient({
                       </div>
                       {tipoCalculo === 0 ? (
                         <div className="grid gap-1">
-                          <Label htmlFor="interes_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? '% Mora *' : '% Mora'}</Label>
+                          <Label htmlFor="interes_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? <>% Mora <RequiredMark /></> : '% Mora'}</Label>
                           <Input variant="l-border" id="interes_mora" aria-invalid={campoInvalido?.id === 'interes_mora' || undefined} type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                         </div>
                       ) : (
                         <div className="grid gap-1">
-                          <Label htmlFor="fijo_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? 'Monto Mora *' : 'Monto Mora'}</Label>
+                          <Label htmlFor="fijo_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? <>Monto Mora <RequiredMark /></> : 'Monto Mora'}</Label>
                           <Input variant="l-border" id="fijo_mora" aria-invalid={campoInvalido?.id === 'fijo_mora' || undefined} type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                         </div>
                       )}
                       <div className="grid gap-1">
-                        <Label htmlFor="dias_gracia" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? 'Dias Gracia *' : 'Dias Gracia'}</Label>
+                        <Label htmlFor="dias_gracia" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? <>Dias Gracia <RequiredMark /></> : 'Dias Gracia'}</Label>
                         <Input variant="l-border" id="dias_gracia" aria-invalid={campoInvalido?.id === 'dias_gracia' || undefined} type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
                       </div>
                     </div>
