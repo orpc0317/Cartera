@@ -164,7 +164,8 @@ function SectionDivider({ label }: { label: string }) {
 // en Ver y Editar el diálogo es muted al 30% sobre blanco; Nuevo queda blanco;
 // la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
 // icono entre la barra y el título; pie en text-sm font-medium como la pestaña;
-// acción en gris verdoso y verde de la pestaña al pasar; Eliminar en gris rojizo y rojo al pasar.
+// acción en gris verdoso y verde de la pestaña al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
+// El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
 const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
@@ -1544,7 +1545,7 @@ export function ClientesClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className={CLASE_BOTON_PELIGRO}>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-primary-foreground hover:bg-destructive/90">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
