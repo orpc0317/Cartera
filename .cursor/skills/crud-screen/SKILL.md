@@ -248,12 +248,14 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 
 **Modal** (Clientes, with notes in `.cursor/rules/crud-screens.mdc`):
 
-- Header gradient with module accent color
-- Icon badge: module icon when viewing, `<Plus>` when creating, `<Pencil>` when editing
-- Tabs with at least "General" tab; add more tabs only if spec defines them
-- **View mode:** `ViewField` for each field, grouped into `SegmentCard` per section (title above a bordered card — replaces bare `SectionDivider`)
-- **Edit mode:** form fields per `CAMPOS_FORMULARIO`, same `SegmentCard` grouping; if RELACIONES defines cascade selects, on parent change reset child to first available item or `0`
-- **Footer (estándar 2026-08):** view mode → single row of ghost buttons: Historial, [acciones extra de la entidad], Eliminar (if `puedeEliminar`), Editar (if `puedeModificar`) — **no** botón "Cerrar" (la "x" del header ya cierra); edit mode → Cancelar/Volver + Guardar
+- El look visual sale de `@/lib/modal-look`, `@/components/ui/view-field` y `@/components/ui/segment-card`. No se copia `ViewField` ni `SegmentCard` dentro del `_client.tsx`.
+- Fondo del diálogo: `FONDO_MODAL` en Ver, Editar y Nuevo. Franja de pestañas y pie: `FRANJA_BLANCA`.
+- Título igual al `h1` del menú. Sin subtítulo de proyecto ni código. El icono del encabezado se conserva (icono del módulo, `Plus` en alta, `Pencil` en edición) y el degradado de acento del header también.
+- Pestañas con `CLASE_PESTANA_MODAL`. Al menos "General"; más pestañas solo si el spec las define.
+- **View mode:** `ViewField` (dato en negro), agrupado en `SegmentCard` (caja blanca e icono en el título).
+- **Edit mode:** campos de `CAMPOS_FORMULARIO` en el mismo `SegmentCard`. Asterisco obligatorio en `text-destructive`. El foco de línea ya vive en `Input`, `Select` y `CountrySelect`. Si hay cascada, al cambiar el padre el hijo pasa al primer valor disponible o a `0`.
+- País, Departamento y Municipio, cada uno en su línea. Código postal en su línea, a media columna.
+- **Footer:** botones ghost con `CLASE_BOTON_MODAL`: Historial, acciones extra, Editar. Eliminar y Desactivar del pie usan `CLASE_BOTON_PELIGRO`. No hay botón Cerrar. En edición: Cancelar y Guardar con la misma clase. El alta usa `WizardAltaActions` con esa clase.
 - **Tras guardar una edición:** el modal sigue abierto en Ver. `update*` devuelve `{ row }`. `setViewTarget(result.row)`, rearmar el formulario como `openView` y `setIsEditing(false)`. Sin cambios llama `cancelEdit()`. El alta cierra el modal con `setDialogOpen(false)`. `router.refresh()` actualiza la tabla. Este paso es obligatorio antes de dar la pantalla por terminada.
 - **Al abrir Ver:** `useFilas(initialData)` y `useRegistroVer` llaman `obtenerEntity` solo de esa fila. Editar queda `disabled={lecturaPendiente}` hasta que la lectura termina. Los nombres de referencias usan `nombreLeido`. `alLlegar` reemplaza esa fila en la lista y, si el usuario ya está editando, solo actualiza `modifico_fecha`. El alta no llama `obtenerEntity`. No hagas `router.refresh()` al abrir. El snippet está en `.cursor/rules/components.mdc` § C.
 - **Delete:** `AlertDialog` with "¿Estás seguro?" pattern, triggered from the footer's Eliminar button (not a row dropdown); only shown if `puedeEliminar`

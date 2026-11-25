@@ -149,7 +149,7 @@ Use `switch (col.key)` with explicit cases; `default` for generic text columns.
 | Text / FK    | `text-muted-foreground`                  | |
 | Code/NIT/ID  | `font-mono text-xs text-muted-foreground` | |
 | Enum         | no className on cell                     | Wrap in `<Badge variant="secondary" className="font-normal">` |
-| Pais         | `text-muted-foreground`                  | Flag image 20×14 px (flagcdn.com) + resolved nombre |
+| Pais         | `text-muted-foreground`                  | `<Flag iso>` de `phone-field` + nombre resuelto |
 | Departamento | `text-muted-foreground`                  | Resolve code → nombre via the `departamentos` prop array |
 | Municipio    | `text-muted-foreground`                  | Resolve code → nombre via the `municipios` prop array |
 

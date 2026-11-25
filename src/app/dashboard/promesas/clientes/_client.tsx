@@ -20,7 +20,6 @@ import {
   Pencil, Eye, Plus, Users, Search,
   History, ChevronDown, ChevronUp, X, Settings2, MapPin, Trash2, Download,
   ChevronLeft, ChevronRight, Check,
-  IdCard, Receipt, User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +57,9 @@ import type { Empresa, Proyecto, Cliente, ClienteForm } from '@/lib/types/proyec
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { ViewField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
 
@@ -139,108 +141,6 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
 }
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
-
-function ViewField({ label, value }: { label: string; value?: string | null | number }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
-// Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
-// en Ver, Editar y Nuevo el diálogo es muted al 30% sobre blanco;
-// la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
-// icono entre la barra y el título; pie en text-sm font-medium como la pestaña;
-// pestaña en gris verdoso, seleccionada y al pasar en verde fuerte, con borde inferior solo si está seleccionada;
-// acción en el gris claro que Editar mostraba al entrar a Ver, y verde fuerte al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
-// El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
-// Asterisco de obligatorio en rojo. En Ver todo el dato va en negro; en Editar el que no se puede cambiar sigue en gris.
-// El título del modal es el del menú, Clientes, en Ver, Editar y Nuevo. No hay texto debajo.
-// En Nuevo, Pais, Departamento y Municipio van en líneas propias; el código postal conserva su ancho.
-// Al entrar a un campo, en Nuevo y en Editar, el borde inferior se pone en verde fuerte.
-const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
-const FRANJA_BLANCA = 'bg-popover'
-const SEGMENTO_ICONO = {
-  IDENTIFICACION: IdCard,
-  GENERAL: User,
-  DIRECCION: MapPin,
-  FACTURACION: Receipt,
-} as const
-
-const TEXTO_GRIS_VERDE = 'text-[color-mix(in_oklab,var(--primary)_18%,var(--muted-foreground))]'
-const CLASE_PESTANA_MODAL = [
-  'gap-1.5 rounded-md border-b-2 border-b-transparent px-3 py-1 text-sm font-medium',
-  'bg-transparent after:hidden',
-  TEXTO_GRIS_VERDE,
-  'dark:text-[color-mix(in_oklab,var(--primary)_18%,var(--muted-foreground))]',
-  'hover:bg-transparent hover:text-primary dark:hover:bg-transparent dark:hover:text-primary',
-  'data-active:border-b-primary data-active:bg-transparent data-active:text-primary',
-  'data-active:hover:border-b-primary data-active:hover:bg-transparent data-active:hover:text-primary',
-  'dark:bg-transparent dark:data-active:border-b-primary dark:data-active:bg-transparent dark:data-active:text-primary',
-  'dark:data-active:hover:text-primary',
-  'group-data-[variant=line]/tabs-list:bg-transparent',
-  'group-data-[variant=line]/tabs-list:data-active:bg-transparent',
-  'dark:group-data-[variant=line]/tabs-list:bg-transparent',
-  'dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
-].join(' ')
-
-const CLASE_PIE_MODAL = 'text-sm font-medium'
-const TEXTO_GRIS_CLARO = 'text-[color-mix(in_srgb,color-mix(in_oklab,var(--primary)_18%,var(--muted-foreground))_50%,var(--popover))]'
-const CLASE_BOTON_MODAL = [
-  CLASE_PIE_MODAL,
-  TEXTO_GRIS_CLARO,
-  'disabled:opacity-100',
-  'hover:bg-transparent hover:text-primary',
-  'dark:hover:bg-transparent dark:hover:text-primary',
-].join(' ')
-const FOCO_CAMPO = [
-  '[&_input:focus]:border-b-2',
-  '[&_input:focus]:border-primary',
-  '[&_select:focus]:border-b-2',
-  '[&_select:focus]:border-primary',
-  '[&_button:focus]:border-b-2',
-  '[&_button:focus]:border-primary',
-  '[&_[data-popup-open]]:border-b-2',
-  '[&_[data-popup-open]]:border-primary',
-].join(' ')
-const CLASE_BOTON_PELIGRO = [
-  CLASE_PIE_MODAL,
-  'bg-transparent text-[color-mix(in_oklab,var(--destructive)_40%,var(--muted-foreground))]',
-  'hover:bg-transparent hover:text-destructive',
-  'dark:hover:bg-transparent',
-].join(' ')
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  const Icono = SEGMENTO_ICONO[label as keyof typeof SEGMENTO_ICONO]
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>
-          {Icono ? <Icono className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
-          {label}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-popover p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 function ColumnFilter({
   label, values, active, onChange,
 }: { label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void }) {
@@ -873,29 +773,32 @@ export function ClientesClient({
                     <div className="col-span-2">
                       <ViewField label="Direccion" value={viewTarget.direccion} />
                     </div>
-                    {/* Pais con bandera */}
-                    <div className="grid gap-1">
+                    <div className="col-span-2 grid gap-1">
                       <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
                       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                         {viewTarget.direccion_pais ? (() => {
                           const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                           return (
                             <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                              {p && <img src={`https://flagcdn.com/w20/${p.codigo.toLowerCase()}.png`} alt={p.codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />}
+                              {p && <Flag iso={p.codigo} />}
                               {nombreLeido(viewTarget.pais_nombre, p?.nombre ?? viewTarget.direccion_pais)}
                             </span>
                           )
-                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>—</span>}
+                        })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}></span>}
                       </div>
                     </div>
+                    <div className="col-span-2">
                     <ViewField
                       label="Departamento"
                       value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)}
                     />
+                    </div>
+                    <div className="col-span-2">
                     <ViewField
                       label="Municipio"
                       value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)}
                     />
+                    </div>
                     <ViewField label="Cod. Postal" value={viewTarget.codigo_postal} />
                     </SegmentCard>
                     <SegmentCard label="FACTURACION">
@@ -911,7 +814,7 @@ export function ClientesClient({
                 </div>
               ) : (
               /* ── Edicion / Creacion ── */
-              <div className={`flex gap-6 items-start ${FOCO_CAMPO}`}>
+              <div className="flex gap-6 items-start">
 
                 {/* Columna izquierda */}
                 <div className="flex-1 grid grid-cols-2 gap-2">
@@ -975,7 +878,7 @@ export function ClientesClient({
                     <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <span className="text-destructive">*</span></Label>
                     <Input variant="l-border" id="direccion" aria-invalid={campoInvalido?.id === 'direccion' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
                   </div>
-                  <div className={!viewTarget ? 'col-span-2 grid gap-1' : 'grid gap-1'}>
+                  <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <span className="text-destructive">*</span></Label>
                     <CountrySelect
                       paises={paises}
@@ -996,7 +899,7 @@ export function ClientesClient({
                       }}
                     />
                   </div>
-                  <div className={!viewTarget ? 'col-span-2 grid gap-1' : 'grid gap-1'}>
+                  <div className="col-span-2 grid gap-1">
                     <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <span className="text-destructive">*</span></Label>
                     <select
                       id="depto"
@@ -1011,7 +914,7 @@ export function ClientesClient({
                         setDeptoCodigo(v)
                         setForm((p) => ({ ...p, direccion_departamento: v, direccion_municipio: mCode }))
                       }}
-                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-b-2 aria-invalid:border-destructive"
+                      className={CLASE_SELECT_LINEA}
                       style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
                     >
                       <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
@@ -1020,7 +923,7 @@ export function ClientesClient({
                       ))}
                     </select>
                   </div>
-                  <div className={!viewTarget ? 'col-span-2 grid gap-1' : 'grid gap-1'}>
+                  <div className="col-span-2 grid gap-1">
                     <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <span className="text-destructive">*</span></Label>
                     <select
                       id="municipio"
@@ -1029,7 +932,7 @@ export function ClientesClient({
                       value={form.direccion_municipio}
                       disabled={!deptoCodigo}
                       onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, direccion_municipio: e.target.value })) }}
-                      className="w-full rounded-none border-0 border-b border-primary/50 bg-transparent px-2 py-0 outline-none focus:border-b-2 focus:border-primary disabled:cursor-not-allowed aria-invalid:border-b-2 aria-invalid:border-destructive"
+                      className={CLASE_SELECT_LINEA}
                       style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
                     >
                       <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
@@ -1562,7 +1465,7 @@ export function ClientesClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-primary-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className={CLASE_BOTON_CONFIRMAR}>
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

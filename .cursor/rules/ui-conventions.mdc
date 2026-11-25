@@ -115,6 +115,10 @@ Estos estándares garantizan que labels y bordes de campo se vean consistentes e
 | `<Label>` de checkbox (con `htmlFor`) | `font-semibold tracking-wider text-muted-foreground cursor-pointer` | `fontSize: 'var(--ui-form-label)'` |
 | `ViewField` label span | `font-semibold tracking-wider leading-none text-muted-foreground` | `fontSize: 'var(--ui-viewfield-label)'` |
 
+El asterisco de un campo obligatorio es `<span className="text-destructive">*</span>`.
+
+Al entrar a un `Input`, `Select` o `CountrySelect` de línea, el borde inferior pasa a 2px y verde fuerte, también con el mouse. El chevron no recibe ese borde. Si el campo está inválido, el borde sigue rojo. Esa regla es la clase `foco-linea` de `globals.css`, aplicada con `FOCO_LINEA` o `FOCO_SELECT`, para que el verde fuerte quede por encima de `border-primary/50` y `tailwind-merge` conserve la clase. El `<select>` nativo de geo usa `CLASE_SELECT_LINEA`.
+
 **Wrapper de campo** — usar siempre `<div className="grid gap-1">`. **Nunca** `space-y-1.5`.
 
 ```tsx
@@ -150,8 +154,8 @@ Numeric `codigo` fields (auto-increment PKs) are displayed as plain `N` **withou
 
 El color del valor dice si el campo se puede editar. El subrayado no cambia. No usar `disabled:opacity-50` en inputs ni selects de formulario.
 
-- Editable, tambien en Ver si al pasar a Editar se habilita: casi negro (`--foreground`). `ViewField` sin `locked`.
-- No editable (Codigo ya asignado, calculado, select con `disabled={!!viewTarget}`): gris claro `#b4bec9`. `ViewField` lleva `locked`. Un input o select deshabilitado toma ese gris desde `src/app/globals.css`.
+- En Ver, todo dato se lee en negro (`text-foreground`). `ViewField` no pinta gris.
+- En Editar, lo que no se puede cambiar sigue en `#b4bec9` porque el control está deshabilitado (`src/app/globals.css`). No se usa `locked` para ese gris.
 
 ---
 
@@ -159,7 +163,8 @@ El color del valor dice si el campo se puede editar. El subrayado no cambia. No 
 
 - `pais` stores ISO-2 code (e.g. `'GT'`). `departamento` / `municipio` store numeric varchar codes.
 - **Always resolve codes to names** via the `paises` / `departamentos` / `municipios` prop arrays.
-- **Pais must always show the flag** (`https://flagcdn.com/w20/{iso.toLowerCase()}.png`, `width={20} height={14}`) to the left of the country name — in table cells, ViewField, and edit previews. No exceptions.
+- El país muestra la bandera local con `<Flag iso={codigo} />` de `@/components/ui/phone-field` (`/flags/{iso}.png`). El teléfono usa el mismo componente. No volver a flagcdn en el país ni en el teléfono.
+- País, Departamento y Municipio van cada uno en su línea (`col-span-2`). El código postal, si existe, queda en su línea con el ancho de una columna.
 - Never display a raw code for Pais, Departamento, or Municipio.
 
 ---

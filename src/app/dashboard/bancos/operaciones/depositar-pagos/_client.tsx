@@ -23,6 +23,7 @@ import type { Empresa, Proyecto, Banco, CuentaBancaria, SerieRecibo } from '@/li
 import type { ReciboDetalleItem } from '@/lib/types/depositar-pagos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
+import { ViewField } from '@/components/ui/view-field'
 
 const PASOS_DEPOSITO: readonly WizardStep[] = [
   { id: 'identificacion', label: 'Identificacion', icon: Landmark },
@@ -50,18 +51,6 @@ function fmtDate(d: string): string {
 }
 
 // ─── Primitivos de UI ─────────────────────────────────────────────────────
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value ?? ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -304,7 +293,7 @@ export function DepositarPagosClient({
 
             {/* Empresa */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="empresa" className={LABEL_CLS} style={LABEL_STYLE}>Empresa *</Label>
+              <Label htmlFor="empresa" className={LABEL_CLS} style={LABEL_STYLE}>Empresa <span className="text-destructive">*</span></Label>
               <Select value={String(empresa)} onValueChange={onEmpresaChange}>
                 <SelectTrigger variant="l-border" className="w-full">
                   <SelectValue placeholder="Selecciona empresa">
@@ -321,7 +310,7 @@ export function DepositarPagosClient({
 
             {/* Proyecto */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="proyecto" className={LABEL_CLS} style={LABEL_STYLE}>Proyecto *</Label>
+              <Label htmlFor="proyecto" className={LABEL_CLS} style={LABEL_STYLE}>Proyecto <span className="text-destructive">*</span></Label>
               <Select value={String(proyecto)} onValueChange={onProyectoChange} disabled={empresa === 0}>
                 <SelectTrigger variant="l-border" className="w-full">
                   <SelectValue placeholder="Selecciona proyecto">
@@ -338,7 +327,7 @@ export function DepositarPagosClient({
 
             {/* Cuenta Bancaria */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria *</Label>
+              <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria <span className="text-destructive">*</span></Label>
               <Select value={String(cuentaBancaria)} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }} disabled={proyecto === 0}>
                 <SelectTrigger variant="l-border" id="cuenta_bancaria" aria-invalid={campoInvalido?.id === 'cuenta_bancaria' || undefined} className="w-full">
                   <SelectValue placeholder={cuentasBancariasFiltradas.length === 0 ? 'Sin cuentas activas' : 'Selecciona cuenta bancaria'}>
@@ -368,7 +357,7 @@ export function DepositarPagosClient({
 
             {/* Fecha */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="fecha" className={LABEL_CLS} style={LABEL_STYLE}>Fecha *</Label>
+              <Label htmlFor="fecha" className={LABEL_CLS} style={LABEL_STYLE}>Fecha <span className="text-destructive">*</span></Label>
               <Input
                 variant="l-border"
                 id="fecha"
@@ -381,7 +370,7 @@ export function DepositarPagosClient({
 
             {/* Numero Documento */}
             <div className="col-span-2 grid gap-1">
-              <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>Numero Documento *</Label>
+              <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>Numero Documento <span className="text-destructive">*</span></Label>
               <Input
                 variant="l-border"
                 id="numero_documento"

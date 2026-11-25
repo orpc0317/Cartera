@@ -183,3 +183,27 @@
     padding-bottom: var(--ui-table-cell-py);
   }
 }
+
+/*
+ * Foco de campos de linea. Va fuera de @layer para ganar a border-primary/50
+ * y para que tailwind-merge no descarte el color. El invalido gana al verde.
+ */
+.foco-linea:focus,
+.foco-linea:focus-visible,
+.foco-linea[data-popup-open] {
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--primary);
+}
+.foco-linea[aria-invalid="true"],
+.foco-linea[data-invalid],
+.foco-linea:focus[aria-invalid="true"],
+.foco-linea:focus-visible[aria-invalid="true"],
+.foco-linea:focus[data-invalid],
+.foco-linea:focus-visible[data-invalid],
+.foco-linea[data-popup-open][aria-invalid="true"],
+.foco-linea[data-popup-open][data-invalid] {
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--destructive);
+}

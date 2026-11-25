@@ -49,12 +49,16 @@ import { REGIMENES_ISR, validarNIT } from '@/lib/constants'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
 import { CountrySelect } from '@/components/ui/country-select'
+import { Flag } from '@/components/ui/phone-field'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/components/ui/form-wizard'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
+import { ViewField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // --- Constants -------------------------------------------------------------
 
@@ -123,41 +127,6 @@ function ColumnFilter({
     </Popover>
   )
 }
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // --- Column definitions ----------------------------------------------------
 
 type ColDef  = { key: string; label: string; defaultVisible: boolean }
@@ -648,34 +617,32 @@ export function EmpresasClient({
                       <div className="col-span-2">
                         <ViewField label="Direccion" value={viewTarget.direccion} />
                       </div>
-                      <div className="grid gap-1">
+                      <div className="col-span-2 grid gap-1">
                         <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais</span>
                         <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                           {viewTarget.direccion_pais ? (() => {
                             const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
                             return (
                               <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                                <img
-                                  src={`https://flagcdn.com/w20/${viewTarget.direccion_pais.toLowerCase()}.png`}
-                                  alt={viewTarget.direccion_pais}
-                                  width={20}
-                                  height={14}
-                                  className="object-cover rounded-sm shrink-0"
-                                />
+                                <Flag iso={viewTarget.direccion_pais} />
                                 {nombreLeido(viewTarget.pais_nombre, p?.nombre ?? viewTarget.direccion_pais)}
                               </span>
                             )
                           })() : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}></span>}
                         </div>
                       </div>
+                      <div className="col-span-2">
                       <ViewField
                         label="Departamento"
                         value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.pais === viewTarget.direccion_pais && d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)}
                       />
+                      </div>
+                      <div className="col-span-2">
                       <ViewField
                         label="Municipio"
                         value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.pais === viewTarget.direccion_pais && m.departamento === viewTarget.direccion_departamento && m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)}
                       />
+                      </div>
                       <ViewField label="Codigo Postal" value={viewTarget.codigo_postal} />
                     </SegmentCard>
                     <SegmentCard label="OTROS">
@@ -702,7 +669,7 @@ export function EmpresasClient({
                   <SegmentCard label="GENERAL">
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <span className="text-destructive">*</span></Label>
                     <Input variant="l-border"
                       id="nombre"
                       aria-invalid={campoInvalido?.id === 'nombre' || undefined}
@@ -713,7 +680,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="razon_social" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Razon Social *</Label>
+                    <Label htmlFor="razon_social" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Razon Social <span className="text-destructive">*</span></Label>
                     <Input variant="l-border"
                       id="razon_social"
                       aria-invalid={campoInvalido?.id === 'razon_social' || undefined}
@@ -724,7 +691,7 @@ export function EmpresasClient({
                   </div>
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria *</Label>
+                    <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria <span className="text-destructive">*</span></Label>
                     <Input variant="l-border"
                       id="id_trib"
                       aria-invalid={campoInvalido?.id === 'id_trib' || undefined}
@@ -744,7 +711,7 @@ export function EmpresasClient({
                   <SegmentCard label="DIRECCION">
 
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <span className="text-destructive">*</span></Label>
                     <Input variant="l-border"
                       id="direccion"
                       aria-invalid={campoInvalido?.id === 'direccion' || undefined}
@@ -754,11 +721,12 @@ export function EmpresasClient({
                     />
                   </div>
 
-                  <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+                  <div className="col-span-2 grid gap-1">
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <span className="text-destructive">*</span></Label>
                     <CountrySelect
                       paises={paises}
                       value={paisCodigo}
+                      variant="l-border"
                       id="direccion_pais"
                       invalid={campoInvalido?.id === 'direccion_pais'}
                       onChange={(codigo) => {
@@ -779,7 +747,7 @@ export function EmpresasClient({
                     />
                   </div>
 
-                  <div className="grid gap-1">
+                  <div className="col-span-2 grid gap-1">
                     <Label htmlFor="departamento" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento</Label>
                     <select
                       id="departamento"
@@ -794,8 +762,8 @@ export function EmpresasClient({
                         setDeptoCodigo(v)
                         setForm((prev) => ({ ...prev, direccion_departamento: v, direccion_municipio: firstMuni?.codigo ?? '' }))
                       }}
-                      style={{ fontSize: 'var(--ui-input)' }}
-                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed aria-invalid:border-destructive"
+                      style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
+                      className={CLASE_SELECT_LINEA}
                     >
                       <option value="">{paisCodigo ? 'Selecciona departamento' : 'Primero selecciona un pais'}</option>
                       {deptosFiltrados.map((d) => (
@@ -804,7 +772,7 @@ export function EmpresasClient({
                     </select>
                   </div>
 
-                  <div className="grid gap-1">
+                  <div className="col-span-2 grid gap-1">
                     <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio</Label>
                     <select
                       id="municipio"
@@ -816,8 +784,8 @@ export function EmpresasClient({
                         setCampoInvalido(null)
                         setForm((prev) => ({ ...prev, direccion_municipio: e.target.value }))
                       }}
-                      style={{ fontSize: 'var(--ui-input)' }}
-                      className="flex h-8 w-full rounded-none border border-input bg-transparent px-2.5 py-0 outline-none focus-visible:border-ring disabled:cursor-not-allowed aria-invalid:border-destructive"
+                      style={{ height: 'var(--ui-field-height)', fontSize: 'var(--ui-input)' }}
+                      className={CLASE_SELECT_LINEA}
                     >
                       <option value="">{deptoCodigo ? 'Selecciona municipio' : 'Primero selecciona un departamento'}</option>
                       {municipiosFiltrados.map((m) => (
@@ -1082,20 +1050,14 @@ export function EmpresasClient({
           }
         }}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-emerald-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{iconEl}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Empresa' : isEditing ? 'Editar Empresa' : viewTarget?.nombre}
+                  Empresas
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {viewTarget.razon_social || ''}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -1106,8 +1068,8 @@ export function EmpresasClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <MapPin className="h-3.5 w-3.5" /> General
               </TabsTrigger>
             </TabsList></div>
@@ -1118,29 +1080,29 @@ export function EmpresasClient({
           </Tabs>
           )}
 
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
@@ -1150,7 +1112,7 @@ export function EmpresasClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando…"
-                className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -1209,7 +1171,7 @@ export function EmpresasClient({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={CLASE_BOTON_CONFIRMAR}
             >
               Eliminar
             </AlertDialogAction>

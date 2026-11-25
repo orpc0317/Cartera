@@ -7,6 +7,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { getAuditLog, type AuditEntry } from '@/app/actions/audit'
+import { FONDO_MODAL } from '@/lib/modal-look'
 
 // Campos a excluir del diff (metadatos internos)
 const SKIP_FIELDS = new Set([
@@ -127,7 +128,7 @@ export function AuditLogDialog({ open, onOpenChange, tabla, cuenta, registroId, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[80vh] flex flex-col">
+      <DialogContent className={`max-w-xl max-h-[80vh] flex flex-col ${FONDO_MODAL}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <History className="h-4 w-4" />

@@ -48,6 +48,8 @@ import {
   getTransaccionesBancarias,
   obtenerTransaccionBancaria,
 } from '@/app/actions/transacciones-bancarias'
+import { ViewField } from '@/components/ui/view-field'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Mapas de catálogos ───────────────────────────────────────────────────
 
@@ -97,18 +99,6 @@ function formatCsvCell(value: unknown): string {
 }
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value ?? ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -747,7 +737,7 @@ export function TransaccionesBancariasClient({
         if (!open && (auditTarget !== null || anularTarget !== null || eliminarTarget !== null)) return
         setDialogOpen(open)
       }}>
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[680px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[680px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-fuchsia-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
@@ -756,23 +746,16 @@ export function TransaccionesBancariasClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  Transacción {viewTarget?.numero_transaccion ?? ''}
+                  Transacciones Bancarias
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {getProyectoNombre(viewTarget)}
-                    {' · '}
-                    {nombreLeido(viewTarget.cuenta_bancaria_nombre, cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria))}
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
 
           <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full">
-              <TabsList variant="line" className="">
-                <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}>
+              <TabsList variant="line" className="bg-transparent">
+                <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                   <MapPin className="h-3.5 w-3.5" /> General
                 </TabsTrigger>
               </TabsList>
@@ -861,13 +844,13 @@ export function TransaccionesBancariasClient({
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="mt-4 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             <div className="flex w-full items-center gap-1">
               {viewTarget && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
+                  className={CLASE_BOTON_MODAL}
                   onClick={() => setAuditTarget(viewTarget)}
                 >
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
@@ -888,7 +871,7 @@ export function TransaccionesBancariasClient({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className={CLASE_BOTON_PELIGRO}
                   onClick={() => { setEliminarTarget(viewTarget); }}
                   disabled={isPending}
                 >
@@ -937,7 +920,7 @@ export function TransaccionesBancariasClient({
             <AlertDialogAction
               onClick={handleEliminar}
               disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={CLASE_BOTON_CONFIRMAR}
             >
               {isPending ? 'Eliminando…' : 'Eliminar'}
             </AlertDialogAction>

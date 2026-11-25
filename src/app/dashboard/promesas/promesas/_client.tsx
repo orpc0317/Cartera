@@ -63,6 +63,9 @@ import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
 import type { PromesaOtro, PromesaOtroPayload } from '@/lib/types/promesa-otros'
 import type { TipoIngreso } from '@/lib/types/tipos-ingresos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { ViewField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, FOCO_LINEA } from '@/lib/modal-look'
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -202,18 +205,6 @@ const COL_LABELS: Record<string, string> = {
 type ColFilters = Record<string, Set<string>>
 
 // â”€â”€â”€ Helper components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
-  return (
-    <div className="grid gap-1">
-      <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
-      <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
-      </div>
-    </div>
-  )
-}
-
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -222,21 +213,6 @@ function SectionDivider({ label }: { label: string }) {
     </div>
   )
 }
-
-function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="col-span-2 grid gap-1.5">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-        <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-        {children}
-      </div>
-    </div>
-  )
-}
-
 function ColumnFilter({ label, values, active, onChange }: {
   label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void
 }) {
@@ -352,7 +328,7 @@ function ClienteCombobox({
             id={id}
             data-invalid={invalid || undefined}
             disabled={disabled}
-            className="flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus-visible:border-b-2 focus-visible:border-primary focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/20 data-invalid:border-destructive"
+            className={`flex h-8 w-full items-center justify-between rounded-t-sm border-0 border-b border-input bg-muted/30 px-2.5 py-1 transition-colors outline-none focus:bg-muted/40 focus-visible:bg-muted/40 disabled:cursor-not-allowed disabled:border-dashed disabled:bg-muted/20 ${FOCO_LINEA}`}
           >
             <span className={`truncate ${!selected ? 'text-muted-foreground' : ''}`}>
               {selected ? selected.nombre : (placeholder ?? 'Selecciona...')}
@@ -1461,7 +1437,7 @@ export function PromesasClient({
                     </div>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente <span className="text-destructive">*</span></Label>
                     <ClienteCombobox
                       clientes={clientesFiltrados}
                       value={form.cliente}
@@ -1757,7 +1733,7 @@ export function PromesasClient({
     <>
               <div className="flex flex-col gap-3">
                 {isEditing && (
-                  <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <div className="rounded-lg border border-border/60 bg-popover p-3">
                     <div className="flex items-end gap-2">
                       <div className="flex-1 grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tipo Ingreso</Label>
@@ -2097,19 +2073,14 @@ export function PromesasClient({
           }
         }}
       >
-        <DialogContent className="flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden">
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-zinc-50/70 to-transparent border-b border-border/50 shrink-0">
             <div className="flex items-center gap-3 pr-8">
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{modalIcon}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nueva Promesa' : isEditing ? 'Editar Promesa' : `Promesa ${viewTarget?.numero}`}
+                  Promesas
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {[nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)), proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`)].filter(Boolean).join(' Â· ')}
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
@@ -2120,15 +2091,15 @@ export function PromesasClient({
             </FormWizard>
           ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
-            <div className="shrink-0 w-full"><TabsList variant="line" className="">
-              <TabsTrigger value="general" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+            <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}><TabsList variant="line" className="bg-transparent">
+              <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                 <FileSignature className="h-3.5 w-3.5" /> General
               </TabsTrigger>
-              <TabsTrigger value="otros" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+              <TabsTrigger value="otros" className={CLASE_PESTANA_MODAL}>
                 <Wallet className="h-3.5 w-3.5" /> Otros
               </TabsTrigger>
               {viewTarget && (
-                <TabsTrigger value="documentos" className="gap-1.5 px-3 rounded-none bg-transparent border-b-2 border-b-transparent after:hidden data-active:border-b-primary data-active:text-primary">
+                <TabsTrigger value="documentos" className={CLASE_PESTANA_MODAL}>
                   <Paperclip className="h-3.5 w-3.5" /> Documentos
                 </TabsTrigger>
               )}
@@ -2150,7 +2121,7 @@ export function PromesasClient({
                 <div className="flex gap-4 items-stretch h-full">
                   <div className="flex-1 min-w-0 flex flex-col gap-3">
                     {isEditing && (
-                      <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                      <div className="rounded-lg border border-border/60 bg-popover p-3">
                         <div className="flex items-end gap-2">
                           <div className="flex-1 grid gap-1">
                             <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tipo Documento</Label>
@@ -2263,37 +2234,37 @@ export function PromesasClient({
           </Tabs>
           )}
 
-          <DialogFooter className="-mx-4 -mb-4 px-5 py-3 bg-muted/30 border-t border-border/50 shrink-0">
+          <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={() => setPlanPagoTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setPlanPagoTarget(viewTarget)}>
                   <Receipt className="mr-1.5 h-3.5 w-3.5" /> Plan Pagos
                 </Button>
                 {puedeEliminar && viewTarget?.estado !== 99 && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setAnularTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setAnularTarget(viewTarget)}>
                     <Ban className="mr-1.5 h-3.5 w-3.5" /> Anular
                   </Button>
                 )}
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30" onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
@@ -2303,7 +2274,7 @@ export function PromesasClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando..."
-                className="hover:bg-zinc-50 dark:hover:bg-zinc-950/30"
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -2323,7 +2294,7 @@ export function PromesasClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+            <AlertDialogAction onClick={handleDelete} disabled={isPending} className={CLASE_BOTON_CONFIRMAR}>
               {isPending ? 'Eliminando...' : 'Eliminar'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2342,7 +2313,7 @@ export function PromesasClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteDocumento} disabled={isPending} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+            <AlertDialogAction onClick={handleDeleteDocumento} disabled={isPending} className={CLASE_BOTON_CONFIRMAR}>
               {isPending ? 'Eliminando...' : 'Eliminar'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2351,7 +2322,7 @@ export function PromesasClient({
 
       {/* Anular confirmation (requiere comentario obligatorio) */}
       <Dialog open={!!anularTarget} onOpenChange={(open) => { if (!open) { setAnularTarget(null); setAnularComentario('') } }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={`sm:max-w-md ${FONDO_MODAL}`}>
           <DialogHeader>
             <DialogTitle>¿Anular promesa?</DialogTitle>
           </DialogHeader>
@@ -2375,7 +2346,7 @@ export function PromesasClient({
           <DialogFooter>
             <Button variant="outline" onClick={() => { setAnularTarget(null); setAnularComentario('') }} disabled={isPending}>Cancelar</Button>
             <Button
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              className={CLASE_BOTON_CONFIRMAR}
               onClick={handleAnular}
               disabled={isPending || !anularComentario.trim()}
             >

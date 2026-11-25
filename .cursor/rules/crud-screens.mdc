@@ -53,7 +53,7 @@ Las secciones se distribuyen en dos columnas separadas por `<div className="w-px
 
 ## ViewField + SectionDivider + SegmentCard
 
-Color del valor: casi negro si el campo se edita en Editar. Gris claro `#b4bec9` (`locked` en `ViewField`, o input/select deshabilitado) si no se edita. Sin opacidad en el control.
+En Ver el dato va en negro (`text-foreground`). En Editar, el control deshabilitado sigue en `#b4bec9` por `globals.css`. `locked` ya no cambia el color del `ViewField`.
 
 → **Copiar verbatim de `components.instructions.md § N · ViewField + SectionDivider`**  
 Reglas de valores vacíos y numéricos también están en esa sección.
@@ -130,7 +130,7 @@ Examples in spec syntax:
 ```tsx
 <div className="grid grid-cols-2 gap-4">
   <div className="col-span-2 grid gap-1">
-    <Label htmlFor="campo" className="text-[11px] font-semibold tracking-wider text-muted-foreground">Label *</Label>
+    <Label htmlFor="campo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Label <span className="text-destructive">*</span></Label>
     <Input id="campo" ... />
   </div>
 </div>
@@ -535,7 +535,7 @@ El `Label` usa `htmlFor` con ese mismo `id`. Si faltan varios campos, se marca s
     </AlertDialogHeader>
     <AlertDialogFooter>
       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar</AlertDialogAction>
+      <AlertDialogAction onClick={handleDelete} className={CLASE_BOTON_CONFIRMAR}>Eliminar</AlertDialogAction>
     </AlertDialogFooter>
   </AlertDialogContent>
 </AlertDialog>
