@@ -161,7 +161,7 @@ function SectionDivider({ label }: { label: string }) {
 }
 
 // Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
-// en Ver y Editar el diálogo es muted al 30% sobre blanco; Nuevo queda blanco;
+// en Ver, Editar y Nuevo el diálogo es muted al 30% sobre blanco;
 // la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
 // icono entre la barra y el título; pie en text-sm font-medium como la pestaña;
 // pestaña en gris verdoso, seleccionada y al pasar en verde fuerte, con borde inferior solo si está seleccionada;
@@ -1432,7 +1432,7 @@ export function ClientesClient({
         }}
         modal={false}
       >
-        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden${viewTarget ? ` ${FONDO_MODAL}` : ''}`}>
+        <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[700px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
           {/* Header */}
           <DialogHeader className="-mx-4 -mt-4 px-5 pt-4 pb-2 bg-gradient-to-br from-indigo-50/70 to-transparent border-b border-border/50 shrink-0">
