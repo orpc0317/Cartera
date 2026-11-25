@@ -165,7 +165,7 @@ function SectionDivider({ label }: { label: string }) {
 // la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
 // icono entre la barra y el título; pie en text-sm font-medium como la pestaña;
 // pestaña en gris verdoso, seleccionada y al pasar en verde fuerte, con borde inferior solo si está seleccionada;
-// acción en el mismo gris verdoso y verde fuerte al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
+// acción en el gris claro que Editar mostraba al entrar a Ver, y verde fuerte al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
 // El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
 // Asterisco de obligatorio en rojo. En Ver todo el dato va en negro; en Editar el que no se puede cambiar sigue en gris.
 // El título del modal es el del menú, Clientes, en Ver, Editar y Nuevo. No hay texto debajo.
@@ -196,9 +196,11 @@ const CLASE_PESTANA_MODAL = [
 ].join(' ')
 
 const CLASE_PIE_MODAL = 'text-sm font-medium'
+const TEXTO_GRIS_CLARO = 'text-[color-mix(in_srgb,color-mix(in_oklab,var(--primary)_18%,var(--muted-foreground))_50%,var(--popover))]'
 const CLASE_BOTON_MODAL = [
   CLASE_PIE_MODAL,
-  TEXTO_GRIS_VERDE,
+  TEXTO_GRIS_CLARO,
+  'disabled:opacity-100',
   'hover:bg-transparent hover:text-primary',
   'dark:hover:bg-transparent dark:hover:text-primary',
 ].join(' ')
