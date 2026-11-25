@@ -1,7 +1,6 @@
 ---
 name: crud-screen
 description: 'Build a complete catalog CRUD screen for the Cartera ERP project. USE FOR: a new catalog CRUD (list, modal, create, update, delete) with Clientes as the required first reference; implementing create/read/update/delete from a request or a prompts/crud-*.md spec. Covers: Clientes structure, the main grid as one read of cartera.v_*_lista, getCuentaActiva, requirePermiso, writeAudit, optimistic concurrency with modifico_fecha, re-read of the open record on Ver (obtener* + useRegistroVer), permission-gated UI, campo con error al grabar, and the Playwright file in test/definidas. DO NOT USE FOR: pagos, depósitos, promesas, KPI dashboards, or schema migrations. Do not edit the spec after building or updating the screen.'
-argument-hint: 'Ruta al spec, e.g. prompts/crud-bancos.md — o el pedido de la pantalla, si no hay spec'
 ---
 
 # CRUD Screen Builder
@@ -41,21 +40,22 @@ If the request includes a widget Clientes does not have (image, geo, currency, c
 - Image: `.cursor/rules/image-upload.mdc`
 - Geo, currency, or combobox: `.cursor/rules/advanced-components.mdc`
 
-### Step 2 — Read the area rules
+### Step 2 — Open only the file the step needs
 
-Read these before writing:
+Do not read every rule before writing. Cursor already attaches the glob rules when the matching file is in context. Open a reference when the step below names it.
 
-| File | Covers |
-|------|--------|
-| `.cursor/rules/business-context.mdc` | Domain hierarchy, cuenta isolation |
-| `.cursor/rules/server-actions.mdc` | getCuentaActiva, requirePermiso, page.tsx pattern, optimistic concurrency, writeAudit |
-| `.cursor/rules/crud-screens.mdc` | Modal composition, and § Campo con error al grabar |
-| `.cursor/rules/ui-conventions.mdc` | Accent colors, Lucide icons, label rules |
-| `.cursor/rules/data-tables.mdc` | Column defs, ColumnFilter, ColumnManager, keyboard nav |
-| `.cursor/rules/base-ui-gotchas.mdc` | Base UI vs Radix API differences |
-| `.cursor/rules/components.mdc` | Snippets for cases the Clientes reference does not show |
+| When | Open |
+|------|------|
+| Step 3, a `prompts/crud-*.md` spec | `.cursor/rules/spec-field-tokens.mdc`. An unknown field token stops the work |
+| Step 6, the server action | `.cursor/rules/server-actions.mdc` |
+| Step 8, modal state, save, delete, audit | `.cursor/skills/crud-screen/references/modal.md` |
+| Step 8, an input, select, checkbox, or grid | `.cursor/skills/crud-screen/references/fields.md` |
+| Step 8, the list, toolbar, or CSV | `.cursor/skills/crud-screen/references/table.md` and `src/lib/list-table.ts` |
+| The screen shows a logo | `.cursor/rules/image-upload.mdc` |
+| The screen shows moneda, geo, or a searchable combobox | `.cursor/rules/advanced-components.mdc` |
+| The screen is maestro-detalle, transacción, reporte, or drawer | `.cursor/rules/patterns.mdc`. The catalog layout stays Clientes |
 
-`.cursor/rules/components.mdc` and `.cursor/rules/spec-field-tokens.mdc` are support for cases the reference does not show, and for Base UI traps, security, and audit. They are not the layout to copy.
+A fixed catalog (`FORMAS_PAGO`, tipo de identificación, forma de cálculo) is in `.cursor/rules/business-context.mdc`. Accent, labels, and normalization are in `.cursor/rules/ui-conventions.mdc`. Campo con error, permissions, and the delete trap are in `.cursor/rules/crud-screens.mdc`. Base UI traps are in `.cursor/rules/base-ui-gotchas.mdc`. The list checklist is in `.cursor/rules/data-tables.mdc`. Those files attach by glob while editing `_client.tsx`. They are not a second copy of the layout.
 
 ### Step 3 — Read the request or the spec
 
@@ -186,12 +186,12 @@ const [colPrefs, setColPrefs]     = useState<ColPref[]>(DEFAULT_PREFS)
 const [search, setSearch]         = useState('')
 ```
 
-The modal state block (dialogOpen, isEditing, viewTarget, form, isPending, hadConflict, similarWarning, deleteTarget, auditTarget, auditOpen) follows Clientes. Use `.cursor/rules/components.mdc` § A only when the reference does not show the case.
+The modal state block (dialogOpen, isEditing, viewTarget, form, isPending, hadConflict, similarWarning, deleteTarget, auditTarget, auditOpen) follows Clientes. Use `.cursor/skills/crud-screen/references/modal.md` § A only when the reference does not show the case.
 
 **Data table** (per Clientes and `.cursor/rules/data-tables.mdc`):
 
 - Define `ALL_COLUMNS`, `DEFAULT_PREFS`, `STORAGE_KEY = '<entity>_cols_v1_${userId}'`
-- ColumnFilter, ColumnManager, and handleTableKeyDown follow Clientes. Use `.cursor/rules/components.mdc` § M when the reference does not show the case.
+- ColumnFilter, ColumnManager, and handleTableKeyDown follow Clientes. Use `.cursor/skills/crud-screen/references/table.md` § M when the reference does not show the case.
 - Active row highlight with module accent color from `.cursor/rules/ui-conventions.mdc`
 - Sticky `Codigo` column (left) + sticky actions column (right)
 - Keyboard nav: `ArrowUp` / `ArrowDown` → move cursor; `Enter` → open view; `Escape` → close dialog
@@ -253,11 +253,11 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 - Título igual al `h1` del menú. Sin subtítulo de proyecto ni código. El icono del encabezado se conserva (icono del módulo, `Plus` en alta, `Pencil` en edición) y el degradado de acento del header también.
 - Pestañas con `CLASE_PESTANA_MODAL`. Al menos "General"; más pestañas solo si el spec las define.
 - **View mode:** `ViewField` (dato en negro), agrupado en `SegmentCard` (caja blanca e icono en el título).
-- **Edit mode:** campos de `CAMPOS_FORMULARIO` en el mismo `SegmentCard`. Asterisco obligatorio en `text-destructive`. Lo que no se puede cambiar es un `Select` o `Input` deshabilitado, o `LockedField`. El foco de línea ya vive en `Input`, `Select` y `CountrySelect`. Si hay cascada, al cambiar el padre el hijo pasa al primer valor disponible o a `0`.
+- **Edit mode:** campos de `CAMPOS_FORMULARIO` en el mismo `SegmentCard`. El asterisco obligatorio es `<RequiredMark />`. Lo que no se puede cambiar es un `Select` o `Input` deshabilitado, o `LockedField`. El foco de línea ya vive en `Input`, `Select` y `CountrySelect`. Si hay cascada, al cambiar el padre el hijo pasa al primer valor disponible o a `0`.
 - País, Departamento y Municipio, cada uno en su línea. Código postal en su línea, a media columna.
 - **Footer:** botones ghost con `CLASE_BOTON_MODAL`: Historial, acciones extra, Editar. Eliminar y Desactivar del pie usan `CLASE_BOTON_PELIGRO`. No hay botón Cerrar. En edición: Cancelar y Guardar con la misma clase. El alta usa `WizardAltaActions` con esa clase.
 - **Tras guardar una edición:** el modal sigue abierto en Ver. `update*` devuelve `{ row }`. `setViewTarget(result.row)`, rearmar el formulario como `openView` y `setIsEditing(false)`. Sin cambios llama `cancelEdit()`. El alta cierra el modal con `setDialogOpen(false)`. `router.refresh()` actualiza la tabla. Este paso es obligatorio antes de dar la pantalla por terminada.
-- **Al abrir Ver:** `useFilas(initialData)` y `useRegistroVer` llaman `obtenerEntity` solo de esa fila. Editar queda `disabled={lecturaPendiente}` hasta que la lectura termina. Los nombres de referencias usan `nombreLeido`. `alLlegar` reemplaza esa fila en la lista y, si el usuario ya está editando, solo actualiza `modifico_fecha`. El alta no llama `obtenerEntity`. No hagas `router.refresh()` al abrir. El snippet está en `.cursor/rules/components.mdc` § C.
+- **Al abrir Ver:** `useFilas(initialData)` y `useRegistroVer` llaman `obtenerEntity` solo de esa fila. Editar queda `disabled={lecturaPendiente}` hasta que la lectura termina. Los nombres de referencias usan `nombreLeido`. `alLlegar` reemplaza esa fila en la lista y, si el usuario ya está editando, solo actualiza `modifico_fecha`. El alta no llama `obtenerEntity`. No hagas `router.refresh()` al abrir. El snippet está en `.cursor/skills/crud-screen/references/modal.md` § C.
 - **Delete:** `AlertDialog` with "¿Estás seguro?" pattern, triggered from the footer's Eliminar button (not a row dropdown); only shown if `puedeEliminar`
 - **Guard obligatorio:** el `modal={false}` del Dialog principal debe ignorar `onOpenChange(false)` mientras `auditTarget`/`deleteTarget`/cualquier otro dialog anidado esté abierto — ver `.cursor/rules/base-ui-gotchas.mdc` § 5
 
@@ -333,7 +333,7 @@ The dev server and `TEST_LOGIN_USERNAME` / `TEST_LOGIN_PASSWORD` come from the P
 
 ### Step 11 — Definition of done
 
-Run these before reporting the screen finished. Do not use `get_errors` or PowerShell.
+Run these before reporting the screen finished.
 
 - [ ] `npx tsc --noEmit` if any TypeScript or TSX file was touched
 - [ ] `npx eslint` on the touched files

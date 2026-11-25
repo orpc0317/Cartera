@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -1437,7 +1438,7 @@ export function PromesasClient({
                     </div>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente <span className="text-destructive">*</span></Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente <RequiredMark /></Label>
                     <ClienteCombobox
                       clientes={clientesFiltrados}
                       value={form.cliente}
@@ -2331,9 +2332,7 @@ export function PromesasClient({
             <strong>{proyectoMap.get(`${anularTarget?.empresa}-${anularTarget?.proyecto}`) ?? ''}</strong>.
           </p>
           <div className="grid gap-1">
-            <Label htmlFor="anular-comentario" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>
-              Motivo Anulacion *
-            </Label>
+            <Label htmlFor="anular-comentario" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Motivo Anulacion <RequiredMark /></Label>
             <textarea
               id="anular-comentario"
               value={anularComentario}

@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -767,7 +768,7 @@ export function TiposIngresosClient({
 
                   {/* Empresa */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                     {viewTarget ? (
                       <LockedField value={empresaMap.get(form.empresa)} />
                     ) : (
@@ -782,7 +783,7 @@ export function TiposIngresosClient({
 
                   {/* Proyecto */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                     {viewTarget ? (
                       <LockedField value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
@@ -808,14 +809,14 @@ export function TiposIngresosClient({
 
                   {/* Nombre */}
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                     <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
                   </div>
 
                   {/* Etiqueta */}
                   <div className="col-span-2 grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
-                      <Label htmlFor="etiqueta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Etiqueta <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="etiqueta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Etiqueta <RequiredMark /></Label>
                       <Input variant="l-border" id="etiqueta" aria-invalid={campoInvalido?.id === 'etiqueta' || undefined} maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
                     </div>
                     <div /><div />
@@ -846,7 +847,7 @@ export function TiposIngresosClient({
                   {modo === 'eventual' && (
                     <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                       <div className="grid gap-1">
-                        <Label htmlFor="eventual_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="eventual_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
                         <Select value={eventualMoneda} onValueChange={(v) => { limpiarCampoInvalido(); setEventualMoneda(v ?? '') }}>
                           <SelectTrigger variant="l-border" id="eventual_moneda" aria-invalid={campoInvalido?.id === 'eventual_moneda' || undefined} className="w-full">
                             <SelectValue>
@@ -877,7 +878,7 @@ export function TiposIngresosClient({
                         </Select>
                       </div>
                       <div className="grid gap-1">
-                        <Label htmlFor="eventual_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Monto <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="eventual_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Monto <RequiredMark /></Label>
                         <Input variant="l-border" id="eventual_monto" type="number" min={0} value={eventualMonto || ''} onChange={(e) => setEventualMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                       </div>
                       <div />
@@ -889,7 +890,7 @@ export function TiposIngresosClient({
                     <>
                       <div className="col-span-2 grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
-                          <Label htmlFor="forma_calculo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Forma Calculo <span className="text-destructive">*</span></Label>
+                          <Label htmlFor="forma_calculo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Forma Calculo <RequiredMark /></Label>
                           <Select value={String(formaCalculo)} onValueChange={(v) => setFormaCalculo(Number(v))}>
                             <SelectTrigger variant="l-border" id="forma_calculo" className="w-full"><SelectValue>{(v: string) => v ? (FORMA_CALCULO_OTROS[Number(v)] ?? v) : null}</SelectValue></SelectTrigger>
                             <SelectContent>
@@ -903,7 +904,7 @@ export function TiposIngresosClient({
                       </div>
                       <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
                         <div className="grid gap-1">
-                          <Label htmlFor="ec_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <span className="text-destructive">*</span></Label>
+                          <Label htmlFor="ec_moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
                           <Select value={estadoCuentaMoneda} onValueChange={(v) => { limpiarCampoInvalido(); setEstadoCuentaMoneda(v ?? '') }}>
                             <SelectTrigger variant="l-border" id="ec_moneda" aria-invalid={campoInvalido?.id === 'ec_moneda' || undefined} className="w-full">
                               <SelectValue>
@@ -934,7 +935,7 @@ export function TiposIngresosClient({
                           </Select>
                         </div>
                         <div className="grid gap-1">
-                          <Label htmlFor="ec_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>{montoLabel} <span className="text-destructive">*</span></Label>
+                          <Label htmlFor="ec_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>{montoLabel} <RequiredMark /></Label>
                           <Input variant="l-border" id="ec_monto" type="number" min={0} value={estadoCuentaMonto || ''} onChange={(e) => setEstadoCuentaMonto(Number(e.target.value))} style={{ MozAppearance: 'textfield' }} className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                         </div>
                         <div className="grid gap-1">

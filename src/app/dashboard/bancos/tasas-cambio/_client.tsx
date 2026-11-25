@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -487,7 +488,7 @@ export default function TasasCambioClient({
 
                     {/* Empresa */}
                     <div className="col-span-3 grid gap-1">
-                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                   <Select
                     value={String(form.empresa)}
                     onValueChange={(v) => {
@@ -512,7 +513,7 @@ export default function TasasCambioClient({
 
                 {/* Proyecto */}
                 <div className="col-span-3 grid gap-1">
-                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                   <Select
                     value={String(form.proyecto)}
                     onValueChange={(v) => {
@@ -536,7 +537,7 @@ export default function TasasCambioClient({
 
                 {/* Moneda */}
                 <div className="col-span-1 grid gap-1">
-                  <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
                   <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
                     <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona moneda">
@@ -571,7 +572,7 @@ export default function TasasCambioClient({
 
                     {/* Fecha */}
                     <div className="col-span-1 grid gap-1">
-                      <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="fecha" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fecha <RequiredMark /></Label>
                       <Input variant="l-border"
                         id="fecha"
                         aria-invalid={campoInvalido?.id === 'fecha' || undefined}
@@ -581,7 +582,7 @@ export default function TasasCambioClient({
                       />
                     </div>
                     <div className="col-span-1 grid gap-1">
-                      <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio <RequiredMark /></Label>
                       <Input variant="l-border"
                         id="tasa_cambio"
                         aria-invalid={campoInvalido?.id === 'tasa_cambio' || undefined}

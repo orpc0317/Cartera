@@ -143,7 +143,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
 > `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
-> `direccion_pais` → bandera + ISO del pais segun **Country flag rules** de `ui-conventions.instructions.md`;
+> `direccion_pais` → bandera + ISO del pais segun **Country flag rules** de `.cursor/rules/ui-conventions.mdc`;
 > `direccion_departamento` → nombre del departamento (prop `departamentos`);
 > `direccion_municipio` → nombre del municipio (prop `municipios`).
 
@@ -249,8 +249,8 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 ## LOGIC_ESPECIFICO
 
 - Cascadas en `f()`: ver seccion **RELACIONES** para el detalle completo de cada cascada.
-- **Campos de telefono con country code (`PhoneField`):** ver regla global **PhoneField pattern** en `crud-screens.instructions.md`.
-- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa **Y** pre-seleccionar `0` en `tipo_identificacion` **Y** pre-seleccionar `0` en `regimen_iva` **Y** pre-seleccionar `direccion_pais` usando el algoritmo de **Country / Geo pre-selection in openCreate()** de `crud-screens.instructions.md` (3 niveles: proyecto → empresa → IP). Inicializar tambien `tel1Iso` y `tel2Iso` al pais detectado.
+- **Campos de telefono con country code (`PhoneField`):** ver regla global **PhoneField pattern** en `.cursor/rules/crud-screens.mdc`.
+- `openCreate()`: pre-seleccionar primera empresa y primer proyecto de esa empresa **Y** pre-seleccionar `0` en `tipo_identificacion` **Y** pre-seleccionar `0` en `regimen_iva` **Y** pre-seleccionar `direccion_pais` usando el algoritmo de **Country / Geo pre-selection in openCreate()** de `.cursor/rules/crud-screens.mdc` (3 niveles: proyecto → empresa → IP). Inicializar tambien `tel1Iso` y `tel2Iso` al pais detectado.
 
 ---
 

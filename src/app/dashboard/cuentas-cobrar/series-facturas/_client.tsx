@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -568,7 +569,7 @@ export function SeriesFacturasClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                         <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                           <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                             <SelectValue placeholder="Selecciona empresa">
@@ -581,7 +582,7 @@ export function SeriesFacturasClient({
                         </Select>
                       </div>
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                         <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                           <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                             <SelectValue placeholder="Selecciona proyecto">
@@ -594,7 +595,7 @@ export function SeriesFacturasClient({
                         </Select>
                       </div>
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="serie" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="serie" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie <RequiredMark /></Label>
                         <Input
                           variant="l-border"
                           id="serie"

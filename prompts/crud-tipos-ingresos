@@ -135,7 +135,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 > **Regla para FKs en la tabla:** nunca mostrar el ID numerico. Resolver al nombre legible:
 > `empresa` → nombre de la empresa (prop `empresas`); `proyecto` → nombre del proyecto (prop `proyectos`);
-> `moneda` → bandera + ISO segun **Moneda display rules** de `ui-conventions.instructions.md`.
+> `moneda` → bandera + ISO segun **Moneda display rules** de `.cursor/rules/ui-conventions.mdc`.
 
 | key            | label           | defaultVisible | render                                                |
 |----------------|-----------------|----------------|-------------------------------------------------------|
@@ -190,7 +190,7 @@ Sticky izquierdo: `codigo` (label: `"Codigo"`, es el identificador visible del P
 
 > Los campos `eventual` y `estado_cuenta` son **Selection Buttons** mutuamente excluyentes (ver REGLA #5).
 > Los campos marcados como `Virtual` son `useState` locales; su valor se mapea a campos BD al guardar (ver REGLA #6).
-> **Monedas** — para la bandera usar `CURRENCY_FLAG_MAP` — ver `components.instructions.md § W · Select moneda con bandera`. La prop `monedas: Moneda[]` viene de `getMonedas()` declarada en RELACIONES.
+> **Monedas** — para la bandera usar `CURRENCY_FLAG_MAP` — ver `.cursor/rules/advanced-components.mdc` § W · Select moneda con bandera. La prop `monedas: Moneda[]` viene de `getMonedas()` declarada en RELACIONES.
 
 | Campo                | Label         | Ancho | View                                 | Nuevo                                | Edit                                 | Default (Nuevo)     | Notas |
 |----------------------|---------------|-------|--------------------------------------|--------------------------------------|--------------------------------------|---------------------|-------|

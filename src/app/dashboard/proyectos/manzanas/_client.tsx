@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
@@ -424,7 +425,7 @@ export function ManzanasClient({
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))}>
                       <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona empresa">
@@ -437,7 +438,7 @@ export function ManzanasClient({
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))}>
                       <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona proyecto">
@@ -450,7 +451,7 @@ export function ManzanasClient({
                     </Select>
                   </div>
                   <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase <span className="text-destructive">*</span></Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase <RequiredMark /></Label>
                     <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))}>
                       <SelectTrigger variant="l-border" id="fase" aria-invalid={campoInvalido?.id === 'fase' || undefined} className="w-full">
                         <SelectValue placeholder="Selecciona fase">
@@ -463,7 +464,7 @@ export function ManzanasClient({
                     </Select>
                   </div>
                   <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo <span className="text-destructive">*</span></Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo <RequiredMark /></Label>
                     <Input variant="l-border"
                       id="codigo"
                       aria-invalid={campoInvalido?.id === 'codigo' || undefined}

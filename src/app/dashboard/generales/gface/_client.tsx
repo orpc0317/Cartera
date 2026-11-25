@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import { Badge } from '@/components/ui/badge'
 import {
   Table, TableBody, TableCell, TableHead,
@@ -641,7 +642,7 @@ export function GfaceClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="empresa" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="empresa" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                         <Select
                           value={form.empresa ? String(form.empresa) : ''}
                           onValueChange={(v) => f('empresa', Number(v))}
@@ -660,7 +661,7 @@ export function GfaceClient({
                         </Select>
                       </div>
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="proyecto" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="proyecto" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                         <Select
                           value={form.proyecto ? String(form.proyecto) : ''}
                           onValueChange={(v) => f('proyecto', Number(v))}
@@ -681,7 +682,7 @@ export function GfaceClient({
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                         <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} maxLength={100} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del certificador" />
                       </div>
                       <div className="grid gap-1">

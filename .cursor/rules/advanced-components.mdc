@@ -1,5 +1,5 @@
 ---
-description: "Cartera — snippets para componentes especializados: Select moneda con bandera (§W), Select geo nativo (§X), CountrySelect con cascade (§AA), ClienteCombobox buscable (§AB). Cargar solo cuando la pantalla use alguno de estos campos."
+description: "Snippets de moneda, geo, CountrySelect, ClienteCombobox y PhoneField, más la preselección de país y moneda. Cargar solo cuando la pantalla usa uno de esos campos."
 alwaysApply: false
 ---
 
@@ -116,6 +116,14 @@ if (col === 'moneda') return vals.has(r.moneda)
 
 ---
 
+## Reglas de geo y de moneda
+
+- `pais` guarda ISO-2 (`GT`). `departamento` y `municipio` guardan el código. En tabla, ViewField y edición se muestra el nombre, nunca el código pelado.
+- La bandera del país va a la izquierda: `https://flagcdn.com/w20/{iso}.png`, `width={20}` `height={14}`.
+- Moneda visible (tabla, ViewField, trigger y opciones): bandera + código ISO (`🇬🇹 GTQ`). Sin nombre de la divisa.
+- La preselección de moneda usa `COUNTRY_CURRENCY_MAP` de `src/lib/constants.ts`. No redefinas el mapa en el componente.
+- El snippet de moneda es § W. El de geo es § X y § AA. El de teléfono es PhoneField, más abajo.
+
 ## X · Select geo nativo (pais / departamento / municipio)
 
 Usar `<select>` HTML nativo — **no** el `<Select>` de Base UI — para estos tres campos.
@@ -196,7 +204,7 @@ País, Departamento y Municipio van cada uno en `col-span-2`. El código postal 
 ```
 
 **Reglas:**
-- La cascada aplica tanto en `openCreate()` como en los `onChange` del usuario — ver `crud-screens.instructions.md § Country/Geo pre-selection`.
+- La cascada aplica tanto en `openCreate()` como en los `onChange` del usuario — ver `.cursor/rules/crud-screens.mdc § Country/Geo pre-selection`.
 - Los nombres de campos (`pais`, `departamento`, `municipio`) pueden variar por entidad (ej. `direccion_pais`, `direccion_departamento`, `direccion_municipio` en Clientes). Adaptar los `setForm` al nombre real de la columna.
 - En vista (`ViewField`): resolver código → nombre via los props arrays; mostrar bandera del país.
 - Nunca mostrar el código raw de pais/depto/municipio en la UI.
@@ -226,7 +234,7 @@ Estos son **separados** de `form.direccion_pais` / `form.direccion_departamento`
 
 ```tsx
 <div className="grid gap-1">
-  <Label htmlFor="direccion_pais" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+  <Label htmlFor="direccion_pais" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
   <CountrySelect
     paises={paises}
     value={paisCodigo}
@@ -248,7 +256,7 @@ Estos son **separados** de `form.direccion_pais` / `form.direccion_departamento`
 </div>
 ```
 
-> `countryToCurrency` proviene de `COUNTRY_CURRENCY_MAP` en `src/lib/constants.ts` — ver `ui-conventions.instructions.md § Currency pre-selection from country`.
+> `countryToCurrency` proviene de `COUNTRY_CURRENCY_MAP` en `src/lib/constants.ts` — ver `.cursor/rules/ui-conventions.mdc § Currency pre-selection from country`.
 
 ### JSX — view mode
 
@@ -265,7 +273,7 @@ Usar un `ViewField` con bandera construida desde el código ISO:
 
 ### Inicialización en openCreate()
 
-Usar `applyWithPais` para pre-seleccionar el primer depto y municipio del país (ver `crud-screens.instructions.md § Country/Geo pre-selection`):
+Usar `applyWithPais` para pre-seleccionar el primer depto y municipio del país (ver `.cursor/rules/crud-screens.mdc § Country/Geo pre-selection`):
 
 ```ts
 function applyWithPais(paisCode: string) {
@@ -440,7 +448,7 @@ const clientesFiltrados = useMemo(
 
 ```tsx
 <div className="grid gap-1">
-  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente *</Label>
+  <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cliente <RequiredMark /></Label>
   <ClienteCombobox
     clientes={clientesFiltrados}
     value={form.cliente}
@@ -456,3 +464,73 @@ const clientesFiltrados = useMemo(
 > **Regla:** el `ClienteCombobox` **nunca** se auto-selecciona al cambiar de proyecto — el usuario siempre debe elegirlo explícitamente. Al cambiar de proyecto, hacer `f('cliente', 0)` para limpiar.
 
 > **Campo con error:** el botón del combobox lleva `id` y `data-invalid={invalid || undefined}` con `data-invalid:border-destructive`. Un `<button>` no lleva `aria-invalid`. El `id` es el que recibe `rechazar`. Ver `.cursor/rules/crud-screens.mdc` § Campo con error al grabar.
+
+---
+
+## PhoneField
+
+Use `<PhoneField>` from `@/components/ui/phone-field` for every telephone field. Import `DIAL_CODES` and `splitPhone` from the same module.
+
+### State
+
+Declare two local state pairs per phone field, **after** the `form` useState:
+
+```ts
+const [tel1Iso, setTel1Iso] = useState('')
+const [tel1Local, setTel1Local] = useState('')
+const [tel2Iso, setTel2Iso] = useState('')
+const [tel2Local, setTel2Local] = useState('')
+```
+
+### Sync on edit open
+
+When opening edit mode, use `splitPhone` to decompose the stored value:
+
+```ts
+const { iso, local } = splitPhone(cliente.telefono1)
+setTel1Iso(iso); setTel1Local(local)
+```
+
+Or use `useEffect` to react to `form.telefono1` changes (placed after the `form` useState):
+
+```ts
+useEffect(() => {
+  if (!form.telefono1) return
+  const { iso, local } = splitPhone(form.telefono1)
+  setTel1Iso(iso); setTel1Local(local)
+}, [form.telefono1])
+```
+
+### JSX
+
+```tsx
+<PhoneField
+  iso={tel1Iso}
+  local={tel1Local}
+  inputId="telefono1"
+  invalid={campoInvalido?.id === 'telefono1'}
+  onIsoChange={(v) => {
+    setTel1Iso(v)
+    f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local)
+  }}
+  onLocalChange={(v) => {
+    setTel1Local(v)
+    f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v)
+  }}
+  placeholder="Número local"
+/>
+```
+
+The stored value in `form.telefono1` is `+{dialCode}{local}` when a country with a dial code is selected, or just `local` otherwise. Do **not** reimplement `splitPhone` — it already handles these cases.
+
+### Initialization in openCreate()
+
+When the dialog opens for create, initialize the ISO codes to the pre-selected country (see **Country / Geo pre-selection in openCreate()** below):
+
+```ts
+setTel1Iso(detectedCountryIso); setTel1Local('')
+setTel2Iso(detectedCountryIso); setTel2Local('')
+```
+
+
+---

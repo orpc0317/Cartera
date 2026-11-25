@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RequiredMark } from '@/components/ui/required-mark'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -543,14 +544,14 @@ export function CuentasBancariasClient({
                 <div className="grid grid-cols-2 gap-2">
                   <SegmentCard label="Identificacion">
                     <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                       <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>{proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
@@ -559,7 +560,7 @@ export function CuentasBancariasClient({
                   </SegmentCard>
                   <SegmentCard label="General">
                     <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco <span className="text-destructive">*</span></Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Banco <RequiredMark /></Label>
                       <Select value={String(form.banco)} onValueChange={(v) => f('banco', Number(v))}>
                         <SelectTrigger variant="l-border" id="banco" aria-invalid={campoInvalido?.id === 'banco' || undefined} className="w-full"><SelectValue placeholder="Selecciona banco">{(v: string) => v && v !== '0' ? (bancoMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                         <SelectContent>
@@ -571,7 +572,7 @@ export function CuentasBancariasClient({
                       </Select>
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Cuenta <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Cuenta <RequiredMark /></Label>
                       <Input variant="l-border"
                         id="nombre"
                         aria-invalid={campoInvalido?.id === 'nombre' || undefined}
@@ -581,7 +582,7 @@ export function CuentasBancariasClient({
                       />
                     </div>
                     <div className="grid gap-1">
-                      <Label htmlFor="numero" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Cuenta <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="numero" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Cuenta <RequiredMark /></Label>
                       <Input variant="l-border"
                         id="numero"
                         aria-invalid={campoInvalido?.id === 'numero' || undefined}
@@ -591,7 +592,7 @@ export function CuentasBancariasClient({
                       />
                     </div>
                     <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <span className="text-destructive">*</span></Label>
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
                         <SelectTrigger variant="l-border" id="moneda" aria-invalid={campoInvalido?.id === 'moneda' || undefined} className="w-full">
                           <SelectValue placeholder="Selecciona moneda">

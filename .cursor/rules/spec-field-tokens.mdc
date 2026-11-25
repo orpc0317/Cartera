@@ -26,10 +26,10 @@ Este archivo cumple dos funciones:
 > Sección: [TABS_MODAL | COLUMNAS_TABLA], columna [Ver | Nuevo | Editar | render]
 > Token:   "[valor literal del token encontrado]"
 >
-> Este token no tiene un blueprint en components.instructions.md.
+> Este token no tiene un blueprint en .cursor/skills/crud-screen/references/ (modal.md, fields.md o table.md).
 > Opciones:
->   a) Reemplazar por el token canónico más cercano (ver spec-field-tokens.instructions.md).
->   b) Crear el blueprint §[siguiente §] en components.instructions.md y añadir el token aquí.
+>   a) Reemplazar por el token canónico más cercano (ver .cursor/rules/spec-field-tokens.mdc).
+>   b) Crear el blueprint §[siguiente §] en esa referencia y añadir el token aquí.
 > No continuar hasta que el desarrollador elija una opción y actualice el spec.
 > ```
 
@@ -46,7 +46,7 @@ Token principal [§X]
 Token principal [§X]; modificador1; modificador2
 ```
 
-- `[§X]` es la referencia directa a la sección del blueprint en `components.instructions.md`. Incluirla siempre en specs nuevos.
+- `[§X]` es la sección del blueprint en `.cursor/skills/crud-screen/references/` (`modal.md`, `fields.md` o `table.md`). Incluirla siempre en specs nuevos.
 - Los modificadores se separan con `;` y van después del token.
 - En columnas combinadas (`Nuevo / Editar`), usa el mismo token para ambos modos; si difieren, separa en columnas `Nuevo` y `Editar` individuales.
 
@@ -85,7 +85,7 @@ Token principal [§X]; modificador1; modificador2
 | `Select moneda [§W]` | § W | Select de moneda con bandera (usa `CURRENCY_FLAG_MAP`). Options de prop `monedas`. |
 | `Select geo [§X]` | § X | `<select>` nativo HTML para país / departamento / municipio con cascade. |
 | `CountrySelect [§AA]` | § AA | Componente `CountrySelect` (bandera + nombre, cascade depto → municipio + auto-set moneda). |
-| `PhoneField [crud-screens§PhoneField]` | crud-screens.instructions.md | Teléfono: selector de país + número local. Formato E.164. |
+| `PhoneField [crud-screens§PhoneField]` | .cursor/rules/crud-screens.mdc | Teléfono: selector de país + número local. Formato E.164. |
 | `ClienteCombobox [§AB]` | § AB | Combobox con búsqueda por texto para seleccionar un cliente (Popover). |
 | `LogoUpload [§AC]` | § AC | Carga de imagen con validación magic bytes, dimensiones y drag-drop. |
 | `SelectionButton [§AE]` | § AE | Botones de selección mutuamente excluyentes (radio group visual, 2 opciones). |
@@ -133,7 +133,7 @@ El token va en la columna **render** de la tabla `COLUMNAS_TABLA`.
 | `Moneda display [§W]` | § W | Bandera del país + código ISO del campo de moneda (usa `CURRENCY_FLAG_MAP`). |
 | `Badge activo [§Y]` | § Y | Badge emerald si `activo=1`, muted si `activo=0`. |
 | `nombre FK` | — | Resolver FK numérica a nombre legible desde un prop. Indicar el prop en la columna **Notas** (ej. `nombre de la empresa (prop 'empresas')`). |
-| `Flag+nombre` | — | Bandera del país + nombre legible. Ver **Country flag rules** en `ui-conventions.instructions.md`. |
+| `Flag+nombre` | — | Bandera del país + nombre legible. Ver **Country flag rules** en `.cursor/rules/ui-conventions.mdc`. |
 | `Badge custom` | — | Badge con variante o lógica específica. Detallar el render completo (clase, variante, lógica) en `REGLAS_ESPECIFICAS`. |
 | `label cat (NOMBRE)` | — | Resolver campo a label de texto desde un array constante. `NOMBRE` = nombre del array (ej. `REGIMENES_ISR`). Importar de `@/lib/constants`. |
 | `Sí/No` | — | Campo booleano 1/0 renderizado como texto `"Sí"` / `"No"`. |
@@ -239,7 +239,7 @@ Declara si la tabla debe tener paginación cliente o solo un contador de registr
 
 | Valor | Significado |
 |-------|-------------|
-| `SI 50/pag` | Implementar paginación con PAGE_SIZE=50. Ver sección "Pagination (client-side)" en `data-tables.instructions.md`. |
+| `SI 50/pag` | Implementar paginación con PAGE_SIZE=50. Ver sección "Pagination (client-side)" en `.cursor/rules/data-tables.mdc`. |
 | `SI N/pag` | Implementar paginación con PAGE_SIZE=N. |
 | `NO (contador)` | Solo mostrar `{filtered.length} entidades` debajo de la tabla. Sin controles de página. |
 
@@ -248,8 +248,113 @@ Declara si la tabla debe tener paginación cliente o solo un contador de registr
 Cuando `PAGINACION: SI`:
 - Añadir `ChevronLeft, ChevronRight` a los imports de `lucide-react`.
 - Usar `pagedRows.map(...)` en el render, con `globalIdx = page * PAGE_SIZE + rowIdx`.
-- Actualizar `handleTableKeyDown`, `useEffect` cursor reset y `onFocus` como se describe en `data-tables.instructions.md`.
+- Actualizar `handleTableKeyDown`, `useEffect` cursor reset y `onFocus` como se describe en `.cursor/rules/data-tables.mdc`.
 
 Cuando `PAGINACION: NO (contador)`:
 - Añadir `<p className="text-xs text-muted-foreground">{filtered.length} [entidad]</p>` debajo del `</div>` de la tabla.
 - Sin `page` state, sin `pagedRows`, sin controles de navegación.
+
+---
+
+### Field width annotations in TABS_MODAL
+
+Every field listed in a spec's `TABS_MODAL` section **must** carry a width annotation so the implementer knows the grid span without guessing:
+
+| Annotation | Grid behaviour | When to use |
+|---|---|---|
+| `(full)` | `col-span-2` — occupies the whole row | Long text, addresses, names, selects with long options, any field that needs room |
+| `(half)` | occupies one column; the next `(half)` field fills the other | Short codes, numbers, booleans paired side by side |
+| `(third)` | occupies one third of the row; **must appear in groups of 3** | Three short fields that logically belong together (e.g. day / month / year, or code / type / status) |
+
+**Rule:** the spec author decides width based on field semantics and expected content length. The implementer applies it literally.
+
+**Thirds implementation:** the outer grid stays `grid-cols-2`. Three consecutive `(third)` fields are wrapped in a single `col-span-2` container that creates an inner 3-column grid:
+
+```tsx
+{/* view mode */}
+<div className="col-span-2 grid grid-cols-3 gap-3">
+  <ViewField label="Dia"  value={...} />
+  <ViewField label="Mes"  value={...} />
+  <ViewField label="Anio" value={...} />
+</div>
+
+{/* edit mode */}
+<div className="col-span-2 grid grid-cols-3 gap-4">
+  <div className="grid gap-1"><Label ...>Dia</Label><Input ... /></div>
+  <div className="grid gap-1"><Label ...>Mes</Label><Input ... /></div>
+  <div className="grid gap-1"><Label ...>Anio</Label><Input ... /></div>
+</div>
+```
+
+Examples in spec syntax:
+```
+  - nombre            (view + edit; full)
+  - empresa           (view + edit; half)
+  - proyecto          (view + edit; half)
+  - dia               (view + edit; third)
+  - mes               (view + edit; third)
+  - anio              (view + edit; third)
+  - activo            (view + edit; half — Checkbox 0/1)
+  - predeterminado    (view + edit; half — Checkbox 0/1)
+```
+
+## TABS_MODAL spec format
+
+Each spec's `TABS_MODAL` section uses **one table per section** to declare fields. The rules below are global — do not repeat them inside spec files.
+
+### Global structure rules
+
+- The first tab is always **General** and is mandatory. Add tabs only if the screen requires it.
+- Each tab groups fields under `SectionDivider` headings listed top-to-bottom in visual order.
+- Fields not shown in a given mode get `—` in that column.
+- When Nuevo and Edit are identical for all fields in a section, collapse into a single `Nuevo / Edit` column.
+
+### Table format
+
+```markdown
+### Tab: General  (icono: <NombreIconoLucide>)
+
+**[NOMBRE_SECCION]**
+
+| Campo  | Label  | Ancho | View      | Nuevo      | Edit             | Notas |
+|--------|--------|-------|-----------|------------|------------------|-------|
+| campo1 | Label1 | full  | ViewField | Input; req | Input; req       |       |
+| campo2 | Label2 | half  | ViewField | Select     | Select; disabled |       |
+| campo3 | Label3 | half  | —         | —          | —                |       |
+```
+
+### Column legend
+
+**Ancho:** `full` | `half` | `third` — same semantics as the grid width annotations above.
+
+**View / Nuevo / Edit values:**
+
+| Value               | Meaning |
+|---------------------|---------|
+| `ViewField`         | Read-only field: label outside (`grid gap-1` + `text-[11px] font-semibold tracking-wider text-muted-foreground`), value inside card (`rounded-lg bg-muted/50`) |
+| `Checkbox card`     | `<Checkbox disabled />` inside a ViewField-style card (label above, checkbox below) |
+| `Moneda display`    | Apply **Moneda display rules** from `.cursor/rules/ui-conventions.mdc` |
+| `Input`             | `<Input>` text field |
+| `Input; req`        | Required `<Input>` |
+| `Input number ≥ 0`  | `type="number"` with `Math.max(0, …)` clamp |
+| `Select`            | `<Select>` loaded from prop |
+| `Select; disabled`  | `<Select disabled={!!viewTarget}>` — readonly after creation |
+| `Select nullable`   | `<Select>` with blank first option (`value=""`) representing `null` in DB |
+| `Checkbox 0/1`      | `<Checkbox>` storing smallint 0/1 |
+| `—`                 | Field not shown in this mode |
+
+**Notas column:** short constraint or cross-reference (`ver REGLA #N`). Full details go in `REGLAS_ESPECIFICAS`.
+
+### Adding more tabs
+
+```markdown
+### Tab: <Nombre>  (icono: <NombreIconoLucide>)
+
+**[NOMBRE_SECCION]**
+
+| Campo | Label | Ancho | View | Nuevo / Edit | Notas |
+|-------|-------|-------|------|--------------|-------|
+| ...   | ...   | ...   | ...  | ...          | ...   |
+```
+
+---
