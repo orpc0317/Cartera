@@ -164,7 +164,8 @@ function SectionDivider({ label }: { label: string }) {
 // en Ver y Editar el diálogo es muted al 30% sobre blanco; Nuevo queda blanco;
 // la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
 // icono entre la barra y el título; pie en text-sm font-medium como la pestaña;
-// acción en gris verdoso y verde de la pestaña al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
+// pestaña en gris verdoso, seleccionada y al pasar en verde fuerte, con borde inferior solo si está seleccionada;
+// acción en el mismo gris verdoso y verde fuerte al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
 // El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
 const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
@@ -175,13 +176,18 @@ const SEGMENTO_ICONO = {
   FACTURACION: Receipt,
 } as const
 
+const TEXTO_GRIS_VERDE = 'text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))] dark:text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))]'
 const CLASE_PESTANA_MODAL = [
   'gap-1.5 rounded-md border-b-2 border-b-transparent px-3 py-1 text-sm font-medium',
-  'bg-transparent text-foreground/70 after:hidden',
+  'bg-transparent after:hidden',
+  TEXTO_GRIS_VERDE,
+  'hover:bg-transparent hover:text-primary dark:hover:bg-transparent dark:hover:text-primary',
   'data-active:border-b-primary data-active:bg-transparent data-active:text-primary',
+  'data-active:hover:border-b-primary data-active:hover:bg-transparent data-active:hover:text-primary',
+  'dark:bg-transparent dark:data-active:border-b-primary dark:data-active:bg-transparent dark:data-active:text-primary',
+  'dark:data-active:hover:text-primary',
   'group-data-[variant=line]/tabs-list:bg-transparent',
   'group-data-[variant=line]/tabs-list:data-active:bg-transparent',
-  'dark:bg-transparent dark:data-active:bg-transparent',
   'dark:group-data-[variant=line]/tabs-list:bg-transparent',
   'dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent',
 ].join(' ')
@@ -189,7 +195,7 @@ const CLASE_PESTANA_MODAL = [
 const CLASE_PIE_MODAL = 'text-sm font-medium'
 const CLASE_BOTON_MODAL = [
   CLASE_PIE_MODAL,
-  'text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))]',
+  TEXTO_GRIS_VERDE,
   'hover:bg-transparent hover:text-primary',
   'dark:hover:bg-transparent',
 ].join(' ')
