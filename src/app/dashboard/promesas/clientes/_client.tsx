@@ -176,11 +176,12 @@ const SEGMENTO_ICONO = {
   FACTURACION: Receipt,
 } as const
 
-const TEXTO_GRIS_VERDE = 'text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))] dark:text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))]'
+const TEXTO_GRIS_VERDE = 'text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))]'
 const CLASE_PESTANA_MODAL = [
   'gap-1.5 rounded-md border-b-2 border-b-transparent px-3 py-1 text-sm font-medium',
   'bg-transparent after:hidden',
   TEXTO_GRIS_VERDE,
+  'dark:text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))]',
   'hover:bg-transparent hover:text-primary dark:hover:bg-transparent dark:hover:text-primary',
   'data-active:border-b-primary data-active:bg-transparent data-active:text-primary',
   'data-active:hover:border-b-primary data-active:hover:bg-transparent data-active:hover:text-primary',
@@ -197,7 +198,7 @@ const CLASE_BOTON_MODAL = [
   CLASE_PIE_MODAL,
   TEXTO_GRIS_VERDE,
   'hover:bg-transparent hover:text-primary',
-  'dark:hover:bg-transparent',
+  'dark:hover:bg-transparent dark:hover:text-primary',
 ].join(' ')
 const CLASE_BOTON_PELIGRO = [
   CLASE_PIE_MODAL,
