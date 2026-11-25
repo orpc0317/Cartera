@@ -163,7 +163,8 @@ function SectionDivider({ label }: { label: string }) {
 // Prueba de look and feel, solo el modal de Clientes. Reversible en este archivo:
 // en Ver y Editar el diálogo es muted al 30% sobre blanco; Nuevo queda blanco;
 // la franja de pestañas y la de los botones quedan blancas; cajas bg-popover;
-// icono entre la barra y el título; pie en text-sm font-medium como la pestaña.
+// icono entre la barra y el título; pie en text-sm font-medium como la pestaña;
+// acción en gris verdoso y verde de la pestaña al pasar; Eliminar en gris rojizo y rojo al pasar.
 const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
@@ -185,6 +186,18 @@ const CLASE_PESTANA_MODAL = [
 ].join(' ')
 
 const CLASE_PIE_MODAL = 'text-sm font-medium'
+const CLASE_BOTON_MODAL = [
+  CLASE_PIE_MODAL,
+  'text-[color-mix(in_oklab,var(--primary)_40%,var(--muted-foreground))]',
+  'hover:bg-transparent hover:text-primary',
+  'dark:hover:bg-transparent',
+].join(' ')
+const CLASE_BOTON_PELIGRO = [
+  CLASE_PIE_MODAL,
+  'bg-transparent text-[color-mix(in_oklab,var(--destructive)_40%,var(--muted-foreground))]',
+  'hover:bg-transparent hover:text-destructive',
+  'dark:hover:bg-transparent',
+].join(' ')
 
 function SegmentCard({ label, children }: { label: string; children: React.ReactNode }) {
   const Icono = SEGMENTO_ICONO[label as keyof typeof SEGMENTO_ICONO]
@@ -1456,26 +1469,26 @@ export function ClientesClient({
           <DialogFooter className={`mt-4 shrink-0 ${FRANJA_BLANCA}`}>
             {!isEditing && viewTarget ? (
               <div className="flex w-full items-center gap-1">
-                <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={() => setAuditTarget(viewTarget)}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={() => setAuditTarget(viewTarget)}>
                   <History className="mr-1.5 h-3.5 w-3.5" /> Historial
                 </Button>
                 {puedeEliminar && (
-                  <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} text-destructive hover:text-destructive`} onClick={() => setDeleteTarget(viewTarget)}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_PELIGRO} onClick={() => setDeleteTarget(viewTarget)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
                   </Button>
                 )}
                 {puedeModificar && (
-                  <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={startEdit} disabled={lecturaPendiente}>
+                  <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={startEdit} disabled={lecturaPendiente}>
                     <Pencil className="mr-1.5 h-3.5 w-3.5" /> Editar
                   </Button>
                 )}
               </div>
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
-                <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={cancelEdit} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelEdit} disabled={isPending}>
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
-                <Button variant="ghost" size="sm" className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`} onClick={handleSave} disabled={isPending}>
+                <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando…' : 'Guardar'}
                 </Button>
               </div>
@@ -1485,7 +1498,7 @@ export function ClientesClient({
                 onSave={handleSave}
                 pending={isPending}
                 pendingLabel="Guardando…"
-                className={`${CLASE_PIE_MODAL} hover:bg-indigo-50 dark:hover:bg-indigo-950/30`}
+                className={CLASE_BOTON_MODAL}
               />
             )}
           </DialogFooter>
@@ -1531,7 +1544,7 @@ export function ClientesClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className={CLASE_BOTON_PELIGRO}>
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
