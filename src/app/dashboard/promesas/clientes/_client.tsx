@@ -169,6 +169,8 @@ function SectionDivider({ label }: { label: string }) {
 // El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
 // Asterisco de obligatorio en rojo. En Ver todo el dato va en negro; en Editar el que no se puede cambiar sigue en gris.
 // El título del modal es el del menú, Clientes, en Ver, Editar y Nuevo. No hay texto debajo.
+// En Nuevo, Pais, Departamento y Municipio van en líneas propias; el código postal conserva su ancho.
+// Al entrar a un campo, en Nuevo y en Editar, el borde inferior se pone en verde fuerte.
 const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
@@ -203,6 +205,16 @@ const CLASE_BOTON_MODAL = [
   'disabled:opacity-100',
   'hover:bg-transparent hover:text-primary',
   'dark:hover:bg-transparent dark:hover:text-primary',
+].join(' ')
+const FOCO_CAMPO = [
+  '[&_input:focus]:border-b-2',
+  '[&_input:focus]:border-primary',
+  '[&_select:focus]:border-b-2',
+  '[&_select:focus]:border-primary',
+  '[&_button:focus]:border-b-2',
+  '[&_button:focus]:border-primary',
+  '[&_[data-popup-open]]:border-b-2',
+  '[&_[data-popup-open]]:border-primary',
 ].join(' ')
 const CLASE_BOTON_PELIGRO = [
   CLASE_PIE_MODAL,
@@ -899,7 +911,7 @@ export function ClientesClient({
                 </div>
               ) : (
               /* ── Edicion / Creacion ── */
-              <div className="flex gap-6 items-start">
+              <div className={`flex gap-6 items-start ${FOCO_CAMPO}`}>
 
                 {/* Columna izquierda */}
                 <div className="flex-1 grid grid-cols-2 gap-2">
@@ -963,7 +975,7 @@ export function ClientesClient({
                     <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <span className="text-destructive">*</span></Label>
                     <Input variant="l-border" id="direccion" aria-invalid={campoInvalido?.id === 'direccion' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
                   </div>
-                  <div className="grid gap-1">
+                  <div className={!viewTarget ? 'col-span-2 grid gap-1' : 'grid gap-1'}>
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <span className="text-destructive">*</span></Label>
                     <CountrySelect
                       paises={paises}
@@ -984,7 +996,7 @@ export function ClientesClient({
                       }}
                     />
                   </div>
-                  <div className="grid gap-1">
+                  <div className={!viewTarget ? 'col-span-2 grid gap-1' : 'grid gap-1'}>
                     <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <span className="text-destructive">*</span></Label>
                     <select
                       id="depto"
@@ -1008,7 +1020,7 @@ export function ClientesClient({
                       ))}
                     </select>
                   </div>
-                  <div className="grid gap-1">
+                  <div className={!viewTarget ? 'col-span-2 grid gap-1' : 'grid gap-1'}>
                     <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <span className="text-destructive">*</span></Label>
                     <select
                       id="municipio"
