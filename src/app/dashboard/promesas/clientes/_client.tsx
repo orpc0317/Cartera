@@ -140,12 +140,12 @@ function exportCsv(rows: Cliente[], colPrefs: ColPref[]) {
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
 
-function ViewField({ label, value, locked = false }: { label: string; value?: string | null | number; locked?: boolean }) {
+function ViewField({ label, value }: { label: string; value?: string | null | number }) {
   return (
     <div className="grid gap-1">
       <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>{label}</span>
       <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-        <span className="block font-medium" style={{ fontSize: 'var(--ui-viewfield-value)', color: locked ? '#b4bec9' : 'var(--foreground)' }}>{value || ''}</span>
+        <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{value || ''}</span>
       </div>
     </div>
   )
@@ -167,6 +167,7 @@ function SectionDivider({ label }: { label: string }) {
 // pestaña en gris verdoso, seleccionada y al pasar en verde fuerte, con borde inferior solo si está seleccionada;
 // acción en el mismo gris verdoso y verde fuerte al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
 // El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
+// Asterisco de obligatorio en rojo. En Ver todo el dato va en negro; en Editar el que no se puede cambiar sigue en gris.
 const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
@@ -801,12 +802,12 @@ export function ClientesClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2">
-                      <ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
+                      <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
                     </div>
                     <div className="col-span-2">
-                      <ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
+                      <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? `#${viewTarget.proyecto}`)} />
                     </div>
-                    <div className="col-span-2"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
+                    <div className="col-span-2"><ViewField label="Codigo" value={String(viewTarget.codigo)} /></div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                     <div className="col-span-2">
@@ -901,14 +902,14 @@ export function ClientesClient({
                 <div className="flex-1 grid grid-cols-2 gap-2">
                   <SegmentCard label="IDENTIFICACION">
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
                       <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
                       <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
@@ -917,11 +918,11 @@ export function ClientesClient({
                   </SegmentCard>
                   <SegmentCard label="GENERAL">
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre *</Label>
+                    <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <span className="text-destructive">*</span></Label>
                     <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono <span className="text-destructive">*</span></Label>
                     <PhoneField
                       iso={tel1Iso}
                       local={tel1Local}
@@ -943,7 +944,7 @@ export function ClientesClient({
                     />
                   </div>
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="correo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Correo *</Label>
+                    <Label htmlFor="correo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Correo <span className="text-destructive">*</span></Label>
                     <Input variant="l-border" id="correo" aria-invalid={campoInvalido?.id === 'correo' || undefined} type="email" value={form.correo} onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, correo: e.target.value })) }} placeholder="Correo@ejemplo.com" />
                   </div>
                   </SegmentCard>
@@ -956,11 +957,11 @@ export function ClientesClient({
                 <div className="flex-1 grid grid-cols-2 gap-2">
                   <SegmentCard label="DIRECCION">
                   <div className="col-span-2 grid gap-1">
-                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion *</Label>
+                    <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <span className="text-destructive">*</span></Label>
                     <Input variant="l-border" id="direccion" aria-invalid={campoInvalido?.id === 'direccion' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
                   </div>
                   <div className="grid gap-1">
-                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais *</Label>
+                    <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <span className="text-destructive">*</span></Label>
                     <CountrySelect
                       paises={paises}
                       value={paisCodigo}
@@ -981,7 +982,7 @@ export function ClientesClient({
                     />
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento *</Label>
+                    <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <span className="text-destructive">*</span></Label>
                     <select
                       id="depto"
                       title="Departamento"
@@ -1005,7 +1006,7 @@ export function ClientesClient({
                     </select>
                   </div>
                   <div className="grid gap-1">
-                    <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio *</Label>
+                    <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <span className="text-destructive">*</span></Label>
                     <select
                       id="municipio"
                       title="Municipio"
