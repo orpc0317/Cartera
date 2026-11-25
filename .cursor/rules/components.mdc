@@ -590,7 +590,11 @@ function ViewField({ label, value }: { label: string; value?: string | null | nu
     </div>
   )
 }
+```
 
+En Editar, un dato que no se puede cambiar y no es un `Select` deshabilitado usa `LockedField` (input deshabilitado, gris de `globals.css`). `ViewField` queda para Ver.
+
+```tsx
 function SectionDivider({ label }: { label: string }) {
   return (
     <div className="col-span-2 flex items-center gap-2 pt-1">
@@ -599,6 +603,7 @@ function SectionDivider({ label }: { label: string }) {
     </div>
   )
 }
+```
 
 El `SegmentCard` compartido pinta la caja en blanco (`bg-popover`) y pone, entre la barra y el título, un icono Lucide del mismo verde. El icono sale del nombre del segmento o de la prop `icon`.
 

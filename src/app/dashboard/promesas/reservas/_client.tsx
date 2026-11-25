@@ -49,7 +49,7 @@ import { createReserva, getReservas, type ReservaRow,
 } from '@/app/actions/lotes'
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { useCampoInvalido } from '@/lib/campo-invalido'
-import { ViewField } from '@/components/ui/view-field'
+import { ViewField, LockedField } from '@/components/ui/view-field'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
@@ -1348,7 +1348,7 @@ export function ReservasClient({
 
                   {form.moneda && form.moneda !== monedaBase && (
                     <div className="col-span-2">
-                      <ViewField locked
+                      <LockedField
                         label={`Tasa de Cambio (${form.moneda} > ${monedaBase})`}
                         value={tasaCambio ? tasaCambio.toFixed(4) : undefined}
                       />

@@ -52,7 +52,7 @@ import { createLote, updateLote, deleteLote, getLoteReservaInfo, desistirReserva
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { getLoteEstado, LOTE_ESTADO_BADGE } from '@/lib/constants'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
-import { ViewField } from '@/components/ui/view-field'
+import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
@@ -776,7 +776,7 @@ export function LotesClient({
                         <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
-                      <ViewField locked label="Codigo" value={viewTarget.codigo} />
+                      <LockedField label="Codigo" value={viewTarget.codigo} />
                     )}
                     </SegmentCard>
                     <SegmentCard label="GENERAL">

@@ -56,7 +56,7 @@ import { FormWizard, PASOS_GENERAL, useWizardNav, WizardAltaActions } from '@/co
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
-import { ViewField } from '@/components/ui/view-field'
+import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
@@ -662,7 +662,7 @@ export function EmpresasClient({
                   {viewTarget && (
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2">
-                        <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
+                        <LockedField label="Codigo" value={String(viewTarget.codigo)} />
                       </div>
                     </SegmentCard>
                   )}

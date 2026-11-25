@@ -63,7 +63,7 @@ import type { PromesaDocumento } from '@/lib/types/promesa-documentos'
 import type { PromesaOtro, PromesaOtroPayload } from '@/lib/types/promesa-otros'
 import type { TipoIngreso } from '@/lib/types/tipos-ingresos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
-import { ViewField } from '@/components/ui/view-field'
+import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, FOCO_LINEA } from '@/lib/modal-look'
 
@@ -1510,8 +1510,8 @@ export function PromesasClient({
                       </Select>
                     </div>
                   </div>
-                  <ViewField locked label="Extension"       value={loteActivoForm ? `${loteActivoForm.extension} ${medidaForm}`.trim() : ''} />
-                  <ViewField locked label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
+                  <LockedField label="Extension"       value={loteActivoForm ? `${loteActivoForm.extension} ${medidaForm}`.trim() : ''} />
+                  <LockedField label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Arras</Label>
                     <Input variant="l-border"
@@ -1572,9 +1572,9 @@ export function PromesasClient({
                           placeholder="0.00"
                         />
                       </div>
-                      <ViewField locked label="Cuotas"      value={engancheCalcForm.cuotas      ? String(engancheCalcForm.cuotas)     : ''} />
-                      <ViewField locked label="Monto Cuota" value={engancheCalcForm.montoCuota  ? fmtNum(engancheCalcForm.montoCuota)  : ''} />
-                      <ViewField locked label="Ultima Cuota" value={engancheCalcForm.ultimaCuota ? fmtNum(engancheCalcForm.ultimaCuota) : ''} />
+                      <LockedField label="Cuotas"      value={engancheCalcForm.cuotas      ? String(engancheCalcForm.cuotas)     : ''} />
+                      <LockedField label="Monto Cuota" value={engancheCalcForm.montoCuota  ? fmtNum(engancheCalcForm.montoCuota)  : ''} />
+                      <LockedField label="Ultima Cuota" value={engancheCalcForm.ultimaCuota ? fmtNum(engancheCalcForm.ultimaCuota) : ''} />
                     </div>
                     <div className="col-span-2 flex items-center gap-2">
                       <Checkbox
@@ -1624,7 +1624,7 @@ export function PromesasClient({
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField locked label="Monto Financiamiento" value={montoFinancCalc ? `${form.moneda} ${fmtNum(montoFinancCalc)}` : ''} />
+                      <LockedField label="Monto Financiamiento" value={montoFinancCalc ? `${form.moneda} ${fmtNum(montoFinancCalc)}` : ''} />
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Plazo</Label>
                         <Input variant="l-border"
@@ -1638,9 +1638,9 @@ export function PromesasClient({
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField locked label="Cuotas"       value={financiamientoCalcForm.cuotas      ? String(financiamientoCalcForm.cuotas)     : ''} />
-                      <ViewField locked label="Monto Cuota"  value={financiamientoCalcForm.montoCuota  ? fmtNum(financiamientoCalcForm.montoCuota)  : ''} />
-                      <ViewField locked label="Ultima Cuota" value={financiamientoCalcForm.ultimaCuota ? fmtNum(financiamientoCalcForm.ultimaCuota) : ''} />
+                      <LockedField label="Cuotas"       value={financiamientoCalcForm.cuotas      ? String(financiamientoCalcForm.cuotas)     : ''} />
+                      <LockedField label="Monto Cuota"  value={financiamientoCalcForm.montoCuota  ? fmtNum(financiamientoCalcForm.montoCuota)  : ''} />
+                      <LockedField label="Ultima Cuota" value={financiamientoCalcForm.ultimaCuota ? fmtNum(financiamientoCalcForm.ultimaCuota) : ''} />
                     </div>
                     <SectionDivider label="MORA" />
                     <div className="col-span-2 grid grid-cols-4 gap-2">

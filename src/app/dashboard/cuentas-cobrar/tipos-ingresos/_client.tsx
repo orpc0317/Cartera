@@ -53,7 +53,7 @@ import type { TipoIngreso, TipoIngresoForm } from '@/lib/types/tipos-ingresos'
 import type { Empresa, Proyecto, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
-import { ViewField } from '@/components/ui/view-field'
+import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
@@ -769,7 +769,7 @@ export function TiposIngresosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <span className="text-destructive">*</span></Label>
                     {viewTarget ? (
-                      <ViewField locked label="" value={empresaMap.get(form.empresa)} />
+                      <LockedField value={empresaMap.get(form.empresa)} />
                     ) : (
                       <Select value={String(form.empresa)} onValueChange={(v) => handleEmpresaChange(Number(v))}>
                         <SelectTrigger variant="l-border" id="empresa" className="w-full"><SelectValue>{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
@@ -784,7 +784,7 @@ export function TiposIngresosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <span className="text-destructive">*</span></Label>
                     {viewTarget ? (
-                      <ViewField locked label="" value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
+                      <LockedField value={proyectoMap.get(`${form.empresa}-${form.proyecto}`)} />
                     ) : (
                       <Select value={String(form.proyecto)} onValueChange={(v) => handleProyectoChange(Number(v))}>
                         <SelectTrigger variant="l-border" id="proyecto" className="w-full"><SelectValue>{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
@@ -798,7 +798,7 @@ export function TiposIngresosClient({
                   {/* Codigo (solo edicion) */}
                   {viewTarget && (
                     <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField locked label="Codigo" value={String(viewTarget.codigo)} />
+                      <LockedField label="Codigo" value={String(viewTarget.codigo)} />
                       <div /><div />
                     </div>
                   )}

@@ -54,7 +54,7 @@ import { CountrySelect } from '@/components/ui/country-select'
 import { Flag } from '@/components/ui/phone-field'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
-import { ViewField } from '@/components/ui/view-field'
+import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
@@ -1101,7 +1101,7 @@ export function ProyectosClient({
                       </Select>
                     </div>
                     {viewTarget && (
-                      <div className="col-span-1"><ViewField locked label="Codigo" value={String(viewTarget.codigo)} /></div>
+                      <div className="col-span-1"><LockedField label="Codigo" value={String(viewTarget.codigo)} /></div>
                     )}
                     </SegmentCard>
                     <SegmentCard label="General">

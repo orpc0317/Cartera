@@ -155,7 +155,7 @@ Numeric `codigo` fields (auto-increment PKs) are displayed as plain `N` **withou
 El color del valor dice si el campo se puede editar. El subrayado no cambia. No usar `disabled:opacity-50` en inputs ni selects de formulario.
 
 - En Ver, todo dato se lee en negro (`text-foreground`). `ViewField` no pinta gris.
-- En Editar, lo que no se puede cambiar sigue en `#b4bec9` porque el control está deshabilitado (`src/app/globals.css`). No se usa `locked` para ese gris.
+- En Editar, lo que no se puede cambiar es un `Select` o `Input` deshabilitado, o `LockedField`. El gris `#b4bec9` sale de `src/app/globals.css`. No se usa `locked` en `ViewField` para ese gris.
 
 ---
 
