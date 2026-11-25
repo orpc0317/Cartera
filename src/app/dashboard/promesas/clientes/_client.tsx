@@ -168,6 +168,7 @@ function SectionDivider({ label }: { label: string }) {
 // acción en el mismo gris verdoso y verde fuerte al pasar; Eliminar del pie en gris rojizo y rojo al pasar.
 // El confirmar del diálogo de borrado sigue siendo el botón rojo relleno.
 // Asterisco de obligatorio en rojo. En Ver todo el dato va en negro; en Editar el que no se puede cambiar sigue en gris.
+// El título del modal es el del menú, Clientes, en Ver, Editar y Nuevo. No hay texto debajo.
 const FONDO_MODAL = 'bg-[color-mix(in_oklab,var(--muted)_30%,var(--popover))]'
 const FRANJA_BLANCA = 'bg-popover'
 const SEGMENTO_ICONO = {
@@ -1443,14 +1444,8 @@ export function ClientesClient({
               </div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  {isEditing && !viewTarget ? 'Nuevo Cliente' : isEditing ? 'Editar Cliente' : viewTarget?.nombre}
+                  Clientes
                 </DialogTitle>
-                {viewTarget && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')}
-                    <span className="font-mono ml-1.5 text-muted-foreground/60">· {viewTarget.codigo}</span>
-                  </p>
-                )}
               </div>
             </div>
           </DialogHeader>
