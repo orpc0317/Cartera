@@ -71,11 +71,11 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'entity', label: 'Entidad', defaultVisible: false },
   { key: 'user_name', label: 'Usuario', defaultVisible: true },
   { key: 'web_service', label: 'Servicio Web', defaultVisible: false },
-  { key: 'web_service_documento', label: 'Servicio Web de Documento', defaultVisible: false },
+  { key: 'web_service_documento', label: 'Servicio Web Documento', defaultVisible: false },
   { key: 'certificado_post', label: 'Certificado Post', defaultVisible: false },
-  { key: 'certificado_ruta', label: 'Ruta del Certificado', defaultVisible: false },
-  { key: 'certificado_nombre', label: 'Nombre del Certificado', defaultVisible: false },
-  { key: 'correo_envio', label: 'Correo de Envio', defaultVisible: true },
+  { key: 'certificado_ruta', label: 'Ruta Certificado', defaultVisible: false },
+  { key: 'certificado_nombre', label: 'Nombre Certificado', defaultVisible: false },
+  { key: 'correo_envio', label: 'Correo Envio', defaultVisible: true },
   { key: 'correo_copia', label: 'Correo Copia', defaultVisible: false },
   { key: 'primera_firma', label: 'Primera Firma', defaultVisible: true },
   { key: 'validar_identificacion', label: 'Validar Identificacion', defaultVisible: true },
@@ -615,16 +615,16 @@ export function GfaceClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="SERVICIO">
                       <div className="col-span-2"><ViewField label="Servicio Web" value={viewTarget.web_service} /></div>
-                      <div className="col-span-2"><ViewField label="Servicio Web de Documento" value={viewTarget.web_service_documento} /></div>
+                      <div className="col-span-2"><ViewField label="Servicio Web Documento" value={viewTarget.web_service_documento} /></div>
                     </SegmentCard>
                     <SegmentCard label="CERTIFICADO">
                       <div className="col-span-2"><ViewField label="Certificado Post" value={viewTarget.certificado_post} /></div>
-                      <div className="col-span-2"><ViewField label="Ruta del Certificado" value={viewTarget.certificado_ruta} /></div>
-                      <ViewField label="Nombre del Certificado" value={viewTarget.certificado_nombre} />
-                      <ViewField label="Contrasena del Certificado" value={secretMask(viewTarget.certificado_configurado ? 'configurado' : null)} />
+                      <div className="col-span-2"><ViewField label="Ruta Certificado" value={viewTarget.certificado_ruta} /></div>
+                      <ViewField label="Nombre Certificado" value={viewTarget.certificado_nombre} />
+                      <ViewField label="Contrasena Certificado" value={secretMask(viewTarget.certificado_configurado ? 'configurado' : null)} />
                     </SegmentCard>
                     <SegmentCard label="CORREO">
-                      <ViewField label="Correo de Envio" value={viewTarget.correo_envio} />
+                      <ViewField label="Correo Envio" value={viewTarget.correo_envio} />
                       <ViewField label="Correo Copia" value={viewTarget.correo_copia} />
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox checked={viewTarget.primera_firma === 1} disabled />
@@ -713,7 +713,7 @@ export function GfaceClient({
                         <Input variant="l-border" id="web_service" value={textOrEmpty(form.web_service)} maxLength={100} onChange={(e) => f('web_service', e.target.value)} placeholder="Url del servicio web" />
                       </div>
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="web_service_documento" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Servicio Web de Documento</Label>
+                        <Label htmlFor="web_service_documento" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Servicio Web Documento</Label>
                         <Input variant="l-border" id="web_service_documento" value={textOrEmpty(form.web_service_documento)} maxLength={100} onChange={(e) => f('web_service_documento', e.target.value)} placeholder="Url del servicio de documento" />
                       </div>
                     </SegmentCard>
@@ -723,21 +723,21 @@ export function GfaceClient({
                         <Input variant="l-border" id="certificado_post" value={textOrEmpty(form.certificado_post)} maxLength={100} onChange={(e) => f('certificado_post', e.target.value)} placeholder="Url de publicacion del certificado" />
                       </div>
                       <div className="col-span-2 grid gap-1">
-                        <Label htmlFor="certificado_ruta" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Ruta del Certificado</Label>
+                        <Label htmlFor="certificado_ruta" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Ruta Certificado</Label>
                         <Input variant="l-border" id="certificado_ruta" value={textOrEmpty(form.certificado_ruta)} maxLength={100} onChange={(e) => f('certificado_ruta', e.target.value)} placeholder="Ruta del certificado" />
                       </div>
                       <div className="grid gap-1">
-                        <Label htmlFor="certificado_nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre del Certificado</Label>
+                        <Label htmlFor="certificado_nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Certificado</Label>
                         <Input variant="l-border" id="certificado_nombre" value={textOrEmpty(form.certificado_nombre)} maxLength={50} onChange={(e) => f('certificado_nombre', e.target.value)} placeholder="Nombre del archivo" />
                       </div>
                       <div className="grid gap-1">
-                        <Label htmlFor="certificado_contrasena" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Contrasena del Certificado</Label>
+                        <Label htmlFor="certificado_contrasena" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Contrasena Certificado</Label>
                         <Input variant="l-border" id="certificado_contrasena" type="password" autoComplete="new-password" value={textOrEmpty(form.certificado_contrasena)} maxLength={25} onChange={(e) => f('certificado_contrasena', e.target.value)} placeholder="Contrasena" />
                       </div>
                     </SegmentCard>
                     <SegmentCard label="CORREO">
                       <div className="grid gap-1">
-                        <Label htmlFor="correo_envio" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo de Envio</Label>
+                        <Label htmlFor="correo_envio" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo Envio</Label>
                         <Input variant="l-border" id="correo_envio" aria-invalid={campoInvalido?.id === 'correo_envio' || undefined} type="email" value={textOrEmpty(form.correo_envio)} maxLength={50} onChange={(e) => f('correo_envio', e.target.value)} placeholder="Correo@ejemplo.com" />
                       </div>
                       <div className="grid gap-1">

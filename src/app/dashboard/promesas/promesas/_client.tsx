@@ -1176,7 +1176,7 @@ export function PromesasClient({
                       <ViewField label="Lote"    value={viewTarget.lote} />
                     </div>
                     <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
-                    <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
+                    <ViewField label="Precio Venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
                     <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
                     <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
                   </SegmentCard>
@@ -1297,7 +1297,7 @@ export function PromesasClient({
                       <ViewField label="Lote"    value={viewTarget.lote} />
                     </div>
                     <ViewField label="Extension"       value={loteActivoVista ? `${loteActivoVista.extension} ${medidaVista}`.trim() : ''} />
-                    <ViewField label="Precio de venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
+                    <ViewField label="Precio Venta" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.valor_lote)}` : ''} />
                     <ViewField label="Arras" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.arras)}` : ''} />
                     <ViewField label="Subsidio" value={viewTarget.moneda ? `${viewTarget.moneda} ${fmtNum(viewTarget.subsidio)}` : ''} />
                   </SegmentCard>
@@ -1512,7 +1512,7 @@ export function PromesasClient({
                     </div>
                   </div>
                   <LockedField label="Extension"       value={loteActivoForm ? `${loteActivoForm.extension} ${medidaForm}`.trim() : ''} />
-                  <LockedField label="Precio de venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
+                  <LockedField label="Precio Venta" value={form.moneda ? `${form.moneda} ${fmtNum(form.valor_lote)}` : ''} />
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Arras</Label>
                     <Input variant="l-border"
@@ -1771,7 +1771,7 @@ export function PromesasClient({
                             <TableHead className="text-right">Monto</TableHead>
                             <TableHead className="text-right">Hasta Monto</TableHead>
                             <TableHead className="text-center">Mora</TableHead>
-                            <TableHead className="w-28">Partir De</TableHead>
+                            <TableHead className="w-28">Partir</TableHead>
                             <TableHead className="w-28">Aplicar Hasta</TableHead>
                             {isEditing && <TableHead className="sticky right-0 z-20 w-10 bg-muted/30" />}
                           </TableRow>

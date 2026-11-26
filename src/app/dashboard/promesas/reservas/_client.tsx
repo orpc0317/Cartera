@@ -1334,7 +1334,7 @@ export function ReservasClient({
                   {form.moneda && form.moneda !== monedaBase && (
                     <div className="col-span-2">
                       <LockedField
-                        label={`Tasa de Cambio (${form.moneda} > ${monedaBase})`}
+                        label={`Tasa Cambio (${form.moneda} > ${monedaBase})`}
                         value={tasaCambio ? tasaCambio.toFixed(4) : undefined}
                       />
                       {!tasaCambio && (
@@ -1451,7 +1451,7 @@ export function ReservasClient({
 
                     {/* Forma Pago */}
                     <div className="col-span-2 grid gap-1">
-                      <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Forma de Pago <RequiredMark /></Label>
+                      <Label htmlFor="res-forma-pago" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Forma Pago <RequiredMark /></Label>
                       <Select
                         value={form.forma_pago ? String(form.forma_pago) : ''}
                         onValueChange={(v) => f('forma_pago', Number(v))}
