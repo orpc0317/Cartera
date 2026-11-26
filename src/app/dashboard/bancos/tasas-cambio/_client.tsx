@@ -493,6 +493,7 @@ export default function TasasCambioClient({
                   <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                   <Select
                     value={String(form.empresa)}
+                    disabled={viewTarget != null}
                     onValueChange={(v) => {
                       const emp = Number(v)
                       const firstProyecto = proyectos.filter((p) => p.empresa === emp)[0]?.codigo ?? 0
@@ -518,6 +519,7 @@ export default function TasasCambioClient({
                   <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                   <Select
                     value={String(form.proyecto)}
+                    disabled={viewTarget != null}
                     onValueChange={(v) => {
                       const proy = Number(v)
                       const firstMoneda = proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.activo === 1)?.moneda ?? ''
@@ -540,7 +542,7 @@ export default function TasasCambioClient({
                 {/* Moneda */}
                 <div className="col-span-1 grid gap-1">
                   <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
-                  <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
+                  <Select value={form.moneda} disabled={viewTarget != null} onValueChange={(v) => f('moneda', v ?? '')}>
                     <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona moneda">
                         {(v: string) => {
