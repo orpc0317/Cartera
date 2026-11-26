@@ -38,7 +38,7 @@ Si el pedido es un CRUD de catálogo (`prompts/crud-*.md`, lista, modal, alta, c
 1. `npx tsc --noEmit` si se tocó TypeScript o TSX.
 2. `npx eslint` en los archivos tocados.
 3. En escrituras: `getCuentaActiva` importada desde `@/app/actions/permisos`, `requirePermiso` primero, `writeAudit` tras el éxito.
-4. Comentarios JSX cerrados.
+4. Comentarios JSX cerrados. Labels sin preposición ni artículo (`de`, `del`, `por`, `la`, `el`, `en`, `a`, `y`, `o`), como dice `.cursor/rules/ui-conventions.mdc`.
 5. Si el cambio se ve, recorrer el flujo en el navegador.
 6. Catálogo nuevo: `useCampoInvalido` como dice `.cursor/rules/crud-screens.mdc`, y `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` en verde.
 7. La lista: el `get*` lee `v_*_lista` con columnas nombradas, la vista está en `scripts/vistas_listas.sql`, y la celda usa el nombre que vino en la fila.

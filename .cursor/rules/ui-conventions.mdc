@@ -99,7 +99,9 @@ When adding a new entity, pick a tone from the bucket of its parent module group
 ## Label naming rules
 
 - **No accents/tildes** — `Codigo` not `Código`, `Direccion` not `Dirección`, `Regimen` not `Régimen`.
-- **Title Case** — every word starts with a capital letter, **except** short prepositions and articles (`de`, `del`, `por`, `la`, `el`, `en`, `a`, `y`, `o`). Examples: `Cod. Postal`, `Razon Social`, `Nombre Factura`, `Regimen IVA`, `Unidad Medida`, `Fecha de Nacimiento`.
+- **Sin preposiciones ni artículos** — un label no lleva `de`, `del`, `por`, `la`, `el`, `en`, `a`, `y`, `o`. Se omiten antes de escribir el texto. `Monto Recibo`, no `Monto del Recibo`. `Fecha Nacimiento`, no `Fecha de Nacimiento`. `Precio Venta`, no `Precio de venta`. `Forma Pago`, no `Forma de Pago`.
+- **Title Case** — cada palabra que queda empieza con mayúscula. Ejemplos: `Cod. Postal`, `Razon Social`, `Nombre Factura`, `Regimen IVA`, `Unidad Medida`, `Fecha Nacimiento`, `Monto Recibo`.
+- Al tocar un label que todavía trae preposición, quítala. No recorras el repo para renombrar labels que el pedido no tocó. Los placeholders sí pueden llevar preposición: esa regla está en "Placeholder text rules".
 - Applies everywhere: `ALL_COLUMNS[].label`, `<TableHead>` stickies, `<ViewField label=...>`, `<Label>` in forms, toast messages.
 - **Exception:** Section divider titles stay ALL-CAPS (rendered with `uppercase` CSS).
 
