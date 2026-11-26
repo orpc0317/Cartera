@@ -66,16 +66,16 @@ type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
+  { key: 'proyecto',    label: 'Proyecto',     defaultVisible: true  },
   { key: 'empresa',     label: 'Empresa',      defaultVisible: false },
-  { key: 'moneda',      label: 'Moneda',        defaultVisible: true  },
-  { key: 'ultima_fecha', label: 'Fecha',        defaultVisible: true  },
-  { key: 'ultima_tasa', label: 'Tasa Cambio',   defaultVisible: true  },
+  { key: 'ultima_fecha', label: 'Fecha',       defaultVisible: true  },
+  { key: 'ultima_tasa', label: 'Tasa Cambio',  defaultVisible: true  },
 ]
 const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
 const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
 const COL_LABELS: Record<string, string> = Object.fromEntries(
-  [{ key: 'proyecto', label: 'Proyecto' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+  [{ key: 'moneda', label: 'Moneda' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
 )
 
 function formatCsvCell(value: unknown): string {
@@ -86,7 +86,7 @@ function formatCsvCell(value: unknown): string {
 
 function exportCsv(rows: TasaCambioGrupo[], colPrefs: ColPref[],
   empresaMap: Map<number, string>, proyectoMap: Map<string, string>) {
-  const keys = ['proyecto', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+  const keys = ['moneda', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
     .filter((k) => !NEVER_EXPORT.has(k))
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
   const lines = [
@@ -231,7 +231,7 @@ export default function TasasCambioClient({
   const tableRef = useRef<HTMLDivElement>(null)
 
   // ── Table state ─────────────────────────────────────────────────────────
-  const STORAGE_KEY = `tasas_cambio_cols_v1_${userId}`
+  const STORAGE_KEY = `tasas_cambio_cols_v2_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
   const [search, setSearch]     = useState('')
   type ColFilters = Record<string, Set<string>>
@@ -668,16 +668,21 @@ export default function TasasCambioClient({
         <Table scrollable={false}>
           <TableHeader className={LIST_THEAD}>
             <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-52`}>
-                <span className="text-xs font-medium text-muted-foreground">Proyecto</span>
+              <TableHead className={`${LIST_HEAD_LEFT} w-32`}>
+                <ColumnFilter
+                  label="Moneda"
+                  values={uniqueMonedaLabels}
+                  active={colFilters['moneda'] ?? new Set()}
+                  onChange={(v) => setColFilter('moneda', v)}
+                />
               </TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key} className={`${LIST_HEAD} ${col.key === 'ultima_tasa' ? 'text-center' : ''}`}>
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={
-                      col.key === 'empresa'     ? uniqueEmpresaNames  :
-                      col.key === 'moneda'      ? uniqueMonedaLabels  :
+                      col.key === 'empresa'      ? uniqueEmpresaNames  :
+                      col.key === 'proyecto'     ? uniqueProyectoNames :
                       col.key === 'ultima_fecha' ? [...new Set(filtered.map((r) => formatDate(r.ultima_fecha)))].sort() : []
                     }
                     active={colFilters[col.key] ?? new Set()}
@@ -706,9 +711,14 @@ export default function TasasCambioClient({
                     onClick={() => setCursorIdx(idx)}
                     onDoubleClick={() => openView(row)}
                   >
-                    {/* Sticky left — Proyecto */}
-                    <TableCell className={`sticky left-0 z-10 w-52 font-medium ${isActive ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'}`}>
-                      {proyectoNombre}
+                    {/* Sticky left — Moneda */}
+                    <TableCell className={`sticky left-0 z-10 w-32 font-medium ${isActive ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'}`}>
+                      {CURRENCY_FLAG_MAP.get(row.moneda) ? (
+                        <span className="flex items-center gap-1.5">
+                          <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(row.moneda)}.png`} alt={row.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                          {row.moneda}
+                        </span>
+                      ) : row.moneda || '—'}
                     </TableCell>
 
                     {/* Dynamic columns */}
@@ -716,19 +726,8 @@ export default function TasasCambioClient({
                       switch (col.key) {
                         case 'empresa':
                           return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? row.empresa)}</TableCell>
-                        case 'moneda': {
-                          const flag = CURRENCY_FLAG_MAP.get(row.moneda)
-                          return (
-                            <TableCell key="moneda" className="text-muted-foreground">
-                              {flag ? (
-                                <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${flag}.png`} alt={row.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {row.moneda}
-                                </span>
-                              ) : row.moneda || '—'}
-                            </TableCell>
-                          )
-                        }
+                        case 'proyecto':
+                          return <TableCell key="proyecto" className="font-medium text-foreground">{proyectoNombre}</TableCell>
                         case 'ultima_fecha':
                           return <TableCell key="ultima_fecha" className="text-muted-foreground font-mono text-xs">{formatDate(row.ultima_fecha)}</TableCell>
                         case 'ultima_tasa':
