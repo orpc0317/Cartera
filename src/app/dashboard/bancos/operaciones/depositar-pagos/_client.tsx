@@ -283,7 +283,7 @@ export function DepositarPagosClient({
         </div>
       </div>
 
-      <div className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'min-h-[28rem] w-full flex-1' : 'mx-auto min-h-[28rem] w-full max-w-xl'}`}>
+      <div className={`mx-auto flex min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'h-[700px] max-h-[calc(100dvh-10rem)] max-w-[64rem]' : 'min-h-[28rem] max-w-xl'}`}>
       <FormWizard
         steps={PASOS_DEPOSITO}
         value={activeTab}
@@ -580,7 +580,7 @@ export function DepositarPagosClient({
             Siguiente <ChevronRight className="ml-1.5 h-3.5 w-3.5" />
           </Button>
         ) : puedeAgregar && (
-          <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleGuardar} disabled={isPendingSave || recibos.length === 0}>
+          <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleGuardar} disabled={isPendingSave}>
             <Check className="mr-1.5 h-3.5 w-3.5" /> {isPendingSave ? 'Guardando...' : 'Guardar Deposito'}
           </Button>
         )}
