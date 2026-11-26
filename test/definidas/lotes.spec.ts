@@ -39,6 +39,8 @@ async function crearLoteDePrueba(page: Page, codigo: string) {
   await elegirOpcion(dialog, 2, combo.fase)
   await elegirOpcion(dialog, 3, combo.manzana)
   await dialog.getByPlaceholder('Ej: L-001').fill(codigo)
+  await dialog.getByLabel('Precio Venta *').fill('1500')
+  await dialog.getByLabel('Extension *').fill('10')
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   const ok = page.getByText('Lote creado.')
   const fallo = page.locator('[data-sonner-toast][data-type="error"]')
@@ -148,12 +150,20 @@ test('exportar CSV usa las columnas visibles y no toca la base', async ({ page }
 })
 
 test('nuevo lote exige codigo y se cierra sin guardar', async ({ page }) => {
+  const vacio = page.getByText('Todavia no hay lotes. Haz clic en "Nuevo Lote" para comenzar.')
+  const combo = (await vacio.isVisible()) ? null : await combinacionDeLaPrimeraFila(page)
   const nuevo = page.getByRole('button', { name: 'Nuevo Lote' })
   await expect(nuevo).toBeVisible()
   await nuevo.click()
 
   const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Lote' })
   await expect(dialog.getByRole('heading', { name: 'Nuevo Lote' })).toBeVisible()
+  if (combo) {
+    await elegirOpcion(dialog, 0, combo.empresa)
+    await elegirOpcion(dialog, 1, combo.proyecto)
+    await elegirOpcion(dialog, 2, combo.fase)
+    await elegirOpcion(dialog, 3, combo.manzana)
+  }
   const codigo = dialog.getByLabel('Lote *')
   await expect(codigo).toHaveValue('')
 
@@ -188,6 +198,8 @@ test('un codigo repetido en la misma manzana marca el campo', async ({ page }) =
   const campo = dialog.getByLabel('Lote *')
   await campo.fill(combo.codigo)
   await expect(campo).toHaveValue(combo.codigo)
+  await dialog.getByLabel('Precio Venta *').fill('1500')
+  await dialog.getByLabel('Extension *').fill('10')
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
   await expect(page.getByText('Ya existe un lote con ese codigo.')).toBeVisible()
