@@ -139,7 +139,7 @@ test('exportar CSV usa las columnas visibles y no toca la base', async ({ page }
   expect(encabezado).toContain('Fase')
   expect(encabezado).toContain('Manzana')
   expect(encabezado).toContain('Moneda')
-  expect(encabezado).toContain('Precio')
+  expect(encabezado).toContain('Precio Venta')
   expect(encabezado).toContain('Extension')
   expect(encabezado).not.toContain('cuenta')
   expect(encabezado).not.toContain('Empresa')
