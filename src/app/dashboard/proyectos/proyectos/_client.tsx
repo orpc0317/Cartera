@@ -1002,8 +1002,8 @@ export function ProyectosClient({
                     </SegmentCard>
                     <SegmentCard label="General">
                     <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
-                    <div className="col-span-2"><ViewField label="Telefono 1" value={viewTarget.telefono1} /></div>
-                    <div className="col-span-2"><ViewField label="Telefono 2" value={viewTarget.telefono2} /></div>
+                    <ViewField label="Telefono 1" value={viewTarget.telefono1} />
+                    <ViewField label="Telefono 2" value={viewTarget.telefono2} />
                     </SegmentCard>
                     <SegmentCard label="Direccion">
                     <div className="col-span-2"><ViewField label="Direccion" value={viewTarget.direccion} /></div>
@@ -1112,7 +1112,7 @@ export function ProyectosClient({
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto <RequiredMark /></Label>
                       <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
                     </div>
-                    <div className="col-span-2 grid gap-1">
+                    <div className="grid min-w-0 gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 <RequiredMark /></Label>
                       <PhoneField
                         iso={tel1Iso}
@@ -1124,7 +1124,7 @@ export function ProyectosClient({
                         placeholder="Numero local"
                       />
                     </div>
-                    <div className="col-span-2 grid gap-1">
+                    <div className="grid min-w-0 gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
                       <PhoneField
                         iso={tel2Iso}
