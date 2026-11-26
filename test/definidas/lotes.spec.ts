@@ -16,7 +16,7 @@ async function combinacionDeLaPrimeraFila(page: Page) {
   const proyecto = await valorDeVista(dialog, 'Proyecto')
   const fase = await valorDeVista(dialog, 'Fase')
   const manzana = await valorDeVista(dialog, 'Manzana')
-  const codigo = await valorDeVista(dialog, 'Codigo')
+  const codigo = await valorDeVista(dialog, 'Lote')
   await dialog.getByRole('button', { name: 'Close' }).click()
   await expect(dialog).toBeHidden()
   return { empresa, proyecto, fase, manzana, codigo }
@@ -154,7 +154,7 @@ test('nuevo lote exige codigo y se cierra sin guardar', async ({ page }) => {
 
   const dialog = page.getByRole('dialog').filter({ hasText: 'Nuevo Lote' })
   await expect(dialog.getByRole('heading', { name: 'Nuevo Lote' })).toBeVisible()
-  const codigo = dialog.getByLabel('Codigo *')
+  const codigo = dialog.getByLabel('Lote *')
   await expect(codigo).toHaveValue('')
 
   await dialog.getByRole('button', { name: 'Guardar' }).click()
@@ -185,7 +185,7 @@ test('un codigo repetido en la misma manzana marca el campo', async ({ page }) =
   await elegirOpcion(dialog, 1, combo.proyecto)
   await elegirOpcion(dialog, 2, combo.fase)
   await elegirOpcion(dialog, 3, combo.manzana)
-  const campo = dialog.getByLabel('Codigo *')
+  const campo = dialog.getByLabel('Lote *')
   await campo.fill(combo.codigo)
   await expect(campo).toHaveValue(combo.codigo)
 

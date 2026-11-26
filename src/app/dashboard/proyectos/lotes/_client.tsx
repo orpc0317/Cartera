@@ -73,6 +73,17 @@ const SKIP_KEYS = new Set(['moneda', 'manzana'])
 const fmt = (n: number) =>
   n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+function textoRecibo(serie: string | null | undefined, numero: number) {
+  if (!(numero > 0)) return ''
+  const s = (serie ?? '').trim()
+  return s ? `${s} - ${numero}` : String(numero)
+}
+
+function textoMontoRecibo(moneda: string, monto: number) {
+  const total = fmt(monto)
+  return moneda ? `${moneda} ${total}` : total
+}
+
 type ColDef = { key: string; label: string; defaultVisible: boolean; numeric?: boolean }
 type ColPref = { key: string; visible: boolean }
 
@@ -676,9 +687,11 @@ export function LotesClient({
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? '')} /></div>
                       <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
-                      <ViewField locked label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} />
-                      <ViewField locked label="Manzana" value={viewTarget.manzana} />
-                      <ViewField locked label="Codigo"  value={viewTarget.codigo}  />
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <div className="col-span-2"><ViewField locked label="Fase" value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} /></div>
+                        <ViewField locked label="Manzana" value={viewTarget.manzana} />
+                        <ViewField locked label="Lote" value={viewTarget.codigo} />
+                      </div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                       <div className="grid gap-1">
@@ -745,7 +758,8 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1">
+                    <div className="col-span-2 grid grid-cols-4 gap-2 [&>*]:min-w-0">
+                    <div className="col-span-2 grid min-w-0 gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase</Label>
                       <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" className="w-full">
@@ -758,7 +772,7 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1">
+                    <div className="grid min-w-0 gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana</Label>
                       <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
                         <SelectTrigger variant="l-border" className="w-full">
@@ -772,13 +786,14 @@ export function LotesClient({
                       </Select>
                     </div>
                     {!viewTarget ? (
-                      <div className="grid gap-1">
-                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo <RequiredMark /></Label>
+                      <div className="grid min-w-0 gap-1">
+                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Lote <RequiredMark /></Label>
                         <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
-                      <LockedField label="Codigo" value={viewTarget.codigo} />
+                      <LockedField label="Lote" value={viewTarget.codigo} />
                     )}
+                    </div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                     <div className="grid gap-1">
@@ -1119,24 +1134,30 @@ export function LotesClient({
                   {/* Columna izquierda — RESERVA */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="RESERVA">
-                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
                         <ViewField locked
                           label="Reserva"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}
                         />
+                        <div className="col-span-3">
+                          <ViewField locked
+                            label="Nombre"
+                            value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
+                          />
+                        </div>
+                      </div>
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
                         <ViewField locked
                           label="Recibo"
-                          value={viewTarget.recibo_numero > 0 ? `${viewTarget.recibo_serie ?? ''}${viewTarget.recibo_numero}` : ''}
+                          value={textoRecibo(viewTarget.recibo_serie, viewTarget.recibo_numero)}
                         />
                         <ViewField locked
                           label="Fecha"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
                         />
-                      </div>
-                      <div className="col-span-2">
                         <ViewField locked
-                          label="Cliente"
-                          value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
+                          label="Monto del Recibo"
+                          value={viewTarget.recibo_numero > 0 && reservaInfo ? textoMontoRecibo(reservaInfo.moneda, reservaInfo.monto) : ''}
                         />
                       </div>
                     </SegmentCard>

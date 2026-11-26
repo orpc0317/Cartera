@@ -602,6 +602,8 @@ export type LoteReservaInfo = {
   reserva_numero: number
   cliente_nombre: string
   fecha: string
+  monto: number
+  moneda: string
 }
 
 export async function getLoteReservaInfo(
@@ -646,7 +648,7 @@ export async function getLoteReservaInfo(
     admin
       .schema('cartera')
       .from('t_recibo_caja')
-      .select('fecha')
+      .select('fecha, monto, moneda')
       .eq('cuenta', cuenta)
       .eq('empresa', empresa)
       .eq('proyecto', proyecto)
@@ -655,10 +657,13 @@ export async function getLoteReservaInfo(
       .maybeSingle(),
   ])
 
+  const filaRecibo = recibo as { fecha?: string; monto?: number; moneda?: string } | null
   return {
     reserva_numero: (reserva as { numero?: number }).numero ?? 0,
     cliente_nombre: (cliente as { nombre?: string } | null)?.nombre ?? '',
-    fecha: (recibo as { fecha?: string } | null)?.fecha ?? '',
+    fecha: filaRecibo?.fecha ?? '',
+    monto: filaRecibo?.monto ?? 0,
+    moneda: filaRecibo?.moneda ?? '',
   }
 }
 
