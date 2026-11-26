@@ -179,7 +179,8 @@ export function HomeClient({
 
           {visibles.map((modulo) => {
             const grupos = gruposDe(modulo.items)
-            const mostrarGrupo = grupos.length > 1 || normalizar(modulo.nombre) === 'facturacion'
+            const nombre = normalizar(modulo.nombre)
+            const mostrarGrupo = grupos.length > 1 || nombre === 'facturacion' || nombre === 'proyectos'
             return (
               <TabsContent key={modulo.id} value={modulo.id} id={modulo.id} className="mt-0">
                 <div className="flex flex-col gap-6">
