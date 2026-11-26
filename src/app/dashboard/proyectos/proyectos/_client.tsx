@@ -861,11 +861,11 @@ export function ProyectosClient({
   function handleSave() {
     if (!form.empresa) { rechazar('empresa', 'Debes seleccionar una empresa.'); return }
     if (!form.nombre.trim()) { rechazar('nombre', 'El nombre del proyecto es requerido.'); return }
+    if (!tel1Local.trim()) { rechazar('telefono1', 'El telefono 1 es requerido.'); return }
     if (!form.direccion.trim()) { rechazar('direccion_p', 'La direccion es requerida.'); return }
     if (!form.direccion_pais.trim()) { rechazar('direccion_pais', 'El pais es requerido.'); return }
     if (!form.direccion_departamento.trim()) { rechazar('departamento_p', 'El departamento es requerido.'); return }
     if (!form.direccion_municipio.trim()) { rechazar('municipio_p', 'El municipio es requerido.'); return }
-    if (!tel1Local.trim()) { rechazar('telefono1', 'El telefono 1 es requerido.'); return }
     if (!viewTarget && !form.moneda) { rechazar('moneda', 'La moneda es requerida.'); return }
     if (form.mora_automatica === 1) {
       if (tipoCalculo === 0 && !form.interes_mora) { rechazar('interes_mora', 'El porcentaje de mora es requerido.'); return }
@@ -994,7 +994,7 @@ export function ProyectosClient({
     <>
               {!isEditing && viewTarget ? (
                 <div className="flex gap-6 items-start">
-                  {/* Left column — IDENTIFICACION + GENERAL */}
+                  {/* Left column — IDENTIFICACION + GENERAL + DIRECCION */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="Identificacion">
                     <div className="col-span-2"><ViewField locked label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} /></div>
@@ -1002,6 +1002,10 @@ export function ProyectosClient({
                     </SegmentCard>
                     <SegmentCard label="General">
                     <div className="col-span-2"><ViewField label="Nombre Proyecto" value={viewTarget.nombre} /></div>
+                    <div className="col-span-2"><ViewField label="Telefono 1" value={viewTarget.telefono1} /></div>
+                    <div className="col-span-2"><ViewField label="Telefono 2" value={viewTarget.telefono2} /></div>
+                    </SegmentCard>
+                    <SegmentCard label="Direccion">
                     <div className="col-span-2"><ViewField label="Direccion" value={viewTarget.direccion} /></div>
                     {(() => {
                       const p = paises.find((x) => x.codigo === viewTarget.direccion_pais)
@@ -1022,8 +1026,6 @@ export function ProyectosClient({
                     <div className="col-span-2"><ViewField label="Departamento" value={nombreLeido(viewTarget.departamento_nombre, departamentos.find((d) => d.codigo === viewTarget.direccion_departamento)?.nombre ?? viewTarget.direccion_departamento)} /></div>
                     <div className="col-span-2"><ViewField label="Municipio" value={nombreLeido(viewTarget.municipio_nombre, municipios.find((m) => m.codigo === viewTarget.direccion_municipio)?.nombre ?? viewTarget.direccion_municipio)} /></div>
                     <ViewField label="Codigo postal" value={viewTarget.codigo_postal} />
-                    <div className="col-span-2"><ViewField label="Telefono 1" value={viewTarget.telefono1} /></div>
-                    <div className="col-span-2"><ViewField label="Telefono 2" value={viewTarget.telefono2} /></div>
                     </SegmentCard>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
@@ -1085,7 +1087,7 @@ export function ProyectosClient({
                 </div>
               ) : (
                 <div className="flex gap-6 items-start">
-                  {/* Left column — IDENTIFICACION + GENERAL */}
+                  {/* Left column — IDENTIFICACION + GENERAL + DIRECCION */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="Identificacion">
                     <div className="col-span-2 grid gap-1">
@@ -1110,6 +1112,30 @@ export function ProyectosClient({
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto <RequiredMark /></Label>
                       <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
                     </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 <RequiredMark /></Label>
+                      <PhoneField
+                        iso={tel1Iso}
+                        local={tel1Local}
+                        inputId="telefono1"
+                        invalid={campoInvalido?.id === 'telefono1'}
+                        onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
+                        onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
+                        placeholder="Numero local"
+                      />
+                    </div>
+                    <div className="col-span-2 grid gap-1">
+                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
+                      <PhoneField
+                        iso={tel2Iso}
+                        local={tel2Local}
+                        onIsoChange={(v) => { setTel2Iso(v); f('telefono2', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel2Local}` : tel2Local) }}
+                        onLocalChange={(v) => { setTel2Local(v); f('telefono2', tel2Iso && DIAL_CODES[tel2Iso] ? `+${DIAL_CODES[tel2Iso]}${v}` : v) }}
+                        placeholder="Numero local"
+                      />
+                    </div>
+                    </SegmentCard>
+                    <SegmentCard label="Direccion">
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
                       <Input variant="l-border" id="direccion_p" aria-invalid={campoInvalido?.id === 'direccion_p' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
@@ -1152,28 +1178,6 @@ export function ProyectosClient({
                     <div className="grid gap-1">
                       <Label htmlFor="codigo_postal_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo postal</Label>
                       <Input variant="l-border" id="codigo_postal_p" value={form.codigo_postal} onChange={(e) => f('codigo_postal', e.target.value)} placeholder="Ej: 01001" />
-                    </div>
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 <RequiredMark /></Label>
-                      <PhoneField
-                        iso={tel1Iso}
-                        local={tel1Local}
-                        inputId="telefono1"
-                        invalid={campoInvalido?.id === 'telefono1'}
-                        onIsoChange={(v) => { setTel1Iso(v); f('telefono1', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel1Local}` : tel1Local) }}
-                        onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
-                        placeholder="Numero local"
-                      />
-                    </div>
-                    <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
-                      <PhoneField
-                        iso={tel2Iso}
-                        local={tel2Local}
-                        onIsoChange={(v) => { setTel2Iso(v); f('telefono2', v && DIAL_CODES[v] ? `+${DIAL_CODES[v]}${tel2Local}` : tel2Local) }}
-                        onLocalChange={(v) => { setTel2Local(v); f('telefono2', tel2Iso && DIAL_CODES[tel2Iso] ? `+${DIAL_CODES[tel2Iso]}${v}` : v) }}
-                        placeholder="Numero local"
-                      />
                     </div>
                     </SegmentCard>
                   </div>
