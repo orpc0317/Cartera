@@ -875,7 +875,7 @@ export default function TasasCambioClient({
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
                 <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelCreate} disabled={isPending}>
-                  <X className="mr-1.5 h-3.5 w-3.5" /> Volver
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
                 <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}
