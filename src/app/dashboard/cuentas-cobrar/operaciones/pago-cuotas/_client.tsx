@@ -33,7 +33,7 @@ import { ViewField } from '@/components/ui/view-field'
 const PASOS_PAGO: readonly WizardStep[] = [
   { id: 'promesa', label: 'Identificar Promesa', icon: Search },
   { id: 'encabezado', label: 'Encabezado', icon: Receipt },
-  { id: 'pago', label: 'Forma de Pago', icon: HandCoins },
+  { id: 'pago', label: 'Forma Pago', icon: HandCoins },
 ]
 
 // ─── Constantes ───────────────────────────────────────────────────────────
@@ -727,10 +727,10 @@ export function PagoCuotasClient({
             <div className="w-80 shrink-0 min-h-0 overflow-y-auto rounded-xl border border-border/60 bg-card p-4">
               <div className="grid grid-cols-2 gap-2">
 
-                <SectionDivider label="Forma de Pago" />
+                <SectionDivider label="Forma Pago" />
 
                 <div className="col-span-2 grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Forma de Pago <RequiredMark /></Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Forma Pago <RequiredMark /></Label>
                   <Select value={formaPago ? String(formaPago) : ''} onValueChange={onFormaPagoChange}>
                     <SelectTrigger variant="l-border" id="pc-forma-pago" aria-invalid={campoInvalido?.id === 'pc-forma-pago' || undefined} className="w-full">
                       <SelectValue placeholder="Selecciona forma de pago">{(v: string) => v ? (FORMAS_PAGO[Number(v)] ?? v) : null}</SelectValue>
@@ -827,7 +827,7 @@ export function PagoCuotasClient({
                 </div>
 
                 <div className="grid gap-1">
-                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Monto a Pagar <RequiredMark /></Label>
+                  <Label className={LABEL_CLS} style={LABEL_STYLE}>Monto Pagar <RequiredMark /></Label>
                   <Input
                     variant="l-border"
                     id="pc-monto"
@@ -844,7 +844,7 @@ export function PagoCuotasClient({
 
                 {moneda && moneda !== monedaBase && (
                   <div className="col-span-2">
-                    <ViewField label={`Tasa de Cambio (${moneda} > ${monedaBase})`} value={tasaCambio ? tasaCambio.toFixed(4) : undefined} />
+                    <ViewField label={`Tasa Cambio (${moneda} > ${monedaBase})`} value={tasaCambio ? tasaCambio.toFixed(4) : undefined} />
                     {!tasaCambio && (
                       <div className="mt-1 flex items-center gap-1.5 text-xs text-destructive">
                         <AlertCircle className="h-3 w-3 shrink-0" />
@@ -949,7 +949,7 @@ export function PagoCuotasClient({
           {activeTab === 'pago' && (
             <>
               <div className="text-right">
-                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground">Monto a Pagar</span>
+                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground">Monto Pagar</span>
                 <span className="font-mono text-sm font-semibold">{moneda} {fmt(montoNum)}</span>
               </div>
               {moneda !== monedaBase && (

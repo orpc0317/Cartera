@@ -82,7 +82,7 @@ const ALL_COLUMNS: ColDef[] = [
   { key: '__cuenta_bancaria',  label: 'Cuenta Bancaria',  defaultVisible: true  },
   { key: 'fecha',              label: 'Fecha',            defaultVisible: true  },
   { key: '__tipo',             label: 'Tipo',             defaultVisible: true  },
-  { key: 'a_nombre_de',        label: 'A Nombre De',      defaultVisible: true  },
+  { key: 'a_nombre_de',        label: 'Nombre',      defaultVisible: true  },
   { key: '__monto',            label: 'Monto',            defaultVisible: true  },
   { key: '__estado',           label: 'Estado',           defaultVisible: true  },
 ]
@@ -467,7 +467,7 @@ export function TransaccionesBancariasClient({
 
   // Export CSV
   function exportCsv() {
-    const headers = ['Numero Transaccion', 'Proyecto', 'Cuenta Bancaria', 'Fecha', 'Tipo', 'A Nombre De', 'Monto', 'Moneda', 'Estado']
+    const headers = ['Numero Transaccion', 'Proyecto', 'Cuenta Bancaria', 'Fecha', 'Tipo', 'Nombre', 'Monto', 'Moneda', 'Estado']
     const lines = [
       headers.join(','),
       ...filtered.map((r) => [
@@ -814,9 +814,9 @@ export function TransaccionesBancariasClient({
                       </div>
                     </div>
 
-                    {/* Línea 3: A Nombre De */}
+                    {/* Línea 3: Nombre */}
                     <div className="col-span-2">
-                      <ViewField label="A Nombre De" value={viewTarget.a_nombre_de ?? ''} />
+                      <ViewField label="Nombre" value={viewTarget.a_nombre_de ?? ''} />
                     </div>
 
                   </div>

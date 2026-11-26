@@ -1105,7 +1105,7 @@ export function PagosClient({
                         </div>
                       </div>
                       <ViewField label="Monto" value={fmt(viewTarget.monto)} />
-                      <ViewField label="Tasa de Cambio" value={viewTarget.tasa_cambio && viewTarget.tasa_cambio !== 1 ? fmt(viewTarget.tasa_cambio) : ''} />
+                      <ViewField label="Tasa Cambio" value={viewTarget.tasa_cambio && viewTarget.tasa_cambio !== 1 ? fmt(viewTarget.tasa_cambio) : ''} />
                       <div className="col-span-2"><ViewField label="Cliente" value={clienteNombre(viewTarget)} /></div>
                       <ViewField label="Lote" value={loteDisplay(viewTarget)} />
                       <ViewField label="Promesa" value={viewTarget.promesa ? String(viewTarget.promesa) : ''} />
@@ -1116,9 +1116,9 @@ export function PagosClient({
                     {/* Columna derecha: FORMA PAGO + DEPOSITO + FACTURA */}
                     <div className="flex-1 grid grid-cols-2 gap-3">
                       <SectionDivider label="FORMA PAGO" />
-                      <ViewField label="Forma de Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? String(viewTarget.forma_pago)} />
+                      <ViewField label="Forma Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? String(viewTarget.forma_pago)} />
                       <ViewField label="Banco" value={bancoNombre(viewTarget)} />
-                      <ViewField label="Numero de Cuenta" value={viewTarget.numero_cuenta} />
+                      <ViewField label="Numero Cuenta" value={viewTarget.numero_cuenta} />
                       <ViewField label="Numero Documento" value={viewTarget.numero_documento} />
                       <div className="col-span-2"><ViewField label="Cobrador" value={cobradorNombre(viewTarget)} /></div>
 

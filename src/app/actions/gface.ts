@@ -119,12 +119,12 @@ function validateForm(form: GfaceForm): { error: string } | { value: GfaceWrite 
     [value.user_name, 25, 'Usuario'],
     [value.token, 50, 'Token'],
     [value.web_service, 100, 'Servicio Web'],
-    [value.web_service_documento, 100, 'Servicio Web de Documento'],
+    [value.web_service_documento, 100, 'Servicio Web Documento'],
     [value.certificado_post, 100, 'Certificado Post'],
-    [value.certificado_ruta, 100, 'Ruta del Certificado'],
-    [value.certificado_nombre, 50, 'Nombre del Certificado'],
-    [value.certificado_contrasena, 25, 'Contrasena del Certificado'],
-    [value.correo_envio, 50, 'Correo de Envio'],
+    [value.certificado_ruta, 100, 'Ruta Certificado'],
+    [value.certificado_nombre, 50, 'Nombre Certificado'],
+    [value.certificado_contrasena, 25, 'Contrasena Certificado'],
+    [value.correo_envio, 50, 'Correo Envio'],
     [value.correo_copia, 50, 'Correo Copia'],
   ]
   for (const [field, max, label] of limits) {

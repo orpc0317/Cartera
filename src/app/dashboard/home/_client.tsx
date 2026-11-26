@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { estiloItem, gruposDe, iconoModulo, normalizar, type MenuItem, type MenuModulo } from '@/lib/navigation'
+import { estiloItem, gruposDe, iconoGrupo, iconoModulo, normalizar, type MenuItem, type MenuModulo } from '@/lib/navigation'
 
 function saludoDe(hora: number): string {
   if (hora < 12) return 'Buenos días'
@@ -179,14 +179,18 @@ export function HomeClient({
 
           {visibles.map((modulo) => {
             const grupos = gruposDe(modulo.items)
-            const mostrarGrupo = grupos.length > 1 || normalizar(modulo.nombre) === 'facturacion'
+            const nombre = normalizar(modulo.nombre)
+            const mostrarGrupo = grupos.length > 1 || nombre === 'facturacion' || nombre === 'proyectos'
             return (
               <TabsContent key={modulo.id} value={modulo.id} id={modulo.id} className="mt-0">
                 <div className="flex flex-col gap-6">
-                  {grupos.map((grupo) => (
+                  {grupos.map((grupo) => {
+                    const Icono = iconoGrupo(grupo.nombre)
+                    return (
                     <div key={grupo.nombre}>
                       {mostrarGrupo && (
-                        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                        <p className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                          <Icono className="h-3.5 w-3.5" aria-hidden="true" />
                           {grupo.nombre}
                         </p>
                       )}
@@ -196,7 +200,8 @@ export function HomeClient({
                         ))}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </TabsContent>
             )

@@ -138,6 +138,14 @@ export async function createLote(form: LoteForm): Promise<{ error?: string }> {
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(form.empresa, form.proyecto)
   if (alcance) return alcance
+  if (!form.empresa) return { error: 'Selecciona la empresa.' }
+  if (!form.proyecto) return { error: 'Selecciona el proyecto.' }
+  if (!form.fase) return { error: 'Selecciona la fase.' }
+  if (!form.manzana.trim()) return { error: 'Selecciona la manzana.' }
+  if (!form.codigo.trim()) return { error: 'El codigo es requerido.' }
+  if (!form.moneda.trim()) return { error: 'Selecciona la moneda.' }
+  if (!Number.isFinite(form.valor)) return { error: 'El precio de venta es requerido.' }
+  if (!Number.isFinite(form.extension)) return { error: 'La extension es requerida.' }
   const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
   const now = new Date().toISOString()
 
@@ -184,6 +192,9 @@ export async function updateLote(
   if (permCheck) return permCheck
   const alcance = await exigirProyecto(empresa, proyecto)
   if (alcance) return alcance
+  if (form.moneda !== undefined && !form.moneda.trim()) return { error: 'Selecciona la moneda.' }
+  if (form.valor !== undefined && !Number.isFinite(form.valor)) return { error: 'El precio de venta es requerido.' }
+  if (form.extension !== undefined && !Number.isFinite(form.extension)) return { error: 'La extension es requerida.' }
   const [auditUser, admin] = [await getAuditUser(), await clienteDatos()]
 
   const { data: oldRow } = await admin
@@ -602,6 +613,8 @@ export type LoteReservaInfo = {
   reserva_numero: number
   cliente_nombre: string
   fecha: string
+  monto: number
+  moneda: string
 }
 
 export async function getLoteReservaInfo(
@@ -646,7 +659,7 @@ export async function getLoteReservaInfo(
     admin
       .schema('cartera')
       .from('t_recibo_caja')
-      .select('fecha')
+      .select('fecha, monto, moneda')
       .eq('cuenta', cuenta)
       .eq('empresa', empresa)
       .eq('proyecto', proyecto)
@@ -655,10 +668,13 @@ export async function getLoteReservaInfo(
       .maybeSingle(),
   ])
 
+  const filaRecibo = recibo as { fecha?: string; monto?: number; moneda?: string } | null
   return {
     reserva_numero: (reserva as { numero?: number }).numero ?? 0,
     cliente_nombre: (cliente as { nombre?: string } | null)?.nombre ?? '',
-    fecha: (recibo as { fecha?: string } | null)?.fecha ?? '',
+    fecha: filaRecibo?.fecha ?? '',
+    monto: filaRecibo?.monto ?? 0,
+    moneda: filaRecibo?.moneda ?? '',
   }
 }
 

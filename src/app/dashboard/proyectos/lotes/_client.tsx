@@ -73,6 +73,17 @@ const SKIP_KEYS = new Set(['moneda', 'manzana'])
 const fmt = (n: number) =>
   n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+function textoRecibo(serie: string | null | undefined, numero: number) {
+  if (!(numero > 0)) return ''
+  const s = (serie ?? '').trim()
+  return s ? `${s} - ${numero}` : String(numero)
+}
+
+function textoMontoRecibo(moneda: string, monto: number) {
+  const total = fmt(monto)
+  return moneda ? `${moneda} ${total}` : total
+}
+
 type ColDef = { key: string; label: string; defaultVisible: boolean; numeric?: boolean }
 type ColPref = { key: string; visible: boolean }
 
@@ -82,7 +93,7 @@ const ALL_COLUMNS: ColDef[] = [
   { key: 'fase',      label: 'Fase',      defaultVisible: true  },
   { key: 'manzana',   label: 'Manzana',   defaultVisible: true  },
   { key: 'moneda',    label: 'Moneda',    defaultVisible: true  },
-  { key: 'valor',     label: 'Precio',    defaultVisible: true,  numeric: true },
+  { key: 'valor',     label: 'Precio Venta', defaultVisible: true,  numeric: true },
   { key: 'finca',     label: 'Finca',     defaultVisible: false },
   { key: 'libro',     label: 'Libro',     defaultVisible: false },
   { key: 'folio',     label: 'Folio',     defaultVisible: false },
@@ -520,13 +531,28 @@ export function LotesClient({
   // --- Guardar ---
 
   function handleSave() {
+    if (!form.empresa) { rechazar('empresa', 'Selecciona la empresa.'); return }
+    if (!form.proyecto) { rechazar('proyecto', 'Selecciona el proyecto.'); return }
+    if (!form.fase) { rechazar('fase', 'Selecciona la fase.'); return }
+    if (!form.manzana.trim()) { rechazar('manzana', 'Selecciona la manzana.'); return }
     if (!viewTarget && !form.codigo.trim()) {
       rechazar('codigo', 'El codigo es requerido.')
       return
     }
+    if (!form.moneda.trim()) { rechazar('moneda', 'Selecciona la moneda.'); return }
+    const valorNum = parseFloat(valorStr)
+    if (valorStr.trim() === '' || !Number.isFinite(valorNum)) {
+      rechazar('valor', 'El precio de venta es requerido.')
+      return
+    }
+    const extensionNum = parseFloat(extensionStr)
+    if (extensionStr.trim() === '' || !Number.isFinite(extensionNum)) {
+      rechazar('extension', 'La extension es requerida.')
+      return
+    }
 
-    const valor     = parseFloat(valorStr)     || form.valor
-    const extension = parseFloat(extensionStr) || form.extension
+    const valor     = valorNum
+    const extension = extensionNum
 
     // Sin cambios: no ir a la base de datos
     if (viewTarget) {
@@ -676,9 +702,11 @@ export function LotesClient({
                     <SegmentCard label="IDENTIFICACION">
                       <div className="col-span-2"><ViewField locked label="Empresa"  value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa)   ?? '')} /></div>
                       <div className="col-span-2"><ViewField locked label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? '')} /></div>
-                      <ViewField locked label="Fase"    value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} />
-                      <ViewField locked label="Manzana" value={viewTarget.manzana} />
-                      <ViewField locked label="Codigo"  value={viewTarget.codigo}  />
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
+                        <div className="col-span-2"><ViewField locked label="Fase" value={nombreLeido(viewTarget.fase_nombre, faseMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}-${viewTarget.fase}`) ?? '')} /></div>
+                        <ViewField locked label="Manzana" value={viewTarget.manzana} />
+                        <ViewField locked label="Lote" value={viewTarget.codigo} />
+                      </div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                       <div className="grid gap-1">
@@ -695,7 +723,7 @@ export function LotesClient({
                           })()}
                         </div>
                       </div>
-                      <ViewField label="Valor"     value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
+                      <ViewField label="Precio Venta" value={viewTarget.valor ? fmt(viewTarget.valor) : ''} />
                       <ViewField label="Extension" value={viewTarget.extension ? `${fmt(viewTarget.extension)} ${getMedida(viewTarget.fase)}` : ''} />
                     </SegmentCard>
                   </div>
@@ -720,9 +748,9 @@ export function LotesClient({
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="IDENTIFICACION">
                     <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa</Label>
+                      <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                       <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                        <SelectTrigger id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona empresa">
                             {(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}
                           </SelectValue>
@@ -733,9 +761,9 @@ export function LotesClient({
                       </Select>
                     </div>
                     <div className="col-span-2 grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto</Label>
+                      <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                       <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                        <SelectTrigger id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona proyecto">
                             {(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -745,10 +773,11 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase</Label>
+                    <div className="col-span-2 grid grid-cols-4 gap-2 [&>*]:min-w-0">
+                    <div className="col-span-2 grid min-w-0 gap-1">
+                      <Label htmlFor="fase" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase <RequiredMark /></Label>
                       <Select value={String(form.fase)} onValueChange={(v) => f('fase', Number(v))} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                        <SelectTrigger id="fase" aria-invalid={campoInvalido?.id === 'fase' || undefined} variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona fase">
                             {(v: string) => v && v !== '0' ? (faseMap.get(`${form.empresa}-${form.proyecto}-${Number(v)}`) ?? v) : null}
                           </SelectValue>
@@ -758,10 +787,10 @@ export function LotesClient({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana</Label>
+                    <div className="grid min-w-0 gap-1">
+                      <Label htmlFor="manzana" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana <RequiredMark /></Label>
                       <Select value={form.manzana} onValueChange={(v) => f('manzana', v)} disabled={!!viewTarget}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                        <SelectTrigger id="manzana" aria-invalid={campoInvalido?.id === 'manzana' || undefined} variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona manzana">
                             {(v: string) => v || null}
                           </SelectValue>
@@ -772,19 +801,20 @@ export function LotesClient({
                       </Select>
                     </div>
                     {!viewTarget ? (
-                      <div className="grid gap-1">
-                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo <RequiredMark /></Label>
+                      <div className="grid min-w-0 gap-1">
+                        <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Lote <RequiredMark /></Label>
                         <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
                       </div>
                     ) : (
-                      <LockedField label="Codigo" value={viewTarget.codigo} />
+                      <LockedField label="Lote" value={viewTarget.codigo} />
                     )}
+                    </div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                     <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda</Label>
+                      <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
                       <Select value={form.moneda} onValueChange={(v) => f('moneda', v)}>
-                        <SelectTrigger variant="l-border" className="w-full">
+                        <SelectTrigger id="moneda" aria-invalid={campoInvalido?.id === 'moneda' || undefined} variant="l-border" className="w-full">
                           <SelectValue placeholder="Selecciona moneda">
                             {(v: string) => {
                               const flag = CURRENCY_FLAG_MAP.get(v)
@@ -815,13 +845,13 @@ export function LotesClient({
                       </Select>
                     </div>
                     <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Valor</Label>
-                      <Input variant="l-border" type="number" min={0} step="0.01" value={valorStr} onChange={(e) => setValorStr(e.target.value)} placeholder="0.00" />
+                      <Label htmlFor="valor" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Precio Venta <RequiredMark /></Label>
+                      <Input variant="l-border" id="valor" aria-invalid={campoInvalido?.id === 'valor' || undefined} type="number" min={0} step="0.01" value={valorStr} onChange={(e) => { limpiarCampoInvalido(); setValorStr(e.target.value) }} placeholder="0.00" />
                     </div>
                     <div className="grid gap-1">
-                      <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Extension</Label>
+                      <Label htmlFor="extension" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Extension <RequiredMark /></Label>
                       <div className="flex gap-2 items-center">
-                        <Input variant="l-border" type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => setExtensionStr(e.target.value)} placeholder="0.00" className="flex-1" />
+                        <Input variant="l-border" id="extension" aria-invalid={campoInvalido?.id === 'extension' || undefined} type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => { limpiarCampoInvalido(); setExtensionStr(e.target.value) }} placeholder="0.00" className="flex-1" />
                         {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
                       </div>
                     </div>
@@ -1119,24 +1149,30 @@ export function LotesClient({
                   {/* Columna izquierda — RESERVA */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
                     <SegmentCard label="RESERVA">
-                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                      <div className="col-span-2 grid grid-cols-4 gap-2">
                         <ViewField locked
                           label="Reserva"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.reserva_numero ? String(reservaInfo.reserva_numero) : '') : ''}
                         />
+                        <div className="col-span-3">
+                          <ViewField locked
+                            label="Nombre"
+                            value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
+                          />
+                        </div>
+                      </div>
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
                         <ViewField locked
                           label="Recibo"
-                          value={viewTarget.recibo_numero > 0 ? `${viewTarget.recibo_serie ?? ''}${viewTarget.recibo_numero}` : ''}
+                          value={textoRecibo(viewTarget.recibo_serie, viewTarget.recibo_numero)}
                         />
                         <ViewField locked
                           label="Fecha"
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
                         />
-                      </div>
-                      <div className="col-span-2">
                         <ViewField locked
-                          label="Cliente"
-                          value={viewTarget.recibo_numero > 0 ? (reservaInfo?.cliente_nombre ?? '') : ''}
+                          label="Monto Recibo"
+                          value={viewTarget.recibo_numero > 0 && reservaInfo ? textoMontoRecibo(reservaInfo.moneda, reservaInfo.monto) : ''}
                         />
                       </div>
                     </SegmentCard>

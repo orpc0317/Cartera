@@ -287,7 +287,7 @@ Add one key to `PRESENTACION`, equal to the value of `PERMISOS.<PERMISO>` (for e
 ```
 
 - `href` is `RUTA`.
-- `grupo` is the same string already used by the other screens of that module (`Catalogos`, `Catalogo`, `Operaciones`, `Consultas`, or `General`). Do not invent another spelling.
+- `grupo` is the same string already used by the other screens of that module (`Catalogos`, `Catalogo`, `Operaciones`, `Consultas`, or `General`). Do not invent another spelling. A new section name also gets its own Lucide icon in `ICONOS_GRUPO`, and `iconoGrupo` renders it on the submenu heading. The rule is `.cursor/rules/menu-sections.mdc`.
 - `orden` is the last `orden` of that module and group, plus 10. Use 10 when the group is empty.
 - `icon` and `accent` are the ones chosen for the screen. `accent` is `bg-<token>-100 text-<token>-600`.
 - A module name missing from `MODULO_ORDEN` and `ICONOS_MODULO` gets one entry in each. Do not add a `PROXIMAMENTE` item.
@@ -344,7 +344,7 @@ Run these before reporting the screen finished.
 - [ ] `src/app/dashboard/<ruta>/page.tsx` created as Server Component
 - [ ] `src/app/dashboard/<ruta>/_client.tsx` created with `'use client'`, structured like Clientes, and Ver re-reads the record (`useRegistroVer` + `obtenerEntity`, Editar disabled until that read, names from `nombreLeido`)
 - [ ] `src/lib/permisos.ts` contains `PERMISOS.<PERMISO>`
-- [ ] `PRESENTACION` in `src/lib/navigation.ts` has that permission code, with `href`, `grupo`, `orden`, `icon`, and `accent`. `app-sidebar.tsx` was not edited. No rows were inserted into `t_menu` or `t_menu_usuario`
+- [ ] `PRESENTACION` in `src/lib/navigation.ts` has that permission code, with `href`, `grupo`, `orden`, `icon`, and `accent`. A new `grupo` is also in `ICONOS_GRUPO`. `app-sidebar.tsx` was not edited. No rows were inserted into `t_menu` or `t_menu_usuario`
 - [ ] Accent color table in `.cursor/rules/ui-conventions.mdc` updated (add row if new module)
 - [ ] Icon table in `.cursor/rules/ui-conventions.mdc` updated (add row if new icon)
 - [ ] The spec file was not edited
