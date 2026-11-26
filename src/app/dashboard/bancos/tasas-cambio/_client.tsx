@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreDeLista, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -48,6 +48,8 @@ import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/ta
 import type { Empresa, Proyecto, ProyectoMoneda } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_BOTON_MODAL } from '@/lib/modal-look'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { ViewField } from '@/components/ui/view-field'
 
 // ── Moneda flag map ─────────────────────────────────────────────────────────
 const CURRENCY_FLAG_MAP = new Map<string, string>([
@@ -613,7 +615,7 @@ export default function TasasCambioClient({
             <ArrowLeftRight className="h-5 w-5 text-teal-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Tasas de Cambio</h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Tipo Cambio</h1>
             <p className="text-sm text-muted-foreground">Historial de tasas por proyecto y moneda</p>
           </div>
         </div>
@@ -768,7 +770,7 @@ export default function TasasCambioClient({
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  Tasas de Cambio
+                  Tipo Cambio
                 </DialogTitle>
               </div>
             </div>
@@ -778,8 +780,32 @@ export default function TasasCambioClient({
 
             {/* ── Ver mode — history list ── */}
             {!isEditing && viewTarget && (
-              <div className="flex flex-col gap-2">
-                <div className="rounded-xl border border-border/60 overflow-hidden">
+              <div className="grid grid-cols-2 gap-2">
+                <SegmentCard label="IDENTIFICACION">
+                  <div className="col-span-2">
+                    <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
+                  </div>
+                  <div className="col-span-2">
+                    <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
+                  </div>
+                  <div className="col-span-2 grid gap-1">
+                    <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Moneda</span>
+                    <div className="flex items-center gap-1.5 border-0 border-b border-primary/50 bg-transparent px-2" style={{ height: 'var(--ui-field-height)' }}>
+                      {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
+                        <img
+                          src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`}
+                          alt={viewTarget.moneda}
+                          width={20}
+                          height={14}
+                          className="shrink-0 rounded-sm object-cover"
+                        />
+                      )}
+                      <span className="font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
+                    </div>
+                  </div>
+                </SegmentCard>
+                <SegmentCard label="TASA CAMBIO" icon={ArrowLeftRight}>
+                <div className="col-span-2 overflow-hidden rounded-md border border-border/60">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -818,6 +844,7 @@ export default function TasasCambioClient({
                     </TableBody>
                   </Table>
                 </div>
+                </SegmentCard>
               </div>
             )}
 
