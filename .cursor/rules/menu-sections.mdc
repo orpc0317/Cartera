@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Secciones del submenu
 
-El titulo de una seccion del submenu (Catalogos, Operaciones, Consultas, General) lleva un icono Lucide a la izquierda del texto. El texto sigue en mayusculas por CSS.
+El titulo de una seccion del submenu (Catalogos, Operaciones, Consultas, General) lleva un icono Lucide a la izquierda del texto. El texto sigue en mayusculas por CSS. El icono y el titulo usan `text-primary`, el mismo verde que el encabezado de `SegmentCard` en los modales. No uses `text-muted-foreground` para esa fila.
 
 La fuente es `ICONOS_GRUPO` en `src/lib/navigation.ts`. El titulo llama `iconoGrupo(nombre)`.
 

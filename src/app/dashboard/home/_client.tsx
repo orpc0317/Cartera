@@ -189,7 +189,7 @@ export function HomeClient({
                     return (
                     <div key={grupo.nombre}>
                       {mostrarGrupo && (
-                        <p className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                        <p className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
                           <Icono className="h-3.5 w-3.5" aria-hidden="true" />
                           {grupo.nombre}
                         </p>
