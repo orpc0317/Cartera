@@ -1156,7 +1156,7 @@ export function LotesClient({
                           value={viewTarget.recibo_numero > 0 ? (reservaInfo?.fecha ?? '') : ''}
                         />
                         <ViewField locked
-                          label="Monto del Recibo"
+                          label="Monto Recibo"
                           value={viewTarget.recibo_numero > 0 && reservaInfo ? textoMontoRecibo(reservaInfo.moneda, reservaInfo.monto) : ''}
                         />
                       </div>
