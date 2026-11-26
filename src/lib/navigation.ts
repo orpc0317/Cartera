@@ -21,6 +21,8 @@ import {
   Layers,
   LayoutDashboard,
   LayoutGrid,
+  Library,
+  ListChecks,
   Map as MapIcon,
   MapPin,
   Network,
@@ -28,6 +30,7 @@ import {
   ReceiptText,
   Scale,
   ScrollText,
+  Search,
   Settings,
   ShieldCheck,
   Tags,
@@ -329,6 +332,14 @@ const PROXIMAMENTE: Proximamente[] = [
   },
 ]
 
+const ICONOS_GRUPO: Record<string, LucideIcon> = {
+  Catalogo: Library,
+  Catalogos: Library,
+  Operaciones: ListChecks,
+  Consultas: Search,
+  General: LayoutGrid,
+}
+
 const ICONOS_MODULO: Record<string, LucideIcon> = {
   Proyectos: FolderKanban,
   Bancos: Landmark,
@@ -356,6 +367,11 @@ export function slugModulo(nombre: string): string {
 export function iconoModulo(nombre: string): LucideIcon {
   const clave = Object.keys(ICONOS_MODULO).find((item) => normalizar(item) === normalizar(nombre))
   return (clave && ICONOS_MODULO[clave]) || LayoutGrid
+}
+
+export function iconoGrupo(nombre: string): LucideIcon {
+  const clave = Object.keys(ICONOS_GRUPO).find((item) => normalizar(item) === normalizar(nombre))
+  return (clave && ICONOS_GRUPO[clave]) || LayoutGrid
 }
 
 export function estiloItem(indice: string): { icon: LucideIcon; accent: string } {

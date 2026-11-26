@@ -1,0 +1,25 @@
+---
+description: "Secciones del submenu de inicio. Cada grupo (Catalogos, Operaciones, Consultas, General) lleva un icono Lucide. Cargar al agregar una pantalla al menu o una seccion nueva."
+globs: "src/lib/navigation.ts,src/app/dashboard/home/_client.tsx"
+alwaysApply: false
+---
+
+# Secciones del submenu
+
+El titulo de una seccion del submenu (Catalogos, Operaciones, Consultas, General) lleva un icono Lucide a la izquierda del texto. El texto sigue en mayusculas por CSS.
+
+La fuente es `ICONOS_GRUPO` en `src/lib/navigation.ts`. El titulo llama `iconoGrupo(nombre)`.
+
+| Seccion | Icono |
+|---|---|
+| Catalogo, Catalogos | `Library` |
+| Operaciones | `ListChecks` |
+| Consultas | `Search` |
+| General | `LayoutGrid` |
+
+Al crear una seccion nueva:
+
+1. Usa el mismo `grupo` que ya existe si la seccion es una de estas. No inventes otra grafia (`Catalogo` y `Catalogos` ya conviven).
+2. Si el nombre es nuevo, agrega una fila en `ICONOS_GRUPO` con un icono Lucide que no este en la tabla de iconos de pantalla de `.cursor/rules/ui-conventions.mdc`.
+3. Agrega el nombre a `GRUPO_ORDEN` en el lugar que le toca.
+4. No dejes la seccion con el icono de respaldo `LayoutGrid`, salvo que la seccion sea General.

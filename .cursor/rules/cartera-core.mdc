@@ -42,3 +42,4 @@ Si el pedido es un CRUD de catálogo (`prompts/crud-*.md`, lista, modal, alta, c
 5. Si el cambio se ve, recorrer el flujo en el navegador.
 6. Catálogo nuevo: `useCampoInvalido` como dice `.cursor/rules/crud-screens.mdc`, y `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` en verde.
 7. La lista: el `get*` lee `v_*_lista` con columnas nombradas, la vista está en `scripts/vistas_listas.sql`, y la celda usa el nombre que vino en la fila.
+8. Una sección nueva del submenu entra en `ICONOS_GRUPO` de `src/lib/navigation.ts` con un icono Lucide propio. El título la muestra con `iconoGrupo`. El detalle está en `.cursor/rules/menu-sections.mdc`.
