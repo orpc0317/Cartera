@@ -496,19 +496,17 @@ export function DepositarPagosClient({
                   <ViewField label="Nombre Cliente" value={reciboPreview?.cliente_nombre} />
                 </div>
             </div>
-            {reciboPreview?.tipo === 'Reserva' && (
-              <div className="col-span-2 grid grid-cols-8 gap-3">
+            <div className="col-span-2 grid grid-cols-8 gap-3">
                 <div className="col-span-2 min-w-0">
-                  <ViewField label="Fase" value={reciboPreview.fase_nombre ?? (reciboPreview.fase ? `#${reciboPreview.fase}` : undefined)} />
+                  <ViewField label="Fase" value={reciboPreview?.fase_nombre ?? (reciboPreview?.fase ? `#${reciboPreview.fase}` : undefined)} />
                 </div>
                 <div className="col-span-2 min-w-0">
-                  <ViewField label="Manzana" value={reciboPreview.manzana} />
+                  <ViewField label="Manzana" value={reciboPreview?.manzana} />
                 </div>
                 <div className="col-span-2 min-w-0">
-                  <ViewField label="Lote" value={reciboPreview.lote} />
+                  <ViewField label="Lote" value={reciboPreview?.lote} />
                 </div>
-              </div>
-            )}
+            </div>
             </div>
             <div className="col-span-2 flex shrink-0 justify-end gap-2">
                 <Button
