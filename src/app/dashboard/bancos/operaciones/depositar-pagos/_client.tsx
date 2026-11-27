@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2, Landmark, FileText, List,
+  CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2, Landmark, List,
   Check, ChevronLeft, ChevronRight, Eraser,
 } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
@@ -31,7 +31,6 @@ import { CLASE_BOTON_MODAL, FONDO_MODAL, FRANJA_BLANCA } from '@/lib/modal-look'
 
 const PASOS_DEPOSITO: readonly WizardStep[] = [
   { id: 'identificacion', label: 'Identificacion', icon: Landmark },
-  { id: 'general', label: 'General', icon: FileText },
   { id: 'detalle', label: 'Detalle', icon: List },
 ]
 
@@ -226,11 +225,11 @@ export function DepositarPagosClient({
       return
     }
     if (!fecha) {
-      rechazar('fecha', 'La fecha del deposito es requerida.', 'general')
+      rechazar('fecha', 'La fecha del deposito es requerida.', 'identificacion')
       return
     }
     if (!numeroDocumento.trim()) {
-      rechazar('numero_documento', 'El numero de documento es requerido.', 'general')
+      rechazar('numero_documento', 'El numero de documento es requerido.', 'identificacion')
       return
     }
     if (!cuentaBancaria) {
@@ -352,14 +351,6 @@ export function DepositarPagosClient({
                 </span>
               )}
             </div>
-
-          </div>
-        </div>
-        )}
-
-        {activeTab === 'general' && (
-        <div className="w-full py-2">
-          <div className="grid grid-cols-2 gap-2">
 
             {/* Fecha */}
             <div className="col-span-2 grid gap-1">
