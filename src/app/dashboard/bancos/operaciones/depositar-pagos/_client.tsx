@@ -466,7 +466,7 @@ export function DepositarPagosClient({
               </div>
             )}
 
-            <div className={`col-span-2 grid grid-cols-2 gap-3 rounded-lg border border-border/60 p-3 ${FONDO_MODAL}`}>
+            <div className="col-span-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-muted/50 p-3">
             <div className="col-span-2 grid grid-cols-4 gap-3">
                 <ViewField label="Fecha" value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
                 <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
