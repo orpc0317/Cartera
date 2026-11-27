@@ -119,6 +119,54 @@ export async function obtenerTransaccionBancaria(
   return { row: { ...row, ...nombres } }
 }
 
+export type ReciboDeTransaccion = {
+  serie: string
+  numero: number
+  fecha: string
+  cliente_nombre: string
+  tipo: 'Reserva' | 'Otros'
+  moneda: string
+  monto: number
+}
+
+export async function getRecibosDeTransaccion(
+  empresa: number,
+  cuentaBancaria: number,
+  numeroTransaccion: string,
+): Promise<{ data?: ReciboDeTransaccion[]; error?: string }> {
+  const guard = await requirePermiso(PERMISOS.TRX_BAN, 'consultar')
+  if (guard) return guard
+  const alcance = await proyectosDeCuentaBancaria(empresa, cuentaBancaria)
+  if ('error' in alcance) return alcance
+  if (!alcance.cuenta) return { error: 'Sesion no valida.' }
+
+  const admin = await clienteDatos()
+  let consulta = admin
+    .schema('cartera')
+    .from('v_recibo_caja_lista')
+    .select('serie, numero, fecha, cliente, cliente_nombre, reserva, moneda, monto')
+    .eq('cuenta', alcance.cuenta)
+    .eq('empresa', empresa)
+    .eq('cuenta_deposito', cuentaBancaria)
+    .eq('transaccion_bancaria', numeroTransaccion)
+    .order('serie', { ascending: true })
+    .order('numero', { ascending: true })
+  if (!alcance.esAdmin) consulta = consulta.in('proyecto', alcance.proyectos)
+  const { data, error } = await consulta
+  if (error) return { error: error.message }
+
+  const filas: ReciboDeTransaccion[] = (data ?? []).map((row) => ({
+    serie: String(row.serie ?? ''),
+    numero: Number(row.numero ?? 0),
+    fecha: String(row.fecha ?? ''),
+    cliente_nombre: (row.cliente_nombre as string | null) || (row.cliente ? String(row.cliente) : ''),
+    tipo: Number(row.reserva ?? 0) > 0 ? 'Reserva' : 'Otros',
+    moneda: String(row.moneda ?? ''),
+    monto: Number(row.monto ?? 0),
+  }))
+  return { data: filas }
+}
+
 // ─── Anular ───────────────────────────────────────────────────────────────
 
 export async function anularTransaccionBancaria(

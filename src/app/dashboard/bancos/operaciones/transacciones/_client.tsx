@@ -19,7 +19,7 @@ import { toast } from 'sonner'
 import {
   ScrollText, Search, X, Settings2, Download,
   ChevronDown, ChevronUp, Eye, History,
-  ChevronLeft, ChevronRight, Ban, Trash2, MapPin,
+  ChevronLeft, ChevronRight, Ban, Trash2, MapPin, Receipt, Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -45,10 +45,13 @@ import type { TransaccionBancaria, Empresa, Proyecto, CuentaBancaria, Banco } fr
 import {
   anularTransaccionBancaria,
   eliminarTransaccionBancaria,
+  getRecibosDeTransaccion,
   getTransaccionesBancarias,
   obtenerTransaccionBancaria,
+  type ReciboDeTransaccion,
 } from '@/app/actions/transacciones-bancarias'
 import { ViewField } from '@/components/ui/view-field'
+import { SegmentCard } from '@/components/ui/segment-card'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Mapas de catálogos ───────────────────────────────────────────────────
@@ -70,6 +73,35 @@ const ESTADOS_TRANSACCION: Record<number, { label: string; cls: string }> = {
 
 const fmt = (n: number) =>
   n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const CURRENCY_FLAG_MAP = new Map<string, string>([
+  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
+  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
+  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
+  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
+  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
+  ['UYU', 'uy'], ['VES', 've'],
+])
+
+function fmtFecha(d: string): string {
+  if (!d) return ''
+  const parts = d.split('-')
+  if (parts.length !== 3) return d
+  return `${parts[2]}/${parts[1]}/${parts[0]}`
+}
+
+function BanderaMonto({ codigo, monto }: { codigo?: string | null; monto?: number | null }) {
+  if (monto == null) return null
+  const flagIso = codigo ? CURRENCY_FLAG_MAP.get(codigo) : undefined
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {flagIso && (
+        <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={codigo ?? ''} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+      )}
+      <span className="whitespace-nowrap">{codigo ? `${codigo} ` : ''}{fmt(monto)}</span>
+    </span>
+  )
+}
 
 type ColFilters = Record<string, Set<string>>
 type ColDef  = { key: string; label: string; defaultVisible: boolean }
@@ -99,15 +131,6 @@ function formatCsvCell(value: unknown): string {
 }
 
 // ─── Subcomponentes ────────────────────────────────────────────────────────
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
-}
-
 function ColumnFilter({
   label, values, active, onChange,
 }: { label: string; values: string[]; active: Set<string>; onChange: (next: Set<string>) => void }) {
@@ -213,6 +236,11 @@ export function TransaccionesBancariasClient({
   const [fechaHasta, setFechaHasta]     = useState('')
   const [limitReached, setLimitReached] = useState(initialLimitReached)
   const [dialogOpen, setDialogOpen]     = useState(false)
+  const [pestana, setPestana]           = useState('general')
+  const [recibos, setRecibos]           = useState<ReciboDeTransaccion[] | null>(null)
+  const [recibosError, setRecibosError] = useState<string | null>(null)
+  const [recibosPending, startRecibos]  = useTransition()
+  const recibosClave = useRef('')
   const [viewTarget, setViewTarget]     = useState<(TransaccionBancaria & NombresVer) | null>(null)
   const [anularTarget, setAnularTarget] = useState<TransaccionBancaria | null>(null)
   const [eliminarTarget, setEliminarTarget] = useState<TransaccionBancaria | null>(null)
@@ -419,8 +447,25 @@ export function TransaccionesBancariasClient({
   })
 
   function openView(r: TransaccionBancaria) {
+    const clave = `${r.empresa}-${r.cuenta_bancaria}-${r.numero_transaccion}`
+    recibosClave.current = clave
     setViewTarget(r)
+    setPestana('general')
+    setRecibos(null)
+    setRecibosError(null)
     setDialogOpen(true)
+    startRecibos(async () => {
+      const result = await getRecibosDeTransaccion(r.empresa, r.cuenta_bancaria, r.numero_transaccion)
+      if (recibosClave.current !== clave) return
+      if (result.error) {
+        toast.error(result.error)
+        setRecibos(null)
+        setRecibosError(result.error)
+        return
+      }
+      setRecibosError(null)
+      setRecibos(result.data ?? [])
+    })
   }
 
   function handleAnular() {
@@ -736,6 +781,11 @@ export function TransaccionesBancariasClient({
       <Dialog modal={false} open={dialogOpen} onOpenChange={(open) => {
         if (!open && (auditTarget !== null || anularTarget !== null || eliminarTarget !== null)) return
         setDialogOpen(open)
+        if (!open) {
+          setPestana('general')
+          setRecibos(null)
+          setRecibosError(null)
+        }
       }}>
         <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[680px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
 
@@ -752,11 +802,14 @@ export function TransaccionesBancariasClient({
             </div>
           </DialogHeader>
 
-          <Tabs defaultValue="general" className="mt-0.5 flex flex-col flex-1 min-h-0">
+          <Tabs value={pestana} onValueChange={setPestana} className="mt-0.5 flex flex-col flex-1 min-h-0">
             <div className={`-mx-4 -mt-4 shrink-0 border-b px-4 py-2 ${FRANJA_BLANCA}`}>
               <TabsList variant="line" className="bg-transparent">
                 <TabsTrigger value="general" className={CLASE_PESTANA_MODAL}>
                   <MapPin className="h-3.5 w-3.5" /> General
+                </TabsTrigger>
+                <TabsTrigger value="detalle" className={CLASE_PESTANA_MODAL}>
+                  <Receipt className="h-3.5 w-3.5" /> Detalle
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -765,82 +818,132 @@ export function TransaccionesBancariasClient({
               {viewTarget && (
                 <div className="flex gap-6 items-start">
 
-                  {/* Columna izquierda */}
                   <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="IDENTIFICACION">
+                      <div className="col-span-2">
+                        <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
+                      </div>
+                      <div className="col-span-2">
+                        <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, getProyectoNombre(viewTarget))} />
+                      </div>
+                      <div className="col-span-2 grid grid-cols-2 gap-2">
+                        <ViewField label="Cuenta Bancaria" value={nombreLeido(viewTarget.cuenta_bancaria_nombre, cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria) ?? `#${viewTarget.cuenta_bancaria}`)} />
+                        <ViewField label="Numero Transaccion" value={viewTarget.numero_transaccion} />
+                      </div>
+                    </SegmentCard>
 
-                    <SectionDivider label="Identificacion" />
-                    <div className="col-span-2">
-                      <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? `#${viewTarget.empresa}`)} />
-                    </div>
-                    <div className="col-span-2">
-                      <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, getProyectoNombre(viewTarget))} />
-                    </div>
-                    <div className="col-span-2 grid grid-cols-2 gap-2">
-                      <ViewField label="Cuenta Bancaria" value={nombreLeido(viewTarget.cuenta_bancaria_nombre, cuentaBancariaDisplayMap.get(viewTarget.cuenta_bancaria) ?? `#${viewTarget.cuenta_bancaria}`)} />
-                      <ViewField label="Numero Transaccion" value={viewTarget.numero_transaccion} />
-                    </div>
-
-                    <SectionDivider label="General" />
-
-                    {/* Línea 1: Tipo (1/3), espacio (1/3), Estado (1/3) */}
-                    <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField label="Tipo Transaccion" value={TIPOS_TRANSACCION[viewTarget.tipo_transaccion] ?? `#${viewTarget.tipo_transaccion}`} />
-                      <div />
-                      <div className="grid gap-1">
-                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Estado</span>
-                        <div className="flex items-center" style={{ height: 'var(--ui-field-height)' }}>
-                          {(() => {
-                            const est = ESTADOS_TRANSACCION[viewTarget.estado]
-                            return est
-                              ? <Badge variant="outline" className={`font-normal ${est.cls}`}>{est.label}</Badge>
-                              : <Badge variant="outline">{viewTarget.estado}</Badge>
-                          })()}
+                    <SegmentCard label="GENERAL">
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                        <ViewField label="Tipo Transaccion" value={TIPOS_TRANSACCION[viewTarget.tipo_transaccion] ?? `#${viewTarget.tipo_transaccion}`} />
+                        <div />
+                        <div className="grid gap-1">
+                          <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Estado</span>
+                          <div className="flex items-center" style={{ height: 'var(--ui-field-height)' }}>
+                            {(() => {
+                              const est = ESTADOS_TRANSACCION[viewTarget.estado]
+                              return est
+                                ? <Badge variant="outline" className={`font-normal ${est.cls}`}>{est.label}</Badge>
+                                : <Badge variant="outline">{viewTarget.estado}</Badge>
+                            })()}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                      <div className="col-span-2 grid grid-cols-3 gap-2">
+                        <ViewField label="Fecha" value={viewTarget.fecha ? fmtFecha(viewTarget.fecha) : ''} />
+                        <ViewField label="Numero Documento" value={viewTarget.numero_documento ?? ''} />
+                        <div className="grid gap-1">
+                          <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Monto</span>
+                          <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                            <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                              <span className="text-muted-foreground mr-1">{nombreLeido(viewTarget.moneda_nombre, cuentaBancariaMonedaMap.get(viewTarget.cuenta_bancaria))}</span>
+                              {fmt(viewTarget.valor)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <ViewField label="Nombre" value={viewTarget.a_nombre_de ?? ''} />
+                      </div>
+                    </SegmentCard>
+                  </div>
 
-                    {/* Línea 2: Fecha, Numero Documento, Monto */}
-                    <div className="col-span-2 grid grid-cols-3 gap-2">
-                      <ViewField label="Fecha" value={viewTarget.fecha ? viewTarget.fecha.split('-').reverse().join('/') : ''} />
-                      <ViewField label="Numero Documento" value={viewTarget.numero_documento ?? ''} />
-                      <div className="grid gap-1">
-                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Monto</span>
-                        <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-                          <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                            <span className="text-muted-foreground mr-1">{nombreLeido(viewTarget.moneda_nombre, cuentaBancariaMonedaMap.get(viewTarget.cuenta_bancaria))}</span>
-                            {fmt(viewTarget.valor)}
+                  <div className="w-px self-stretch bg-primary/30" />
+
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <SegmentCard label="OTROS">
+                      <div className="col-span-2 grid gap-1">
+                        <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Comentario</span>
+                        <div className="rounded-none bg-transparent border-0 border-b border-primary/50 px-2 py-1 min-h-[56px]">
+                          <span className="block font-medium text-foreground whitespace-pre-wrap" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                            {viewTarget.comentario ?? ''}
                           </span>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Línea 3: Nombre */}
-                    <div className="col-span-2">
-                      <ViewField label="Nombre" value={viewTarget.a_nombre_de ?? ''} />
-                    </div>
-
-                  </div>
-
-                  {/* Separador vertical */}
-                  <div className="w-px self-stretch bg-primary/30" />
-
-                  {/* Columna derecha */}
-                  <div className="flex-1 grid grid-cols-2 gap-2">
-
-                    <SectionDivider label="Otros" />
-                    <div className="col-span-2 grid gap-1">
-                      <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Comentario</span>
-                      <div className="rounded-none bg-transparent border-0 border-b border-primary/50 px-2 py-1 min-h-[56px]">
-                        <span className="block font-medium text-foreground whitespace-pre-wrap" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                          {viewTarget.comentario ?? ''}
-                        </span>
-                      </div>
-                    </div>
-
+                    </SegmentCard>
                   </div>
 
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="detalle" className="mt-0 min-h-0 flex-1 overflow-hidden pr-1">
+              <div className="flex h-full min-h-0 flex-col">
+                <SegmentCard label="RECIBOS" icon={Receipt} className="flex min-h-0 flex-1 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col">
+                  {recibosPending || (recibos === null && !recibosError) ? (
+                    <div className="col-span-2 flex flex-1 items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Cargando recibos…
+                    </div>
+                  ) : recibosError ? (
+                    <div className="col-span-2 py-16 text-center text-sm text-destructive">
+                      {recibosError}
+                    </div>
+                  ) : !recibos || recibos.length === 0 ? (
+                    <div className="col-span-2 py-16 text-center text-sm text-muted-foreground">
+                      Esta transacción no tiene recibos asociados.
+                    </div>
+                  ) : (
+                    <div className="col-span-2 min-h-0 flex-1 overflow-auto rounded-md border border-border/60">
+                      <Table scrollable={false}>
+                        <TableHeader className={LIST_THEAD}>
+                          <TableRow className={LIST_HEAD_BG}>
+                            <TableHead className={LIST_HEAD}><span className="text-xs font-medium text-muted-foreground">Serie</span></TableHead>
+                            <TableHead className={LIST_HEAD}>Numero</TableHead>
+                            <TableHead className={LIST_HEAD}>Fecha</TableHead>
+                            <TableHead className={LIST_HEAD}>Cliente</TableHead>
+                            <TableHead className={LIST_HEAD}>Tipo</TableHead>
+                            <TableHead className={`${LIST_HEAD} text-right`}>Monto</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {recibos.map((recibo) => (
+                            <TableRow key={`${recibo.serie}-${recibo.numero}`}>
+                              <TableCell className="font-mono text-xs">{recibo.serie}</TableCell>
+                              <TableCell>{recibo.numero}</TableCell>
+                              <TableCell className="text-xs">{fmtFecha(recibo.fecha)}</TableCell>
+                              <TableCell className="truncate">{recibo.cliente_nombre || '—'}</TableCell>
+                              <TableCell className="text-xs">{recibo.tipo}</TableCell>
+                              <TableCell className="whitespace-nowrap text-right font-mono text-sm">
+                                <BanderaMonto codigo={recibo.moneda} monto={recibo.monto} />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow className="border-t-2 border-border bg-muted/30 font-semibold">
+                            <TableCell colSpan={5} className="text-sm text-muted-foreground">
+                              Total ({recibos.length} recibo{recibos.length !== 1 ? 's' : ''})
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap text-right font-mono text-sm">
+                              <BanderaMonto
+                                codigo={recibos.every((recibo) => recibo.moneda === recibos[0]?.moneda) ? recibos[0]?.moneda : cuentaBancariaMonedaMap.get(viewTarget?.cuenta_bancaria ?? 0)}
+                                monto={recibos.reduce((suma, recibo) => suma + recibo.monto, 0)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </SegmentCard>
+              </div>
             </TabsContent>
           </Tabs>
 
