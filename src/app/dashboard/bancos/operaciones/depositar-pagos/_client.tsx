@@ -43,6 +43,15 @@ const FORMAS_PAGO: Record<number, string> = {
   4: 'Transferencia'
 }
 
+const CURRENCY_FLAG_MAP = new Map<string, string>([
+  ['ARS', 'ar'], ['BOB', 'bo'], ['BRL', 'br'], ['CAD', 'ca'],
+  ['CLP', 'cl'], ['COP', 'co'], ['CRC', 'cr'], ['CUP', 'cu'],
+  ['DOP', 'do'], ['EUR', 'eu'], ['GBP', 'gb'], ['GTQ', 'gt'],
+  ['HNL', 'hn'], ['MXN', 'mx'], ['NIO', 'ni'], ['PAB', 'pa'],
+  ['PEN', 'pe'], ['PYG', 'py'], ['SVC', 'sv'], ['USD', 'us'],
+  ['UYU', 'uy'], ['VES', 've'],
+])
+
 const fmt = (n: number) =>
   n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -461,7 +470,21 @@ export function DepositarPagosClient({
               <div className="grid grid-cols-4 gap-3 mb-3">
                 <ViewField label="Fecha"         value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
                 <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
-                <ViewField label="Moneda"         value={reciboPreview?.moneda} />
+                <div className="grid gap-1">
+                  <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Moneda</span>
+                  <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                    {(() => {
+                      const codigo = reciboPreview?.moneda ?? ''
+                      const flagIso = CURRENCY_FLAG_MAP.get(codigo)
+                      return flagIso ? (
+                        <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                          <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                          {codigo}
+                        </span>
+                      ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{codigo}</span>
+                    })()}
+                  </div>
+                </div>
                 <ViewField label="Monto"          value={reciboPreview ? fmt(reciboPreview.monto) : undefined} />
                 <ViewField label="Cliente"        value={reciboPreview ? String(reciboPreview.cliente_codigo) : undefined} />
                 <div className="col-span-3">
