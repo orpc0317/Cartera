@@ -56,6 +56,7 @@ import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // --- Column types -----------------------------------------------------------
@@ -538,6 +539,7 @@ export function TiposDocumentoClient({
                       ))}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="empresa" campo={campoInvalido} />
                 </div>
 
                 {/* Proyecto */}
@@ -559,6 +561,7 @@ export function TiposDocumentoClient({
                       ))}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="proyecto" campo={campoInvalido} />
                 </div>
                 </SegmentCard>
 
@@ -573,6 +576,7 @@ export function TiposDocumentoClient({
                     onChange={(e) => f('descripcion', e.target.value)}
                     placeholder="Descripcion del tipo de documento"
                   />
+                  <MensajeCampo id="descripcion" campo={campoInvalido} />
                 </div>
                 </SegmentCard>
               </div>

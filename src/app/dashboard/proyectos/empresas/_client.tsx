@@ -59,6 +59,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import type { Pais, Departamento, Municipio } from '@/app/actions/geo'
 import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // --- Constants -------------------------------------------------------------
@@ -452,9 +453,8 @@ export function EmpresasClient({
   }
 
   function rechazar(id: string, message: string) {
-    setCampoInvalido({ id, tab: 'general' })
+    setCampoInvalido({ id, tab: 'general', mensaje: message })
     setActiveTab('general')
-    toast.error(message)
   }
 
   function f(key: keyof EmpresaForm, value: string | number) {
@@ -678,6 +678,7 @@ export function EmpresasClient({
                       onChange={(e) => f('nombre', e.target.value)}
                       placeholder="Nombre comercial"
                     />
+                    <MensajeCampo id="nombre" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
@@ -689,6 +690,7 @@ export function EmpresasClient({
                       onChange={(e) => f('razon_social', e.target.value)}
                       placeholder="Razon social legal"
                     />
+                    <MensajeCampo id="razon_social" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
@@ -700,6 +702,7 @@ export function EmpresasClient({
                       onChange={(e) => f('identificacion_tributaria', e.target.value)}
                       placeholder="NIT o equivalente"
                     />
+                    <MensajeCampo id="id_trib" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
                 </div>
@@ -720,6 +723,7 @@ export function EmpresasClient({
                       onChange={(e) => f('direccion', e.target.value)}
                       placeholder="Direccion completa"
                     />
+                    <MensajeCampo id="direccion" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
@@ -746,6 +750,7 @@ export function EmpresasClient({
                         }))
                       }}
                     />
+                    <MensajeCampo id="direccion_pais" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
@@ -771,6 +776,7 @@ export function EmpresasClient({
                         <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
                       ))}
                     </select>
+                    <MensajeCampo id="departamento" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
@@ -793,6 +799,7 @@ export function EmpresasClient({
                         <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
                       ))}
                     </select>
+                    <MensajeCampo id="municipio" campo={campoInvalido} />
                   </div>
 
                   <div className="grid gap-1">

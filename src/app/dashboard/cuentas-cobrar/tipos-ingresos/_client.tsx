@@ -56,6 +56,7 @@ import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -811,6 +812,7 @@ export function TiposIngresosClient({
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                     <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del tipo ingreso" />
+                    <MensajeCampo id="nombre" campo={campoInvalido} />
                   </div>
 
                   {/* Etiqueta */}
@@ -818,6 +820,7 @@ export function TiposIngresosClient({
                     <div className="grid gap-1">
                       <Label htmlFor="etiqueta" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Etiqueta <RequiredMark /></Label>
                       <Input variant="l-border" id="etiqueta" aria-invalid={campoInvalido?.id === 'etiqueta' || undefined} maxLength={10} value={form.etiqueta} onChange={(e) => f('etiqueta', e.target.value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))} placeholder="Ej: cuota" />
+                      <MensajeCampo id="etiqueta" campo={campoInvalido} />
                     </div>
                     <div /><div />
                   </div>
@@ -876,6 +879,7 @@ export function TiposIngresosClient({
                             })}
                           </SelectContent>
                         </Select>
+                        <MensajeCampo id="eventual_moneda" campo={campoInvalido} />
                       </div>
                       <div className="grid gap-1">
                         <Label htmlFor="eventual_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Monto <RequiredMark /></Label>
@@ -933,6 +937,7 @@ export function TiposIngresosClient({
                               })}
                             </SelectContent>
                           </Select>
+                          <MensajeCampo id="ec_moneda" campo={campoInvalido} />
                         </div>
                         <div className="grid gap-1">
                           <Label htmlFor="ec_monto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>{montoLabel} <RequiredMark /></Label>
@@ -960,6 +965,7 @@ export function TiposIngresosClient({
                       disabled={form.impuesto !== 1}
                       placeholder="Item de factura"
                     />
+                    <MensajeCampo id="facturacion_item" campo={campoInvalido} />
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="facturacion_descripcion" className={`font-semibold tracking-wider text-muted-foreground${form.impuesto === 1 ? '' : ' opacity-50'}`} style={{ fontSize: 'var(--ui-form-label)' }}>
@@ -973,6 +979,7 @@ export function TiposIngresosClient({
                       disabled={form.impuesto !== 1}
                       placeholder="Descripcion de factura"
                     />
+                    <MensajeCampo id="facturacion_descripcion" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
 

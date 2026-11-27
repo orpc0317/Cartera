@@ -26,6 +26,7 @@ import type { ReciboDetalleItem } from '@/lib/types/depositar-pagos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
 import { ViewField } from '@/components/ui/view-field'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { CLASE_BOTON_MODAL, FONDO_MODAL, FRANJA_BLANCA } from '@/lib/modal-look'
 
 const PASOS_DEPOSITO: readonly WizardStep[] = [
@@ -344,6 +345,7 @@ export function DepositarPagosClient({
                   ))}
                 </SelectContent>
               </Select>
+              <MensajeCampo id="cuenta_bancaria" campo={campoInvalido} />
               {cuentaBancariaObj && (
                 <span className="text-[11px] text-muted-foreground px-2">
                   {cuentaBancariaObj.moneda}
@@ -370,6 +372,7 @@ export function DepositarPagosClient({
                 value={fecha}
                 onChange={(e) => { limpiarCampoInvalido(); setFecha(e.target.value) }}
               />
+              <MensajeCampo id="fecha" campo={campoInvalido} />
             </div>
 
             {/* Numero Documento */}
@@ -384,6 +387,7 @@ export function DepositarPagosClient({
                 onChange={(e) => { limpiarCampoInvalido(); setNumeroDocumento(e.target.value) }}
                 placeholder="Numero de boleta"
               />
+              <MensajeCampo id="numero_documento" campo={campoInvalido} />
             </div>
 
           </div>
@@ -435,6 +439,7 @@ export function DepositarPagosClient({
                   placeholder="Numero"
                   disabled={proyecto === 0}
                 />
+                <MensajeCampo id="buscar_numero" campo={campoInvalido} />
               </div>
 
               {/* Botón Buscar */}

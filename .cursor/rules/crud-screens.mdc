@@ -12,20 +12,21 @@ El layout se copia de `src/app/dashboard/promesas/clientes/_client.tsx`. Los sni
 
 ## Campo con error al grabar
 
-Al pulsar Guardar, cualquier error de un campo del formulario sigue este criterio. Aplica en alta y en edición, con una pestaña o con varias. La referencia de catálogo es `src/app/dashboard/proyectos/fases/_client.tsx`. El hook está en `src/lib/campo-invalido.ts`.
+Al pulsar Guardar, cualquier error de un campo del formulario sigue este criterio. Aplica en alta y en edición, con una pestaña o con varias. La referencia de catálogo es `src/app/dashboard/proyectos/fases/_client.tsx`. El hook está en `src/lib/campo-invalido.ts`. El texto va en `src/components/ui/mensaje-campo.tsx`.
 
 1. La validación corre en el cliente, antes de la Server Action.
-2. Se muestra el mensaje con `toast.error`. El texto es el que ya usa la pantalla, en español y sin inventar otro.
+2. El mensaje se muestra en rojo, justo debajo del campo, con `MensajeCampo`. No hay toast para un error de campo.
 3. Se activa la pestaña de ese campo, aunque el diálogo solo tenga General.
-4. El campo queda marcado y recibe el foco.
+4. El campo queda marcado con el borde inferior rojo de 1px y recibe el foco. El foco válido sigue en 2px verde.
 
 ```ts
 import { useCampoInvalido } from '@/lib/campo-invalido'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 
 const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
 ```
 
-`rechazar(id, mensaje, tab)` guarda el campo, cambia la pestaña y muestra el toast. El `id` es el `id` del control. El tercer argumento es el `value` del `TabsTrigger`; si se omite, usa `general`.
+`rechazar(id, mensaje, tab)` guarda el campo y el mensaje, cambia la pestaña y enfoca. No muestra toast. El `id` es el `id` del control. El tercer argumento es el `value` del `TabsTrigger`; si se omite, usa `general`.
 
 ```tsx
 <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-0.5 flex flex-col flex-1 min-h-0">
@@ -39,7 +40,16 @@ En `handleSave`, cada campo inválido termina la función:
 if (!form.nombre.trim()) { rechazar('nombre', 'El nombre es requerido.'); return }
 ```
 
-El mensaje y el `id` salen de la pantalla. No se usa `toast.error` suelto para un campo: eso avisa y no marca ni enfoca. `toast.error(result.error)` se queda para el error que devuelve el servidor, incluido el de `modifico_fecha`.
+El mensaje y el `id` salen de la pantalla. `MensajeCampo` va dentro del `div` con `grid gap-1`, después del control. Si el control es un `Select`, va después de `</Select>`.
+
+```tsx
+<Input id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} ... />
+<MensajeCampo id="nombre" campo={campoInvalido} />
+```
+
+En un `PhoneField`, el mensaje lleva `className="pl-[118px]"` para quedar bajo el número y no bajo el código de área. El borde inválido de 1px es la regla de `.foco-linea` en `globals.css` cuando el control tiene `aria-invalid="true"` o `data-invalid`. No se agrega una clase por pantalla para cambiar ese grosor.
+
+`toast.error(result.error)` se queda para el error que devuelve el servidor, incluido el de `modifico_fecha`, y para un fallo que no pertenece a un campo.
 
 Marca del control. `Input`, `SelectTrigger` y `<select>` nativo:
 
@@ -53,11 +63,11 @@ Marca del control. `Input`, `SelectTrigger` y `<select>` nativo:
 
 | Control | Cómo se marca |
 |---|---|
-| `Input`, `SelectTrigger`, `<select>` nativo | `id` igual al de `rechazar` y `aria-invalid={campoInvalido?.id === 'id' \|\| undefined}` |
-| `PhoneField` | `inputId` y `invalid={campoInvalido?.id === inputId}` |
-| `CountrySelect` | `id` y `invalid={campoInvalido?.id === id}` (`data-invalid` en el botón) |
-| Combobox propio (`ClienteCombobox` y equivalentes) | `id` y `data-invalid` en el botón, con clase `data-invalid:border-destructive` |
-| Logo | el contenedor enfocable lleva `id="logo"` y `tabIndex={-1}`; el error de archivo llama `rechazar('logo', 'Corrige el error en el logo antes de guardar.')` |
+| `Input`, `SelectTrigger`, `<select>` nativo | `id` igual al de `rechazar`, `aria-invalid={campoInvalido?.id === 'id' \|\| undefined}` y `MensajeCampo` después del control |
+| `PhoneField` | `inputId`, `invalid={campoInvalido?.id === inputId}` y `MensajeCampo` con `className="pl-[118px]"` |
+| `CountrySelect` | `id` y `invalid={campoInvalido?.id === id}` (`data-invalid` en el botón), más `MensajeCampo` |
+| Combobox propio (`ClienteCombobox` y equivalentes) | `id` y `data-invalid` en el botón, con clase `data-invalid:border-destructive`, más `MensajeCampo` |
+| Logo | el contenedor enfocable lleva `id="logo"` y `tabIndex={-1}`; el error de archivo se pinta bajo el control y, al guardar, `rechazar('logo', 'Corrige el error en el logo antes de guardar.')` con `MensajeCampo` |
 
 El `Label` usa `htmlFor` con ese mismo `id`. Si faltan varios campos, se marca solo el primero en el orden de `handleSave`.
 

@@ -66,6 +66,7 @@ import type { TipoIngreso } from '@/lib/types/tipos-ingresos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, FOCO_LINEA } from '@/lib/modal-look'
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1447,6 +1448,7 @@ export function PromesasClient({
                       invalid={campoInvalido?.id === 'cliente'}
                       placeholder="Selecciona cliente..."
                     />
+                    <MensajeCampo id="cliente" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Vendedor</Label>
@@ -1523,6 +1525,7 @@ export function PromesasClient({
                       onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, arras: Number(e.target.value) || 0 })) }}
                       placeholder="0.00"
                     />
+                    <MensajeCampo id="arras" campo={campoInvalido} />
                   </div>
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Subsidio</Label>
@@ -1534,6 +1537,7 @@ export function PromesasClient({
                       onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, subsidio: Number(e.target.value) || 0 })) }}
                       placeholder="0.00"
                     />
+                    <MensajeCampo id="subsidio" campo={campoInvalido} />
                   </div>
                   </div>
                   <div className="w-px self-stretch bg-primary/30" />
@@ -1550,6 +1554,7 @@ export function PromesasClient({
                           onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, monto_enganche: Number(e.target.value) || 0 })) }}
                           placeholder="0.00"
                         />
+                        <MensajeCampo id="monto_enganche" campo={campoInvalido} />
                       </div>
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Plazo</Label>
@@ -1561,6 +1566,7 @@ export function PromesasClient({
                           onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, plazo_enganche: Number(e.target.value) || 0 })) }}
                           placeholder="0"
                         />
+                        <MensajeCampo id="plazo_enganche" campo={campoInvalido} />
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-4 gap-2">
@@ -1612,6 +1618,7 @@ export function PromesasClient({
                           onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, interes_anual: Number(e.target.value) || 0 })) }}
                           placeholder="0.00"
                         />
+                        <MensajeCampo id="interes_anual" campo={campoInvalido} />
                       </div>
                       <div className="grid gap-1">
                         <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>1era Cuota</Label>
@@ -1622,6 +1629,7 @@ export function PromesasClient({
                           value={form.fecha_financiamiento ?? ''}
                           onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, fecha_financiamiento: e.target.value || null })) }}
                         />
+                        <MensajeCampo id="fecha_financiamiento" campo={campoInvalido} />
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-2 gap-2">
@@ -1636,6 +1644,7 @@ export function PromesasClient({
                           onChange={(e) => { limpiarCampoInvalido(); setForm((prev) => ({ ...prev, plazo_financiamiento: Number(e.target.value) || 0 })) }}
                           placeholder="0"
                         />
+                        <MensajeCampo id="plazo_financiamiento" campo={campoInvalido} />
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-3 gap-2">

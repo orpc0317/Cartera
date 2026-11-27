@@ -50,6 +50,7 @@ import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 import { SegmentCard } from '@/components/ui/segment-card'
 import { ViewField } from '@/components/ui/view-field'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 
 // ── Moneda flag map ─────────────────────────────────────────────────────────
 const CURRENCY_FLAG_MAP = new Map<string, string>([
@@ -584,6 +585,7 @@ export default function TasasCambioClient({
                         value={form.fecha}
                         onChange={(e) => f('fecha', e.target.value)}
                       />
+                      <MensajeCampo id="fecha" campo={campoInvalido} />
                     </div>
                     <div className="col-span-1 grid gap-1">
                       <Label htmlFor="tasa_cambio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Tasa Cambio <RequiredMark /></Label>
@@ -599,6 +601,7 @@ export default function TasasCambioClient({
                         placeholder="0.00000000"
                         className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                      <MensajeCampo id="tasa_cambio" campo={campoInvalido} />
                     </div>
 
                   </div>

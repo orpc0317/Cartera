@@ -57,6 +57,7 @@ import { jaroWinkler, toDbString } from '@/lib/utils'
 import { enfocarCampoInvalido, type CampoInvalido } from '@/lib/campo-invalido'
 import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -765,9 +766,8 @@ export function ProyectosClient({
   }
 
   function rechazar(id: string, message: string) {
-    setCampoInvalido({ id, tab: 'general' })
+    setCampoInvalido({ id, tab: 'general', mensaje: message })
     setActiveTab('general')
-    toast.error(message)
   }
 
   function f(key: keyof ProyectoForm, value: string | number) {
@@ -1102,6 +1102,7 @@ export function ProyectosClient({
                           {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="empresa" campo={campoInvalido} />
                     </div>
                     {viewTarget && (
                       <div className="col-span-1"><LockedField label="Codigo" value={String(viewTarget.codigo)} /></div>
@@ -1111,6 +1112,7 @@ export function ProyectosClient({
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre Proyecto <RequiredMark /></Label>
                       <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del proyecto" />
+                      <MensajeCampo id="nombre" campo={campoInvalido} />
                     </div>
                     <div className="grid min-w-0 gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 1 <RequiredMark /></Label>
@@ -1123,6 +1125,7 @@ export function ProyectosClient({
                         onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
                         placeholder="Numero local"
                       />
+                      <MensajeCampo id="telefono1" campo={campoInvalido} className="pl-[118px]" />
                     </div>
                     <div className="grid min-w-0 gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
@@ -1139,6 +1142,7 @@ export function ProyectosClient({
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="direccion_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
                       <Input variant="l-border" id="direccion_p" aria-invalid={campoInvalido?.id === 'direccion_p' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion del proyecto" />
+                      <MensajeCampo id="direccion_p" campo={campoInvalido} />
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
@@ -1151,6 +1155,7 @@ export function ProyectosClient({
                           setForm((prev) => ({ ...prev, direccion_pais: codigo, direccion_departamento: firstDepto, direccion_municipio: firstMunicipio }))
                         }}
                       />
+                      <MensajeCampo id="direccion_pais" campo={campoInvalido} />
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="departamento_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <RequiredMark /></Label>
@@ -1161,6 +1166,7 @@ export function ProyectosClient({
                         <option value="">{paisCodigo ? 'Seleccionar departamento' : 'Primero selecciona un pais'}</option>
                         {deptosFiltrados.map((d) => <option key={d.codigo} value={d.codigo}>{d.nombre}</option>)}
                       </select>
+                      <MensajeCampo id="departamento_p" campo={campoInvalido} />
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="municipio_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <RequiredMark /></Label>
@@ -1174,6 +1180,7 @@ export function ProyectosClient({
                         <option value="">{deptoCodigo ? 'Seleccionar municipio' : 'Primero selecciona un departamento'}</option>
                         {municipiosFiltrados.map((m) => <option key={m.codigo} value={m.codigo}>{m.nombre}</option>)}
                       </select>
+                      <MensajeCampo id="municipio_p" campo={campoInvalido} />
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="codigo_postal_p" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo postal</Label>
@@ -1243,16 +1250,19 @@ export function ProyectosClient({
                         <div className="grid gap-1">
                           <Label htmlFor="interes_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? <>% Mora <RequiredMark /></> : '% Mora'}</Label>
                           <Input variant="l-border" id="interes_mora" aria-invalid={campoInvalido?.id === 'interes_mora' || undefined} type="number" step="0.01" value={form.interes_mora} onChange={(e) => f('interes_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                          <MensajeCampo id="interes_mora" campo={campoInvalido} />
                         </div>
                       ) : (
                         <div className="grid gap-1">
                           <Label htmlFor="fijo_mora" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? <>Monto Mora <RequiredMark /></> : 'Monto Mora'}</Label>
                           <Input variant="l-border" id="fijo_mora" aria-invalid={campoInvalido?.id === 'fijo_mora' || undefined} type="number" step="0.01" value={form.fijo_mora} onChange={(e) => f('fijo_mora', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                          <MensajeCampo id="fijo_mora" campo={campoInvalido} />
                         </div>
                       )}
                       <div className="grid gap-1">
                         <Label htmlFor="dias_gracia" className={`font-semibold tracking-wider whitespace-nowrap${form.mora_automatica !== 1 ? ' text-muted-foreground' : ''}`} style={{ fontSize: 'var(--ui-form-label)' }}>{form.mora_automatica === 1 ? <>Dias Gracia <RequiredMark /></> : 'Dias Gracia'}</Label>
                         <Input variant="l-border" id="dias_gracia" aria-invalid={campoInvalido?.id === 'dias_gracia' || undefined} type="number" value={form.dias_gracia} onChange={(e) => f('dias_gracia', Number(e.target.value))} disabled={form.mora_automatica !== 1} />
+                        <MensajeCampo id="dias_gracia" campo={campoInvalido} />
                       </div>
                     </div>
                     <div className="col-span-2 grid grid-cols-3 gap-2 items-end">
@@ -1352,6 +1362,7 @@ export function ProyectosClient({
                               ))}
                             </SelectContent>
                           </Select>
+                          <MensajeCampo id="moneda" campo={campoInvalido} />
                         </div>
                       )}
                     </div>
@@ -1363,6 +1374,7 @@ export function ProyectosClient({
                         onRemove={handleLogoRemove}
                         error={logoError}
                       />
+                      <MensajeCampo id="logo" campo={campoInvalido} />
                     </div>
                     </SegmentCard>
                   </div>

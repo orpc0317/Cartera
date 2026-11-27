@@ -60,6 +60,7 @@ import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
@@ -245,7 +246,7 @@ export function ClientesClient({
   // Existing code continues...
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido()
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('general')
 
   // ── Busqueda y filtros ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
@@ -635,7 +636,7 @@ export function ClientesClient({
   // ── Guardar ──────────────────────────────────────────────────────────
   function handleSave() {
     if (!form.nombre.trim())    { rechazar('nombre', 'El nombre es requerido.'); return }
-    if (!form.telefono1.trim()) { rechazar('telefono1', 'El telefono es requerido.'); return }
+    if (!splitPhone(form.telefono1).local.trim()) { rechazar('telefono1', 'El telefono es requerido.'); return }
     if (!form.correo || !form.correo.trim()) { rechazar('correo', 'El correo es requerido.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) { rechazar('correo', 'El correo electrónico no tiene un formato válido.'); return }
     if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && (form.identificacion_tributaria ?? '').trim() && !validarNIT(form.identificacion_tributaria ?? '')) {
@@ -823,22 +824,25 @@ export function ClientesClient({
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                     <Select value={String(form.empresa)} onValueChange={(v) => f('empresa', Number(v))} disabled={!!viewTarget}>
-                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" id="empresa" aria-invalid={campoInvalido?.id === 'empresa' || undefined} aria-describedby={campoInvalido?.id === 'empresa' ? 'empresa-error' : undefined} className="w-full"><SelectValue placeholder="Selecciona empresa">{(v: string) => v && v !== '0' ? (empresaMap.get(Number(v)) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}</SelectContent>
                     </Select>
+                    <MensajeCampo id="empresa" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                     <Select value={String(form.proyecto)} onValueChange={(v) => f('proyecto', Number(v))} disabled={!!viewTarget || !form.empresa}>
-                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
+                      <SelectTrigger variant="l-border" id="proyecto" aria-invalid={campoInvalido?.id === 'proyecto' || undefined} aria-describedby={campoInvalido?.id === 'proyecto' ? 'proyecto-error' : undefined} className="w-full"><SelectValue placeholder="Selecciona proyecto">{(v: string) => v && v !== '0' ? (proyectoMap.get(`${form.empresa}-${Number(v)}`) ?? v) : null}</SelectValue></SelectTrigger>
                       <SelectContent>{proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}</SelectContent>
                     </Select>
+                    <MensajeCampo id="proyecto" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
                   <SegmentCard label="GENERAL">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
-                    <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
+                    <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} aria-describedby={campoInvalido?.id === 'nombre' ? 'nombre-error' : undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre completo del cliente" />
+                    <MensajeCampo id="nombre" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono <RequiredMark /></Label>
@@ -851,6 +855,7 @@ export function ClientesClient({
                       onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
                       placeholder="Numero local"
                     />
+                    <MensajeCampo id="telefono1" campo={campoInvalido} className="pl-[118px]" />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
@@ -864,7 +869,8 @@ export function ClientesClient({
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="correo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Correo <RequiredMark /></Label>
-                    <Input variant="l-border" id="correo" aria-invalid={campoInvalido?.id === 'correo' || undefined} type="email" value={form.correo} onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, correo: e.target.value })) }} placeholder="Correo@ejemplo.com" />
+                    <Input variant="l-border" id="correo" aria-invalid={campoInvalido?.id === 'correo' || undefined} aria-describedby={campoInvalido?.id === 'correo' ? 'correo-error' : undefined} type="email" value={form.correo} onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, correo: e.target.value })) }} placeholder="Correo@ejemplo.com" />
+                    <MensajeCampo id="correo" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
                 </div>
@@ -877,7 +883,8 @@ export function ClientesClient({
                   <SegmentCard label="DIRECCION">
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="direccion" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Direccion <RequiredMark /></Label>
-                    <Input variant="l-border" id="direccion" aria-invalid={campoInvalido?.id === 'direccion' || undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
+                    <Input variant="l-border" id="direccion" aria-invalid={campoInvalido?.id === 'direccion' || undefined} aria-describedby={campoInvalido?.id === 'direccion' ? 'direccion-error' : undefined} value={form.direccion} onChange={(e) => f('direccion', e.target.value)} placeholder="Direccion completa" />
+                    <MensajeCampo id="direccion" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Pais <RequiredMark /></Label>
@@ -899,6 +906,7 @@ export function ClientesClient({
                         setForm((p) => ({ ...p, direccion_pais: codigo, direccion_departamento: dCode, direccion_municipio: mCode }))
                       }}
                     />
+                    <MensajeCampo id="direccion_pais" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="depto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Departamento <RequiredMark /></Label>
@@ -906,6 +914,7 @@ export function ClientesClient({
                       id="depto"
                       title="Departamento"
                       aria-invalid={campoInvalido?.id === 'depto' || undefined}
+                      aria-describedby={campoInvalido?.id === 'depto' ? 'depto-error' : undefined}
                       value={deptoCodigo}
                       disabled={!paisCodigo}
                       onChange={(e) => {
@@ -923,6 +932,7 @@ export function ClientesClient({
                         <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
                       ))}
                     </select>
+                    <MensajeCampo id="depto" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="municipio" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Municipio <RequiredMark /></Label>
@@ -930,6 +940,7 @@ export function ClientesClient({
                       id="municipio"
                       title="Municipio"
                       aria-invalid={campoInvalido?.id === 'municipio' || undefined}
+                      aria-describedby={campoInvalido?.id === 'municipio' ? 'municipio-error' : undefined}
                       value={form.direccion_municipio}
                       disabled={!deptoCodigo}
                       onChange={(e) => { limpiarCampoInvalido(); setForm((p) => ({ ...p, direccion_municipio: e.target.value })) }}
@@ -941,6 +952,7 @@ export function ClientesClient({
                         <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
                       ))}
                     </select>
+                    <MensajeCampo id="municipio" campo={campoInvalido} />
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="codigo_postal" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Cod. Postal</Label>
@@ -969,7 +981,8 @@ export function ClientesClient({
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="id_trib" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>ID Tributaria</Label>
-                    <Input variant="l-border" id="id_trib" aria-invalid={campoInvalido?.id === 'id_trib' || undefined} value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
+                    <Input variant="l-border" id="id_trib" aria-invalid={campoInvalido?.id === 'id_trib' || undefined} aria-describedby={campoInvalido?.id === 'id_trib' ? 'id_trib-error' : undefined} value={form.identificacion_tributaria} onChange={(e) => f('identificacion_tributaria', e.target.value)} placeholder="NIT o equivalente" />
+                    <MensajeCampo id="id_trib" campo={campoInvalido} />
                   </div>
                   <div className="grid gap-1">
                     <Label htmlFor="regimen_iva" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Regimen IVA</Label>

@@ -53,6 +53,7 @@ import { useCampoInvalido } from '@/lib/campo-invalido'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Columnas ──────────────────────────────────────────────────────────────
@@ -546,6 +547,7 @@ export function CoordinadoresClient({
                         {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="empresa" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
@@ -560,6 +562,7 @@ export function CoordinadoresClient({
                         {proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="proyecto" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
 
@@ -577,11 +580,13 @@ export function CoordinadoresClient({
                         {supervisoresPorProyecto.map((s) => <SelectItem key={s.codigo} value={String(s.codigo)}>{s.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="supervisor" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                     <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del coordinador" />
+                    <MensajeCampo id="nombre" campo={campoInvalido} />
                   </div>
 
                   <div className="col-span-2 flex items-center gap-2 py-1">

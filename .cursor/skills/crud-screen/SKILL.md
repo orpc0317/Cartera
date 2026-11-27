@@ -207,6 +207,7 @@ Follow `.cursor/rules/crud-screens.mdc` § Campo con error al grabar. Copy the w
 - [ ] Every client-side field error calls `rechazar(id, mensaje, tab)` and returns before `startTransition`. The Spanish message is the one the screen already shows.
 - [ ] `limpiarCampoInvalido()` runs at the start of `f()`, `openCreate`, `openView`, `startEdit`, and `cancelEdit`. Those four also call `setActiveTab('general')`.
 - [ ] The rejected control has the same `id`. `Input`, `SelectTrigger`, and native `<select>` set `aria-invalid`. `PhoneField` uses `inputId` and `invalid`. `CountrySelect` and combobox buttons use `id` plus `data-invalid`. A `<button>` does not get `aria-invalid`.
+- [ ] `MensajeCampo` from `@/components/ui/mensaje-campo` sits under that control, inside the field `grid gap-1`, after `</Select>` when the control is a `Select`. A `PhoneField` message uses `className="pl-[118px]"`. `rechazar` does not toast. The invalid underline stays the global `foco-linea` rule at 1px.
 - [ ] `toast.error(result.error)` stays for the server response, including the `modifico_fecha` conflict. It is not the way to report a field error.
 
 #### Selects
@@ -314,7 +315,7 @@ Every new catalog file includes these tests:
 1. `beforeEach` opens the route, expects status under 400, expects the URL not to contain `/login`, expects the `h1`, and calls `assertSinOverlayDeNext` from `../soporte`.
 2. A search for `___sin_coincidencias___` shows the counter at 0 and the empty copy from the client. Clearing the search restores the previous counter. The placeholder and the counter regex come from the client (`0 fases`, `0 bancos`).
 3. Exportar CSV downloads `<archivo>-YYYY-MM-DD.csv`. The date is the UTC day from `new Date().toISOString().slice(0, 10)`, because the screen builds the filename that way. The header contains the visible default columns and does not contain `cuenta` or a column the default view hides.
-4. Create: open the dialog, press Guardar, and assert the first `rechazar` that fires with the form `openCreate` left behind. Toast text, tab `General` selected (`getByRole('tab', { name: 'General', selected: true })`), the control visible, `aria-invalid="true"` (or `data-invalid="true"` on a button), and focused. The success toast has count 0. Close with the button named `Close`. The dialog hides. Repeat once per additional required field that `openCreate` leaves empty: fill the earlier ones with a value that is not saved, then Guardar. Do not retest a dropdown `openCreate` already filled.
+4. Create: open the dialog, press Guardar, and assert the first `rechazar` that fires with the form `openCreate` left behind. The Spanish message is under the field (`getByText`), tab `General` selected (`getByRole('tab', { name: 'General', selected: true })`), the control visible, `aria-invalid="true"` (or `data-invalid="true"` on a button), and focused. There is no error toast for that field. The success toast has count 0. Close with the button named `Close`. The dialog hides. Repeat once per additional required field that `openCreate` leaves empty: fill the earlier ones with a value that is not saved, then Guardar. Do not retest a dropdown `openCreate` already filled.
 5. View and cancel. Skip when the client's empty-state sentence is visible. Double-click the first row. The name is the text of `td.font-medium`. The dialog heading matches that name. Historial and Editar are visible. Editar, change the field, Cancelar, and the view heading returns. Close. The cell still has the original name. After Editar, find the dialog with `getByRole('dialog')`. Filtering the dialog by the record name fails once the title changes.
 6. Edit with the required field empty. One tab: stay on General, as in Fases. More than one tab: switch to the other tab before Guardar, as in Proyectos, and expect the tab of the field to become selected. Cancelar, then Close. The row is unchanged. There is no success toast.
 7. Similar-name warning, only when `handleSave` opens that alert. Use an existing row's name. The alert heading is `Nombres similares encontrados`. Click `Cancelar`. Do not click `Si, es diferente — Continuar` in this test. The success toast has count 0 and the counter is unchanged.
@@ -349,7 +350,7 @@ Run these before reporting the screen finished.
 - [ ] Icon table in `.cursor/rules/ui-conventions.mdc` updated (add row if new icon)
 - [ ] The spec file was not edited
 - [ ] `test/definidas/<entidad>.spec.ts` exists and `npx playwright test --project=definidas test/definidas/<entidad>.spec.ts` is green
-- [ ] Guardar on an invalid field toasts, selects that field's tab, marks the control, and focuses it
+- [ ] Guardar on an invalid field shows the message under the field, selects that field's tab, marks the control with the 1px red underline, and focuses it. There is no error toast for that field.
 - [ ] Guardar una edición vuelve a Ver con la fila de `update*` (`viewTarget` y formulario rearmados, `modifico_fecha` nuevo). El alta cierra el modal. Sin cambios llama `cancelEdit()`.
 
 Mark the task done only when the checks above are green. If the change is visible on screen, walk the flow in the browser first.

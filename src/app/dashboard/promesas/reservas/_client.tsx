@@ -51,6 +51,7 @@ import { createReserva, getReservas, type ReservaRow,
 import { AuditLogDialog } from '@/components/ui/audit-log-dialog'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField, LockedField } from '@/components/ui/view-field'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
@@ -1156,6 +1157,7 @@ export function ReservasClient({
                         ))}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="res-empresa" campo={campoInvalido} />
                   </div>
 
                   {/* Proyecto */}
@@ -1175,6 +1177,7 @@ export function ReservasClient({
                         ))}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="res-proyecto" campo={campoInvalido} />
                   </div>
 
                   {/* Seleccion de lote */}
@@ -1202,6 +1205,7 @@ export function ReservasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="res-fase" campo={campoInvalido} />
                     </div>
 
                     {/* Manzana */}
@@ -1221,6 +1225,7 @@ export function ReservasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="res-manzana" campo={campoInvalido} />
                     </div>
 
                     {/* Lote */}
@@ -1240,6 +1245,7 @@ export function ReservasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="res-lote" campo={campoInvalido} />
                     </div>
 
                   </div>{/* fin fila Fase/Manzana/Lote */}
@@ -1273,6 +1279,7 @@ export function ReservasClient({
                         value={form.fecha}
                         onChange={(e) => f('fecha', e.target.value)}
                       />
+                      <MensajeCampo id="res-fecha" campo={campoInvalido} />
                     </div>
 
                     {/* Moneda */}
@@ -1311,6 +1318,7 @@ export function ReservasClient({
                           })}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="res-moneda" campo={campoInvalido} />
                     </div>
 
                     {/* Monto */}
@@ -1327,6 +1335,7 @@ export function ReservasClient({
                         onChange={(e) => f('monto', e.target.value)}
                         className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                      <MensajeCampo id="res-monto" campo={campoInvalido} />
                     </div>
 
                   </div>
@@ -1357,6 +1366,7 @@ export function ReservasClient({
                       invalid={campoInvalido?.id === 'res-cliente'}
                       placeholder={form.proyecto ? 'Selecciona cliente...' : 'Primero selecciona proyecto'}
                     />
+                    <MensajeCampo id="res-cliente" campo={campoInvalido} />
                   </div>
 
                   {/* Vendedor */}
@@ -1376,6 +1386,7 @@ export function ReservasClient({
                         ))}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="res-vendedor" campo={campoInvalido} />
                   </div>
 
                   </div>
@@ -1407,6 +1418,7 @@ export function ReservasClient({
                             ))}
                           </SelectContent>
                         </Select>
+                        <MensajeCampo id="res-serie-recibo" campo={campoInvalido} />
                       </div>
 
                       {/* Numero Recibo */}
@@ -1420,6 +1432,7 @@ export function ReservasClient({
                             value={form.recibo}
                             onChange={(e) => f('recibo', e.target.value)}
                           />
+                          <MensajeCampo id="res-recibo" campo={campoInvalido} />
                         </div>
                       ) : <div />}
 
@@ -1445,6 +1458,7 @@ export function ReservasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="res-cobrador" campo={campoInvalido} />
                     </div>
 
                     <SectionDivider label="Forma Pago" />
@@ -1465,6 +1479,7 @@ export function ReservasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="res-forma-pago" campo={campoInvalido} />
                     </div>
 
                     {/* Cheque: Banco */}
@@ -1484,6 +1499,7 @@ export function ReservasClient({
                             ))}
                           </SelectContent>
                         </Select>
+                        <MensajeCampo id="res-banco" campo={campoInvalido} />
                       </div>
                     )}
 
@@ -1499,6 +1515,7 @@ export function ReservasClient({
                             value={form.num_cuenta}
                             onChange={(e) => f('num_cuenta', e.target.value)}
                           />
+                          <MensajeCampo id="res-num-cuenta" campo={campoInvalido} />
                         </div>
                         <div className="grid gap-1">
                           <Label htmlFor="res-num-doc-cheque" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>No. Documento <RequiredMark /></Label>
@@ -1509,6 +1526,7 @@ export function ReservasClient({
                             value={form.num_documento}
                             onChange={(e) => f('num_documento', e.target.value)}
                           />
+                          <MensajeCampo id="res-num-doc-cheque" campo={campoInvalido} />
                         </div>
                       </>
                     )}
@@ -1530,6 +1548,7 @@ export function ReservasClient({
                             ))}
                           </SelectContent>
                         </Select>
+                        <MensajeCampo id="res-cuenta-bancaria" campo={campoInvalido} />
                       </div>
                     )}
 
@@ -1544,6 +1563,7 @@ export function ReservasClient({
                           value={form.num_documento}
                           onChange={(e) => f('num_documento', e.target.value)}
                         />
+                        <MensajeCampo id="res-num-doc" campo={campoInvalido} />
                       </div>
                     )}
 

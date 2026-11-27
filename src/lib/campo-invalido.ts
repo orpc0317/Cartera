@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 
-export type CampoInvalido = { id: string; tab: string }
+export type CampoInvalido = { id: string; tab: string; mensaje?: string }
 
 export function enfocarCampoInvalido(id: string) {
   const el = document.getElementById(id)
@@ -22,9 +21,8 @@ export function useCampoInvalido(tabInicial = 'general') {
   }, [campoInvalido, activeTab])
 
   function rechazar(id: string, message: string, tab = tabInicial) {
-    setCampoInvalido({ id, tab })
+    setCampoInvalido({ id, tab, mensaje: message })
     setActiveTab(tab)
-    toast.error(message)
   }
 
   function limpiarCampoInvalido() {
