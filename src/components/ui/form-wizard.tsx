@@ -64,6 +64,7 @@ export function FormWizard({
   maxIndice,
   className,
   contenidoClassName,
+  navClassName,
   pasoClassName,
   children,
 }: {
@@ -73,12 +74,13 @@ export function FormWizard({
   maxIndice: number
   className?: string
   contenidoClassName?: string
+  navClassName?: string
   pasoClassName?: string
   children: ReactNode
 }) {
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <nav aria-label="Pasos del formulario" className="shrink-0 pb-2">
+      <nav aria-label="Pasos del formulario" className={cn('shrink-0 pb-2', navClassName)}>
         <ol className="flex flex-wrap items-center gap-1">
           {steps.map((step, i) => {
             const actual = step.id === value

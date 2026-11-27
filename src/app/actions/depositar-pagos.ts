@@ -29,7 +29,7 @@ export async function getReciboParaDeposito(
   const { data: recibo, error } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('cuenta, empresa, proyecto, serie, numero, fecha, cliente, forma_pago, monto, moneda, transaccion_bancaria, reserva, fase, manzana, lote')
+    .select('cuenta, empresa, proyecto, serie, numero, fecha, cliente, forma_pago, monto, moneda, transaccion_bancaria, reserva, promesa, fase, manzana, lote')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -57,10 +57,31 @@ export async function getReciboParaDeposito(
     .maybeSingle()
 
   const reservaNum = Number(recibo.reserva ?? 0)
+  const promesaNum = Number(recibo.promesa ?? 0)
   const tipo: 'Reserva' | 'Otros' = reservaNum > 0 ? 'Reserva' : 'Otros'
 
+  let fase = Number(recibo.fase ?? 0)
+  let manzana = (recibo.manzana as string | null) ?? null
+  let lote = (recibo.lote as string | null) ?? null
+  if (reservaNum <= 0 && promesaNum > 0) {
+    const { data: promesa } = await admin
+      .schema('cartera')
+      .from('t_promesa')
+      .select('fase, manzana, lote')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .eq('numero', promesaNum)
+      .maybeSingle()
+    if (promesa) {
+      fase = Number(promesa.fase ?? 0)
+      manzana = (promesa.manzana as string | null) ?? null
+      lote = (promesa.lote as string | null) ?? null
+    }
+  }
+
   let faseNombre: string | undefined
-  if (tipo === 'Reserva' && recibo.fase) {
+  if (fase) {
     const { data: faseRow } = await admin
       .schema('cartera')
       .from('t_fase')
@@ -68,7 +89,7 @@ export async function getReciboParaDeposito(
       .eq('cuenta', cuenta)
       .eq('empresa', empresa)
       .eq('proyecto', proyecto)
-      .eq('codigo', recibo.fase)
+      .eq('codigo', fase)
       .maybeSingle()
     faseNombre = faseRow?.nombre ?? undefined
   }
@@ -88,12 +109,12 @@ export async function getReciboParaDeposito(
       moneda:         recibo.moneda as string,
       tipo,
       reserva:        reservaNum,
-      ...(tipo === 'Reserva' && {
-        fase:       recibo.fase as number,
+      ...(fase || manzana || lote ? {
+        fase:        fase || undefined,
         fase_nombre: faseNombre,
-        manzana:    recibo.manzana as string | undefined,
-        lote:       recibo.lote as string | undefined,
-      }),
+        manzana:     manzana ?? undefined,
+        lote:        lote ?? undefined,
+      } : {}),
     },
   }
 }
