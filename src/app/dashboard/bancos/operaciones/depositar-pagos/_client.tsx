@@ -466,6 +466,7 @@ export function DepositarPagosClient({
               </div>
             )}
 
+            <div className={`col-span-2 grid grid-cols-2 gap-3 rounded-lg border border-border/60 p-3 ${FONDO_MODAL}`}>
             <div className="col-span-2 grid grid-cols-4 gap-3">
                 <ViewField label="Fecha" value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
                 <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
@@ -512,6 +513,7 @@ export function DepositarPagosClient({
                   <Plus className="h-3.5 w-3.5" />
                   Agregar
                 </Button>
+            </div>
             </div>
 
           <div className="col-span-2 max-h-72 overflow-auto rounded-md border border-border/60">
