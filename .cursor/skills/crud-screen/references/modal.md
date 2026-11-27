@@ -122,7 +122,7 @@ function cancelEdit() {
 }
 
 function handleSave() {
-  // Campo inválido: rechazar marca, enfoca y muestra el toast. Ver crud-screens.mdc § Campo con error al grabar.
+  // Campo inválido: rechazar marca, enfoca y deja el mensaje bajo el campo. Ver crud-screens.mdc § Campo con error al grabar.
   if (!String(form.campo1 ?? '').trim()) { rechazar('campo1', '<mensaje de la pantalla>'); return }
   // Sin cambios: igual que Cancelar. Volver a Ver, sin request.
   if (viewTarget && JSON.stringify(form) === JSON.stringify(buildFormFrom<Entity>(viewTarget))) {
@@ -162,7 +162,7 @@ function handleSave() {
 }
 ```
 
-> **Campo con error:** importa `useCampoInvalido` desde `@/lib/campo-invalido`. Un error de campo llama `rechazar` y hace `return` antes de `startTransition`. `toast.error(result.error)` queda para la respuesta del servidor. La regla completa está en `.cursor/rules/crud-screens.mdc` § Campo con error al grabar.
+> **Campo con error:** importa `useCampoInvalido` desde `@/lib/campo-invalido` y `MensajeCampo` desde `@/components/ui/mensaje-campo`. Un error de campo llama `rechazar` y hace `return` antes de `startTransition`. El mensaje va en rojo bajo el campo. `toast.error(result.error)` queda para la respuesta del servidor. La regla completa está en `.cursor/rules/crud-screens.mdc` § Campo con error al grabar.
 
 > **Cascade in `openCreate`:** when the form has chained dropdowns (empresa → proyecto → fase), compute each first value from the filtered downstream list, in cascade order, and pass all of them to `setForm`.
 

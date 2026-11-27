@@ -60,6 +60,7 @@ import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR, CLASE_SELECT_LINEA } from '@/lib/modal-look'
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────
@@ -213,15 +214,6 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-function MensajeCampo({ id, campo, className }: { id: string; campo: { id: string; mensaje?: string } | null; className?: string }) {
-  if (campo?.id !== id || !campo.mensaje) return null
-  return (
-    <p id={`${id}-error`} role="alert" className={`text-[11px] leading-tight text-destructive ${className ?? ''}`}>
-      {campo.mensaje}
-    </p>
-  )
-}
-
 // ─── Props ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -254,7 +246,7 @@ export function ClientesClient({
   // Existing code continues...
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('general', { toast: false })
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('general')
 
   // ── Busqueda y filtros ────────────────────────────────────────────────
   const [search, setSearch] = useState('')
@@ -824,7 +816,7 @@ export function ClientesClient({
                 </div>
               ) : (
               /* ── Edicion / Creacion ── */
-              <div className="clientes-error-linea flex gap-6 items-start">
+              <div className="flex gap-6 items-start">
 
                 {/* Columna izquierda */}
                 <div className="flex-1 grid grid-cols-2 gap-2">

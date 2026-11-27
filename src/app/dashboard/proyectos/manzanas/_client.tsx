@@ -53,6 +53,7 @@ import type { Empresa, Proyecto, Fase, Manzana, ManzanaForm } from '@/lib/types/
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // --- Helpers --------------------------------------------------------------
@@ -436,6 +437,7 @@ export function ManzanasClient({
                         {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="empresa" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
@@ -449,6 +451,7 @@ export function ManzanasClient({
                         {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="proyecto" campo={campoInvalido} />
                   </div>
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Fase <RequiredMark /></Label>
@@ -462,6 +465,7 @@ export function ManzanasClient({
                         {fasesFiltradas.map((f2) => <SelectItem key={f2.codigo} value={String(f2.codigo)}>{f2.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="fase" campo={campoInvalido} />
                   </div>
                   <div className="grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Codigo <RequiredMark /></Label>
@@ -472,6 +476,7 @@ export function ManzanasClient({
                       onChange={(e) => f('codigo', e.target.value)}
                       placeholder="Ej: A, B, 1, 2..."
                     />
+                    <MensajeCampo id="codigo" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
                 </div>

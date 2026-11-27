@@ -119,7 +119,7 @@ Estos estándares garantizan que labels y bordes de campo se vean consistentes e
 
 El asterisco de un campo obligatorio es `<RequiredMark />` de `@/components/ui/required-mark`. Es rojo.
 
-Al entrar a un `Input`, `Select` o `CountrySelect` de línea, el borde inferior pasa a 2px y verde fuerte, también con el mouse. El chevron no recibe ese borde. Si el campo está inválido, el borde sigue rojo. Esa regla es la clase `foco-linea` de `globals.css`, aplicada con `FOCO_LINEA` o `FOCO_SELECT`, para que el verde fuerte quede por encima de `border-primary/50` y `tailwind-merge` conserve la clase. El `<select>` nativo de geo usa `CLASE_SELECT_LINEA`.
+Al entrar a un `Input`, `Select` o `CountrySelect` de línea, el borde inferior pasa a 2px y verde fuerte, también con el mouse. El chevron no recibe ese borde. Si el campo está inválido, el borde inferior queda en 1px y rojo, y el mensaje va en rojo justo debajo del campo con `MensajeCampo`. Esa regla es la clase `foco-linea` de `globals.css`, aplicada con `FOCO_LINEA` o `FOCO_SELECT`, para que el verde fuerte quede por encima de `border-primary/50` y `tailwind-merge` conserve la clase. El `<select>` nativo de geo usa `CLASE_SELECT_LINEA`.
 
 **Wrapper de campo** — usar siempre `<div className="grid gap-1">`. **Nunca** `space-y-1.5`.
 

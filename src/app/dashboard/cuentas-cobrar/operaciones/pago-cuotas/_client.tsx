@@ -29,6 +29,7 @@ import type { PromesaBusqueda, PlanPagoPendiente } from '@/lib/types/pago-cuotas
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
 import { ViewField } from '@/components/ui/view-field'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 
 const PASOS_PAGO: readonly WizardStep[] = [
   { id: 'promesa', label: 'Identificar Promesa', icon: Search },
@@ -685,12 +686,14 @@ export function PagoCuotasClient({
                         ))}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="pc-serie" campo={campoInvalido} />
                   </div>
 
                   {!reciboAutomatico ? (
                     <div className="grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>Numero <RequiredMark /></Label>
                       <Input variant="l-border" id="pc-numero" aria-invalid={campoInvalido?.id === 'pc-numero' || undefined} value={numero} onChange={(e) => { limpiarCampoInvalido(); setNumero(e.target.value) }} placeholder="No. recibo" />
+                      <MensajeCampo id="pc-numero" campo={campoInvalido} />
                     </div>
                   ) : (
                     <div className="grid gap-1">
@@ -717,6 +720,7 @@ export function PagoCuotasClient({
                     invalid={campoInvalido?.id === 'pc-cobrador'}
                     placeholder="Selecciona cobrador..."
                   />
+                  <MensajeCampo id="pc-cobrador" campo={campoInvalido} />
                 </div>
 
             </div>
@@ -741,6 +745,7 @@ export function PagoCuotasClient({
                       ))}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="pc-forma-pago" campo={campoInvalido} />
                 </div>
 
                 {formaPago === 2 && (
@@ -757,6 +762,7 @@ export function PagoCuotasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="pc-banco" campo={campoInvalido} />
                     </div>
                     <div className="grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Cuenta <RequiredMark /></Label>
@@ -765,6 +771,7 @@ export function PagoCuotasClient({
                     <div className="grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento <RequiredMark /></Label>
                       <Input variant="l-border" id="pc-num-documento" aria-invalid={campoInvalido?.id === 'pc-num-documento' || undefined} value={numDocumento} onChange={(e) => { limpiarCampoInvalido(); setNumDocumento(e.target.value) }} placeholder="Numero de cheque" />
+                      <MensajeCampo id="pc-num-documento" campo={campoInvalido} />
                     </div>
                   </>
                 )}
@@ -783,10 +790,12 @@ export function PagoCuotasClient({
                           ))}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="pc-cuenta" campo={campoInvalido} />
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label className={LABEL_CLS} style={LABEL_STYLE}>No. Documento <RequiredMark /></Label>
                       <Input variant="l-border" id="pc-num-documento" aria-invalid={campoInvalido?.id === 'pc-num-documento' || undefined} value={numDocumento} onChange={(e) => { limpiarCampoInvalido(); setNumDocumento(e.target.value) }} placeholder="Numero de documento" />
+                      <MensajeCampo id="pc-num-documento" campo={campoInvalido} />
                     </div>
                   </>
                 )}
@@ -824,6 +833,7 @@ export function PagoCuotasClient({
                       })}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="pc-moneda" campo={campoInvalido} />
                 </div>
 
                 <div className="grid gap-1">
@@ -840,6 +850,7 @@ export function PagoCuotasClient({
                     onChange={(e) => { limpiarCampoInvalido(); setMonto(e.target.value) }}
                     className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
+                  <MensajeCampo id="pc-monto" campo={campoInvalido} />
                 </div>
 
                 {moneda && moneda !== monedaBase && (

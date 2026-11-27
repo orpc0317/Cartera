@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 
 export type CampoInvalido = { id: string; tab: string; mensaje?: string }
 
@@ -12,8 +11,7 @@ export function enfocarCampoInvalido(id: string) {
   el.focus({ preventScroll: true })
 }
 
-export function useCampoInvalido(tabInicial = 'general', opciones?: { toast?: boolean }) {
-  const mostrarToast = opciones?.toast !== false
+export function useCampoInvalido(tabInicial = 'general') {
   const [activeTab, setActiveTab] = useState(tabInicial)
   const [campoInvalido, setCampoInvalido] = useState<CampoInvalido | null>(null)
 
@@ -25,7 +23,6 @@ export function useCampoInvalido(tabInicial = 'general', opciones?: { toast?: bo
   function rechazar(id: string, message: string, tab = tabInicial) {
     setCampoInvalido({ id, tab, mensaje: message })
     setActiveTab(tab)
-    if (mostrarToast) toast.error(message)
   }
 
   function limpiarCampoInvalido() {

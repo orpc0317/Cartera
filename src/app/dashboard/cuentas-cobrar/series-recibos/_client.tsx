@@ -54,6 +54,7 @@ import type { SerieRecibo, SerieReciboForm, Empresa, Proyecto, SerieFactura } fr
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Constants ────────────────────────────────────────────────────────────
@@ -555,6 +556,7 @@ export function SeriesRecibosClient({
                         {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="empresa" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
@@ -568,6 +570,7 @@ export function SeriesRecibosClient({
                         {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <MensajeCampo id="proyecto" campo={campoInvalido} />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label htmlFor="serie" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Serie <RequiredMark /></Label>
@@ -580,6 +583,7 @@ export function SeriesRecibosClient({
                       disabled={!!viewTarget}
                       autoComplete="off"
                     />
+                    <MensajeCampo id="serie" campo={campoInvalido} />
                   </div>
                   </SegmentCard>
                   <SegmentCard label="CONFIGURACION">

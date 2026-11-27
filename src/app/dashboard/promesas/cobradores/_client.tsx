@@ -53,6 +53,7 @@ import { useCampoInvalido } from '@/lib/campo-invalido'
 import { jaroWinkler, toDbString } from '@/lib/utils'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // ─── Hardcoded maps ────────────────────────────────────────────────────────
@@ -533,6 +534,7 @@ export function CobradoresClient({
                       {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="empresa" campo={campoInvalido} />
                 </div>
 
                 <div className="col-span-2 grid gap-1">
@@ -547,6 +549,7 @@ export function CobradoresClient({
                       {proyectosPorEmpresa.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="proyecto" campo={campoInvalido} />
                 </div>
                 </SegmentCard>
 
@@ -555,6 +558,7 @@ export function CobradoresClient({
                 <div className="col-span-2 grid gap-1">
                   <Label htmlFor="nombre" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                   <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del cobrador" />
+                  <MensajeCampo id="nombre" campo={campoInvalido} />
                 </div>
 
                 <div className="col-span-2 grid grid-cols-3 gap-2">

@@ -53,6 +53,7 @@ import { UNIDAD_MEDIDA } from '@/lib/constants'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // --- Column types -----------------------------------------------------------
@@ -551,6 +552,7 @@ export function FasesClient({
                       ))}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="empresa" campo={campoInvalido} />
                 </div>
 
                 {/* Proyecto */}
@@ -572,6 +574,7 @@ export function FasesClient({
                       ))}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="proyecto" campo={campoInvalido} />
                 </div>
                 </SegmentCard>
 
@@ -586,6 +589,7 @@ export function FasesClient({
                     onChange={(e) => f('nombre', e.target.value)}
                     placeholder="Nombre de la fase"
                   />
+                  <MensajeCampo id="nombre" campo={campoInvalido} />
                 </div>
 
                 {/* Medida */}
@@ -606,6 +610,7 @@ export function FasesClient({
                       ))}
                     </SelectContent>
                   </Select>
+                  <MensajeCampo id="medida" campo={campoInvalido} />
                 </div>
                 </SegmentCard>
               </div>

@@ -186,7 +186,8 @@
 
 /*
  * Foco de campos de linea. Va fuera de @layer para ganar a border-primary/50
- * y para que tailwind-merge no descarte el color. El invalido gana al verde.
+ * y para que tailwind-merge no descarte el color. El foco válido es 2px verde.
+ * El inválido es 1px rojo y gana al verde.
  */
 .foco-linea:focus,
 .foco-linea:focus-visible,
@@ -203,17 +204,7 @@
 .foco-linea:focus-visible[data-invalid],
 .foco-linea[data-popup-open][aria-invalid="true"],
 .foco-linea[data-popup-open][data-invalid] {
-  border-bottom-width: 2px;
+  border-bottom-width: 1px;
   border-bottom-style: solid;
   border-bottom-color: var(--destructive);
-}
-.clientes-error-linea .foco-linea[aria-invalid="true"],
-.clientes-error-linea .foco-linea[data-invalid],
-.clientes-error-linea .foco-linea:focus[aria-invalid="true"],
-.clientes-error-linea .foco-linea:focus-visible[aria-invalid="true"],
-.clientes-error-linea .foco-linea:focus[data-invalid],
-.clientes-error-linea .foco-linea:focus-visible[data-invalid],
-.clientes-error-linea .foco-linea[data-popup-open][aria-invalid="true"],
-.clientes-error-linea .foco-linea[data-popup-open][data-invalid] {
-  border-bottom-width: 1px;
 }

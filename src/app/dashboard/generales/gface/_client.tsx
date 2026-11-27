@@ -57,6 +57,7 @@ import { jaroWinkler, toDbString } from '@/lib/utils'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { ViewField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 type ColFilters = Record<string, Set<string>>
@@ -659,6 +660,7 @@ export function GfaceClient({
                             ))}
                           </SelectContent>
                         </Select>
+                        <MensajeCampo id="empresa" campo={campoInvalido} />
                       </div>
                       <div className="col-span-2 grid gap-1">
                         <Label htmlFor="proyecto" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
@@ -678,12 +680,14 @@ export function GfaceClient({
                             ))}
                           </SelectContent>
                         </Select>
+                        <MensajeCampo id="proyecto" campo={campoInvalido} />
                       </div>
                     </SegmentCard>
                     <SegmentCard label="GENERAL">
                       <div className="col-span-2 grid gap-1">
                         <Label htmlFor="nombre" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Nombre <RequiredMark /></Label>
                         <Input variant="l-border" id="nombre" aria-invalid={campoInvalido?.id === 'nombre' || undefined} value={form.nombre} maxLength={100} onChange={(e) => f('nombre', e.target.value)} placeholder="Nombre del certificador" />
+                        <MensajeCampo id="nombre" campo={campoInvalido} />
                       </div>
                       <div className="grid gap-1">
                         <Label htmlFor="requestor" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Requestor</Label>
@@ -739,10 +743,12 @@ export function GfaceClient({
                       <div className="grid gap-1">
                         <Label htmlFor="correo_envio" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo Envio</Label>
                         <Input variant="l-border" id="correo_envio" aria-invalid={campoInvalido?.id === 'correo_envio' || undefined} type="email" value={textOrEmpty(form.correo_envio)} maxLength={50} onChange={(e) => f('correo_envio', e.target.value)} placeholder="Correo@ejemplo.com" />
+                        <MensajeCampo id="correo_envio" campo={campoInvalido} />
                       </div>
                       <div className="grid gap-1">
                         <Label htmlFor="correo_copia" className={LABEL_CLASS} style={{ fontSize: 'var(--ui-form-label)' }}>Correo Copia</Label>
                         <Input variant="l-border" id="correo_copia" aria-invalid={campoInvalido?.id === 'correo_copia' || undefined} type="email" value={textOrEmpty(form.correo_copia)} maxLength={50} onChange={(e) => f('correo_copia', e.target.value)} placeholder="Correo@ejemplo.com" />
+                        <MensajeCampo id="correo_copia" campo={campoInvalido} />
                       </div>
                       <div className="flex items-center gap-2 py-1">
                         <Checkbox

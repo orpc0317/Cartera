@@ -55,6 +55,7 @@ import { getLoteEstado, LOTE_ESTADO_BADGE } from '@/lib/constants'
 import type { Empresa, Proyecto, Fase, Manzana, Lote, LoteForm, Moneda, ProyectoMoneda } from '@/lib/types/proyectos'
 import { ViewField, LockedField } from '@/components/ui/view-field'
 import { SegmentCard } from '@/components/ui/segment-card'
+import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_PESTANA_MODAL, CLASE_BOTON_MODAL, CLASE_BOTON_PELIGRO, CLASE_BOTON_CONFIRMAR } from '@/lib/modal-look'
 
 // --- Constantes ---
@@ -759,6 +760,7 @@ export function LotesClient({
                           {empresas.map((e) => <SelectItem key={e.codigo} value={String(e.codigo)}>{e.nombre}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="empresa" campo={campoInvalido} />
                     </div>
                     <div className="col-span-2 grid gap-1">
                       <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
@@ -772,6 +774,7 @@ export function LotesClient({
                           {proyectosFiltrados.map((p) => <SelectItem key={p.codigo} value={String(p.codigo)}>{p.nombre}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="proyecto" campo={campoInvalido} />
                     </div>
                     <div className="col-span-2 grid grid-cols-4 gap-2 [&>*]:min-w-0">
                     <div className="col-span-2 grid min-w-0 gap-1">
@@ -786,6 +789,7 @@ export function LotesClient({
                           {fasesFiltradas.map((fa) => <SelectItem key={fa.codigo} value={String(fa.codigo)}>{fa.nombre}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="fase" campo={campoInvalido} />
                     </div>
                     <div className="grid min-w-0 gap-1">
                       <Label htmlFor="manzana" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Manzana <RequiredMark /></Label>
@@ -799,11 +803,13 @@ export function LotesClient({
                           {manzanasFiltradas.map((m) => <SelectItem key={m.codigo} value={m.codigo}>{m.codigo}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="manzana" campo={campoInvalido} />
                     </div>
                     {!viewTarget ? (
                       <div className="grid min-w-0 gap-1">
                         <Label htmlFor="codigo" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Lote <RequiredMark /></Label>
                         <Input variant="l-border" id="codigo" aria-invalid={campoInvalido?.id === 'codigo' || undefined} value={form.codigo} onChange={(e) => f('codigo', e.target.value)} placeholder="Ej: L-001" />
+                        <MensajeCampo id="codigo" campo={campoInvalido} />
                       </div>
                     ) : (
                       <LockedField label="Lote" value={viewTarget.codigo} />
@@ -843,10 +849,12 @@ export function LotesClient({
                           })}
                         </SelectContent>
                       </Select>
+                      <MensajeCampo id="moneda" campo={campoInvalido} />
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="valor" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Precio Venta <RequiredMark /></Label>
                       <Input variant="l-border" id="valor" aria-invalid={campoInvalido?.id === 'valor' || undefined} type="number" min={0} step="0.01" value={valorStr} onChange={(e) => { limpiarCampoInvalido(); setValorStr(e.target.value) }} placeholder="0.00" />
+                      <MensajeCampo id="valor" campo={campoInvalido} />
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="extension" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Extension <RequiredMark /></Label>
@@ -854,6 +862,7 @@ export function LotesClient({
                         <Input variant="l-border" id="extension" aria-invalid={campoInvalido?.id === 'extension' || undefined} type="number" min={0} step="0.01" value={extensionStr} onChange={(e) => { limpiarCampoInvalido(); setExtensionStr(e.target.value) }} placeholder="0.00" className="flex-1" />
                         {medida && <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">{medida}</span>}
                       </div>
+                      <MensajeCampo id="extension" campo={campoInvalido} />
                     </div>
                     </SegmentCard>
                   </div>
