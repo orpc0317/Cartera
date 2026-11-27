@@ -207,3 +207,13 @@
   border-bottom-style: solid;
   border-bottom-color: var(--destructive);
 }
+.clientes-error-linea .foco-linea[aria-invalid="true"],
+.clientes-error-linea .foco-linea[data-invalid],
+.clientes-error-linea .foco-linea:focus[aria-invalid="true"],
+.clientes-error-linea .foco-linea:focus-visible[aria-invalid="true"],
+.clientes-error-linea .foco-linea:focus[data-invalid],
+.clientes-error-linea .foco-linea:focus-visible[data-invalid],
+.clientes-error-linea .foco-linea[data-popup-open][aria-invalid="true"],
+.clientes-error-linea .foco-linea[data-popup-open][data-invalid] {
+  border-bottom-width: 1px;
+}
