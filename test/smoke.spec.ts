@@ -14,7 +14,7 @@ const PANTALLAS: { ruta: string; titulo: string | RegExp }[] = [
   { ruta: '/dashboard/proyectos/lotes', titulo: 'Lotes' },
   { ruta: '/dashboard/bancos/bancos', titulo: 'Bancos' },
   { ruta: '/dashboard/bancos/cuentas-bancarias', titulo: 'Cuentas Bancarias' },
-  { ruta: '/dashboard/bancos/tasas-cambio', titulo: 'Tasas de Cambio' },
+  { ruta: '/dashboard/bancos/tasas-cambio', titulo: 'Tipo Cambio' },
   { ruta: '/dashboard/bancos/operaciones/depositar-pagos', titulo: 'Depositar Pagos' },
   { ruta: '/dashboard/bancos/operaciones/transacciones', titulo: 'Transacciones Bancarias' },
   { ruta: '/dashboard/promesas/clientes', titulo: 'Clientes' },

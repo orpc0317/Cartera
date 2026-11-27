@@ -11,7 +11,7 @@ import {
   LIST_THEAD,
 } from '@/lib/list-table'
 
-import { nombreDeLista, type NombresVer } from '@/lib/registro-ver'
+import { nombreDeLista, nombreLeido, type NombresVer } from '@/lib/registro-ver'
 import { useFilas, useRegistroVer } from '@/lib/use-registro-ver'
 import { useState, useMemo, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -48,6 +48,8 @@ import type { TasaCambio, TasaCambioForm, TasaCambioGrupo } from '@/lib/types/ta
 import type { Empresa, Proyecto, ProyectoMoneda } from '@/lib/types/proyectos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FONDO_MODAL, FRANJA_BLANCA, CLASE_BOTON_MODAL } from '@/lib/modal-look'
+import { SegmentCard } from '@/components/ui/segment-card'
+import { ViewField } from '@/components/ui/view-field'
 
 // ── Moneda flag map ─────────────────────────────────────────────────────────
 const CURRENCY_FLAG_MAP = new Map<string, string>([
@@ -64,16 +66,16 @@ type ColDef  = { key: string; label: string; defaultVisible: boolean }
 type ColPref = { key: string; visible: boolean }
 
 const ALL_COLUMNS: ColDef[] = [
+  { key: 'proyecto',    label: 'Proyecto',     defaultVisible: true  },
   { key: 'empresa',     label: 'Empresa',      defaultVisible: false },
-  { key: 'moneda',      label: 'Moneda',        defaultVisible: true  },
-  { key: 'ultima_fecha', label: 'Fecha',        defaultVisible: true  },
-  { key: 'ultima_tasa', label: 'Tasa Cambio',   defaultVisible: true  },
+  { key: 'ultima_fecha', label: 'Fecha',       defaultVisible: true  },
+  { key: 'ultima_tasa', label: 'Tasa Cambio',  defaultVisible: true  },
 ]
 const DEFAULT_PREFS = ALL_COLUMNS.map((c) => ({ key: c.key, visible: c.defaultVisible }))
 
 const NEVER_EXPORT = new Set(['cuenta', 'agrego_usuario', 'modifico_usuario'])
 const COL_LABELS: Record<string, string> = Object.fromEntries(
-  [{ key: 'proyecto', label: 'Proyecto' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
+  [{ key: 'moneda', label: 'Moneda' }, ...ALL_COLUMNS].map((c) => [c.key, c.label])
 )
 
 function formatCsvCell(value: unknown): string {
@@ -84,7 +86,7 @@ function formatCsvCell(value: unknown): string {
 
 function exportCsv(rows: TasaCambioGrupo[], colPrefs: ColPref[],
   empresaMap: Map<number, string>, proyectoMap: Map<string, string>) {
-  const keys = ['proyecto', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
+  const keys = ['moneda', ...colPrefs.filter((c) => c.visible).map((c) => c.key)]
     .filter((k) => !NEVER_EXPORT.has(k))
   const headers = keys.map((k) => COL_LABELS[k] ?? k)
   const lines = [
@@ -229,7 +231,7 @@ export default function TasasCambioClient({
   const tableRef = useRef<HTMLDivElement>(null)
 
   // ── Table state ─────────────────────────────────────────────────────────
-  const STORAGE_KEY = `tasas_cambio_cols_v1_${userId}`
+  const STORAGE_KEY = `tasas_cambio_cols_v2_${userId}`
   const [colPrefs, setColPrefs] = useState<ColPref[]>(DEFAULT_PREFS)
   const [search, setSearch]     = useState('')
   type ColFilters = Record<string, Set<string>>
@@ -491,6 +493,7 @@ export default function TasasCambioClient({
                   <Label htmlFor="empresa" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Empresa <RequiredMark /></Label>
                   <Select
                     value={String(form.empresa)}
+                    disabled={viewTarget != null}
                     onValueChange={(v) => {
                       const emp = Number(v)
                       const firstProyecto = proyectos.filter((p) => p.empresa === emp)[0]?.codigo ?? 0
@@ -516,6 +519,7 @@ export default function TasasCambioClient({
                   <Label htmlFor="proyecto" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Proyecto <RequiredMark /></Label>
                   <Select
                     value={String(form.proyecto)}
+                    disabled={viewTarget != null}
                     onValueChange={(v) => {
                       const proy = Number(v)
                       const firstMoneda = proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.predeterminado === 1)?.moneda ?? proyectoMonedas.find((pm) => pm.empresa === form.empresa && pm.proyecto === proy && pm.activo === 1)?.moneda ?? ''
@@ -538,7 +542,7 @@ export default function TasasCambioClient({
                 {/* Moneda */}
                 <div className="col-span-1 grid gap-1">
                   <Label htmlFor="moneda" className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Moneda <RequiredMark /></Label>
-                  <Select value={form.moneda} onValueChange={(v) => f('moneda', v ?? '')}>
+                  <Select value={form.moneda} disabled={viewTarget != null} onValueChange={(v) => f('moneda', v ?? '')}>
                     <SelectTrigger variant="l-border" className="w-full">
                       <SelectValue placeholder="Selecciona moneda">
                         {(v: string) => {
@@ -613,7 +617,7 @@ export default function TasasCambioClient({
             <ArrowLeftRight className="h-5 w-5 text-teal-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">Tasas de Cambio</h1>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Tipo Cambio</h1>
             <p className="text-sm text-muted-foreground">Historial de tasas por proyecto y moneda</p>
           </div>
         </div>
@@ -664,16 +668,21 @@ export default function TasasCambioClient({
         <Table scrollable={false}>
           <TableHeader className={LIST_THEAD}>
             <TableRow className={LIST_HEAD_BG}>
-              <TableHead className={`${LIST_HEAD_LEFT} w-52`}>
-                <span className="text-xs font-medium text-muted-foreground">Proyecto</span>
+              <TableHead className={`${LIST_HEAD_LEFT} w-32`}>
+                <ColumnFilter
+                  label="Moneda"
+                  values={uniqueMonedaLabels}
+                  active={colFilters['moneda'] ?? new Set()}
+                  onChange={(v) => setColFilter('moneda', v)}
+                />
               </TableHead>
               {visibleCols.map((col) => (
                 <TableHead key={col.key} className={`${LIST_HEAD} ${col.key === 'ultima_tasa' ? 'text-center' : ''}`}>
                   <ColumnFilter
                     label={ALL_COLUMNS.find((c) => c.key === col.key)!.label}
                     values={
-                      col.key === 'empresa'     ? uniqueEmpresaNames  :
-                      col.key === 'moneda'      ? uniqueMonedaLabels  :
+                      col.key === 'empresa'      ? uniqueEmpresaNames  :
+                      col.key === 'proyecto'     ? uniqueProyectoNames :
                       col.key === 'ultima_fecha' ? [...new Set(filtered.map((r) => formatDate(r.ultima_fecha)))].sort() : []
                     }
                     active={colFilters[col.key] ?? new Set()}
@@ -702,9 +711,14 @@ export default function TasasCambioClient({
                     onClick={() => setCursorIdx(idx)}
                     onDoubleClick={() => openView(row)}
                   >
-                    {/* Sticky left — Proyecto */}
-                    <TableCell className={`sticky left-0 z-10 w-52 font-medium ${isActive ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'}`}>
-                      {proyectoNombre}
+                    {/* Sticky left — Moneda */}
+                    <TableCell className={`sticky left-0 z-10 w-32 font-medium ${isActive ? 'bg-teal-50 dark:bg-teal-950/30 border-l-[3px] border-l-teal-600 text-teal-700 dark:text-teal-400 font-semibold' : 'bg-card text-foreground group-hover:bg-muted/40'}`}>
+                      {CURRENCY_FLAG_MAP.get(row.moneda) ? (
+                        <span className="flex items-center gap-1.5">
+                          <img src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(row.moneda)}.png`} alt={row.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+                          {row.moneda}
+                        </span>
+                      ) : row.moneda || '—'}
                     </TableCell>
 
                     {/* Dynamic columns */}
@@ -712,19 +726,8 @@ export default function TasasCambioClient({
                       switch (col.key) {
                         case 'empresa':
                           return <TableCell key="empresa" className="text-muted-foreground">{nombreDeLista(row.empresa_nombre, empresaMap.get(row.empresa) ?? row.empresa)}</TableCell>
-                        case 'moneda': {
-                          const flag = CURRENCY_FLAG_MAP.get(row.moneda)
-                          return (
-                            <TableCell key="moneda" className="text-muted-foreground">
-                              {flag ? (
-                                <span className="flex items-center gap-1.5">
-                                  <img src={`https://flagcdn.com/w20/${flag}.png`} alt={row.moneda} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                                  {row.moneda}
-                                </span>
-                              ) : row.moneda || '—'}
-                            </TableCell>
-                          )
-                        }
+                        case 'proyecto':
+                          return <TableCell key="proyecto" className="font-medium text-foreground">{proyectoNombre}</TableCell>
                         case 'ultima_fecha':
                           return <TableCell key="ultima_fecha" className="text-muted-foreground font-mono text-xs">{formatDate(row.ultima_fecha)}</TableCell>
                         case 'ultima_tasa':
@@ -768,7 +771,7 @@ export default function TasasCambioClient({
               <div className={`shrink-0 rounded-xl p-2 ${iconBadgeBg}`}>{icon}</div>
               <div className="flex-1 min-w-0">
                 <DialogTitle className="text-base font-semibold leading-tight truncate">
-                  Tasas de Cambio
+                  Tipo Cambio
                 </DialogTitle>
               </div>
             </div>
@@ -778,8 +781,32 @@ export default function TasasCambioClient({
 
             {/* ── Ver mode — history list ── */}
             {!isEditing && viewTarget && (
-              <div className="flex flex-col gap-2">
-                <div className="rounded-xl border border-border/60 overflow-hidden">
+              <div className="grid grid-cols-2 gap-2">
+                <SegmentCard label="IDENTIFICACION">
+                  <div className="col-span-2">
+                    <ViewField label="Empresa" value={nombreLeido(viewTarget.empresa_nombre, empresaMap.get(viewTarget.empresa) ?? String(viewTarget.empresa))} />
+                  </div>
+                  <div className="col-span-2">
+                    <ViewField label="Proyecto" value={nombreLeido(viewTarget.proyecto_nombre, proyectoMap.get(`${viewTarget.empresa}-${viewTarget.proyecto}`) ?? String(viewTarget.proyecto))} />
+                  </div>
+                  <div className="col-span-2 grid gap-1">
+                    <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Moneda</span>
+                    <div className="flex items-center gap-1.5 border-0 border-b border-primary/50 bg-transparent px-2" style={{ height: 'var(--ui-field-height)' }}>
+                      {CURRENCY_FLAG_MAP.get(viewTarget.moneda) && (
+                        <img
+                          src={`https://flagcdn.com/w20/${CURRENCY_FLAG_MAP.get(viewTarget.moneda)}.png`}
+                          alt={viewTarget.moneda}
+                          width={20}
+                          height={14}
+                          className="shrink-0 rounded-sm object-cover"
+                        />
+                      )}
+                      <span className="font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{viewTarget.moneda}</span>
+                    </div>
+                  </div>
+                </SegmentCard>
+                <SegmentCard label="TASA CAMBIO" icon={ArrowLeftRight}>
+                <div className="col-span-2 overflow-hidden rounded-md border border-border/60">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/30">
@@ -818,6 +845,7 @@ export default function TasasCambioClient({
                     </TableBody>
                   </Table>
                 </div>
+                </SegmentCard>
               </div>
             )}
 
@@ -848,7 +876,7 @@ export default function TasasCambioClient({
             ) : viewTarget ? (
               <div className="flex w-full justify-end gap-2">
                 <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={cancelCreate} disabled={isPending}>
-                  <X className="mr-1.5 h-3.5 w-3.5" /> Volver
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancelar
                 </Button>
                 <Button variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleSave} disabled={isPending}>
                   <Check className="mr-1.5 h-3.5 w-3.5" /> {isPending ? 'Guardando...' : 'Guardar'}

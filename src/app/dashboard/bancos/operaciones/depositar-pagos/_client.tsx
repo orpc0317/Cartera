@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2, Landmark, FileText, List,
+  Check, ChevronLeft, ChevronRight, Eraser,
 } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
 import { Input }    from '@/components/ui/input'
@@ -25,6 +26,7 @@ import type { ReciboDetalleItem } from '@/lib/types/depositar-pagos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
 import { ViewField } from '@/components/ui/view-field'
+import { CLASE_BOTON_MODAL, FONDO_MODAL, FRANJA_BLANCA } from '@/lib/modal-look'
 
 const PASOS_DEPOSITO: readonly WizardStep[] = [
   { id: 'identificacion', label: 'Identificacion', icon: Landmark },
@@ -281,15 +283,16 @@ export function DepositarPagosClient({
         </div>
       </div>
 
+      <div className={`mx-auto flex min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'h-[700px] max-h-[calc(100dvh-10rem)] max-w-[64rem]' : 'min-h-[28rem] max-w-xl'}`}>
       <FormWizard
         steps={PASOS_DEPOSITO}
         value={activeTab}
         onValueChange={setActiveTab}
         maxIndice={wizard.maxIndice}
-        className="min-h-0 flex-1"
+        className="min-h-0 flex-1 px-4 pt-3"
       >
         {activeTab === 'identificacion' && (
-        <div className="mx-auto w-full max-w-xl rounded-xl border border-border/60 bg-card p-4">
+        <div className="w-full py-2">
           <div className="grid grid-cols-2 gap-2">
 
             {/* Empresa */}
@@ -353,7 +356,7 @@ export function DepositarPagosClient({
         )}
 
         {activeTab === 'general' && (
-        <div className="mx-auto w-full max-w-xl rounded-xl border border-border/60 bg-card p-4">
+        <div className="w-full py-2">
           <div className="grid grid-cols-2 gap-2">
 
             {/* Fecha */}
@@ -563,34 +566,25 @@ export function DepositarPagosClient({
         )}
       </FormWizard>
 
-      <div className={`${LIST_BLOCK} bg-card border-t border-border/60 px-6 py-3 flex items-center justify-end`}>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleLimpiar}
-            disabled={isPendingSave}
-          >
-            Limpiar
+      <div className={`flex shrink-0 flex-col-reverse gap-2 rounded-b-xl border-t border-border/50 p-4 sm:flex-row sm:justify-end ${FRANJA_BLANCA}`}>
+        <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleLimpiar} disabled={isPendingSave}>
+          <Eraser className="mr-1.5 h-3.5 w-3.5" /> Limpiar
+        </Button>
+        {!wizard.esPrimero && (
+          <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={wizard.anterior} disabled={isPendingSave}>
+            <ChevronLeft className="mr-1.5 h-3.5 w-3.5" /> Anterior
           </Button>
-          {!wizard.esPrimero && (
-            <Button variant="outline" onClick={wizard.anterior} disabled={isPendingSave}>
-              Anterior
-            </Button>
-          )}
-          {!wizard.esUltimo ? (
-            <Button onClick={wizard.siguiente} disabled={isPendingSave} className="bg-pink-600 hover:bg-pink-700 text-white">
-              Siguiente
-            </Button>
-          ) : puedeAgregar && (
-            <Button
-              onClick={handleGuardar}
-              disabled={isPendingSave || recibos.length === 0}
-              className="bg-pink-600 hover:bg-pink-700 text-white"
-            >
-              {isPendingSave ? 'Guardando...' : 'Guardar Deposito'}
-            </Button>
-          )}
-        </div>
+        )}
+        {!wizard.esUltimo ? (
+          <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={wizard.siguiente} disabled={isPendingSave}>
+            Siguiente <ChevronRight className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+        ) : puedeAgregar && (
+          <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleGuardar} disabled={isPendingSave}>
+            <Check className="mr-1.5 h-3.5 w-3.5" /> {isPendingSave ? 'Guardando...' : 'Guardar Deposito'}
+          </Button>
+        )}
+      </div>
       </div>
 
     </div>
