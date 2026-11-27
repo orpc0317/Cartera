@@ -1,0 +1,125 @@
+ESTRUCTURA DEL PROYECTO — CARTERA
+===================================
+Gestión de lotificaciones | Next.js App Router
+Fecha: Noviembre 2026
+
+
+Frontend:
+- React 19
+- TypeScript (estricto)
+- Next.js 16 (App Router)
+
+
+UI:
+- shadcn/ui
+- Tailwind CSS 4
+- Base UI (@base-ui/react)
+- Lucide React
+- Sonner (toasts)
+
+
+Backend:
+- Supabase (PostgreSQL, schema cartera)
+- Supabase Auth
+- Server Actions de Next.js (src/app/actions)
+
+
+Testing:
+- Playwright (e2e, carpeta test/)
+
+
+Cómo se arma una pantalla:
+- page.tsx       Server Component. Carga datos y los pasa como props.
+- _client.tsx    Client Component. Tabla, modal y estado de la pantalla.
+- actions/*.ts   Lectura y escritura contra Supabase, con la cuenta activa.
+
+
+Estructura actual de carpetas:
+
+src/
+  proxy.ts                 Sesión de Supabase en cada request
+  app/
+    layout.tsx             Layout raíz
+    page.tsx               Redirige a /dashboard
+    globals.css
+    login/
+      page.tsx             Inicio de sesión
+    auth/
+      callback/
+        route.ts           Callback OAuth de Supabase
+    actions/               Una entidad por archivo
+      auth.ts
+      permisos.ts
+      audit.ts
+      clientes.ts
+      empresas.ts
+      proyectos.ts
+      fases.ts
+      manzanas.ts
+      lotes.ts
+      promesas.ts
+      pagos.ts
+      ...
+    dashboard/
+      layout.tsx           Sesión, permisos y sidebar
+      page.tsx
+      home/
+      kpis/
+      proyectos/
+        empresas/
+        proyectos/
+        fases/
+        manzanas/
+        lotes/
+      promesas/
+        clientes/
+        vendedores/
+        supervisores/
+        coordinadores/
+        cobradores/
+        promesas/
+        reservas/
+      bancos/
+        bancos/
+        cuentas-bancarias/
+        tasas-cambio/
+        operaciones/
+          depositar-pagos/
+          transacciones/
+      cuentas-cobrar/
+        series-recibos/
+        series-facturas/
+        tipos-ingresos/
+        operaciones/
+          pagos/
+          pago-cuotas/
+      generales/
+        tipos-documento/
+        gface/
+  components/
+    layout/                Sidebar y cambio de cuenta
+    ui/                    shadcn/ui y campos propios
+  lib/
+    permisos.ts            Códigos de pantalla
+    constants.ts
+    navigation.ts
+    supabase/
+      server.ts
+      client.ts
+      datos.ts             Cliente con RLS
+      admin.ts             Cliente de servicio
+      middleware.ts
+    types/                 Tipos por entidad
+
+test/
+  auth.setup.ts
+  login.spec.ts
+  sesion.spec.ts
+  smoke.spec.ts
+  definidas/               Un spec por catálogo
+  soporte.ts
+
+public/                    Estáticos
+prompts/                   Specs de pantallas CRUD
+scripts/                   SQL de soporte (RLS, seeds)
+docs/                      Notas de flujo y de esta estructura
