@@ -30,7 +30,7 @@ import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { CLASE_BOTON_MODAL, FONDO_MODAL, FRANJA_BLANCA } from '@/lib/modal-look'
 
 const PASOS_DEPOSITO: readonly WizardStep[] = [
-  { id: 'identificacion', label: 'Identificacion', icon: Landmark },
+  { id: 'general', label: 'General', icon: Landmark },
   { id: 'detalle', label: 'Detalle', icon: List },
 ]
 
@@ -102,7 +102,7 @@ export function DepositarPagosClient({
 
   // ── Transiciones ──
   const [isPendingBuscar, startTransitionBuscar] = useTransition()
-  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('identificacion')
+  const { activeTab, setActiveTab, campoInvalido, rechazar, limpiarCampoInvalido } = useCampoInvalido('general')
   const wizard = useWizardNav(PASOS_DEPOSITO, activeTab, setActiveTab, true)
   const [isPendingSave,   startTransitionSave]   = useTransition()
 
@@ -225,15 +225,15 @@ export function DepositarPagosClient({
       return
     }
     if (!fecha) {
-      rechazar('fecha', 'La fecha del deposito es requerida.', 'identificacion')
+      rechazar('fecha', 'La fecha del deposito es requerida.', 'general')
       return
     }
     if (!numeroDocumento.trim()) {
-      rechazar('numero_documento', 'El numero de documento es requerido.', 'identificacion')
+      rechazar('numero_documento', 'El numero de documento es requerido.', 'general')
       return
     }
     if (!cuentaBancaria) {
-      rechazar('cuenta_bancaria', 'Debe seleccionar una cuenta bancaria.', 'identificacion')
+      rechazar('cuenta_bancaria', 'Debe seleccionar una cuenta bancaria.', 'general')
       return
     }
     startTransitionSave(async () => {
@@ -291,12 +291,12 @@ export function DepositarPagosClient({
         maxIndice={wizard.maxIndice}
         className="min-h-0 flex-1 px-4 pt-3"
       >
-        {activeTab === 'identificacion' && (
+        {activeTab === 'general' && (
         <div className="w-full py-2">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-4 gap-2">
 
             {/* Empresa */}
-            <div className="col-span-2 grid gap-1">
+            <div className="col-span-4 grid gap-1">
               <Label htmlFor="empresa" className={LABEL_CLS} style={LABEL_STYLE}>Empresa <RequiredMark /></Label>
               <Select value={String(empresa)} onValueChange={onEmpresaChange}>
                 <SelectTrigger variant="l-border" className="w-full">
@@ -313,7 +313,7 @@ export function DepositarPagosClient({
             </div>
 
             {/* Proyecto */}
-            <div className="col-span-2 grid gap-1">
+            <div className="col-span-4 grid gap-1">
               <Label htmlFor="proyecto" className={LABEL_CLS} style={LABEL_STYLE}>Proyecto <RequiredMark /></Label>
               <Select value={String(proyecto)} onValueChange={onProyectoChange} disabled={empresa === 0}>
                 <SelectTrigger variant="l-border" className="w-full">
@@ -330,7 +330,7 @@ export function DepositarPagosClient({
             </div>
 
             {/* Cuenta Bancaria */}
-            <div className="col-span-2 grid gap-1">
+            <div className="col-span-4 grid gap-1">
               <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria <RequiredMark /></Label>
               <Select value={String(cuentaBancaria)} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }} disabled={proyecto === 0}>
                 <SelectTrigger variant="l-border" id="cuenta_bancaria" aria-invalid={campoInvalido?.id === 'cuenta_bancaria' || undefined} className="w-full">
@@ -353,7 +353,7 @@ export function DepositarPagosClient({
             </div>
 
             {/* Fecha */}
-            <div className="col-span-2 grid gap-1">
+            <div className="col-span-1 grid min-w-0 gap-1">
               <Label htmlFor="fecha" className={LABEL_CLS} style={LABEL_STYLE}>Fecha <RequiredMark /></Label>
               <Input
                 variant="l-border"
@@ -367,7 +367,7 @@ export function DepositarPagosClient({
             </div>
 
             {/* Numero Documento */}
-            <div className="col-span-2 grid gap-1">
+            <div className="col-span-1 grid min-w-0 gap-1">
               <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>Numero Documento <RequiredMark /></Label>
               <Input
                 variant="l-border"
@@ -391,7 +391,7 @@ export function DepositarPagosClient({
           {/* Buscador */}
           <div className={`${LIST_BLOCK} rounded-xl border border-border/60 bg-card p-4`}>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <SectionDivider label="Detalle" />
+              <SectionDivider label="Recibos" />
             </div>
 
             {/* Fila de búsqueda */}
@@ -492,7 +492,7 @@ export function DepositarPagosClient({
                   onClick={handleAgregarDesdePreview}
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Agregar al Deposito
+                  Agregar
                 </Button>
               </div>
             </div>
@@ -577,7 +577,7 @@ export function DepositarPagosClient({
           </Button>
         ) : puedeAgregar && (
           <Button type="button" variant="ghost" size="sm" className={CLASE_BOTON_MODAL} onClick={handleGuardar} disabled={isPendingSave}>
-            <Check className="mr-1.5 h-3.5 w-3.5" /> {isPendingSave ? 'Guardando...' : 'Guardar Deposito'}
+            <Check className="mr-1.5 h-3.5 w-3.5" /> {isPendingSave ? 'Guardando...' : 'Guardar'}
           </Button>
         )}
       </div>
