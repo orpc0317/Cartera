@@ -213,10 +213,10 @@ function ColumnManager({ prefs, onToggle, onMove, onReset }: {
   )
 }
 
-function MensajeCampo({ id, campo }: { id: string; campo: { id: string; mensaje?: string } | null }) {
+function MensajeCampo({ id, campo, className }: { id: string; campo: { id: string; mensaje?: string } | null; className?: string }) {
   if (campo?.id !== id || !campo.mensaje) return null
   return (
-    <p id={`${id}-error`} role="alert" className="text-[11px] leading-tight text-destructive">
+    <p id={`${id}-error`} role="alert" className={`text-[11px] leading-tight text-destructive ${className ?? ''}`}>
       {campo.mensaje}
     </p>
   )
@@ -644,7 +644,7 @@ export function ClientesClient({
   // ── Guardar ──────────────────────────────────────────────────────────
   function handleSave() {
     if (!form.nombre.trim())    { rechazar('nombre', 'El nombre es requerido.'); return }
-    if (!form.telefono1.trim()) { rechazar('telefono1', 'El telefono es requerido.'); return }
+    if (!splitPhone(form.telefono1).local.trim()) { rechazar('telefono1', 'El telefono es requerido.'); return }
     if (!form.correo || !form.correo.trim()) { rechazar('correo', 'El correo es requerido.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo.trim())) { rechazar('correo', 'El correo electrónico no tiene un formato válido.'); return }
     if (form.direccion_pais === 'GT' && form.tipo_identificacion === 1 && (form.identificacion_tributaria ?? '').trim() && !validarNIT(form.identificacion_tributaria ?? '')) {
@@ -863,7 +863,7 @@ export function ClientesClient({
                       onLocalChange={(v) => { setTel1Local(v); f('telefono1', tel1Iso && DIAL_CODES[tel1Iso] ? `+${DIAL_CODES[tel1Iso]}${v}` : v) }}
                       placeholder="Numero local"
                     />
-                    <MensajeCampo id="telefono1" campo={campoInvalido} />
+                    <MensajeCampo id="telefono1" campo={campoInvalido} className="pl-[118px]" />
                   </div>
                   <div className="col-span-2 grid gap-1">
                     <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Telefono 2</Label>
