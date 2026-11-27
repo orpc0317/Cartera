@@ -63,6 +63,19 @@ function fmtDate(d: string): string {
   return `${parts[2]}/${parts[1]}/${parts[0]}`
 }
 
+function BanderaMonto({ codigo, monto }: { codigo?: string | null; monto?: number | null }) {
+  if (!codigo || monto == null) return null
+  const flagIso = CURRENCY_FLAG_MAP.get(codigo)
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      {flagIso && (
+        <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
+      )}
+      <span className="whitespace-nowrap">{codigo} {fmt(monto)}</span>
+    </span>
+  )
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────
 
 type Props = {
@@ -283,7 +296,7 @@ export function DepositarPagosClient({
         </div>
       </div>
 
-      <div className={`mx-auto flex h-[700px] max-h-[calc(100dvh-10rem)] min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'max-w-[64rem]' : 'max-w-xl'}`}>
+      <div className={`mx-auto flex h-[700px] max-h-[calc(100dvh-10rem)] min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'max-w-3xl' : 'max-w-xl'}`}>
       <FormWizard
         steps={PASOS_DEPOSITO}
         value={activeTab}
@@ -395,10 +408,8 @@ export function DepositarPagosClient({
         <div className="grid grid-cols-2 gap-2">
           <SegmentCard label="RECIBOS" icon={Receipt}>
 
-            {/* Fila de búsqueda */}
-            <div className="col-span-2 grid grid-cols-[1fr_1fr_auto] gap-3 items-end [&>*]:min-w-0">
-              {/* Serie */}
-              <div className="grid gap-1">
+            <div className="col-span-2 grid grid-cols-4 items-end gap-3">
+              <div className="col-span-1 grid min-w-0 gap-1">
                 <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie</Label>
                 <Select value={buscarSerie} onValueChange={(v) => { limpiarCampoInvalido(); setBuscarSerie(v ?? ''); setBuscarNumero(''); setReciboPreview(null); setBuscarError('') }} disabled={proyecto === 0}>
                   <SelectTrigger variant="l-border" className="w-full">
@@ -412,8 +423,7 @@ export function DepositarPagosClient({
                 </Select>
               </div>
 
-              {/* Numero */}
-              <div className="grid gap-1">
+              <div className="col-span-1 grid min-w-0 gap-1">
                 <Label className={LABEL_CLS} style={LABEL_STYLE}>Numero</Label>
                 <Input
                   variant="l-border"
@@ -434,12 +444,11 @@ export function DepositarPagosClient({
                 <MensajeCampo id="buscar_numero" campo={campoInvalido} />
               </div>
 
-              {/* Botón Buscar */}
               <Button
                 onClick={handleBuscar}
                 disabled={isPendingBuscar || !buscarSerie || !buscarNumero || proyecto === 0}
                 variant="outline"
-                className="gap-1.5"
+                className="w-fit gap-1.5"
               >
                 {isPendingBuscar
                   ? <Loader2 className="h-4 w-4 animate-spin" />
@@ -458,29 +467,25 @@ export function DepositarPagosClient({
             )}
 
             <div className="col-span-2 grid grid-cols-4 gap-3">
-                <ViewField label="Fecha"         value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
+                <ViewField label="Fecha" value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
                 <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
-                <div className="grid gap-1">
-                  <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Moneda</span>
-                  <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
-                    {(() => {
-                      const codigo = reciboPreview?.moneda ?? ''
-                      const flagIso = CURRENCY_FLAG_MAP.get(codigo)
-                      return flagIso ? (
-                        <span className="flex items-center gap-1.5 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
-                          <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
-                          {codigo}
-                        </span>
-                      ) : <span className="block font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>{codigo}</span>
-                    })()}
+                <div className="col-span-1 grid min-w-0 gap-1">
+                  <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Monto</span>
+                  <div className="flex min-w-0 items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
+                    <span className="min-w-0 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
+                      <BanderaMonto codigo={reciboPreview?.moneda} monto={reciboPreview?.monto} />
+                    </span>
                   </div>
                 </div>
-                <ViewField label="Monto"          value={reciboPreview ? fmt(reciboPreview.monto) : undefined} />
-                <ViewField label="Cliente"        value={reciboPreview ? String(reciboPreview.cliente_codigo) : undefined} />
-                <div className="col-span-3">
-                  <ViewField label="Nombre"       value={reciboPreview?.cliente_nombre} />
+            </div>
+            <div className="col-span-2 grid grid-cols-4 gap-3">
+                <ViewField label="Cliente" value={reciboPreview ? String(reciboPreview.cliente_codigo) : undefined} />
+                <div className="col-span-3 min-w-0">
+                  <ViewField label="Nombre Cliente" value={reciboPreview?.cliente_nombre} />
                 </div>
-                <ViewField label="Tipo"           value={reciboPreview?.tipo} />
+            </div>
+            <div className="col-span-2 grid grid-cols-4 gap-3">
+                <ViewField label="Tipo" value={reciboPreview?.tipo} />
                 {reciboPreview?.tipo === 'Reserva' && (
                   <>
                     <ViewField label="Fase"    value={reciboPreview.fase_nombre ?? (reciboPreview.fase ? `#${reciboPreview.fase}` : undefined)} />
@@ -510,17 +515,17 @@ export function DepositarPagosClient({
             </div>
 
           <div className="col-span-2 max-h-72 overflow-auto rounded-md border border-border/60">
-            <Table scrollable={false}>
+            <Table scrollable={false} className="table-fixed">
               <TableHeader className={LIST_THEAD}>
                 <TableRow className={LIST_HEAD_BG}>
-                  <TableHead className={`${LIST_HEAD_LEFT} w-20`}>
+                  <TableHead className={`${LIST_HEAD_LEFT} w-14`}>
                     <span className="text-xs font-medium text-muted-foreground">Serie</span>
                   </TableHead>
-                  <TableHead className={LIST_HEAD}>Numero</TableHead>
-                  <TableHead className={LIST_HEAD}>Fecha</TableHead>
+                  <TableHead className={`${LIST_HEAD} w-20`}>Numero</TableHead>
+                  <TableHead className={`${LIST_HEAD} w-24`}>Fecha</TableHead>
                   <TableHead className={LIST_HEAD}>Cliente</TableHead>
-                  <TableHead className={LIST_HEAD}>Tipo</TableHead>
-                  <TableHead className={`${LIST_HEAD} text-right`}>Monto</TableHead>
+                  <TableHead className={`${LIST_HEAD} w-20`}>Tipo</TableHead>
+                  <TableHead className={`${LIST_HEAD} w-36 text-right`}>Monto</TableHead>
                   <TableHead className={`${LIST_HEAD_RIGHT} w-10`} />
                 </TableRow>
               </TableHeader>
@@ -538,9 +543,11 @@ export function DepositarPagosClient({
                         <TableCell className="sticky left-0 z-20 bg-card font-mono text-xs">{r.serie}</TableCell>
                         <TableCell>{r.numero}</TableCell>
                         <TableCell className="text-xs">{fmtDate(r.fecha)}</TableCell>
-                        <TableCell className="max-w-[180px] truncate">{r.cliente_nombre}</TableCell>
+                        <TableCell className="truncate">{r.cliente_nombre}</TableCell>
                         <TableCell className="text-xs">{r.tipo}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{r.moneda} {fmt(r.monto)}</TableCell>
+                        <TableCell className="whitespace-nowrap text-right font-mono text-sm">
+                          <BanderaMonto codigo={r.moneda} monto={r.monto} />
+                        </TableCell>
                         <TableCell className="sticky right-0 z-20 bg-card">
                           <button
                             type="button"
@@ -559,7 +566,9 @@ export function DepositarPagosClient({
                       <TableCell colSpan={5} className="text-sm text-muted-foreground">
                         Total ({recibos.length} recibo{recibos.length !== 1 ? 's' : ''})
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm">{cuentaBancariaObj?.moneda} {fmt(totalDeposito)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right font-mono text-sm">
+                        <BanderaMonto codigo={cuentaBancariaObj?.moneda} monto={totalDeposito} />
+                      </TableCell>
                       <TableCell />
                     </TableRow>
                   </>
