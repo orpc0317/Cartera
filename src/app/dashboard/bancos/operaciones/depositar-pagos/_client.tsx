@@ -445,14 +445,16 @@ export function DepositarPagosClient({
               </div>
 
               <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={CLASE_BOTON_MODAL}
                 onClick={handleBuscar}
                 disabled={isPendingBuscar || !buscarSerie || !buscarNumero || proyecto === 0}
-                variant="outline"
-                className="w-fit gap-1.5"
               >
                 {isPendingBuscar
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : <Search className="h-4 w-4" />
+                  ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  : <Search className="mr-1.5 h-3.5 w-3.5" />
                 }
                 Buscar
               </Button>
@@ -495,25 +497,29 @@ export function DepositarPagosClient({
                   </>
                 )}
             </div>
+            </div>
             <div className="col-span-2 flex justify-end gap-2">
                 <Button
-                  variant="outline"
+                  type="button"
+                  variant="ghost"
                   size="sm"
+                  className={CLASE_BOTON_MODAL}
                   disabled={!reciboPreview}
                   onClick={() => { setReciboPreview(null); setBuscarError('') }}
                 >
                   Cancelar
                 </Button>
                 <Button
+                  type="button"
+                  variant="ghost"
                   size="sm"
-                  className="bg-pink-600 hover:bg-pink-700 text-white gap-1"
+                  className={CLASE_BOTON_MODAL}
                   disabled={!reciboPreview}
                   onClick={handleAgregarDesdePreview}
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Agregar
                 </Button>
-            </div>
             </div>
 
           <div className="col-span-2 max-h-72 overflow-auto rounded-md border border-border/60">
