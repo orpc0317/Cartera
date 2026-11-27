@@ -15,7 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
 } from '@/components/ui/table'
-import { LIST_BLOCK, LIST_HEAD, LIST_HEAD_BG, LIST_HEAD_LEFT, LIST_HEAD_RIGHT, LIST_SHELL, LIST_THEAD } from '@/lib/list-table'
+import { LIST_BLOCK, LIST_HEAD, LIST_HEAD_BG, LIST_SHELL, LIST_THEAD } from '@/lib/list-table'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -67,7 +67,7 @@ function BanderaMonto({ codigo, monto }: { codigo?: string | null; monto?: numbe
   if (!codigo || monto == null) return null
   const flagIso = CURRENCY_FLAG_MAP.get(codigo)
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
+    <span className="inline-flex items-center gap-1.5">
       {flagIso && (
         <img src={`https://flagcdn.com/w20/${flagIso}.png`} alt={codigo} width={20} height={14} className="object-cover rounded-sm shrink-0" />
       )}
@@ -515,18 +515,18 @@ export function DepositarPagosClient({
             </div>
 
           <div className="col-span-2 max-h-72 overflow-auto rounded-md border border-border/60">
-            <Table scrollable={false} className="table-fixed">
+            <Table scrollable={false}>
               <TableHeader className={LIST_THEAD}>
                 <TableRow className={LIST_HEAD_BG}>
-                  <TableHead className={`${LIST_HEAD_LEFT} w-14`}>
+                  <TableHead className={LIST_HEAD}>
                     <span className="text-xs font-medium text-muted-foreground">Serie</span>
                   </TableHead>
-                  <TableHead className={`${LIST_HEAD} w-20`}>Numero</TableHead>
-                  <TableHead className={`${LIST_HEAD} w-24`}>Fecha</TableHead>
+                  <TableHead className={LIST_HEAD}>Numero</TableHead>
+                  <TableHead className={LIST_HEAD}>Fecha</TableHead>
                   <TableHead className={LIST_HEAD}>Cliente</TableHead>
-                  <TableHead className={`${LIST_HEAD} w-20`}>Tipo</TableHead>
-                  <TableHead className={`${LIST_HEAD} w-36 text-right`}>Monto</TableHead>
-                  <TableHead className={`${LIST_HEAD_RIGHT} w-10`} />
+                  <TableHead className={LIST_HEAD}>Tipo</TableHead>
+                  <TableHead className={`${LIST_HEAD} text-right`}>Monto</TableHead>
+                  <TableHead className={`${LIST_HEAD} w-10`} />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -540,7 +540,7 @@ export function DepositarPagosClient({
                   <>
                     {recibos.map((r, idx) => (
                       <TableRow key={`${r.serie}-${r.numero}`}>
-                        <TableCell className="sticky left-0 z-20 bg-card font-mono text-xs">{r.serie}</TableCell>
+                        <TableCell className="font-mono text-xs">{r.serie}</TableCell>
                         <TableCell>{r.numero}</TableCell>
                         <TableCell className="text-xs">{fmtDate(r.fecha)}</TableCell>
                         <TableCell className="truncate">{r.cliente_nombre}</TableCell>
@@ -548,7 +548,7 @@ export function DepositarPagosClient({
                         <TableCell className="whitespace-nowrap text-right font-mono text-sm">
                           <BanderaMonto codigo={r.moneda} monto={r.monto} />
                         </TableCell>
-                        <TableCell className="sticky right-0 z-20 bg-card">
+                        <TableCell>
                           <button
                             type="button"
                             aria-label="Quitar recibo"
