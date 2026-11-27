@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2, Landmark, List,
+  CircleDollarSign, Search, Trash2, Plus, AlertCircle, Loader2, Landmark, List, Receipt, FileText,
   Check, ChevronLeft, ChevronRight, Eraser,
 } from 'lucide-react'
 import { Button }   from '@/components/ui/button'
@@ -15,7 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead,
   TableHeader, TableRow,
 } from '@/components/ui/table'
-import { LIST_BLOCK, LIST_HEAD, LIST_HEAD_BG, LIST_HEAD_LEFT, LIST_HEAD_RIGHT, LIST_SCROLLPORT, LIST_SHELL, LIST_THEAD } from '@/lib/list-table'
+import { LIST_BLOCK, LIST_HEAD, LIST_HEAD_BG, LIST_HEAD_LEFT, LIST_HEAD_RIGHT, LIST_SHELL, LIST_THEAD } from '@/lib/list-table'
 import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
@@ -25,6 +25,7 @@ import type { Empresa, Proyecto, Banco, CuentaBancaria, SerieRecibo } from '@/li
 import type { ReciboDetalleItem } from '@/lib/types/depositar-pagos'
 import { useCampoInvalido } from '@/lib/campo-invalido'
 import { FormWizard, useWizardNav, type WizardStep } from '@/components/ui/form-wizard'
+import { SegmentCard } from '@/components/ui/segment-card'
 import { ViewField } from '@/components/ui/view-field'
 import { MensajeCampo } from '@/components/ui/mensaje-campo'
 import { CLASE_BOTON_MODAL, FONDO_MODAL, FRANJA_BLANCA } from '@/lib/modal-look'
@@ -60,16 +61,6 @@ function fmtDate(d: string): string {
   const parts = d.split('-')
   if (parts.length !== 3) return d
   return `${parts[2]}/${parts[1]}/${parts[0]}`
-}
-
-// ─── Primitivos de UI ─────────────────────────────────────────────────────
-function SectionDivider({ label }: { label: string }) {
-  return (
-    <div className="col-span-2 flex items-center gap-2 pt-1">
-      <div className="h-4 w-0.5 rounded-full bg-primary/40" />
-      <span className="font-semibold uppercase tracking-wider text-primary" style={{ fontSize: 'var(--ui-section-divider)' }}>{label}</span>
-    </div>
-  )
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────
@@ -292,20 +283,22 @@ export function DepositarPagosClient({
         </div>
       </div>
 
-      <div className={`mx-auto flex min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'h-[700px] max-h-[calc(100dvh-10rem)] max-w-[64rem]' : 'min-h-[28rem] max-w-xl'}`}>
+      <div className={`mx-auto flex h-[700px] max-h-[calc(100dvh-10rem)] min-h-0 w-full flex-col overflow-hidden rounded-xl border border-border/60 ${FONDO_MODAL} ${activeTab === 'detalle' ? 'max-w-[64rem]' : 'max-w-xl'}`}>
       <FormWizard
         steps={PASOS_DEPOSITO}
         value={activeTab}
         onValueChange={setActiveTab}
         maxIndice={wizard.maxIndice}
-        className="min-h-0 flex-1 px-4 pt-3"
+        className="min-h-0 flex-1"
+        navClassName={`border-b px-4 py-2 ${FRANJA_BLANCA}`}
+        contenidoClassName="px-4 py-3"
       >
         {activeTab === 'general' && (
-        <div className="w-full py-2">
-          <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <SegmentCard label="IDENTIFICACION">
 
             {/* Empresa */}
-            <div className="col-span-4 grid gap-1">
+            <div className="col-span-2 grid gap-1">
               <Label htmlFor="empresa" className={LABEL_CLS} style={LABEL_STYLE}>Empresa <RequiredMark /></Label>
               <Select value={String(empresa)} onValueChange={onEmpresaChange}>
                 <SelectTrigger variant="l-border" className="w-full">
@@ -322,7 +315,7 @@ export function DepositarPagosClient({
             </div>
 
             {/* Proyecto */}
-            <div className="col-span-4 grid gap-1">
+            <div className="col-span-2 grid gap-1">
               <Label htmlFor="proyecto" className={LABEL_CLS} style={LABEL_STYLE}>Proyecto <RequiredMark /></Label>
               <Select value={String(proyecto)} onValueChange={onProyectoChange} disabled={empresa === 0}>
                 <SelectTrigger variant="l-border" className="w-full">
@@ -339,7 +332,7 @@ export function DepositarPagosClient({
             </div>
 
             {/* Cuenta Bancaria */}
-            <div className="col-span-4 grid gap-1">
+            <div className="col-span-2 grid gap-1">
               <Label htmlFor="cuenta_bancaria" className={LABEL_CLS} style={LABEL_STYLE}>Cuenta Bancaria <RequiredMark /></Label>
               <Select value={String(cuentaBancaria)} onValueChange={(v) => { limpiarCampoInvalido(); setCuentaBancaria(Number(v)) }} disabled={proyecto === 0}>
                 <SelectTrigger variant="l-border" id="cuenta_bancaria" aria-invalid={campoInvalido?.id === 'cuenta_bancaria' || undefined} className="w-full">
@@ -360,7 +353,10 @@ export function DepositarPagosClient({
                 </span>
               )}
             </div>
+          </SegmentCard>
 
+          <SegmentCard label="GENERAL" icon={FileText}>
+            <div className="col-span-2 grid grid-cols-4 gap-2">
             {/* Fecha */}
             <div className="col-span-1 grid min-w-0 gap-1">
               <Label htmlFor="fecha" className={LABEL_CLS} style={LABEL_STYLE}>Fecha <RequiredMark /></Label>
@@ -389,22 +385,18 @@ export function DepositarPagosClient({
               />
               <MensajeCampo id="numero_documento" campo={campoInvalido} />
             </div>
+            </div>
+          </SegmentCard>
 
-          </div>
         </div>
         )}
 
         {activeTab === 'detalle' && (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-
-          {/* Buscador */}
-          <div className={`${LIST_BLOCK} rounded-xl border border-border/60 bg-card p-4`}>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <SectionDivider label="Recibos" />
-            </div>
+        <div className="grid grid-cols-2 gap-2">
+          <SegmentCard label="RECIBOS" icon={Receipt}>
 
             {/* Fila de búsqueda */}
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end [&>*]:min-w-0">
+            <div className="col-span-2 grid grid-cols-[1fr_1fr_auto] gap-3 items-end [&>*]:min-w-0">
               {/* Serie */}
               <div className="grid gap-1">
                 <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie</Label>
@@ -459,15 +451,13 @@ export function DepositarPagosClient({
 
             {/* Error de búsqueda */}
             {buscarError && (
-              <div className="mt-2 flex items-center gap-1.5 text-sm text-destructive">
+              <div className="col-span-2 flex items-center gap-1.5 text-sm text-destructive">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>{buscarError}</span>
               </div>
             )}
 
-            {/* Vista previa del recibo — siempre visible */}
-            <div className="mt-3 rounded-lg border border-pink-200 bg-pink-50/40 p-3">
-              <div className="grid grid-cols-4 gap-3 mb-3">
+            <div className="col-span-2 grid grid-cols-4 gap-3">
                 <ViewField label="Fecha"         value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
                 <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
                 <div className="grid gap-1">
@@ -498,8 +488,8 @@ export function DepositarPagosClient({
                     <ViewField label="Lote"    value={reciboPreview.lote} />
                   </>
                 )}
-              </div>
-              <div className="flex justify-end gap-2">
+            </div>
+            <div className="col-span-2 flex justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -517,12 +507,9 @@ export function DepositarPagosClient({
                   <Plus className="h-3.5 w-3.5" />
                   Agregar
                 </Button>
-              </div>
             </div>
-          </div>
 
-          {/* Tabla de recibos */}
-          <div className={LIST_SCROLLPORT}>
+          <div className="col-span-2 max-h-72 overflow-auto rounded-md border border-border/60">
             <Table scrollable={false}>
               <TableHeader className={LIST_THEAD}>
                 <TableRow className={LIST_HEAD_BG}>
@@ -580,6 +567,7 @@ export function DepositarPagosClient({
               </TableBody>
             </Table>
           </div>
+          </SegmentCard>
 
         </div>
         )}
