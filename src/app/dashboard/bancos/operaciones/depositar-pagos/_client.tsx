@@ -304,7 +304,7 @@ export function DepositarPagosClient({
         maxIndice={wizard.maxIndice}
         className="min-h-0 flex-1"
         navClassName={`border-b px-4 py-2 ${FRANJA_BLANCA}`}
-        contenidoClassName="px-4 py-3"
+        contenidoClassName="flex flex-col overflow-hidden px-4 py-3"
       >
         {activeTab === 'general' && (
         <div className="grid grid-cols-2 gap-2">
@@ -405,10 +405,10 @@ export function DepositarPagosClient({
         )}
 
         {activeTab === 'detalle' && (
-        <div className="grid grid-cols-2 gap-2">
-          <SegmentCard label="RECIBOS" icon={Receipt}>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SegmentCard label="RECIBOS" icon={Receipt} className="flex min-h-0 flex-1 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col">
 
-            <div className="col-span-2 grid grid-cols-4 items-end gap-3">
+            <div className="col-span-2 grid shrink-0 grid-cols-4 items-end gap-3">
               <div className="col-span-1 grid min-w-0 gap-1">
                 <Label className={LABEL_CLS} style={LABEL_STYLE}>Serie</Label>
                 <Select value={buscarSerie} onValueChange={(v) => { limpiarCampoInvalido(); setBuscarSerie(v ?? ''); setBuscarNumero(''); setReciboPreview(null); setBuscarError('') }} disabled={proyecto === 0}>
@@ -462,17 +462,21 @@ export function DepositarPagosClient({
 
             {/* Error de búsqueda */}
             {buscarError && (
-              <div className="col-span-2 flex items-center gap-1.5 text-sm text-destructive">
+              <div className="col-span-2 flex shrink-0 items-center gap-1.5 text-sm text-destructive">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>{buscarError}</span>
               </div>
             )}
 
-            <div className="col-span-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-muted/50 p-3">
-            <div className="col-span-2 grid grid-cols-4 gap-3">
-                <ViewField label="Fecha" value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
-                <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
-                <div className="col-span-1 grid min-w-0 gap-1">
+            <div className="col-span-2 grid shrink-0 grid-cols-2 gap-3 rounded-lg border border-border bg-muted/50 p-3">
+            <div className="col-span-2 grid grid-cols-8 gap-3">
+                <div className="col-span-1 min-w-0">
+                  <ViewField label="Fecha" value={reciboPreview ? fmtDate(reciboPreview.fecha) : undefined} />
+                </div>
+                <div className="col-span-2 min-w-0">
+                  <ViewField label="Forma Pago" value={reciboPreview ? (FORMAS_PAGO[reciboPreview.forma_pago] ?? String(reciboPreview.forma_pago)) : undefined} />
+                </div>
+                <div className="col-span-2 grid min-w-0 gap-1">
                   <span className="font-semibold tracking-wider leading-none text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Monto</span>
                   <div className="flex min-w-0 items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>
                     <span className="min-w-0 font-medium text-foreground" style={{ fontSize: 'var(--ui-viewfield-value)' }}>
@@ -480,25 +484,33 @@ export function DepositarPagosClient({
                     </span>
                   </div>
                 </div>
+                <div className="col-span-2 min-w-0">
+                  <ViewField label="Tipo" value={reciboPreview?.tipo} />
+                </div>
             </div>
-            <div className="col-span-2 grid grid-cols-4 gap-3">
-                <ViewField label="Cliente" value={reciboPreview ? String(reciboPreview.cliente_codigo) : undefined} />
-                <div className="col-span-3 min-w-0">
+            <div className="col-span-2 grid grid-cols-8 gap-3">
+                <div className="col-span-1 min-w-0">
+                  <ViewField label="Cliente" value={reciboPreview ? String(reciboPreview.cliente_codigo) : undefined} />
+                </div>
+                <div className="col-span-6 min-w-0">
                   <ViewField label="Nombre Cliente" value={reciboPreview?.cliente_nombre} />
                 </div>
             </div>
-            <div className="col-span-2 grid grid-cols-4 gap-3">
-                <ViewField label="Tipo" value={reciboPreview?.tipo} />
-                {reciboPreview?.tipo === 'Reserva' && (
-                  <>
-                    <ViewField label="Fase"    value={reciboPreview.fase_nombre ?? (reciboPreview.fase ? `#${reciboPreview.fase}` : undefined)} />
-                    <ViewField label="Manzana" value={reciboPreview.manzana} />
-                    <ViewField label="Lote"    value={reciboPreview.lote} />
-                  </>
-                )}
+            {reciboPreview?.tipo === 'Reserva' && (
+              <div className="col-span-2 grid grid-cols-8 gap-3">
+                <div className="col-span-2 min-w-0">
+                  <ViewField label="Fase" value={reciboPreview.fase_nombre ?? (reciboPreview.fase ? `#${reciboPreview.fase}` : undefined)} />
+                </div>
+                <div className="col-span-2 min-w-0">
+                  <ViewField label="Manzana" value={reciboPreview.manzana} />
+                </div>
+                <div className="col-span-2 min-w-0">
+                  <ViewField label="Lote" value={reciboPreview.lote} />
+                </div>
+              </div>
+            )}
             </div>
-            </div>
-            <div className="col-span-2 flex justify-end gap-2">
+            <div className="col-span-2 flex shrink-0 justify-end gap-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -522,7 +534,7 @@ export function DepositarPagosClient({
                 </Button>
             </div>
 
-          <div className="col-span-2 max-h-72 overflow-auto rounded-md border border-border/60">
+          <div className="col-span-2 min-h-0 flex-1 overflow-auto rounded-md border border-border/60">
             <Table scrollable={false}>
               <TableHeader className={LIST_THEAD}>
                 <TableRow className={LIST_HEAD_BG}>
