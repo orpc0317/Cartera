@@ -238,6 +238,7 @@ export function TransaccionesBancariasClient({
   const [dialogOpen, setDialogOpen]     = useState(false)
   const [pestana, setPestana]           = useState('general')
   const [recibos, setRecibos]           = useState<ReciboDeTransaccion[] | null>(null)
+  const [recibosError, setRecibosError] = useState<string | null>(null)
   const [recibosPending, startRecibos]  = useTransition()
   const recibosClave = useRef('')
   const [viewTarget, setViewTarget]     = useState<(TransaccionBancaria & NombresVer) | null>(null)
@@ -451,15 +452,18 @@ export function TransaccionesBancariasClient({
     setViewTarget(r)
     setPestana('general')
     setRecibos(null)
+    setRecibosError(null)
     setDialogOpen(true)
     startRecibos(async () => {
       const result = await getRecibosDeTransaccion(r.empresa, r.cuenta_bancaria, r.numero_transaccion)
       if (recibosClave.current !== clave) return
       if (result.error) {
         toast.error(result.error)
-        setRecibos([])
+        setRecibos(null)
+        setRecibosError(result.error)
         return
       }
+      setRecibosError(null)
       setRecibos(result.data ?? [])
     })
   }
@@ -780,6 +784,7 @@ export function TransaccionesBancariasClient({
         if (!open) {
           setPestana('general')
           setRecibos(null)
+          setRecibosError(null)
         }
       }}>
         <DialogContent className={`flex flex-col w-[90vw] sm:max-w-[64rem] h-[680px] max-h-[90vh] overflow-hidden ${FONDO_MODAL}`}>
@@ -884,11 +889,15 @@ export function TransaccionesBancariasClient({
             <TabsContent value="detalle" className="mt-0 min-h-0 flex-1 overflow-hidden pr-1">
               <div className="flex h-full min-h-0 flex-col">
                 <SegmentCard label="RECIBOS" icon={Receipt} className="flex min-h-0 flex-1 flex-col" bodyClassName="flex min-h-0 flex-1 flex-col">
-                  {recibosPending || recibos === null ? (
+                  {recibosPending || (recibos === null && !recibosError) ? (
                     <div className="col-span-2 flex flex-1 items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Cargando recibos…
                     </div>
-                  ) : recibos.length === 0 ? (
+                  ) : recibosError ? (
+                    <div className="col-span-2 py-16 text-center text-sm text-destructive">
+                      {recibosError}
+                    </div>
+                  ) : !recibos || recibos.length === 0 ? (
                     <div className="col-span-2 py-16 text-center text-sm text-muted-foreground">
                       Esta transacción no tiene recibos asociados.
                     </div>
