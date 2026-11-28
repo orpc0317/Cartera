@@ -29,7 +29,7 @@ export async function getReciboParaDeposito(
   const { data: recibo, error } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('cuenta, empresa, proyecto, serie, numero, fecha, cliente, forma_pago, monto, moneda, transaccion_bancaria, reserva, promesa, fase, manzana, lote')
+    .select('cuenta, empresa, proyecto, serie, numero, fecha, cliente, forma_pago, monto, moneda, transaccion_bancaria, cuenta_deposito, reserva, promesa, fase, manzana, lote')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -43,8 +43,20 @@ export async function getReciboParaDeposito(
   if (recibo.forma_pago === 3 || recibo.forma_pago === 4)
     return { error: 'Este recibo no requiere deposito (forma de pago: Deposito/Transferencia).' }
 
-  if (recibo.transaccion_bancaria)
-    return { error: `Este recibo ya tiene un deposito asociado (Transaccion: ${recibo.transaccion_bancaria}).` }
+  if (recibo.transaccion_bancaria) {
+    const { data: transaccion } = await admin
+      .schema('cartera')
+      .from('t_transaccion_bancaria')
+      .select('numero_documento')
+      .eq('cuenta', cuenta)
+      .eq('empresa', empresa)
+      .eq('proyecto', proyecto)
+      .eq('cuenta_bancaria', recibo.cuenta_deposito ?? 0)
+      .eq('numero_transaccion', recibo.transaccion_bancaria)
+      .maybeSingle()
+    const documento = String(transaccion?.numero_documento ?? '').trim()
+    return { error: `Este recibo ya tiene un deposito asociado (No. Documento: ${documento || '—'}).` }
+  }
 
   const { data: cliente } = await admin
     .schema('cartera')
