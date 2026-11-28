@@ -263,6 +263,7 @@ export function DepositarPagosClient({
           serie:    r.serie,
           numero:   r.numero,
           monto:    r.monto,
+          modifico_fecha: r.modifico_fecha,
         })),
       })
       if (result.error) {
