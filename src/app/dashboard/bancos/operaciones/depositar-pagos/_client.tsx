@@ -384,9 +384,9 @@ export function DepositarPagosClient({
               <MensajeCampo id="fecha" campo={campoInvalido} />
             </div>
 
-            {/* Numero Documento */}
+            {/* No. Documento */}
             <div className="col-span-1 grid min-w-0 gap-1">
-              <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>Numero Documento <RequiredMark /></Label>
+              <Label htmlFor="numero_documento" className={LABEL_CLS} style={LABEL_STYLE}>No. Documento <RequiredMark /></Label>
               <Input
                 variant="l-border"
                 id="numero_documento"

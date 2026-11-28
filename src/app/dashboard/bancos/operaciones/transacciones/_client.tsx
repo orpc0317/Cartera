@@ -850,7 +850,7 @@ export function TransaccionesBancariasClient({
                       </div>
                       <div className="col-span-2 grid grid-cols-3 gap-2">
                         <ViewField label="Fecha" value={viewTarget.fecha ? fmtFecha(viewTarget.fecha) : ''} />
-                        <ViewField label="Numero Documento" value={viewTarget.numero_documento ?? ''} />
+                        <ViewField label="No. Documento" value={viewTarget.numero_documento ?? ''} />
                         <div className="grid gap-1">
                           <span className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-viewfield-label)' }}>Monto</span>
                           <div className="flex items-center rounded-none bg-transparent border-0 border-b border-primary/50 px-2" style={{ height: 'var(--ui-field-height)' }}>

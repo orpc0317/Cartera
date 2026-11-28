@@ -149,7 +149,7 @@ const ALL_COLUMNS: ColDef[] = [
   { key: '__banco',            label: 'Banco',            defaultVisible: false },
   { key: 'num_cuenta',         label: 'Numero Cuenta',    defaultVisible: false },
   { key: '__cuenta_bancaria',  label: 'Cuenta Bancaria',  defaultVisible: false },
-  { key: 'num_documento',      label: 'Numero Documento', defaultVisible: false },
+  { key: 'num_documento',      label: 'Documento', defaultVisible: false },
   { key: '__estado',           label: 'Estado',           defaultVisible: true  },
 ]
 
