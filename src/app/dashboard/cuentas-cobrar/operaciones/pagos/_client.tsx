@@ -843,7 +843,7 @@ export function PagosClient({
               </Select>
             </div>
             <div className="grid gap-1">
-              <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>Numero Documento</Label>
+              <Label className="font-semibold tracking-wider text-muted-foreground" style={{ fontSize: 'var(--ui-form-label)' }}>No. Documento</Label>
               <Input variant="l-border" value={filtroNumeroDocumento} onChange={(e) => setFiltroNumeroDocumento(e.target.value)} placeholder="Numero de documento de pago" />
             </div>
             <div className="grid gap-1">
@@ -1119,7 +1119,7 @@ export function PagosClient({
                       <ViewField label="Forma Pago" value={FORMAS_PAGO[viewTarget.forma_pago] ?? String(viewTarget.forma_pago)} />
                       <ViewField label="Banco" value={bancoNombre(viewTarget)} />
                       <ViewField label="Numero Cuenta" value={viewTarget.numero_cuenta} />
-                      <ViewField label="Numero Documento" value={viewTarget.numero_documento} />
+                      <ViewField label="No. Documento" value={viewTarget.numero_documento} />
                       <div className="col-span-2"><ViewField label="Cobrador" value={cobradorNombre(viewTarget)} /></div>
 
                       <SectionDivider label="DEPOSITO" />
@@ -1132,7 +1132,7 @@ export function PagosClient({
                           <ViewField label="Cuenta Bancaria" value={cuentaDepositoDisplay(viewTarget)} />
                           <ViewField label="Tipo" value={TIPOS_TRANSACCION_BANCARIA[extra.deposito.tipo_transaccion] ?? String(extra.deposito.tipo_transaccion)} />
                           <ViewField label="Fecha" value={fmtDate(extra.deposito.fecha)} />
-                          <ViewField label="Numero Documento" value={extra.deposito.numero_documento} />
+                          <ViewField label="No. Documento" value={extra.deposito.numero_documento} />
                           <ViewField label="Valor" value={fmt(extra.deposito.valor)} />
                           <ViewField label="No. Transaccion" value={extra.deposito.numero_transaccion} />
                         </>
