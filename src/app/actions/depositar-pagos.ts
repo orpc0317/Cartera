@@ -29,7 +29,7 @@ export async function getReciboParaDeposito(
   const { data: recibo, error } = await admin
     .schema('cartera')
     .from('t_recibo_caja')
-    .select('cuenta, empresa, proyecto, serie, numero, fecha, cliente, forma_pago, monto, moneda, transaccion_bancaria, reserva, promesa, fase, manzana, lote')
+    .select('cuenta, empresa, proyecto, serie, numero, fecha, cliente, forma_pago, monto, moneda, transaccion_bancaria, reserva, promesa, fase, manzana, lote, modifico_fecha')
     .eq('cuenta', cuenta)
     .eq('empresa', empresa)
     .eq('proyecto', proyecto)
@@ -109,6 +109,7 @@ export async function getReciboParaDeposito(
       moneda:         recibo.moneda as string,
       tipo,
       reserva:        reservaNum,
+      modifico_fecha: (recibo.modifico_fecha as string | null) ?? null,
       ...(fase || manzana || lote ? {
         fase:        fase || undefined,
         fase_nombre: faseNombre,
@@ -117,6 +118,57 @@ export async function getReciboParaDeposito(
       } : {}),
     },
   }
+}
+
+// ─── Auditoría ─────────────────────────────────────────────────────────────
+
+const COLUMNAS_RECIBO = 'cuenta, empresa, proyecto, serie, numero, fecha, promesa, reserva, cliente, fase, manzana, lote, forma_pago, banco, numero_cuenta, numero_documento, cuenta_deposito, transaccion_bancaria, cobrador, moneda, tasa_cambio, monto, mora, abono_capital, tipo_ingreso, factura_serie, factura_numero, observaciones, estado, agrego_usuario, agrego_fecha, modifico_usuario, modifico_fecha'
+
+async function getAuditUser() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { userId: null, email: null, nombre: null }
+  const { data } = await supabase
+    .schema('cartera')
+    .from('t_usuario')
+    .select('nombres, apellidos')
+    .eq('userid', user.id)
+    .maybeSingle()
+  const nombre = data
+    ? `${data.nombres ?? ''} ${data.apellidos ?? ''}`.trim() || null
+    : null
+  return { userId: user.id, email: user.email ?? null, nombre }
+}
+
+async function writeAudit(
+  admin: ReturnType<typeof createAdminClient>,
+  opts: {
+    tabla: string
+    operacion: 'INSERT' | 'UPDATE' | 'DELETE'
+    cuenta: string
+    registroId: Record<string, unknown>
+    datoAntes: Record<string, unknown> | null
+    datoDespues: Record<string, unknown> | null
+    userId: string | null
+    email: string | null
+    nombre: string | null
+  },
+) {
+  await admin.schema('cartera').from('t_audit_log').insert({
+    tabla: opts.tabla,
+    operacion: opts.operacion,
+    cuenta: opts.cuenta,
+    registro_id: opts.registroId,
+    datos_antes: opts.datoAntes,
+    datos_despues: opts.datoDespues,
+    usuario_id: opts.userId,
+    usuario_email: opts.email,
+    usuario_nombre: opts.nombre,
+  })
+}
+
+function mensajeLock(serie: string, numero: number) {
+  return `El recibo ${serie}-${numero} fue modificado por otro usuario. Quitelo, busquelo de nuevo y vuelva a intentar.`
 }
 
 // ─── Escritura ─────────────────────────────────────────────────────────────
@@ -163,6 +215,42 @@ export async function depositarPagos(
 
   const valor = payload.recibos.reduce((sum, r) => sum + r.monto, 0)
   const admin = createAdminClient()
+  const antes: Record<string, unknown>[] = []
+
+  for (const recibo of payload.recibos) {
+    let vigente = admin
+      .schema('cartera')
+      .from('t_recibo_caja')
+      .select(COLUMNAS_RECIBO)
+      .eq('cuenta', cuenta)
+      .eq('empresa', recibo.empresa)
+      .eq('proyecto', recibo.proyecto)
+      .eq('serie', recibo.serie)
+      .eq('numero', recibo.numero)
+    vigente = recibo.modifico_fecha
+      ? vigente.eq('modifico_fecha', recibo.modifico_fecha)
+      : vigente.is('modifico_fecha', null)
+    const { data: fila, error: errorFila } = await vigente.maybeSingle()
+    if (errorFila) return { error: errorFila.message }
+    if (!fila) {
+      const { data: existe } = await admin
+        .schema('cartera')
+        .from('t_recibo_caja')
+        .select('numero')
+        .eq('cuenta', cuenta)
+        .eq('empresa', recibo.empresa)
+        .eq('proyecto', recibo.proyecto)
+        .eq('serie', recibo.serie)
+        .eq('numero', recibo.numero)
+        .maybeSingle()
+      if (!existe) return { error: `El recibo ${recibo.serie}-${recibo.numero} no existe.` }
+      return { error: mensajeLock(recibo.serie, recibo.numero) }
+    }
+    if (fila.transaccion_bancaria) {
+      return { error: `El recibo ${recibo.serie}-${recibo.numero} ya fue depositado por otra sesion.` }
+    }
+    antes.push(fila as Record<string, unknown>)
+  }
 
   const { data, error } = await admin
     .schema('cartera')
@@ -175,11 +263,61 @@ export async function depositarPagos(
       p_numero_documento: payload.numero_documento.trim(),
       p_valor:            valor,
       p_usuario:          user.id,
-      p_recibos:          payload.recibos,
+      p_recibos:          payload.recibos.map((recibo) => ({
+        cuenta:   recibo.cuenta,
+        empresa:  recibo.empresa,
+        proyecto: recibo.proyecto,
+        serie:    recibo.serie,
+        numero:   recibo.numero,
+        monto:    recibo.monto,
+      })),
     })
 
   if (error) return { error: error.message }
 
   const result = data as { numero_transaccion: string } | null
-  return { numero_transaccion: result?.numero_transaccion }
+  if (!result?.numero_transaccion) return { error: 'No se obtuvo el numero de transaccion.' }
+
+  const { data: transaccion } = await admin
+    .schema('cartera')
+    .from('t_transaccion_bancaria')
+    .select('numero_documento')
+    .eq('cuenta', cuenta)
+    .eq('empresa', payload.empresa)
+    .eq('proyecto', payload.proyecto)
+    .eq('cuenta_bancaria', payload.cuenta_bancaria)
+    .eq('numero_transaccion', result.numero_transaccion)
+    .maybeSingle()
+  const boleta = String(transaccion?.numero_documento ?? payload.numero_documento).trim()
+  const auditUser = await getAuditUser()
+
+  for (const previo of antes) {
+    const { data: posterior } = await admin
+      .schema('cartera')
+      .from('t_recibo_caja')
+      .select(COLUMNAS_RECIBO)
+      .eq('cuenta', cuenta)
+      .eq('empresa', previo.empresa as number)
+      .eq('proyecto', previo.proyecto as number)
+      .eq('serie', previo.serie as string)
+      .eq('numero', previo.numero as number)
+      .maybeSingle()
+    if (!posterior) continue
+    await writeAudit(admin, {
+      tabla: 't_recibo_caja',
+      operacion: 'UPDATE',
+      cuenta,
+      registroId: {
+        empresa: previo.empresa,
+        proyecto: previo.proyecto,
+        serie: previo.serie,
+        numero: previo.numero,
+      },
+      datoAntes: { ...previo, boleta_deposito: null },
+      datoDespues: { ...(posterior as Record<string, unknown>), boleta_deposito: boleta },
+      ...auditUser,
+    })
+  }
+
+  return { numero_transaccion: result.numero_transaccion }
 }

@@ -57,6 +57,9 @@ const FIELD_LABELS: Record<string, string> = {
   este:                          'Este (colindancia)',
   oeste:                         'Oeste (colindancia)',
   otro:                          'Otras colindancias',
+  boleta_deposito:               'No. Documento',
+  cuenta_deposito:               'Cuenta Deposito',
+  transaccion_bancaria:          'No. Transaccion',
 }
 
 function fieldLabel(key: string) {

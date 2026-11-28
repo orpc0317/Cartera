@@ -15,6 +15,7 @@ export type ReciboDetalleItem = {
   moneda:         string
   tipo:           'Reserva' | 'Otros'
   reserva:        number
+  modifico_fecha: string | null
   fase?:          number
   fase_nombre?:   string
   manzana?:       string
@@ -34,5 +35,6 @@ export type DepositarPagosServerPayload = {
     serie:    string
     numero:   number
     monto:    number
+    modifico_fecha: string | null
   }>
 }
